@@ -3,6 +3,7 @@
 void initDisplay();
 void startupScreen();
 void configModeScreen();
+void wifiReconnectScreen();
 void stepOneScreen();
 void stepTwoScreen();
 void stepThreeScreen();

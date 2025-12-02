@@ -1,21 +1,50 @@
 #include <Arduino.h>
+#include <WiFi.h>
 #include "FS.h"
 #include "FFat.h"
 #include "SerialConfig.h"
 
-void configOverSerialPort()
+void configOverSerialPort(String wifiSSID, String wifiPass)
 {
-    executeConfig();
+    executeConfig(wifiSSID, wifiPass);
 }
 
-void executeConfig()
+void executeConfig(String wifiSSID, String wifiPass)
 {
     Serial.println("\n--- Serial Config Mode Active ---");
     Serial.println("Waiting for commands...");
     Serial.flush();
 
+    // Remember initial WiFi state - only restart if WiFi comes BACK (was disconnected)
+    bool wifiWasDisconnected = (WiFi.status() != WL_CONNECTED);
+    Serial.printf("WiFi initial state: %s\n", wifiWasDisconnected ? "DISCONNECTED" : "CONNECTED");
+
+    unsigned long lastWiFiCheck = millis();
+
     while (true)
     {
+        yield(); // Feed the watchdog timer
+        
+        // Check WiFi every 5 seconds to see if it's back
+        if (millis() - lastWiFiCheck > 5000)
+        {
+            // Only restart if WiFi was disconnected and now came back
+            if (wifiWasDisconnected && WiFi.status() == WL_CONNECTED)
+            {
+                Serial.println("\n--- WiFi reconnected! Restarting... ---");
+                Serial.flush();
+                delay(500);
+                ESP.restart();
+            }
+            // Try to reconnect if we have credentials and WiFi is down
+            else if (wifiWasDisconnected && wifiSSID.length() > 0 && WiFi.status() != WL_CONNECTED)
+            {
+                Serial.println("Attempting WiFi reconnect...");
+                WiFi.begin(wifiSSID.c_str(), wifiPass.c_str());
+            }
+            lastWiFiCheck = millis();
+        }
+
         if (Serial.available() == 0)
         {
             delay(10);

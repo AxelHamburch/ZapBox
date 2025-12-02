@@ -116,25 +116,31 @@ void readFiles()
 
 void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
+  Serial.printf("[WS Event] Type: %d, ConfigMode: %d\n", type, inConfigMode);
+  
   if (inConfigMode == false)
   {
     switch (type)
     {
     case WStype_DISCONNECTED:
-      Serial.println("WebSocket disconnected!");
+      Serial.println("[WS] Disconnected!");
       break;
     case WStype_CONNECTED:
     {
-      Serial.printf("WebSocket connected to url: %s\n", payload);
-
-      // send message to server when Connected
+      Serial.printf("[WS] Connected to url: %s\n", payload);
       webSocket.sendTXT("Connected");
     }
     break;
     case WStype_TEXT:
+      Serial.printf("[WS] Received text: %s\n", payload);
       payloadStr = (char *)payload;
+      Serial.printf("[WS] PayloadStr set to: %s\n", payloadStr.c_str());
       paid = true;
+      Serial.println("[WS] 'paid' flag set to TRUE");
+      break;
     case WStype_ERROR:
+      Serial.println("[WS] Error occurred!");
+      break;
     case WStype_FRAGMENT_TEXT_START:
     case WStype_FRAGMENT_BIN_START:
     case WStype_FRAGMENT:
@@ -142,14 +148,60 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       break;
     }
   }
+  else
+  {
+    Serial.println("[WS] Event ignored - in config mode");
+  }
+}
+
+void checkAndReconnectWiFi()
+{
+  if (WiFi.status() != WL_CONNECTED && !inConfigMode)
+  {
+    Serial.println("WiFi connection lost! Reconnecting...");
+    wifiReconnectScreen();
+    
+    // Keep trying to reconnect forever
+    while (WiFi.status() != WL_CONNECTED)
+    {
+      WiFi.disconnect();
+      WiFi.begin(ssid.c_str(), wifiPassword.c_str());
+      
+      int reconnectTimer = 0;
+      while (WiFi.status() != WL_CONNECTED && reconnectTimer < 10000)
+      {
+        delay(500);
+        Serial.print(".");
+        reconnectTimer += 500;
+      }
+      
+      if (WiFi.status() == WL_CONNECTED)
+      {
+        Serial.println("\nWiFi reconnected!");
+        
+        // Reconnect WebSocket after WiFi is back
+        webSocket.disconnect();
+        delay(100);
+        webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+        Serial.println("WebSocket reconnected!");
+        break;
+      }
+      else
+      {
+        Serial.println("\nRetrying WiFi connection...");
+      }
+    }
+  }
 }
 
 void configMode()
 {
-  inConfigMode = true;
   Serial.println("Config mode triggered");
+  inConfigMode = true;
+  delay(100); // Give loop() time to check the flag
   configModeScreen();
-  configOverSerialPort();
+  Serial.println("Config mode screen displayed, entering serial config...");
+  configOverSerialPort(ssid, wifiPassword);
 }
 
 void testMode()
@@ -232,18 +284,36 @@ void setup()
 
   WiFi.begin(ssid.c_str(), wifiPassword.c_str());
   Serial.print("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED && timer < 6000)
+  
+  // Wait for WiFi connection, showing startup screen
+  while (WiFi.status() != WL_CONNECTED && timer < 15000)
   {
-    delay(1000);
+    delay(500);
     Serial.print(".");
-    timer = timer + 1000;
-    if (timer > 5000)
+    timer = timer + 500;
+  }
+  
+  // If WiFi connected, continue normally
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    Serial.println("\nWiFi connected!");
+  }
+  else
+  {
+    // After 15 seconds without WiFi, check if we have credentials
+    Serial.println("\nNo WiFi connection after 15 seconds");
+    if (ssid.length() == 0)
     {
-      Serial.println("");
+      // No credentials saved, go to config mode
       configMode();
     }
+    else
+    {
+      // Have credentials but no connection, go to WiFi reconnect mode
+      Serial.println("Entering WiFi reconnect mode...");
+      checkAndReconnectWiFi();
+    }
   }
-  Serial.println("");
 
   webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
   webSocket.onEvent(webSocketEvent);
@@ -266,23 +336,102 @@ void setup()
 
 void loop()
 {
+  // If in config mode, do nothing - config mode is handled by button interrupt
+  if (inConfigMode)
+  {
+    delay(100);
+    return;
+  }
+  
+  checkAndReconnectWiFi();
+  if (inConfigMode) return; // Exit if we entered config mode
+
   payloadStr = "";
   delay(2000);
+  
+  if (inConfigMode) return; // Check again before drawing screen
+  
   showQRScreen();
 
+  unsigned long lastWiFiCheck = millis();
+  unsigned long loopCount = 0;
+  
+  Serial.println("[LOOP] Entering payment wait loop...");
+  Serial.printf("[LOOP] Initial paid state: %d\n", paid);
+  
   while (paid == false)
   {
+    // Check if config mode was triggered during payment wait
+    if (inConfigMode)
+    {
+      Serial.println("[LOOP] Config mode detected, exiting payment loop");
+      return;
+    }
+    
     webSocket.loop();
+    loopCount++;
+    
+    // Log status every 10000 loops (roughly every 30-60 seconds)
+    if (loopCount % 10000 == 0)
+    {
+      Serial.printf("[LOOP] Still waiting... WiFi: %d, WS Connected: %d, paid: %d\n", 
+                    WiFi.status() == WL_CONNECTED, webSocket.isConnected(), paid);
+    }
+    
+    // Check WiFi and WebSocket every 5 seconds while waiting for payment
+    if (millis() - lastWiFiCheck > 5000)
+    {
+      Serial.println("[CHECK] Performing 5-second check...");
+      
+      // Check if WiFi is still connected
+      if (WiFi.status() != WL_CONNECTED && !inConfigMode)
+      {
+        Serial.println("[CHECK] WiFi lost, attempting reconnect...");
+        // WiFi lost, try to reconnect
+        checkAndReconnectWiFi();
+        if (inConfigMode) return; // Exit if we entered config mode
+        // After reconnect, restart loop to show QR screen again
+        return;
+      }
+      
+      // Check if WebSocket is still connected
+      if (!webSocket.isConnected() && WiFi.status() == WL_CONNECTED)
+      {
+        Serial.println("[CHECK] WebSocket disconnected! Reconnecting...");
+        webSocket.disconnect();
+        delay(100);
+        webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+      }
+      else if (webSocket.isConnected())
+      {
+        Serial.println("[CHECK] WebSocket is connected OK");
+      }
+      
+      lastWiFiCheck = millis();
+    }
     if (paid)
     {
+      Serial.println("[PAYMENT] Payment detected!");
+      Serial.printf("[PAYMENT] PayloadStr: %s\n", payloadStr.c_str());
+      
       switchedOnScreen();
-      pinMode(getValue(payloadStr, '-', 0).toInt(), OUTPUT);
-      digitalWrite(getValue(payloadStr, '-', 0).toInt(), HIGH);
-      delay(getValue(payloadStr, '-', 1).toInt());
-      digitalWrite(getValue(payloadStr, '-', 0).toInt(), LOW);
+      
+      int pin = getValue(payloadStr, '-', 0).toInt();
+      int duration = getValue(payloadStr, '-', 1).toInt();
+      
+      Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
+      
+      pinMode(pin, OUTPUT);
+      digitalWrite(pin, HIGH);
+      Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+      
+      delay(duration);
+      
+      digitalWrite(pin, LOW);
+      Serial.printf("[RELAY] Pin %d set LOW\n", pin);
     }
   }
-  Serial.println("Paid");
+  Serial.println("[PAYMENT] Paid!");
   thankYouScreen();
   paid = false;
   delay(2000);
