@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>SATOFFEE⚡️ WEB INSTALLER</title>
+
+    <!-- Primary Meta Tags -->
+    <meta name="description" content="Flash & config your Satoffee from the browser">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+
+    <!-- Open Graph -->
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SATOFFEE⚡️ WEB INSTALLER - danielpcostas.dev" />
+    <meta property="og:description"
+        content="Flash & config your Satoffee from the browser" />
+    <meta property="og:url" content="https://satoffee.danielpcostas.dev/" />
+    <meta property="og:image" content="https://satoffee.danielpcostas.dev/assets/satoffee-social.webp" />
+
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://satoffee.danielpcostas.dev">
+    <meta name="twitter:title" content="SATOFFEE⚡️ WEB INSTALLER - danielpcostas.dev" />
+    <meta name="twitter:description" content="Flash & config your Satoffee from the browser">
+    <meta name="twitter:image" content="https://satoffee.danielpcostas.dev/assets/satoffee-social.webp" />
+
+    <link rel="icon" href="./assets/favicon.webp" sizes="32x32">
+    <link rel="stylesheet" href="./assets/style.css">
+    <script src="./assets/serial.js"></script>
+    <script type="module" src="https://unpkg.com/esp-web-tools@9/dist/web/install-button.js?module"></script>
+</head>
+
+<body>
+    <div class="wrapper">
+
+        <noscript>
+            <p>
+                I'm sorry! For this to actully work you have to enable JavaScript in your browser.
+            </p>
+        </noscript>
+
+        <h1>SATOFFEE WEB INSTALLER</h1>
+
+        <h2 id="flash">1- Flash software</h2>
+
+        <ul>
+            <li>Connect your Lilygo T-Display-S3 to the USB port on your device</li>
+            <li>Press the "🔥 Flash software" button</li>
+            <li>Follow screen instructions</li>
+            <li>After successfull flashing go to step 2 below and load config</li>
+        </ul>
+
+        <div class="buttons">
+            <esp-web-install-button manifest="./firmware/manifest.json">
+                <button slot="activate">🔥 Flash software</button>
+                <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
+                <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
+            </esp-web-install-button>
+        </div>
+
+        <hr>
+
+        <h2 id="load-config">2- Load config values</h2>
+
+        <p><i>Important: don't send any commands to the device before entering in "config mode".</i></p>
+
+        <ul>
+            <li>Connect your Lilygo T-Display-S3 to the USB port on your device</li>
+            <li>Put Satoffee in <b>"Serial config mode"</b>
+                <ul>
+                    <li>If no config values it will start automatically after 15 seconds.</li>
+                    <li>If there are config values start the "serial config mode" pressing left button for 5 seconds.</li>
+                </ul>
+            <li>Press the "🔌 Connect" button</li>
+            <li>Select your device and connect</li>
+            <li>Press the "📖 Read Config" button to read values</li>
+            <li>Change to your own values</li>
+            <li>Press the "🔥 Write Config" button</li>
+            <li>Disconnect and you are ready to use</li>
+        </ul>
+
+        <div class="buttons">
+            <button id="connect-button" onclick="onConnectButtonClick()">🔌 Connect</button>
+            <button id="read-config-button" onclick="onReadConfigButtonClick()" disabled>📖 Read Config</button>
+            <button id="write-config-button" onclick="onWriteConfigButtonClick()" disabled>🔥 Write Config</button>
+        </div>
+
+        <div class="input-wrapper">
+            <div>
+                <label for="ssid">WiFi SSID</label>
+                <input type="text" name="ssid" id="ssid" placeholder="SSID">
+            </div>
+            <div>
+                <label for="wifiPassword">WiFi password</label>
+                <input type="text" name="wifiPassword" id="wifiPassword" placeholder="password">
+            </div>
+            <div>
+                <label for="socket">Device URL (Websocket)</label>
+                <input type="text" name="socket" id="socket" placeholder="ws://legend.lnbits.com/ap...">
+            </div>
+            <div>
+                <label for="lnurl">LNURL</label>
+                <input type="text" name="lnurl" id="lnurl" placeholder="LNURL...">
+            </div>
+            <div>
+                <label for="orientation">Screen orientation</label>
+                <select name="orientation" id="orientation">
+                    <option value="">Select orientation</option>
+                    <option value="v">Vertical</option>
+                    <option value="h">Horizontal</option>
+                </select>
+            </div>
+            <div>
+                <label for="theme">Theme (😝 coming soon)</label>
+                <select name="theme" id="theme">
+                    <option value="">Select theme</option>
+                    <option value="satoffee">Coffee machine</option>
+                    <option value="global">General</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="debug-console" id="consoleDebug"></div>
+
+        <hr>
+
+        <h2 id="troubleshoot">Troubleshoot</h2>
+        <p>If non of the above works, reset board in boot mode and start over.</p>
+            <ul>
+                <li>Connect the board via the USB cable</li>
+                <li>Press and hold the BOOT button</li>
+                <li>While still pressing the BOOT button, press RESET</li>
+                <li>Release the RESET button</li>
+                <li>Release the BOOT button</li>
+                <li><a href="#flash">Go to step 1</a></li>
+            </ul>
+        <img class="center-img" src="./assets/troubleshoot.jpg" />
+
+        <footer>
+            <p>Crafted with caffeine by <a href="https://twitter.com/danielpcostas">@danielpcostas</a> | <a href="https://github.com/danielcharrua/satoffee">Github repo</a></p>
+        </footer>
+    </div>
+
+    <script>
+        const consoleDebug = document.getElementById('consoleDebug');
+        const ssid = document.getElementById('ssid');
+        const wifiPassword = document.getElementById('wifiPassword');
+        const socket = document.getElementById('socket');
+        const lnurl = document.getElementById('lnurl');
+        const orientation = document.getElementById('orientation');
+
+        let config = [
+            {
+                "name": "ssid",
+                "value": ""
+            },
+            {
+                "name": "wifipassword",
+                "value": ""
+            },
+            {
+                "name": "socket",
+                "value": ""
+            },
+            {
+                "name": "lnurl",
+                "value": ""
+            },
+            {
+                "name": "orientation",
+                "value": ""
+            }
+        ]
+
+        // Setup Web Serial using serial.js
+        const serial = new Serial();
+        serial.on(SerialEvents.CONNECTION_OPENED, onSerialConnectionOpened);
+        serial.on(SerialEvents.CONNECTION_CLOSED, onSerialConnectionClosed);
+        serial.on(SerialEvents.DATA_RECEIVED, onSerialDataReceived);
+        serial.on(SerialEvents.ERROR_OCCURRED, onSerialErrorOccurred);
+
+        function onSerialErrorOccurred(eventSender, error) {
+            console.log("onSerialErrorOccurred", error);
+        }
+
+        function onSerialConnectionOpened(eventSender) {
+            console.log("onSerialConnectionOpened", eventSender);
+            document.getElementById("connect-button").disabled = true;
+            document.getElementById("read-config-button").disabled = false;
+            document.getElementById("write-config-button").disabled = false;
+            serial.writeLine("/hello");
+        }
+
+        function onSerialConnectionClosed(eventSender) {
+            console.log("onSerialConnectionClosed", eventSender);
+            document.getElementById("connect-button").disabled = false;
+            document.getElementById("read-config-button").disabled = true;
+            document.getElementById("write-config-button").disabled = true;
+        }
+
+        function onSerialDataReceived(eventSender, newData) {
+            console.log("onSerialDataReceived", eventSender);
+            console.log("onSerialDataReceived", newData);
+            consoleDebug.innerHTML += newData + '<br>';
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+
+            // search for json string in serial resp
+            let jsonString = newData.substring(
+                newData.indexOf("["),
+                newData.lastIndexOf("]") + 1
+            );
+
+            if (jsonString.length > 1) {
+                let configData = JSON.parse(jsonString);
+
+                // Update config object
+                config[0].value = configData[0].value; // ssid
+                config[1].value = configData[1].value; // wifiPassword
+                config[2].value = configData[2].value; // socket
+                config[3].value = configData[3].value; // lnurl
+                config[4].value = configData[4].value; // orientation
+
+                // Fill fields
+                ssid.value = config[0].value;
+                wifiPassword.value = config[1].value;
+                socket.value = config[2].value;
+                lnurl.value = config[3].value;
+                orientation.value = config[4].value;
+
+                console.log(config);
+            }
+
+
+            // search for "no config file" in serial resp
+            let failedString = newData.search("- Failed to open file for reading");
+
+            if (failedString !== -1) {
+                alert("There is no config in the device, please fill options and write.")
+            }
+        }
+
+        async function onConnectButtonClick() {
+            console.log("Connect button clicked!");
+
+            if (navigator.serial) {
+                if (!serial.isOpen()) {
+                    await serial.connectAndOpen(portFilters = null, serialOptions = { baudRate: 115200 })
+                } else {
+                    console.log("The serial connection appears already open");
+                }
+            } else {
+                alert('⚠️ The Web Serial API does not appear supported on this web browser.');
+            }
+        }
+
+        async function onReadConfigButtonClick() {
+            console.log("Read config button clicked!");
+            serial.writeLine("/file-read config.json");
+        }
+
+        async function onWriteConfigButtonClick() {
+            console.log("Write config button clicked!");
+            serial.writeLine("/file-remove config.json");
+            serial.writeLine("/file-append config.json " + JSON.stringify(config));
+        }
+
+        ssid.addEventListener("input", (event) => {
+            config[0].value = event.target.value;
+        });
+
+        wifiPassword.addEventListener("input", (event) => {
+            config[1].value = event.target.value;
+        });
+
+        socket.addEventListener("input", (event) => {
+            config[2].value = event.target.value;
+        });
+
+        lnurl.addEventListener("input", (event) => {
+            config[3].value = event.target.value;
+        });
+
+        orientation.addEventListener("change", (event) => {
+            config[4].value = event.target.value;
+        });
+
+    </script>
+
+</body>
+</html>
