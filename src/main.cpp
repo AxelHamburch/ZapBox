@@ -357,6 +357,7 @@ void loop()
 
   unsigned long lastWiFiCheck = millis();
   unsigned long loopCount = 0;
+  bool onErrorScreen = false;
   
   Serial.println("[LOOP] Entering payment wait loop...");
   Serial.printf("[LOOP] Initial paid state: %d\n", paid);
@@ -373,8 +374,8 @@ void loop()
     webSocket.loop();
     loopCount++;
     
-    // Log status every 10000 loops (roughly every 30-60 seconds)
-    if (loopCount % 10000 == 0)
+    // Log status every 40000 loops (roughly every 2-4 minutes)
+    if (loopCount % 40000 == 0)
     {
       Serial.printf("[LOOP] Still waiting... WiFi: %d, WS Connected: %d, paid: %d\n", 
                     WiFi.status() == WL_CONNECTED, webSocket.isConnected(), paid);
@@ -399,8 +400,12 @@ void loop()
       // Check if WebSocket is still connected (only if WiFi is OK)
       if (!webSocket.isConnected() && WiFi.status() == WL_CONNECTED && !inConfigMode)
       {
-        Serial.println("[CHECK] WebSocket disconnected! Attempting reconnect...");
-        websocketReconnectScreen();
+        if (!onErrorScreen)
+        {
+          Serial.println("[CHECK] WebSocket disconnected! Attempting reconnect...");
+          websocketReconnectScreen();
+          onErrorScreen = true;
+        }
         
         // Try to reconnect WebSocket up to 5 times
         int reconnectAttempts = 0;
@@ -417,14 +422,23 @@ void loop()
         if (webSocket.isConnected())
         {
           Serial.println("[WS] Reconnected successfully!");
+          onErrorScreen = false;
           // Return to restart loop and show QR screen again
           return;
         }
         else
         {
-          Serial.println("[WS] Reconnect failed after 5 attempts, staying on error screen");
+          Serial.println("[WS] Reconnect failed, will retry in 5 seconds...");
           // Stay on websocket error screen, will retry in next 5-second check
         }
+      }
+      else if (webSocket.isConnected() && onErrorScreen)
+      {
+        // WebSocket came back (maybe through library's auto-reconnect)
+        Serial.println("[CHECK] WebSocket reconnected automatically!");
+        onErrorScreen = false;
+        // Return to restart loop and show QR screen again
+        return;
       }
       else if (webSocket.isConnected())
       {
