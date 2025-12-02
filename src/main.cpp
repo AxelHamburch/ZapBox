@@ -165,6 +165,7 @@ void checkAndReconnectWiFi()
     while (WiFi.status() != WL_CONNECTED)
     {
       WiFi.disconnect();
+      WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN); // Force scanning for all APs, not just the first one
       WiFi.begin(ssid.c_str(), wifiPassword.c_str());
       
       int reconnectTimer = 0;
@@ -282,6 +283,7 @@ void setup()
   initDisplay();
   startupScreen();
 
+  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN); // Force scanning for all APs, not just the first one
   WiFi.begin(ssid.c_str(), wifiPassword.c_str());
   Serial.print("Connecting to WiFi");
   

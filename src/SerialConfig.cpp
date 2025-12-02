@@ -40,6 +40,7 @@ void executeConfig(String wifiSSID, String wifiPass)
             else if (wifiWasDisconnected && wifiSSID.length() > 0 && WiFi.status() != WL_CONNECTED)
             {
                 Serial.println("Attempting WiFi reconnect...");
+                WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN); // Force scanning for all APs, not just the first one
                 WiFi.begin(wifiSSID.c_str(), wifiPass.c_str());
             }
             lastWiFiCheck = millis();
