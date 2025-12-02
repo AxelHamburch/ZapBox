@@ -108,6 +108,35 @@ void wifiReconnectScreen()
   }
 }
 
+// WebSocket Reconnect Screen
+void websocketReconnectScreen()
+{
+  tft.fillScreen(TFT_WHITE);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(10);
+  tft.setTextColor(TFT_BLACK);
+
+  if (orientation == "v"){
+    tft.drawString("S", x + 5, y - 70, GFXFF);
+    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_WHITE);
+    tft.drawString("NO", x - 55, y + 40, GFXFF);
+    tft.drawString("WEBSOCK", x - 55, y + 70, GFXFF);
+    tft.drawString("CONNECT", x - 55, y + 100, GFXFF);
+  } else {
+    tft.drawString("S", x - 70, y, GFXFF);
+    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_WHITE);
+    tft.drawString("NO", x + 20, y - 30, GFXFF);
+    tft.drawString("WEBSOCK", x + 20, y, GFXFF);
+    tft.drawString("CONNECT", x + 20, y + 30, GFXFF);
+  }
+}
+
 // Step one
 void stepOneScreen()
 {

@@ -396,13 +396,35 @@ void loop()
         return;
       }
       
-      // Check if WebSocket is still connected
-      if (!webSocket.isConnected() && WiFi.status() == WL_CONNECTED)
+      // Check if WebSocket is still connected (only if WiFi is OK)
+      if (!webSocket.isConnected() && WiFi.status() == WL_CONNECTED && !inConfigMode)
       {
-        Serial.println("[CHECK] WebSocket disconnected! Reconnecting...");
-        webSocket.disconnect();
-        delay(100);
-        webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+        Serial.println("[CHECK] WebSocket disconnected! Attempting reconnect...");
+        websocketReconnectScreen();
+        
+        // Try to reconnect WebSocket up to 5 times
+        int reconnectAttempts = 0;
+        while (!webSocket.isConnected() && reconnectAttempts < 5 && WiFi.status() == WL_CONNECTED)
+        {
+          webSocket.disconnect();
+          delay(500);
+          Serial.printf("[WS] Reconnect attempt %d/5...\n", reconnectAttempts + 1);
+          webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+          delay(2000); // Wait for connection
+          reconnectAttempts++;
+        }
+        
+        if (webSocket.isConnected())
+        {
+          Serial.println("[WS] Reconnected successfully!");
+          // Return to restart loop and show QR screen again
+          return;
+        }
+        else
+        {
+          Serial.println("[WS] Reconnect failed after 5 attempts, staying on error screen");
+          // Stay on websocket error screen, will retry in next 5-second check
+        }
       }
       else if (webSocket.isConnected())
       {
