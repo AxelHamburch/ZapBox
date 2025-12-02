@@ -39,13 +39,13 @@ void startupScreen()
     tft.drawString("BOX", x + 5, y + 15, GFXFF);
     tft.drawString("", x + 5, y + 65, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("v1.0", x + 3, y + 115, GFXFF);
+    tft.drawString("FW:" VERSION, x + 3, y + 115, GFXFF);
     tft.drawString("@axelhamburch", x + 1, y + 135, GFXFF);
   } else {
     tft.setTextSize(6);
     tft.drawString("ZAPBOX", x + 5, y - 15, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("v1.0", x, y + 40, GFXFF);
+    tft.drawString("FW:" VERSION, x, y + 40, GFXFF);
     tft.drawString("@axelhamburch", x, y + 60, GFXFF);
   }
 }
@@ -202,18 +202,18 @@ void thankYouScreen()
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(TFT_WHITE);
-    tft.drawString("THANK", x - 55, y + 40, GFXFF);
-    tft.drawString("YOU", x - 55, y + 70, GFXFF);
-    tft.drawString("HUMAN", x - 55, y + 100, GFXFF);
+    tft.drawString("ENJOY", x - 55, y + 40, GFXFF);
+    tft.drawString("YOUR", x - 55, y + 70, GFXFF);
+    tft.drawString("DAY", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString(";)", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(TFT_WHITE);
-    tft.drawString("THANK", x + 20, y - 30, GFXFF);
-    tft.drawString("YOU", x + 20, y, GFXFF);
-    tft.drawString("HUMAN", x + 20, y + 30, GFXFF);
+    tft.drawString("ENJOY", x + 20, y - 30, GFXFF);
+    tft.drawString("YOUR", x + 20, y, GFXFF);
+    tft.drawString("DAY", x + 20, y + 30, GFXFF);
   }
 }
 
