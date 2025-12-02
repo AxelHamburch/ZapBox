@@ -93,7 +93,7 @@ void wifiReconnectScreen()
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(TFT_WHITE);
-    tft.drawString("LOST", x - 55, y + 40, GFXFF);
+    tft.drawString("NO", x - 55, y + 40, GFXFF);
     tft.drawString("WIFI", x - 55, y + 70, GFXFF);
     tft.drawString("CONNECT", x - 55, y + 100, GFXFF);
   } else {
@@ -102,7 +102,7 @@ void wifiReconnectScreen()
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(TFT_WHITE);
-    tft.drawString("LOST", x + 20, y - 30, GFXFF);
+    tft.drawString("No", x + 20, y - 30, GFXFF);
     tft.drawString("WIFI", x + 20, y, GFXFF);
     tft.drawString("CONNECT", x + 20, y + 30, GFXFF);
   }

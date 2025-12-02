@@ -114,6 +114,9 @@ void readFiles()
 
 //////////////////WEBSOCKET///////////////////
 
+unsigned long lastPongTime = 0;
+bool waitingForPong = false;
+
 void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
   Serial.printf("[WS Event] Type: %d, ConfigMode: %d\n", type, inConfigMode);
@@ -129,6 +132,8 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     {
       Serial.printf("[WS] Connected to url: %s\n", payload);
       webSocket.sendTXT("Connected");
+      lastPongTime = millis(); // Reset pong timer on connect
+      waitingForPong = false;
     }
     break;
     case WStype_TEXT:
@@ -137,6 +142,14 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       Serial.printf("[WS] PayloadStr set to: %s\n", payloadStr.c_str());
       paid = true;
       Serial.println("[WS] 'paid' flag set to TRUE");
+      break;
+    case WStype_PING:
+      Serial.println("[WS] Received Ping");
+      break;
+    case WStype_PONG:
+      Serial.println("[WS] Received Pong - connection alive!");
+      lastPongTime = millis();
+      waitingForPong = false;
       break;
     case WStype_ERROR:
       Serial.println("[WS] Error occurred!");
@@ -356,11 +369,16 @@ void loop()
   showQRScreen();
 
   unsigned long lastWiFiCheck = millis();
+  unsigned long lastPingTime = millis();
   unsigned long loopCount = 0;
   bool onErrorScreen = false;
   
   Serial.println("[LOOP] Entering payment wait loop...");
   Serial.printf("[LOOP] Initial paid state: %d\n", paid);
+  
+  // Initialize ping/pong tracking
+  lastPongTime = millis();
+  waitingForPong = false;
   
   while (paid == false)
   {
@@ -379,6 +397,24 @@ void loop()
     {
       Serial.printf("[LOOP] Still waiting... WiFi: %d, WS Connected: %d, paid: %d\n", 
                     WiFi.status() == WL_CONNECTED, webSocket.isConnected(), paid);
+    }
+    
+    // Send ping every 60 seconds to check if connection is really alive
+    if (millis() - lastPingTime > 60000 && !inConfigMode)
+    {
+      Serial.println("[PING] Sending WebSocket ping to verify connection...");
+      webSocket.sendPing();
+      lastPingTime = millis();
+      waitingForPong = true;
+    }
+    
+    // Check if pong response is missing (connection might be dead)
+    if (waitingForPong && (millis() - lastPingTime > 10000) && !inConfigMode)
+    {
+      Serial.println("[PING] No pong response for 10 seconds - connection appears dead!");
+      // Force disconnect to trigger reconnect logic
+      webSocket.disconnect();
+      waitingForPong = false;
     }
     
     // Check WiFi and WebSocket every 5 seconds while waiting for payment
