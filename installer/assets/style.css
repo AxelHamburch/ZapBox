@@ -49,11 +49,13 @@ label {
   overflow: auto;
   background-color: black;
   color: white;
-  font-family: monospace;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
   height: 300px;
   padding: 1rem;
-  line-height: 1.2rem;
+  line-height: 1.2;
   white-space: pre;
+  overflow-x: auto;
 }
 
 .center-img {

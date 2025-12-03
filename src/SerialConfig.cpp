@@ -93,6 +93,14 @@ void executeCommand(String commandName, String commandData)
         Serial.println("/___/_/ |_/_/  /____/\\____/_/|_|             ");
         return;
     }
+    if (commandName == "/config-restart")
+    {
+        Serial.println("- Restarting ESP32...");
+        Serial.flush();
+        delay(500);
+        ESP.restart();
+        return;
+    }
     if (commandName == "/file-remove")
     {
         return removeFile(path);
