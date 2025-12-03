@@ -2,28 +2,28 @@
 <html lang="en">
 
 <head>
-    <title>SATOFFEE⚡️ WEB INSTALLER</title>
+    <title>⚡️ZAPBOX WEB INSTALLER</title>
 
     <!-- Primary Meta Tags -->
-    <meta name="description" content="Flash & config your Satoffee from the browser">
+    <meta name="description" content="Flash & config your ZapBox from the browser">
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
 
     <!-- Open Graph -->
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="SATOFFEE⚡️ WEB INSTALLER - danielpcostas.dev" />
+    <meta property="og:title" content="⚡️ZAPBOX WEB INSTALLER" />
     <meta property="og:description"
-        content="Flash & config your Satoffee from the browser" />
-    <meta property="og:url" content="https://satoffee.danielpcostas.dev/" />
-    <meta property="og:image" content="https://satoffee.danielpcostas.dev/assets/satoffee-social.webp" />
+        content="Flash & config your ZapBox from the browser" />
+    <meta property="og:url" content="https://ereignishorizont.xyz/ZapBox/" />
+    <meta property="og:image" content="https://ereignishorizont.xyz/ZapBox/assets/zapbox-social.webp" />
 
     <!-- Twitter Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://satoffee.danielpcostas.dev">
-    <meta name="twitter:title" content="SATOFFEE⚡️ WEB INSTALLER - danielpcostas.dev" />
-    <meta name="twitter:description" content="Flash & config your Satoffee from the browser">
-    <meta name="twitter:image" content="https://satoffee.danielpcostas.dev/assets/satoffee-social.webp" />
+    <meta name="twitter:url" content="https://ereignishorizont.xyz/ZapBox">
+    <meta name="twitter:title" content="⚡️ZAPBOX WEB INSTALLER" />
+    <meta name="twitter:description" content="Flash & config your ZapBox from the browser">
+    <meta name="twitter:image" content="https://ereignishorizont.xyz/ZapBox/assets/zapbox-social.webp" />
 
     <link rel="icon" href="./assets/favicon.webp" sizes="32x32">
     <link rel="stylesheet" href="./assets/style.css">
@@ -40,24 +40,39 @@
             </p>
         </noscript>
 
-        <h1>SATOFFEE WEB INSTALLER</h1>
+        <h1>ZAPBOX WEB INSTALLER</h1>
 
-        <h2 id="flash">1- Flash software</h2>
+        <h2 id="flash">1- Flash firmware</h2>
 
         <ul>
             <li>Connect your Lilygo T-Display-S3 to the USB port on your device</li>
-            <li>Press the "🔥 Flash software" button</li>
+            <li>Select your version from the drop-down menu</li>
+            <li>Press the "🔥 Flash" button</li>
             <li>Follow screen instructions</li>
-            <li>After successfull flashing go to step 2 below and load config</li>
         </ul>
 
-        <div class="buttons">
-            <esp-web-install-button manifest="./firmware/manifest.json">
-                <button slot="activate">🔥 Flash software</button>
+        <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
+            <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
+                <option value="./firmware/v926180/manifest.json">Version 926180 (Latest)</option>
+                <option value="./firmware/v926181/manifest.json">Version 926181 (Beta)</option>
+                <option value="./firmware/v926179/manifest.json">Version 926179 (Older)</option>
+            </select>
+            
+            <esp-web-install-button id="flash-button" manifest="./firmware/v926180/manifest.json">
+                <button slot="activate">🔥Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
             </esp-web-install-button>
         </div>
+        
+        <script>
+            // Update manifest when version is changed
+            document.getElementById('firmware-version').addEventListener('change', function(e) {
+                const flashButton = document.getElementById('flash-button');
+                flashButton.setAttribute('manifest', e.target.value);
+                console.log('Manifest changed to:', e.target.value);
+            });
+        </script>
 
         <hr>
 
@@ -84,6 +99,7 @@
             <button id="connect-button" onclick="onConnectButtonClick()">🔌 Connect</button>
             <button id="read-config-button" onclick="onReadConfigButtonClick()" disabled>📖 Read Config</button>
             <button id="write-config-button" onclick="onWriteConfigButtonClick()" disabled>🔥 Write Config</button>
+            <button id="restart-button" onclick="onRestartButtonClick()" disabled>🔄 Restart Device</button>
         </div>
 
         <div class="input-wrapper">
@@ -97,7 +113,7 @@
             </div>
             <div>
                 <label for="socket">Device URL (Websocket)</label>
-                <input type="text" name="socket" id="socket" placeholder="ws://legend.lnbits.com/ap...">
+                <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap...">
             </div>
             <div>
                 <label for="lnurl">LNURL</label>
@@ -184,26 +200,152 @@
             console.log("onSerialErrorOccurred", error);
         }
 
+        let configModeCheckTimeout = null;
+        let configModeVerified = false;
+        let helloSendTimeout = null;
+
         function onSerialConnectionOpened(eventSender) {
             console.log("onSerialConnectionOpened", eventSender);
+            
+            // Reset config mode flag
+            configModeVerified = false;
+            
+            // Disable all buttons initially
             document.getElementById("connect-button").disabled = true;
-            document.getElementById("read-config-button").disabled = false;
-            document.getElementById("write-config-button").disabled = false;
-            serial.writeLine("/hello");
+            document.getElementById("read-config-button").disabled = true;
+            document.getElementById("write-config-button").disabled = true;
+            document.getElementById("restart-button").disabled = true;
+            
+            const checkMsg = document.createElement('span');
+            checkMsg.style.color = '#888';
+            checkMsg.textContent = 'Checking for config mode...\n';
+            consoleDebug.appendChild(checkMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            
+            // Wait 500ms first to see if normal program output comes
+            // If nothing comes, then send /hello
+            helloSendTimeout = setTimeout(() => {
+                if (configModeVerified === false) {
+                    // No normal program output detected, send /hello
+                    serial.writeLine("/hello");
+                }
+            }, 500);
+            
+            // Set timeout for config mode verification (3 seconds total)
+            configModeCheckTimeout = setTimeout(() => {
+                if (!configModeVerified) {
+                    console.log("Config mode verification timeout - no ASCII art response");
+                    const timeoutMsg = document.createElement('span');
+                    timeoutMsg.style.color = '#ff4444';
+                    timeoutMsg.textContent = '⚠️ Timeout - Device not in config mode\n';
+                    consoleDebug.appendChild(timeoutMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                    alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 2-3 seconds, or\n- Flashing fresh firmware with empty config");
+                    serial.close();
+                }
+            }, 3000);
         }
 
         function onSerialConnectionClosed(eventSender) {
             console.log("onSerialConnectionClosed", eventSender);
+            
+            // Clear timeouts if still running
+            if (helloSendTimeout) {
+                clearTimeout(helloSendTimeout);
+                helloSendTimeout = null;
+            }
+            if (configModeCheckTimeout) {
+                clearTimeout(configModeCheckTimeout);
+                configModeCheckTimeout = null;
+            }
+            
+            // Reset verification flag
+            configModeVerified = false;
+            
             document.getElementById("connect-button").disabled = false;
             document.getElementById("read-config-button").disabled = true;
             document.getElementById("write-config-button").disabled = true;
+            document.getElementById("restart-button").disabled = true;
         }
 
         function onSerialDataReceived(eventSender, newData) {
             console.log("onSerialDataReceived", eventSender);
-            console.log("onSerialDataReceived", newData);
-            consoleDebug.innerHTML += newData + '<br>';
+            console.log("Received data:", newData);
+            
+            // Append text without HTML parsing to preserve ASCII art formatting
+            const textNode = document.createTextNode(newData + '\n');
+            consoleDebug.appendChild(textNode);
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
+
+            // Check if ESP32 is in Serial Config Mode (only once!)
+            if (!configModeVerified) {
+                // FIRST: Check if we receive normal program output - this means NOT in config mode
+                const hasNormalProgramOutput = newData.includes("[LOOP]") || 
+                                              newData.includes("[WS]") ||
+                                              newData.includes("Still waiting") ||
+                                              newData.includes("[CHECK]");
+                
+                if (hasNormalProgramOutput) {
+                    console.log("Normal program detected - NOT in config mode");
+                    configModeVerified = null; // Mark as failed (not false, not true)
+                    
+                    // Cancel the /hello send timeout
+                    if (helloSendTimeout) {
+                        clearTimeout(helloSendTimeout);
+                        helloSendTimeout = null;
+                    }
+                    
+                    // Clear the main timeout
+                    if (configModeCheckTimeout) {
+                        clearTimeout(configModeCheckTimeout);
+                        configModeCheckTimeout = null;
+                    }
+                    
+                    const errorMsg = document.createElement('span');
+                    errorMsg.style.color = '#ff4444';
+                    errorMsg.textContent = '⚠️ Normal program running - not in config mode\n';
+                    consoleDebug.appendChild(errorMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                    alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 2-3 seconds, or\n- Flashing fresh firmware with empty config");
+                    serial.close();
+                    return; // Exit early
+                }
+                
+                // SECOND: If we receive the ASCII art response to /hello, config mode is active
+                const hasAsciiArt = newData.includes("____") || 
+                                   newData.includes("/_  /") || 
+                                   newData.includes("/___/");
+                
+                if (hasAsciiArt) {
+                    console.log("Config mode verified - ESP32 responded with ASCII art!");
+                    configModeVerified = true; // Set BEFORE doing anything else to prevent re-triggering!
+                    
+                    // Clear the timeouts
+                    if (helloSendTimeout) {
+                        clearTimeout(helloSendTimeout);
+                        helloSendTimeout = null;
+                    }
+                    if (configModeCheckTimeout) {
+                        clearTimeout(configModeCheckTimeout);
+                        configModeCheckTimeout = null;
+                    }
+                    
+                    // Wait 500ms for ASCII art to finish rendering, then show success message
+                    setTimeout(() => {
+                        const successMsg = document.createElement('span');
+                        successMsg.style.color = '#00ff00';
+                        successMsg.textContent = '\n✓ Config mode active\n';
+                        consoleDebug.appendChild(successMsg);
+                        consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                    }, 500);
+                    
+                    // Enable buttons after verification
+                    document.getElementById("connect-button").disabled = true;
+                    document.getElementById("read-config-button").disabled = false;
+                    document.getElementById("write-config-button").disabled = false;
+                    document.getElementById("restart-button").disabled = false;
+                }
+            }
 
             // search for json string in serial resp
             let jsonString = newData.substring(
@@ -263,6 +405,30 @@
             console.log("Write config button clicked!");
             serial.writeLine("/file-remove config.json");
             serial.writeLine("/file-append config.json " + JSON.stringify(config));
+        }
+
+        async function onRestartButtonClick() {
+            console.log("Restart button clicked!");
+            if (confirm("Are you sure you want to restart the device?")) {
+                const restartMsg = document.createElement('span');
+                restartMsg.style.color = '#ffaa00';
+                restartMsg.textContent = 'Sending restart command...\n';
+                consoleDebug.appendChild(restartMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                
+                // Send restart command
+                serial.writeLine("/config-restart");
+                
+                // Wait a moment for command to be sent
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Close serial connection before device restarts
+                if (serial.isOpen()) {
+                    await serial.close();
+                    consoleDebug.innerHTML += '<b>Device restarting. Connection closed.</b><br>';
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                }
+            }
         }
 
         ssid.addEventListener("input", (event) => {
