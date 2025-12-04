@@ -39,14 +39,14 @@ void startupScreen()
     tft.drawString("BOX", x + 5, y + 15, GFXFF);
     tft.drawString("", x + 5, y + 65, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("FW:" VERSION, x + 3, y + 115, GFXFF);
-    tft.drawString("@axelhamburch", x + 1, y + 135, GFXFF);
+    tft.drawString("FW-Version:" VERSION, x + 3, y + 115, GFXFF);
+    tft.drawString("Powered by LNbits", x + 1, y + 135, GFXFF);
   } else {
     tft.setTextSize(6);
     tft.drawString("ZAPBOX", x + 5, y - 15, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("FW:" VERSION, x, y + 40, GFXFF);
-    tft.drawString("@axelhamburch", x, y + 60, GFXFF);
+    tft.drawString("FW-Version:" VERSION, x, y + 40, GFXFF);
+    tft.drawString("Powered by LNbits", x, y + 60, GFXFF);
   }
 }
 
@@ -55,11 +55,11 @@ void configModeScreen()
 {
   tft.fillScreen(TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(10);
+  tft.setTextSize(4);
   tft.setTextColor(TFT_BLACK);
 
   if (orientation == "v"){
-    tft.drawString("C", x + 5, y - 70, GFXFF);
+    tft.drawString("CONF.", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
@@ -68,7 +68,7 @@ void configModeScreen()
     tft.drawString("CONFIG", x - 55, y + 70, GFXFF);
     tft.drawString("MODE", x - 55, y + 100, GFXFF);
   } else {
-    tft.drawString("C", x - 70, y, GFXFF);
+    tft.drawString("CONF.", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
@@ -79,32 +79,90 @@ void configModeScreen()
   }
 }
 
+// Error Report Screen
+void errorReportScreen(byte wifiCount, byte internetCount, byte websocketCount)
+{
+  tft.fillScreen(TFT_WHITE);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(4);
+  tft.setTextColor(TFT_BLACK);
+
+  if (orientation == "v"){
+    tft.drawString("REPORT", x + 5, y - 70, GFXFF);
+    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_WHITE);
+    tft.drawString(String(wifiCount) + " x NW", x - 55, y + 40, GFXFF);
+    tft.drawString(String(internetCount) + " x NI", x - 55, y + 70, GFXFF);
+    tft.drawString(String(websocketCount) + " x NS", x - 55, y + 100, GFXFF);
+  } else {
+    tft.drawString("REPORT", x - 70, y, GFXFF);
+    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_WHITE);
+    tft.drawString(String(wifiCount) + " x NW", x + 20, y - 30, GFXFF);
+    tft.drawString(String(internetCount) + " x NI", x + 20, y, GFXFF);
+    tft.drawString(String(websocketCount) + " x NS", x + 20, y + 30, GFXFF);
+  }
+}
+
 // WiFi Reconnect Screen
 void wifiReconnectScreen()
 {
   tft.fillScreen(TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(10);
+  tft.setTextSize(4);
   tft.setTextColor(TFT_BLACK);
 
   if (orientation == "v"){
-    tft.drawString("W", x + 5, y - 70, GFXFF);
+    tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("NO", x - 55, y + 40, GFXFF);
     tft.drawString("WIFI", x - 55, y + 70, GFXFF);
-    tft.drawString("CONNECT", x - 55, y + 100, GFXFF);
+    tft.drawString("", x - 55, y + 100, GFXFF);
   } else {
-    tft.drawString("W", x - 70, y, GFXFF);
+    tft.drawString("FAULT", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(TFT_WHITE);
-    tft.drawString("No", x + 20, y - 30, GFXFF);
+    tft.drawString("NO", x + 20, y - 30, GFXFF);
     tft.drawString("WIFI", x + 20, y, GFXFF);
-    tft.drawString("CONNECT", x + 20, y + 30, GFXFF);
+    tft.drawString("", x + 20, y + 30, GFXFF);
+  }
+}
+
+// Internet/Server Reconnect Screen
+void internetReconnectScreen()
+{
+  tft.fillScreen(TFT_WHITE);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(4);
+  tft.setTextColor(TFT_BLACK);
+
+  if (orientation == "v"){
+    tft.drawString("FAULT", x + 5, y - 70, GFXFF);
+    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_WHITE);
+    tft.drawString("NO", x - 55, y + 40, GFXFF);
+    tft.drawString("INTER", x - 55, y + 70, GFXFF);
+    tft.drawString("NET", x - 55, y + 100, GFXFF);
+  } else {
+    tft.drawString("FAULT", x - 70, y, GFXFF);
+    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_WHITE);
+    tft.drawString("NO", x + 20, y - 30, GFXFF);
+    tft.drawString("INTER", x + 20, y, GFXFF);
+    tft.drawString("NET", x + 20, y + 30, GFXFF);
   }
 }
 
@@ -113,27 +171,27 @@ void websocketReconnectScreen()
 {
   tft.fillScreen(TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(10);
+  tft.setTextSize(4);
   tft.setTextColor(TFT_BLACK);
 
   if (orientation == "v"){
-    tft.drawString("S", x + 5, y - 70, GFXFF);
+    tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("NO", x - 55, y + 40, GFXFF);
-    tft.drawString("WEBSOCK", x - 55, y + 70, GFXFF);
-    tft.drawString("CONNECT", x - 55, y + 100, GFXFF);
+    tft.drawString("WEB", x - 55, y + 70, GFXFF);
+    tft.drawString("SOCKET", x - 55, y + 100, GFXFF);
   } else {
-    tft.drawString("S", x - 70, y, GFXFF);
+    tft.drawString("FAULT", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("NO", x + 20, y - 30, GFXFF);
-    tft.drawString("WEBSOCK", x + 20, y, GFXFF);
-    tft.drawString("CONNECT", x + 20, y + 30, GFXFF);
+    tft.drawString("WEB", x + 20, y, GFXFF);
+    tft.drawString("SOCKET", x + 20, y + 30, GFXFF);
   }
 }
 
@@ -285,7 +343,7 @@ void showQRScreen()
 
   if (orientation == "v"){
     tft.fillRect(15, 168, 140, 132, TFT_BLACK);
-    tft.drawString("PAY", x - 55, y + 40, GFXFF);
+    tft.drawString("READY", x - 55, y + 40, GFXFF);
     tft.drawString("FOR", x - 55, y + 70, GFXFF);
     tft.drawString("ZAP", x - 55, y + 100, GFXFF);
     tft.setTextSize(2);
@@ -293,7 +351,7 @@ void showQRScreen()
     tft.drawString("HELP", x + 35, y + 150, GFXFF);
   } else {
     tft.fillRect(168, 18, 140, 135, TFT_BLACK);
-    tft.drawString("PAY", x + 20, y - 30, GFXFF);
+    tft.drawString("READY", x + 20, y - 30, GFXFF);
     tft.drawString("FOR", x + 20, y, GFXFF);
     tft.drawString("ZAP", x + 20, y + 30, GFXFF);
     tft.setTextSize(2);

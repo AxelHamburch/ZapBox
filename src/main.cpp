@@ -29,7 +29,13 @@ String deviceId;
 bool paid;
 byte testState = 0;
 bool inConfigMode = false;
+bool inReportMode = false;
 // int relayPin;
+
+// Error counters (0-9, capped at 9)
+byte wifiErrorCount = 0;
+byte internetErrorCount = 0;
+byte websocketErrorCount = 0;
 
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
@@ -172,6 +178,8 @@ void checkAndReconnectWiFi()
   if (WiFi.status() != WL_CONNECTED && !inConfigMode)
   {
     Serial.println("WiFi connection lost! Reconnecting...");
+    if (wifiErrorCount < 9) wifiErrorCount++;
+    Serial.printf("[ERROR] WiFi error count: %d\n", wifiErrorCount);
     wifiReconnectScreen();
     
     // Keep trying to reconnect forever
@@ -218,46 +226,19 @@ void configMode()
   configOverSerialPort(ssid, wifiPassword);
 }
 
-void testMode()
+void reportMode()
 {
-  // pinMode(relayPin, OUTPUT);
-  switch (testState)
-  {
-  case 0:
-    startupScreen();
-    testState++;
-    break;
-  case 1:
-    configModeScreen();
-    testState++;
-    break;
-  case 2:
-    showQRScreen();
-    testState++;
-    break;
-  case 3:
-    stepOneScreen();
-    testState++;
-    break;
-  case 4:
-    stepTwoScreen();
-    testState++;
-    break;
-  case 5:
-    stepThreeScreen();
-    testState++;
-    break;
-  case 6:
-    switchedOnScreen();
-    // digitalWrite(relayPin, LOW); // Relay ON
-    testState++;
-    break;
-  case 7:
-    thankYouScreen();
-    // digitalWrite(relayPin, HIGH); // Relay OFF
-    testState = 0; // Reset state
-    break;
-  }
+  Serial.println("[REPORT] Report mode activated");
+  errorReportScreen(wifiErrorCount, internetErrorCount, websocketErrorCount);
+  delay(7000);
+  wifiReconnectScreen();
+  delay(3000);
+  internetReconnectScreen();
+  delay(3000);
+  websocketReconnectScreen();
+  delay(3000);
+  inReportMode = true;
+  // Flag will cause loop to restart and show QR screen
 }
 
 void showHelp()
@@ -335,7 +316,7 @@ void setup()
   webSocket.setReconnectInterval(1000);
 
   leftButton.setPressTicks(3000);
-  leftButton.attachClick(testMode);
+  leftButton.attachClick(reportMode);
   leftButton.attachLongPressStart(configMode);
   rightButton.attachClick(showHelp);
 
@@ -382,6 +363,14 @@ void loop()
   
   while (paid == false)
   {
+    // Check if report mode was triggered - return to show QR screen again
+    if (inReportMode)
+    {
+      Serial.println("[REPORT] Report mode finished, restarting loop");
+      inReportMode = false;
+      return;
+    }
+    
     // Check if config mode was triggered during payment wait
     if (inConfigMode)
     {
@@ -392,8 +381,8 @@ void loop()
     webSocket.loop();
     loopCount++;
     
-    // Log status every 40000 loops (roughly every 2-4 minutes)
-    if (loopCount % 40000 == 0)
+    // Log status every 200000 loops (roughly every 10-20 minutes)
+    if (loopCount % 200000 == 0)
     {
       Serial.printf("[LOOP] Still waiting... WiFi: %d, WS Connected: %d, paid: %d\n", 
                     WiFi.status() == WL_CONNECTED, webSocket.isConnected(), paid);
@@ -408,10 +397,17 @@ void loop()
       waitingForPong = true;
     }
     
-    // Check if pong response is missing (connection might be dead)
+    // Check if pong response is missing (connection might be dead - no internet/server)
     if (waitingForPong && (millis() - lastPingTime > 10000) && !inConfigMode)
     {
-      Serial.println("[PING] No pong response for 10 seconds - connection appears dead!");
+      Serial.println("[PING] No pong response for 10 seconds - no internet connection!");
+      if (!onErrorScreen)
+      {
+        if (internetErrorCount < 9) internetErrorCount++;
+        Serial.printf("[ERROR] Internet error count: %d\n", internetErrorCount);
+        internetReconnectScreen(); // Show "NO INTERNET" screen
+        onErrorScreen = true;
+      }
       // Force disconnect to trigger reconnect logic
       webSocket.disconnect();
       waitingForPong = false;
@@ -439,6 +435,8 @@ void loop()
         if (!onErrorScreen)
         {
           Serial.println("[CHECK] WebSocket disconnected! Attempting reconnect...");
+          if (websocketErrorCount < 9) websocketErrorCount++;
+          Serial.printf("[ERROR] WebSocket error count: %d\n", websocketErrorCount);
           websocketReconnectScreen();
           onErrorScreen = true;
         }

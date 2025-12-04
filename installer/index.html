@@ -45,25 +45,26 @@
         <h2 id="flash">1- Flash firmware</h2>
 
         <ul>
-            <li>Connect your Lilygo T-Display-S3 to the USB port on your device</li>
+            <li>Connect your ZapBox to the front USB port</li>
             <li>Select your version from the drop-down menu</li>
             <li>Press the "🔥 Flash" button</li>
-            <li>Follow screen instructions</li>
+            <li>Select the connection and follow screen instructions</li>
         </ul>
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v926180/manifest.json">Version 926180 (Latest)</option>
-                <option value="./firmware/v926181/manifest.json">Version 926181 (Beta)</option>
-                <option value="./firmware/v926179/manifest.json">Version 926179 (Older)</option>
+                <option value="./firmware/v926181/manifest.json">Version 926181 (Latest)</option>
+                <option value="./firmware/v926180/manifest.json">Version 926180 (Initial)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v926180/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v926181/manifest.json">
                 <button slot="activate">🔥Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
             </esp-web-install-button>
         </div>
+
+        <p><i>Note: The configuration data can be deleted using "Erase device." Otherwise, it will be retained even with the new firmware.</i></p>
         
         <script>
             // Update manifest when version is changed
