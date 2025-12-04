@@ -59,7 +59,7 @@ void configModeScreen()
   tft.setTextColor(TFT_BLACK);
 
   if (orientation == "v"){
-    tft.drawString("CONF.", x + 5, y - 70, GFXFF);
+    tft.drawString("CONF", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
@@ -68,7 +68,7 @@ void configModeScreen()
     tft.drawString("CONFIG", x - 55, y + 70, GFXFF);
     tft.drawString("MODE", x - 55, y + 100, GFXFF);
   } else {
-    tft.drawString("CONF.", x - 70, y, GFXFF);
+    tft.drawString("CONF", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);

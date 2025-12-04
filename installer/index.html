@@ -53,18 +53,19 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v926181/manifest.json">Version 926181 (Latest)</option>
+                <option value="./firmware/v926435/manifest.json">Version 926435 (Latest)</option>
+                <option value="./firmware/v926181/manifest.json">Version 926181 (just another one)</option>
                 <option value="./firmware/v926180/manifest.json">Version 926180 (Initial)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v926181/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v926435/manifest.json">
                 <button slot="activate">🔥Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
             </esp-web-install-button>
         </div>
 
-        <p><i>Note: The configuration data can be deleted using "Erase device." Otherwise, it will be retained even with the new firmware.</i></p>
+        <p><i>Note: The configuration data can be deleted using "Erase device." Otherwise, it will be retained even with the new firmware. You can use LOGS & CONSOLE for debugging. To do this, press the RESET DEVICE button.</i></p>
         
         <script>
             // Update manifest when version is changed
@@ -77,23 +78,25 @@
 
         <hr>
 
-        <h2 id="load-config">2- Load config values</h2>
+        <h2 id="prepare-connection">2- Prepare connection</h2>
 
-        <p><i>Important: don't send any commands to the device before entering in "config mode".</i></p>
+        <p>Flash the ESP32 with "Erase device" and then wait 10 seconds until the "CONF / SERIAL CONFIG MODE" window appears.</p>
+
+        <p>Alternatively, press the BOOT button (not HELP) for 5 seconds until the window appears.</p>
+
+        <p>→ The ZapBox is now ready to receive configuration data.</p>
+
+        <hr>
+
+        <h2 id="load-config">3- Load config values</h2>
 
         <ul>
-            <li>Connect your Lilygo T-Display-S3 to the USB port on your device</li>
-            <li>Put Satoffee in <b>"Serial config mode"</b>
-                <ul>
-                    <li>If no config values it will start automatically after 15 seconds.</li>
-                    <li>If there are config values start the "serial config mode" pressing left button for 5 seconds.</li>
-                </ul>
-            <li>Press the "🔌 Connect" button</li>
-            <li>Select your device and connect</li>
-            <li>Press the "📖 Read Config" button to read values</li>
-            <li>Change to your own values</li>
-            <li>Press the "🔥 Write Config" button</li>
-            <li>Disconnect and you are ready to use</li>
+            <li>Press "🔌 Connect" </li>
+            <li>Select the connection and connect</li>
+            <li>Press "📖 Read Config" if values are available</li>
+            <li>Define your configuration</li>
+            <li>Press "🔥 Write Config"</li>
+            <li>Press "🔄 Restart Device" and Enjoy</li>
         </ul>
 
         <div class="buttons">
@@ -123,22 +126,23 @@
             <div>
                 <label for="orientation">Screen orientation</label>
                 <select name="orientation" id="orientation">
-                    <option value="">Select orientation</option>
                     <option value="v">Vertical</option>
-                    <option value="h">Horizontal</option>
+                    <option value="h" selected>Horizontal</option>
                 </select>
             </div>
             <div>
-                <label for="theme">Theme (😝 coming soon)</label>
+                <label for="theme">Theme (Maybe in the future..)</label>
                 <select name="theme" id="theme">
-                    <option value="">Select theme</option>
-                    <option value="satoffee">Coffee machine</option>
-                    <option value="global">General</option>
+                    <option value="compact" selected>ZapBox compact</option>
                 </select>
             </div>
         </div>
 
         <div class="debug-console" id="consoleDebug"></div>
+
+        <p style="text-align: center; font-size: 18px; margin-top: 20px;"><strong>Congratulations on configuring your own ZapBox! 🎉</strong></p>
+
+        <p><i>Note: If you want to debug now, you can go to point 1 and select LOGS & CONSOLE. Select RESET DEVICE once and you will see the ZapBox logs.</i></p>
 
         <hr>
 
@@ -355,23 +359,27 @@
             );
 
             if (jsonString.length > 1) {
-                let configData = JSON.parse(jsonString);
+                try {
+                    let configData = JSON.parse(jsonString);
 
-                // Update config object
-                config[0].value = configData[0].value; // ssid
-                config[1].value = configData[1].value; // wifiPassword
-                config[2].value = configData[2].value; // socket
-                config[3].value = configData[3].value; // lnurl
-                config[4].value = configData[4].value; // orientation
+                    // Update config object
+                    config[0].value = configData[0].value; // ssid
+                    config[1].value = configData[1].value; // wifiPassword
+                    config[2].value = configData[2].value; // socket
+                    config[3].value = configData[3].value; // lnurl
+                    config[4].value = configData[4].value; // orientation
 
-                // Fill fields
-                ssid.value = config[0].value;
-                wifiPassword.value = config[1].value;
-                socket.value = config[2].value;
-                lnurl.value = config[3].value;
-                orientation.value = config[4].value;
+                    // Fill fields
+                    ssid.value = config[0].value;
+                    wifiPassword.value = config[1].value;
+                    socket.value = config[2].value;
+                    lnurl.value = config[3].value;
+                    orientation.value = config[4].value;
 
-                console.log(config);
+                    console.log(config);
+                } catch (error) {
+                    console.log("Error parsing JSON config:", error);
+                }
             }
 
 
