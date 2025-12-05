@@ -245,8 +245,8 @@ void stepTwoScreen()
     tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("PAY", x - 55, y + 40, GFXFF);
-    tft.drawString("THE", x - 55, y + 70, GFXFF);
-    tft.drawString("INVOICE", x - 55, y + 100, GFXFF);
+    tft.drawString("INVOICE", x - 55, y + 70, GFXFF);
+    tft.drawString("", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString("2", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, TFT_BLACK);
@@ -254,8 +254,8 @@ void stepTwoScreen()
     tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("PAY", x + 20, y - 30, GFXFF);
-    tft.drawString("THE", x + 20, y, GFXFF);
-    tft.drawString("INVOICE", x + 20, y + 30, GFXFF);
+    tft.drawString("INVOICE", x + 20, y, GFXFF);
+    tft.drawString("", x + 20, y + 30, GFXFF);
   }
 }
 

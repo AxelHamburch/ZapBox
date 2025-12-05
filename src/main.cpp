@@ -223,7 +223,9 @@ void configMode()
   delay(100); // Give loop() time to check the flag
   configModeScreen();
   Serial.println("Config mode screen displayed, entering serial config...");
-  configOverSerialPort(ssid, wifiPassword);
+  bool hasExistingData = (ssid.length() > 0);
+  Serial.printf("Has existing data: %s\n", hasExistingData ? "YES" : "NO");
+  configOverSerialPort(ssid, wifiPassword, hasExistingData);
 }
 
 void reportMode()

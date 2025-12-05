@@ -4,12 +4,12 @@
 #include "FFat.h"
 #include "SerialConfig.h"
 
-void configOverSerialPort(String wifiSSID, String wifiPass)
+void configOverSerialPort(String wifiSSID, String wifiPass, bool hasExistingData)
 {
-    executeConfig(wifiSSID, wifiPass);
+    executeConfig(wifiSSID, wifiPass, hasExistingData);
 }
 
-void executeConfig(String wifiSSID, String wifiPass)
+void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 {
     Serial.println("\n--- Serial Config Mode Active ---");
     Serial.println("Waiting for commands...");
@@ -20,10 +20,21 @@ void executeConfig(String wifiSSID, String wifiPass)
     Serial.printf("WiFi initial state: %s\n", wifiWasDisconnected ? "DISCONNECTED" : "CONNECTED");
 
     unsigned long lastWiFiCheck = millis();
+    unsigned long lastActivity = millis(); // Track last serial activity
+    const unsigned long inactivityTimeout = 120000; // 120 seconds
 
     while (true)
     {
         yield(); // Feed the watchdog timer
+        
+        // Check for inactivity timeout - only if existing data is present
+        if (hasExistingData && (millis() - lastActivity > inactivityTimeout))
+        {
+            Serial.println("\n--- Inactivity timeout (20s) - returning to QR screen ---");
+            Serial.flush();
+            delay(500);
+            ESP.restart();
+        }
         
         // Check WiFi every 5 seconds to see if it's back
         if (millis() - lastWiFiCheck > 5000)
@@ -51,6 +62,9 @@ void executeConfig(String wifiSSID, String wifiPass)
             delay(10);
             continue;
         }
+        
+        // Reset activity timer when data is received
+        lastActivity = millis();
         
         // Read until newline (handles both \n and \r\n)
         String data = Serial.readStringUntil('\n');
@@ -87,15 +101,23 @@ void executeCommand(String commandName, String commandData)
     if (commandName == "/hello")
     {
         // https://patorjk.com/software/taag/#p=display&f=Small+Slant&t=ZAPBOX
-        Serial.println(" ____  ___   ___  ___  ____  _  __           ");
-        Serial.println("/_  / / _ | / _ \\/ _ )/ __ \\| |/_/           ");
-        Serial.println(" / /_/ __ |/ ___/ _  / /_/ />  <             ");
-        Serial.println("/___/_/ |_/_/  /____/\\____/_/|_|             ");
+        Serial.println("  ____  ___   ___  ___  ____  _  __");
+        Serial.println(" /_  / / _ | / _ \\\\/ _ )/ __ \\\\| |/_/");
+        Serial.println("  / /_/ __ |/ ___/ _  / /_/ />  <");
+        Serial.println(" /___/_/ |_/_/  /____/\\\\____/_/|_|");
         return;
     }
     if (commandName == "/config-restart")
     {
         Serial.println("- Restarting ESP32...");
+        Serial.flush();
+        delay(500);
+        ESP.restart();
+        return;
+    }
+    if (commandName == "/config-soft-reset")
+    {
+        Serial.println("- Soft reset: Restarting ESP32 (connection stays open)...");
         Serial.flush();
         delay(500);
         ESP.restart();

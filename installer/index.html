@@ -12,7 +12,7 @@
     <!-- Open Graph -->
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="⚡️ZAPBOX WEB INSTALLER" />
+    <meta property="og:title" content="⚡️ZAPBOX - WEB INSTALLER" />
     <meta property="og:description"
         content="Flash & config your ZapBox from the browser" />
     <meta property="og:url" content="https://ereignishorizont.xyz/ZapBox/" />
@@ -21,7 +21,7 @@
     <!-- Twitter Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://ereignishorizont.xyz/ZapBox">
-    <meta name="twitter:title" content="⚡️ZAPBOX WEB INSTALLER" />
+    <meta name="twitter:title" content="⚡️ZAPBOX - WEB INSTALLER" />
     <meta name="twitter:description" content="Flash & config your ZapBox from the browser">
     <meta name="twitter:image" content="https://ereignishorizont.xyz/ZapBox/assets/zapbox-social.webp" />
 
@@ -40,8 +40,9 @@
             </p>
         </noscript>
 
-        <h1 style="margin-bottom: 5px;">ZAPBOX WEB INSTALLER</h1>
-        <p style="margin-top: 0px; margin-bottom: 30px;"><i>(Use with LILYGO T-Display-S3)</i></p>
+        <h1 style="margin-bottom: 5px; display: inline-block;">⚡️ZAPBOX - WEB INSTALLER</h1>
+        <p style="display: inline-block; margin: 0 0 0 10px; vertical-align: baseline;"><i>(Use with LILYGO T-Display-S3)</i></p>
+        <div style="margin-bottom: 30px;"></div>
 
         <h2 id="flash">1- Flash firmware</h2>
 
@@ -55,10 +56,11 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v926531/manifest.json">Version 926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
+                <option value="./firmware/v926548/manifest.json">v926548 (Latest - Fix setting "Screen orientation" field)</option>
+                <option value="./firmware/v926531/manifest.json">v926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v926531/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v926548/manifest.json">
                 <button slot="activate">🔥 Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -96,14 +98,16 @@
             <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">📖 Read Config</span> if values are available</li>
             <li>Define your configuration</li>
             <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Write Config</span></li>
-            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔄 Restart Device</span> and Enjoy</li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔄 Restart</span> to restart while staying connected</li>
+            <li>Or press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔌 Disconnect</span> to close connection</li>
         </ul>
 
         <div class="buttons">
             <button id="connect-button" onclick="onConnectButtonClick()">🔌 Connect</button>
             <button id="read-config-button" onclick="onReadConfigButtonClick()" disabled>📖 Read Config</button>
             <button id="write-config-button" onclick="onWriteConfigButtonClick()" disabled>🔥 Write Config</button>
-            <button id="restart-button" onclick="onRestartButtonClick()" disabled>🔄 Restart Device</button>
+            <button id="soft-reset-button" onclick="onSoftResetButtonClick()" disabled>🔄 Restart</button>
+            <button id="restart-button" onclick="onRestartButtonClick()" disabled>🔌 Disconnect</button>
         </div>
 
         <div class="input-wrapper">
@@ -142,7 +146,7 @@
 
         <p style="text-align: center; font-size: 18px; margin-top: 20px;"><strong>Congratulations on configuring your own ZapBox! 🎉</strong></p>
 
-        <p><i>Note: If you want to debug now, you can go to point 1 and select LOGS & CONSOLE. Select RESET DEVICE once and you will see the ZapBox logs.</i></p>
+        <p><i>Note: You can view the logs for debugging purposes when you are connected and press 🔄 Restart. Under point 1, you can also connect via a terminal window without having to put the ZapBox into SERIAL CONFIG MODE. To do this, select the 🔥 Flash button, then LOGS & CONSOLE, and then RESET DEVICE.</i></p>
 
         <hr>
 
@@ -190,7 +194,7 @@
             },
             {
                 "name": "orientation",
-                "value": ""
+                "value": "h"
             }
         ]
 
@@ -219,6 +223,7 @@
             document.getElementById("connect-button").disabled = true;
             document.getElementById("read-config-button").disabled = true;
             document.getElementById("write-config-button").disabled = true;
+            document.getElementById("soft-reset-button").disabled = true;
             document.getElementById("restart-button").disabled = true;
             
             const checkMsg = document.createElement('span');
@@ -270,6 +275,7 @@
             document.getElementById("connect-button").disabled = false;
             document.getElementById("read-config-button").disabled = true;
             document.getElementById("write-config-button").disabled = true;
+            document.getElementById("soft-reset-button").disabled = true;
             document.getElementById("restart-button").disabled = true;
         }
 
@@ -348,6 +354,7 @@
                     document.getElementById("connect-button").disabled = true;
                     document.getElementById("read-config-button").disabled = false;
                     document.getElementById("write-config-button").disabled = false;
+                    document.getElementById("soft-reset-button").disabled = false;
                     document.getElementById("restart-button").disabled = false;
                 }
             }
@@ -433,12 +440,33 @@
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
         }
 
-        async function onRestartButtonClick() {
+        async function onSoftResetButtonClick() {
             console.log("Restart button clicked!");
-            if (confirm("Are you sure you want to restart the device?")) {
+            const resetMsg = document.createElement('span');
+            resetMsg.style.color = '#ffaa00';
+            resetMsg.textContent = 'Sending restart command...\n';
+            consoleDebug.appendChild(resetMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            
+            // Send soft reset command - keeps connection open
+            serial.writeLine("/config-soft-reset");
+            
+            // Wait for device to restart
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const doneMsg = document.createElement('span');
+            doneMsg.style.color = '#00ff00';
+            doneMsg.textContent = '✓ Device restarted (connection remains open)\n';
+            consoleDebug.appendChild(doneMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+        }
+
+        async function onRestartButtonClick() {
+            console.log("Disconnect button clicked!");
+            if (confirm("Are you sure you want to disconnect?")) {
                 const restartMsg = document.createElement('span');
                 restartMsg.style.color = '#ffaa00';
-                restartMsg.textContent = 'Sending restart command...\n';
+                restartMsg.textContent = 'Disconnecting...\n';
                 consoleDebug.appendChild(restartMsg);
                 consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 
@@ -451,7 +479,7 @@
                 // Close serial connection before device restarts
                 if (serial.isOpen()) {
                     await serial.close();
-                    consoleDebug.innerHTML += '<b>Device restarting. Connection closed.</b><br>';
+                    consoleDebug.innerHTML += '<b>Connection closed.</b><br>';
                     consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 }
             }

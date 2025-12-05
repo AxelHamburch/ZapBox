@@ -6,8 +6,8 @@ struct KeyValue
     String value;
 };
 
-void configOverSerialPort(String wifiSSID, String wifiPass);
-void executeConfig(String wifiSSID, String wifiPass);
+void configOverSerialPort(String wifiSSID, String wifiPass, bool hasExistingData);
+void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData);
 void executeCommand(String commandName, String commandData);
 void removeFile(String path);
 void appendToFile(String path, String data);
