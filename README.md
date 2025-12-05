@@ -1,49 +1,49 @@
 # Lightning ZapBox ⚡
 
-Bitcoin Lightning-gesteuerter USB-Power-Switch für LilyGo T-Display-S3
+Bitcoin Lightning-controlled USB power switch for LilyGo T-Display-S3
 
-## Was ist die ZapBox?
+## What is the ZapBox?
 
-Die Lightning ZapBox ist ein kompaktes Gerät, das einen USB-Ausgang per Bitcoin Lightning-Zahlung steuert. An dem USB-Ausgang können verschiedene 5V-Geräte betrieben werden, wie LED-Lampen, Ventilatoren oder andere USB-betriebene Geräte.
+The Lightning ZapBox is a compact device that controls a USB output via Bitcoin Lightning payment. Various 5V devices can be operated on the USB output, such as LED lamps, fans, or other USB-powered devices.
 
-## Funktionsweise
+## How it Works
 
-1. **QR-Code-Anzeige**: Das integrierte Display des T-Display-S3 zeigt einen QR-Code mit der LNURL zum Scannen an
-2. **Lightning-Zahlung**: Nach dem Scannen und Bezahlen der Invoice wird die Zahlung an den LNbits-Server gesendet
-3. **WebSocket-Trigger**: Der LNbits-Server sendet über WebSocket ein Signal an den ESP32-Mikrocontroller
-4. **Relais-Schaltung**: Der ESP32 aktiviert das Relais, das den USB-Ausgang für einen festgelegten Zeitraum einschaltet
-5. **Bestätigung**: Das Display zeigt an, dass die Zahlung eingegangen ist und das Relais geschaltet wurde
+1. **QR Code Display**: The integrated display of the T-Display-S3 shows a QR code with the LNURL for scanning
+2. **Lightning Payment**: After scanning and paying the invoice, the payment is sent to the LNbits server
+3. **WebSocket Trigger**: The LNbits server sends a signal via WebSocket to the ESP32 microcontroller
+4. **Relay Switching**: The ESP32 activates the relay, which turns on the USB output for a specified period
+5. **Confirmation**: The display shows that the payment has been received and the relay has been switched
 
 ## Hardware
 
-- **LilyGo T-Display-S3**: ESP32-S3 Mikrocontroller mit integriertem 170x320 LCD-Display
-- **Relais-Modul**: Schaltet den USB-Ausgang
-- **USB-Ausgangsbuchse**: Liefert 5V für angeschlossene Geräte
-- **Zwei Taster**: Für Navigation und Zugriff auf die Hilfeseite
-- **3-Stellungs-Schalter**:
-  - **Position 0**: Alles ausgeschaltet
-  - **Position 1**: Ausgang dauerhaft eingeschaltet (Bypass-Modus)
-  - **Position A**: Automatik-Modus - ESP32 aktiv, wartet auf Lightning-Zahlung
+- **LilyGo T-Display-S3**: ESP32-S3 microcontroller with integrated 170x320 LCD display
+- **Relay Module**: Switches the USB output
+- **USB Output Socket**: Provides 5V for connected devices
+- **Two Buttons**: For navigation and access to the help page
+- **3-Position Switch**:
+  - **Position 0**: Everything off
+  - **Position 1**: Output permanently on (bypass mode)
+  - **Position A**: Automatic mode - ESP32 active, waiting for Lightning payment
 
-## Bedienung
+## Operation
 
-- **Linker Taster**: Kurz drücken = Test-Modus, 3 Sekunden halten = Konfigurations-Modus
-- **Rechter Taster**: Hilfe-Seite anzeigen
+- **Left Button**: Short press = Report mode, hold 3 seconds = Configuration mode
+- **Right Button**: Show help page
 
-## Konfiguration
+## Configuration
 
-Die Konfiguration erfolgt über den seriellen Port oder das Web-Interface im `installer` Ordner:
+Configuration is done via serial port or the web interface in the `installer` folder:
 
-- WiFi SSID und Passwort
-- LNbits Server WebSocket-URL
-- LNURL für Zahlungen
-- Display-Orientierung (horizontal/vertikal)
+- WiFi SSID and password
+- LNbits server WebSocket URL
+- LNURL for payments
+- Display orientation (horizontal/vertical)
 
-## PlatformIO-Projekt
+## PlatformIO Project
 
-Dieses Projekt ist für PlatformIO konfiguriert und basiert auf dem Arduino-Framework für ESP32-S3.
+This project is configured for PlatformIO and based on the Arduino framework for ESP32-S3.
 
-### Benötigte Bibliotheken
+### Required Libraries
 
 - ArduinoJson
 - OneButton
@@ -51,12 +51,17 @@ Dieses Projekt ist für PlatformIO konfiguriert und basiert auf dem Arduino-Fram
 - TFT_eSPI
 - QRCode
 
-### Build und Upload
+### Build and Upload
 
 ```bash
 platformio run --target upload
 ```
 
+## Aknowledgement
+
+This project is based on Daniel's [SATOFFEE](https://github.com/danielcharrua/satoffee) and it uses parts from [bitcoinswitch](https://github.com/lnbits/bitcoinswitch).
+
+
 ---
 
-**Lightning ZapBox** - Kompakt, einfach, Bitcoin-powered! ⚡
+**Lightning ZapBox** - Compact, simple, Bitcoin-powered! ⚡
