@@ -51,6 +51,8 @@
             <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Flash</span> - select the connection and follow screen instructions</li>
         </ul>
 
+        <!-- ##### Version selector and flash button ##### -->
+
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
                 <option value="./firmware/v926531/manifest.json">Version 926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
@@ -114,11 +116,11 @@
                 <input type="text" name="wifiPassword" id="wifiPassword" placeholder="password">
             </div>
             <div>
-                <label for="socket">Device URL (Websocket)</label>
+                <label for="socket">Device settings string</label>
                 <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap...">
             </div>
             <div>
-                <label for="lnurl">LNURL</label>
+                <label for="lnurl">LNURL from device instance</label>
                 <input type="text" name="lnurl" id="lnurl" placeholder="LNURL...">
             </div>
             <div>
