@@ -33,14 +33,20 @@ void startupScreen()
   tft.setTextColor(TFT_BLACK);
 
   if (orientation == "v"){
-    tft.setTextSize(10);
-    tft.drawString("", x + 5, y - 85, GFXFF);
-    tft.drawString("ZAP", x + 5, y - 35, GFXFF);
-    tft.drawString("BOX", x + 5, y + 15, GFXFF);
-    tft.drawString("", x + 5, y + 65, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("FW-Version:" VERSION, x + 3, y + 115, GFXFF);
-    tft.drawString("Powered by LNbits", x + 1, y + 135, GFXFF);
+    tft.drawString("", x + 5, y - 85, GFXFF);
+    tft.setTextSize(8);
+    tft.drawString("ZAP", x + 5, y - 60, GFXFF);
+    tft.drawString("BOX", x + 5, y - 10, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("", x + 5, y + 35, GFXFF);
+    tft.drawString("FW-Version:", x + 5, y + 55, GFXFF);
+    tft.drawString(VERSION, x + 5, y + 75, GFXFF);
+    tft.setTextSize(1);
+    tft.drawString("", x + 5, y + 90, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("Powered", x + 5, y + 100, GFXFF);
+    tft.drawString("by LNbits", x + 5, y + 120, GFXFF);
   } else {
     tft.setTextSize(6);
     tft.drawString("ZAPBOX", x + 5, y - 15, GFXFF);
@@ -207,7 +213,7 @@ void stepOneScreen()
     tft.drawString("1", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
-    tft.setTextSize(3);
+    tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("SCAN", x - 55, y + 40, GFXFF);
     tft.drawString("QR", x - 55, y + 70, GFXFF);
@@ -216,7 +222,7 @@ void stepOneScreen()
     tft.drawString("1", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
-    tft.setTextSize(3);
+    tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("SCAN", x + 20, y - 30, GFXFF);
     tft.drawString("QR", x + 20, y, GFXFF);
@@ -236,7 +242,7 @@ void stepTwoScreen()
     tft.drawString("2", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
-    tft.setTextSize(3);
+    tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("PAY", x - 55, y + 40, GFXFF);
     tft.drawString("THE", x - 55, y + 70, GFXFF);
@@ -245,7 +251,7 @@ void stepTwoScreen()
     tft.drawString("2", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
-    tft.setTextSize(3);
+    tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("PAY", x + 20, y - 30, GFXFF);
     tft.drawString("THE", x + 20, y, GFXFF);
@@ -265,7 +271,7 @@ void stepThreeScreen()
     tft.drawString("3", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
-    tft.setTextSize(3);
+    tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("HAVE", x - 55, y + 40, GFXFF);
     tft.drawString("FUN &", x - 55, y + 70, GFXFF);
@@ -274,7 +280,7 @@ void stepThreeScreen()
     tft.drawString("3", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, TFT_BLACK);
     tft.setTextDatum(ML_DATUM);
-    tft.setTextSize(3);
+    tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.drawString("HAVE", x + 20, y - 30, GFXFF);
     tft.drawString("FUN", x + 20, y, GFXFF);

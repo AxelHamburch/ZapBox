@@ -40,26 +40,24 @@
             </p>
         </noscript>
 
-        <h1>ZAPBOX WEB INSTALLER</h1>
+        <h1 style="margin-bottom: 5px;">ZAPBOX WEB INSTALLER</h1>
+        <p style="margin-top: 0px; margin-bottom: 30px;"><i>(Use with LILYGO T-Display-S3)</i></p>
 
         <h2 id="flash">1- Flash firmware</h2>
 
         <ul>
             <li>Connect your ZapBox to the front USB port</li>
-            <li>Select your version from the drop-down menu</li>
-            <li>Press the "🔥 Flash" button</li>
-            <li>Select the connection and follow screen instructions</li>
+            <li>Keep latest or select your version from the drop-down menu</li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Flash</span> - select the connection and follow screen instructions</li>
         </ul>
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v926435/manifest.json">Version 926435 (Latest)</option>
-                <option value="./firmware/v926181/manifest.json">Version 926181 (just another one)</option>
-                <option value="./firmware/v926180/manifest.json">Version 926180 (Initial)</option>
+                <option value="./firmware/v926520/manifest.json">Version 926520 (Kickoff & Latest - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v926435/manifest.json">
-                <button slot="activate">🔥Flash</button>
+            <esp-web-install-button id="flash-button" manifest="./firmware/v926520/manifest.json">
+                <button slot="activate">🔥 Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
             </esp-web-install-button>
@@ -91,12 +89,12 @@
         <h2 id="load-config">3- Load config values</h2>
 
         <ul>
-            <li>Press "🔌 Connect" </li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔌 Connect</span></li>
             <li>Select the connection and connect</li>
-            <li>Press "📖 Read Config" if values are available</li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">📖 Read Config</span> if values are available</li>
             <li>Define your configuration</li>
-            <li>Press "🔥 Write Config"</li>
-            <li>Press "🔄 Restart Device" and Enjoy</li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Write Config</span></li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔄 Restart Device</span> and Enjoy</li>
         </ul>
 
         <div class="buttons">
@@ -159,7 +157,7 @@
         <img class="center-img" src="./assets/troubleshoot.jpg" />
 
         <footer>
-            <p>Crafted with caffeine by <a href="https://twitter.com/danielpcostas">@danielpcostas</a> | <a href="https://github.com/danielcharrua/satoffee">Github repo</a></p>
+            <p>Built on the shoulders of giants by <a href="https://njump.to/npub1yynthqj2zv663t0v8jtmtnwm34ak2fwe6zys043weqlnxgyuw7qqnk23ds" target="_blank" rel="noopener noreferrer">@axelhamburch</a> | <a href="https://github.com/AxelHamburch/ZapBox" target="_blank" rel="noopener noreferrer">Github repo</a></p>
         </footer>
     </div>
 
