@@ -40,7 +40,7 @@ void startupScreen()
     tft.drawString("BOX", x + 5, y - 10, GFXFF);
     tft.setTextSize(2);
     tft.drawString("", x + 5, y + 35, GFXFF);
-    tft.drawString("FW-Version:", x + 5, y + 55, GFXFF);
+    tft.drawString("Firmware", x + 5, y + 55, GFXFF);
     tft.drawString(VERSION, x + 5, y + 75, GFXFF);
     tft.setTextSize(1);
     tft.drawString("", x + 5, y + 90, GFXFF);
@@ -51,7 +51,7 @@ void startupScreen()
     tft.setTextSize(6);
     tft.drawString("ZAPBOX", x + 5, y - 15, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("FW-Version:" VERSION, x, y + 40, GFXFF);
+    tft.drawString("Firmware: " VERSION, x, y + 40, GFXFF);
     tft.drawString("Powered by LNbits", x, y + 60, GFXFF);
   }
 }

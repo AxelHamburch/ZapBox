@@ -84,8 +84,25 @@ void readFiles()
     const JsonObject maRoot2 = doc[2];
     const char *maRoot2Char = maRoot2["value"];
     switchStr = maRoot2Char;
-    lnbitsServer = switchStr.substring(5, switchStr.length() - 33);
-    deviceId = switchStr.substring(switchStr.length() - 22);
+    
+    // Parse WebSocket URL (works with both ws:// and wss://)
+    int protocolIndex = switchStr.indexOf("://");
+    if (protocolIndex == -1) {
+      Serial.println("Invalid switchStr: " + switchStr);
+      lnbitsServer = "";
+      deviceId = "";
+    } else {
+      int domainIndex = switchStr.indexOf("/", protocolIndex + 3);
+      if (domainIndex == -1) {
+        Serial.println("Invalid switchStr: " + switchStr);
+        lnbitsServer = "";
+        deviceId = "";
+      } else {
+        int uidLength = 22; // Length of device ID
+        lnbitsServer = switchStr.substring(protocolIndex + 3, domainIndex);
+        deviceId = switchStr.substring(switchStr.length() - uidLength);
+      }
+    }
 
     Serial.println("Socket: " + switchStr);
     Serial.println("LNbits server: " + lnbitsServer);
@@ -95,9 +112,24 @@ void readFiles()
     const char *maRoot3Char = maRoot3["value"];
     lnurl = maRoot3Char;
 
-    // copy values into lightning char
-    strcpy(lightning, lightningPrefix);
-    strcat(lightning, lnurl);
+    // Copy values into lightning char, avoiding duplicate prefix
+    String lnurlStr = String(lnurl);
+    lnurlStr.toUpperCase(); // Convert to uppercase for comparison
+    
+    if (lnurlStr.startsWith("LIGHTNING:")) {
+      // LNURL already has prefix, use as-is but ensure uppercase prefix
+      String originalLnurl = String(lnurl);
+      if (originalLnurl.startsWith("LIGHTNING:")) {
+        strcpy(lightning, lnurl);
+      } else if (originalLnurl.startsWith("lightning:")) {
+        strcpy(lightning, "LIGHTNING:");
+        strcat(lightning, lnurl + 10); // Skip "lightning:" (10 chars)
+      }
+    } else {
+      // No prefix, add it
+      strcpy(lightning, lightningPrefix);
+      strcat(lightning, lnurl);
+    }
 
     Serial.print("LNURL: ");
     Serial.println(lnurl);

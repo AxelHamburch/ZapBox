@@ -21,7 +21,7 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 
     unsigned long lastWiFiCheck = millis();
     unsigned long lastActivity = millis(); // Track last serial activity
-    const unsigned long inactivityTimeout = 120000; // 120 seconds
+    const unsigned long inactivityTimeout = 180000; // 180 seconds
 
     while (true)
     {
