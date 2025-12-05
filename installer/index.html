@@ -109,19 +109,19 @@
         <div class="input-wrapper">
             <div>
                 <label for="ssid">WiFi SSID</label>
-                <input type="text" name="ssid" id="ssid" placeholder="SSID">
+                <input type="text" name="ssid" id="ssid" placeholder="SSID" autocomplete="off">
             </div>
             <div>
                 <label for="wifiPassword">WiFi password</label>
-                <input type="text" name="wifiPassword" id="wifiPassword" placeholder="password">
+                <input type="text" name="wifiPassword" id="wifiPassword" placeholder="password" autocomplete="off">
             </div>
             <div>
                 <label for="socket">Device settings string</label>
-                <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap...">
+                <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
             </div>
             <div>
                 <label for="lnurl">LNURL from device instance</label>
-                <input type="text" name="lnurl" id="lnurl" placeholder="LNURL...">
+                <input type="text" name="lnurl" id="lnurl" placeholder="LNURL..." autocomplete="off">
             </div>
             <div>
                 <label for="orientation">Screen orientation</label>
@@ -377,6 +377,13 @@
                     orientation.value = config[4].value;
 
                     console.log(config);
+                    
+                    // Show success message
+                    const successMsg = document.createElement('span');
+                    successMsg.style.color = '#00ff00';
+                    successMsg.textContent = '\n✓ Data loaded\n';
+                    consoleDebug.appendChild(successMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 } catch (error) {
                     console.log("Error parsing JSON config:", error);
                 }
@@ -414,6 +421,16 @@
             console.log("Write config button clicked!");
             serial.writeLine("/file-remove config.json");
             serial.writeLine("/file-append config.json " + JSON.stringify(config));
+            
+            // Wait a moment for command to be processed
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Show success message
+            const successMsg = document.createElement('span');
+            successMsg.style.color = '#00ff00';
+            successMsg.textContent = '✓ Data written\n';
+            consoleDebug.appendChild(successMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
         }
 
         async function onRestartButtonClick() {

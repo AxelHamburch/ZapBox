@@ -230,13 +230,13 @@ void reportMode()
 {
   Serial.println("[REPORT] Report mode activated");
   errorReportScreen(wifiErrorCount, internetErrorCount, websocketErrorCount);
-  delay(7000);
+  delay(4200);
   wifiReconnectScreen();
-  delay(3000);
+  delay(2100);
   internetReconnectScreen();
-  delay(3000);
+  delay(2100);
   websocketReconnectScreen();
-  delay(3000);
+  delay(2100);
   inReportMode = true;
   // Flag will cause loop to restart and show QR screen
 }
