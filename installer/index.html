@@ -56,12 +56,12 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v926569/manifest.json">v926569 (Latest - Add wss:// support for LNbits v1.3.1 and bS_extension v1.1.2)</option>
+                <option value="./firmware/v926666/manifest.json">v926666 (Latest - Add wss:// support for LNbits v1.3.1 and bS_extension v1.1.2) 🎉</option>
                 <option value="./firmware/v926561/manifest.json">v926561 (Fix some bugs and edit documentation)</option>
                 <option value="./firmware/v926531/manifest.json">v926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v926569/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v926666/manifest.json">
                 <button slot="activate">🔥 Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -126,7 +126,7 @@
                 <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
             </div>
             <div>
-                <label for="lnurl">LNURL from device instance</label>
+                <label for="lnurl">LNURL for QR-Code</label>
                 <input type="text" name="lnurl" id="lnurl" placeholder="LNURL..." autocomplete="off">
             </div>
             <div>
@@ -156,7 +156,7 @@
 
         <h3 id="mostimportant">Most important:</h3>
 
-        <p>If something does not work properly, especially with serial communication, try again. If that does not help, refresh the website with CTRL+F5 🔄 and start over.</p>
+        <p>If something does not work properly, especially with serial communication, try again. If that does not help, refresh the website 🔄 with CTRL+F5 or CTRL+SHIFT+R and start over.</p>
         
         <h3 id="hardwareproblems">Hardware problems:</h3>
 
