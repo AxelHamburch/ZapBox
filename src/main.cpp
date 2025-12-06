@@ -21,6 +21,7 @@ String switchStr = "";
 const char *lightningPrefix = "LIGHTNING:";
 const char *lnurl = "";
 String orientation = "h";
+String theme = "black-white";
 char lightning[300] = "";
 String thresholdKey = "";
 String thresholdAmount = "";
@@ -148,35 +149,42 @@ void readFiles()
     orientation = maRoot4Char;
     Serial.println("Screen orientation: " + orientation);
 
-    // Read threshold configuration (optional)
     const JsonObject maRoot5 = doc[5];
     if (!maRoot5.isNull()) {
       const char *maRoot5Char = maRoot5["value"];
-      thresholdKey = maRoot5Char;
+      theme = maRoot5Char;
     }
+    Serial.println("Theme: " + theme);
 
+    // Read threshold configuration (optional)
     const JsonObject maRoot6 = doc[6];
     if (!maRoot6.isNull()) {
       const char *maRoot6Char = maRoot6["value"];
-      thresholdAmount = maRoot6Char;
+      thresholdKey = maRoot6Char;
     }
 
     const JsonObject maRoot7 = doc[7];
     if (!maRoot7.isNull()) {
       const char *maRoot7Char = maRoot7["value"];
-      thresholdPin = maRoot7Char;
+      thresholdAmount = maRoot7Char;
     }
 
     const JsonObject maRoot8 = doc[8];
     if (!maRoot8.isNull()) {
       const char *maRoot8Char = maRoot8["value"];
-      thresholdTime = maRoot8Char;
+      thresholdPin = maRoot8Char;
     }
 
     const JsonObject maRoot9 = doc[9];
     if (!maRoot9.isNull()) {
       const char *maRoot9Char = maRoot9["value"];
-      thresholdLnurl = maRoot9Char;
+      thresholdTime = maRoot9Char;
+    }
+
+    const JsonObject maRoot10 = doc[10];
+    if (!maRoot10.isNull()) {
+      const char *maRoot10Char = maRoot10["value"];
+      thresholdLnurl = maRoot10Char;
     }
 
     // Display mode based on threshold configuration
@@ -295,19 +303,26 @@ void checkAndReconnectWiFi()
     Serial.printf("[ERROR] WiFi error count: %d\n", wifiErrorCount);
     wifiReconnectScreen();
     
-    // Keep trying to reconnect forever
-    while (WiFi.status() != WL_CONNECTED)
+    // Keep trying to reconnect forever (unless config mode is triggered)
+    while (WiFi.status() != WL_CONNECTED && !inConfigMode)
     {
       WiFi.disconnect();
       WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN); // Force scanning for all APs, not just the first one
       WiFi.begin(ssid.c_str(), wifiPassword.c_str());
       
       int reconnectTimer = 0;
-      while (WiFi.status() != WL_CONNECTED && reconnectTimer < 10000)
+      while (WiFi.status() != WL_CONNECTED && reconnectTimer < 10000 && !inConfigMode)
       {
         delay(500);
         Serial.print(".");
         reconnectTimer += 500;
+      }
+      
+      // Exit if config mode was triggered
+      if (inConfigMode)
+      {
+        Serial.println("\nConfig mode triggered during WiFi reconnect!");
+        break;
       }
       
       if (WiFi.status() == WL_CONNECTED)
@@ -584,12 +599,20 @@ void loop()
           onErrorScreen = true;
         }
         
-        // Try to reconnect WebSocket up to 5 times
+        // Try to reconnect WebSocket up to 5 times (or until config mode is triggered)
         int reconnectAttempts = 0;
-        while (!webSocket.isConnected() && reconnectAttempts < 5 && WiFi.status() == WL_CONNECTED)
+        while (!webSocket.isConnected() && reconnectAttempts < 5 && WiFi.status() == WL_CONNECTED && !inConfigMode)
         {
           webSocket.disconnect();
           delay(500);
+          
+          // Exit if config mode was triggered
+          if (inConfigMode)
+          {
+            Serial.println("[WS] Config mode triggered during WebSocket reconnect!");
+            return;
+          }
+          
           Serial.printf("[WS] Reconnect attempt %d/5...\n", reconnectAttempts + 1);
           
           // Reconnect based on mode

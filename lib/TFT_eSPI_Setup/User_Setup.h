@@ -6,7 +6,7 @@
 #define TFT_WIDTH  170
 #define TFT_HEIGHT 320
 
-#define TFT_RGB_ORDER TFT_RGB
+#define TFT_RGB_ORDER TFT_BGR
 
 // Pin definitions from PinConfig.h
 #define TFT_MOSI -1

@@ -138,9 +138,17 @@
                 </select>
             </div>
             <div>
-                <label for="theme">Theme (Maybe in the future..)</label>
+                <label for="theme">Color choice</label>
                 <select name="theme" id="theme">
-                    <option value="compact" selected>ZapBox compact</option>
+                    <option value="black-white" selected>BLACK & WHITE</option>
+                    <option value="white-black">WHITE & BLACK</option>
+                    <option value="green-red">GREEN & RED</option>
+                    <option value="grey-blue">GREY & BLUE</option>
+                    <option value="orange-brown">ORANGE & BROWN</option>
+                    <option value="brown-yellow">BROWN & YELLOW</option>
+                    <option value="maroon-magenta">MAROON & MAGENTA</option>
+                    <option value="olive-navy">OLIVE & NAVY</option>
+                    <option value="darkgrey-lightgrey">DARK GREY & LIGHT GREY</option>
                 </select>
             </div>
         </div>
@@ -224,6 +232,7 @@
         const socket = document.getElementById('socket');
         const lnurl = document.getElementById('lnurl');
         const orientation = document.getElementById('orientation');
+        const theme = document.getElementById('theme');
         const thresholdKey = document.getElementById('thresholdKey');
         const thresholdAmount = document.getElementById('thresholdAmount');
         const thresholdPin = document.getElementById('thresholdPin');
@@ -250,6 +259,10 @@
             {
                 "name": "orientation",
                 "value": "h"
+            },
+            {
+                "name": "theme",
+                "value": "black-white"
             },
             {
                 "name": "thresholdKey",
@@ -521,11 +534,12 @@
                 config[2].value = configData[2].value; // socket
                 config[3].value = configData[3].value; // lnurl
                 config[4].value = configData[4].value; // orientation
-                config[5].value = configData[5]?.value || ""; // thresholdKey
-                config[6].value = configData[6]?.value || ""; // thresholdAmount
-                config[7].value = configData[7]?.value || ""; // thresholdPin
-                config[8].value = configData[8]?.value || ""; // thresholdTime
-                config[9].value = configData[9]?.value || ""; // thresholdLnurl
+                config[5].value = configData[5]?.value || "black-white"; // theme
+                config[6].value = configData[6]?.value || ""; // thresholdKey
+                config[7].value = configData[7]?.value || ""; // thresholdAmount
+                config[8].value = configData[8]?.value || ""; // thresholdPin
+                config[9].value = configData[9]?.value || ""; // thresholdTime
+                config[10].value = configData[10]?.value || ""; // thresholdLnurl
 
                 // Fill form fields
                 ssid.value = config[0].value;
@@ -533,11 +547,12 @@
                 socket.value = config[2].value;
                 lnurl.value = config[3].value;
                 orientation.value = config[4].value;
-                thresholdKey.value = config[5].value;
-                thresholdAmount.value = config[6].value;
-                thresholdPin.value = config[7].value;
-                thresholdTime.value = config[8].value;
-                thresholdLnurl.value = config[9].value;
+                theme.value = config[5].value;
+                thresholdKey.value = config[6].value;
+                thresholdAmount.value = config[7].value;
+                thresholdPin.value = config[8].value;
+                thresholdTime.value = config[9].value;
+                thresholdLnurl.value = config[10].value;
 
                 console.log("Config loaded:", config);
                 
@@ -595,11 +610,11 @@
             const wifiPasswordValue = config[1].value.trim();
             const socketValue = config[2].value.trim();
             const lnurlValue = config[3].value.trim();
-            const thresholdKeyValue = config[5].value.trim();
-            const thresholdAmountValue = config[6].value.trim();
-            const thresholdPinValue = config[7].value.trim();
-            const thresholdTimeValue = config[8].value.trim();
-            const thresholdLnurlValue = config[9].value.trim();
+            const thresholdKeyValue = config[6].value.trim();
+            const thresholdAmountValue = config[7].value.trim();
+            const thresholdPinValue = config[8].value.trim();
+            const thresholdTimeValue = config[9].value.trim();
+            const thresholdLnurlValue = config[10].value.trim();
             
             // Check basic required fields
             if (!ssidValue || !wifiPasswordValue || !socketValue || !lnurlValue) {
@@ -708,24 +723,28 @@
             config[4].value = event.target.value;
         });
 
-        thresholdKey.addEventListener("input", (event) => {
+        theme.addEventListener("change", (event) => {
             config[5].value = event.target.value;
         });
 
-        thresholdAmount.addEventListener("input", (event) => {
+        thresholdKey.addEventListener("input", (event) => {
             config[6].value = event.target.value;
         });
 
-        thresholdPin.addEventListener("input", (event) => {
+        thresholdAmount.addEventListener("input", (event) => {
             config[7].value = event.target.value;
         });
 
-        thresholdTime.addEventListener("input", (event) => {
+        thresholdPin.addEventListener("input", (event) => {
             config[8].value = event.target.value;
         });
 
-        thresholdLnurl.addEventListener("input", (event) => {
+        thresholdTime.addEventListener("input", (event) => {
             config[9].value = event.target.value;
+        });
+
+        thresholdLnurl.addEventListener("input", (event) => {
+            config[10].value = event.target.value;
         });
 
     </script>

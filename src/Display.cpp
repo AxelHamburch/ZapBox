@@ -10,10 +10,60 @@ int x;
 int y;
 extern char lightning[];
 extern String orientation;
+extern String theme;
+
+// Theme colors - will be set based on theme selection
+uint16_t themeBackground = TFT_WHITE;
+uint16_t themeForeground = TFT_BLACK;
+
+// Available TFT_eSPI standard colors:
+// Basic: TFT_BLACK, TFT_WHITE, TFT_RED, TFT_GREEN, TFT_BLUE
+// Extended: TFT_CYAN, TFT_MAGENTA, TFT_YELLOW, TFT_ORANGE, TFT_PINK, TFT_GREENYELLOW
+// Dark: TFT_DARKGREY, TFT_DARKGREEN, TFT_DARKCYAN, TFT_MAROON, TFT_PURPLE, TFT_OLIVE
+// Light: TFT_LIGHTGREY, TFT_NAVY, TFT_BROWN
+// Custom RGB565: 0xRRRR (5 bits red, 6 bits green, 5 bits blue)
+
+void setThemeColors()
+{
+  if (theme == "black-white") {
+    themeForeground = TFT_BLACK;
+    themeBackground = TFT_WHITE;
+  } else if (theme == "white-black") {
+    themeForeground = TFT_WHITE;
+    themeBackground = TFT_BLACK;
+  } else if (theme == "green-red") {
+    themeForeground = TFT_GREEN;
+    themeBackground = TFT_RED;
+  } else if (theme == "grey-blue") {
+    themeForeground = TFT_LIGHTGREY;
+    themeBackground = TFT_BLUE;
+  } else if (theme == "orange-brown") {
+    themeForeground = TFT_ORANGE;
+    themeBackground = TFT_BROWN;
+  } else if (theme == "brown-yellow") {
+    themeForeground = TFT_BROWN;
+    themeBackground = TFT_YELLOW;
+  } else if (theme == "maroon-magenta") {
+    themeForeground = TFT_MAROON;
+    themeBackground = TFT_MAGENTA;
+  } else if (theme == "olive-navy") {
+    themeForeground = TFT_OLIVE;
+    themeBackground = TFT_NAVY;
+  } else if (theme == "darkgrey-lightgrey") {
+    themeForeground = TFT_DARKGREY;
+    themeBackground = TFT_LIGHTGREY;
+  } else {
+    // Default fallback
+    themeForeground = TFT_BLACK;
+    themeBackground = TFT_WHITE;
+  }
+}
 
 void initDisplay()
 {
   tft.init();
+  setThemeColors(); // Set theme colors based on configuration
+  
   if (orientation == "v"){
     tft.setRotation(0);
     x = 85;
@@ -28,9 +78,9 @@ void initDisplay()
 // Startup
 void startupScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.setTextSize(2);
@@ -59,26 +109,26 @@ void startupScreen()
 // Config Mode Screen
 void configModeScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.drawString("CONF", x + 5, y - 70, GFXFF);
-    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("SERIAL", x - 55, y + 40, GFXFF);
     tft.drawString("CONFIG", x - 55, y + 70, GFXFF);
     tft.drawString("MODE", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString("CONF", x - 70, y, GFXFF);
-    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("SERIAL", x + 20, y - 30, GFXFF);
     tft.drawString("CONFIG", x + 20, y, GFXFF);
     tft.drawString("MODE", x + 20, y + 30, GFXFF);
@@ -88,26 +138,26 @@ void configModeScreen()
 // Error Report Screen
 void errorReportScreen(byte wifiCount, byte internetCount, byte websocketCount)
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.drawString("REPORT", x + 5, y - 70, GFXFF);
-    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString(String(wifiCount) + " x NW", x - 55, y + 40, GFXFF);
     tft.drawString(String(internetCount) + " x NI", x - 55, y + 70, GFXFF);
     tft.drawString(String(websocketCount) + " x NS", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString("REPORT", x - 70, y, GFXFF);
-    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString(String(wifiCount) + " x NW", x + 20, y - 30, GFXFF);
     tft.drawString(String(internetCount) + " x NI", x + 20, y, GFXFF);
     tft.drawString(String(websocketCount) + " x NS", x + 20, y + 30, GFXFF);
@@ -117,26 +167,26 @@ void errorReportScreen(byte wifiCount, byte internetCount, byte websocketCount)
 // WiFi Reconnect Screen
 void wifiReconnectScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
-    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("NO", x - 55, y + 40, GFXFF);
     tft.drawString("WIFI", x - 55, y + 70, GFXFF);
     tft.drawString("", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString("FAULT", x - 70, y, GFXFF);
-    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("NO", x + 20, y - 30, GFXFF);
     tft.drawString("WIFI", x + 20, y, GFXFF);
     tft.drawString("", x + 20, y + 30, GFXFF);
@@ -146,26 +196,26 @@ void wifiReconnectScreen()
 // Internet/Server Reconnect Screen
 void internetReconnectScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
-    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("NO", x - 55, y + 40, GFXFF);
     tft.drawString("INTER", x - 55, y + 70, GFXFF);
     tft.drawString("NET", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString("FAULT", x - 70, y, GFXFF);
-    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("NO", x + 20, y - 30, GFXFF);
     tft.drawString("INTER", x + 20, y, GFXFF);
     tft.drawString("NET", x + 20, y + 30, GFXFF);
@@ -175,26 +225,26 @@ void internetReconnectScreen()
 // WebSocket Reconnect Screen
 void websocketReconnectScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
-    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("NO", x - 55, y + 40, GFXFF);
     tft.drawString("WEB", x - 55, y + 70, GFXFF);
     tft.drawString("SOCKET", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString("FAULT", x - 70, y, GFXFF);
-    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("NO", x + 20, y - 30, GFXFF);
     tft.drawString("WEB", x + 20, y, GFXFF);
     tft.drawString("SOCKET", x + 20, y + 30, GFXFF);
@@ -204,26 +254,26 @@ void websocketReconnectScreen()
 // Step one
 void stepOneScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.drawString("1", x + 5, y - 70, GFXFF);
-    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("SCAN", x - 55, y + 40, GFXFF);
     tft.drawString("QR", x - 55, y + 70, GFXFF);
     tft.drawString("CODE", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString("1", x - 70, y, GFXFF);
-    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("SCAN", x + 20, y - 30, GFXFF);
     tft.drawString("QR", x + 20, y, GFXFF);
     tft.drawString("CODE", x + 20, y + 30, GFXFF);
@@ -233,26 +283,26 @@ void stepOneScreen()
 // Step two
 void stepTwoScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.drawString("2", x + 5, y - 70, GFXFF);
-    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("PAY", x - 55, y + 40, GFXFF);
     tft.drawString("INVOICE", x - 55, y + 70, GFXFF);
     tft.drawString("", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString("2", x - 70, y, GFXFF);
-    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("PAY", x + 20, y - 30, GFXFF);
     tft.drawString("INVOICE", x + 20, y, GFXFF);
     tft.drawString("", x + 20, y + 30, GFXFF);
@@ -262,26 +312,26 @@ void stepTwoScreen()
 // Step three
 void stepThreeScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.drawString("3", x + 5, y - 70, GFXFF);
-    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("HAVE", x - 55, y + 40, GFXFF);
     tft.drawString("FUN &", x - 55, y + 70, GFXFF);
     tft.drawString("ENJOY", x - 55, y + 100, GFXFF);
   } else {
     tft.drawString("3", x - 70, y, GFXFF);
-    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("HAVE", x + 20, y - 30, GFXFF);
     tft.drawString("FUN", x + 20, y, GFXFF);
     tft.drawString("ENJOY", x + 20, y + 30, GFXFF);
@@ -291,9 +341,9 @@ void stepThreeScreen()
 // Switched ON screen
 void switchedOnScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.setTextSize(10);
@@ -314,25 +364,25 @@ void switchedOnScreen()
 // Thank you
 void thankYouScreen()
 {
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
-  tft.setTextColor(TFT_BLACK);
+  tft.setTextColor(themeForeground);
   if (orientation == "v"){
     tft.drawString("`:)", x + 5, y - 70, GFXFF);
-    tft.fillRect(15, 165, 140, 135, TFT_BLACK);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("ENJOY", x - 55, y + 40, GFXFF);
     tft.drawString("YOUR", x - 55, y + 70, GFXFF);
     tft.drawString("DAY", x - 55, y + 100, GFXFF);
   } else {
       tft.drawString("`:)", x - 70, y, GFXFF);
-    tft.fillRect(165, 15, 140, 135, TFT_BLACK);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(themeBackground);
     tft.drawString("ENJOY", x + 20, y - 30, GFXFF);
     tft.drawString("YOUR", x + 20, y, GFXFF);
     tft.drawString("DAY", x + 20, y + 30, GFXFF);
@@ -343,25 +393,25 @@ void thankYouScreen()
 void showQRScreen()
 {
   tft.setTextDatum(ML_DATUM);
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextSize(3);
-  tft.setTextColor(TFT_WHITE);
+  tft.setTextColor(themeBackground);
 
   if (orientation == "v"){
-    tft.fillRect(15, 168, 140, 132, TFT_BLACK);
+    tft.fillRect(15, 168, 140, 132, themeForeground);
     tft.drawString("READY", x - 55, y + 40, GFXFF);
     tft.drawString("FOR", x - 55, y + 70, GFXFF);
     tft.drawString("ZAP", x - 55, y + 100, GFXFF);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_BLACK);
+    tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 35, y + 150, GFXFF);
   } else {
-    tft.fillRect(168, 18, 140, 135, TFT_BLACK);
+    tft.fillRect(168, 18, 140, 135, themeForeground);
     tft.drawString("READY", x + 20, y - 30, GFXFF);
     tft.drawString("FOR", x + 20, y, GFXFF);
     tft.drawString("ZAP", x + 20, y + 30, GFXFF);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_BLACK);
+    tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 110, 9, GFXFF);
   }
 
@@ -376,11 +426,11 @@ void showQRScreen()
     {
       if (qrcode_getModule(&qrcoded, x, y))
       {
-          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, TFT_BLACK);
+          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, themeForeground);
       }
       else
       {
-          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, TFT_WHITE);
+          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, themeBackground);
       }
     }
   }
@@ -389,25 +439,25 @@ void showQRScreen()
 void showThresholdQRScreen()
 {
   tft.setTextDatum(ML_DATUM);
-  tft.fillScreen(TFT_WHITE);
+  tft.fillScreen(themeBackground);
   tft.setTextSize(3);
-  tft.setTextColor(TFT_WHITE);
+  tft.setTextColor(themeBackground);
 
   if (orientation == "v"){
-    tft.fillRect(15, 168, 140, 132, TFT_BLACK);
+    tft.fillRect(15, 168, 140, 132, themeForeground);
     tft.drawString("THRES-", x - 55, y + 40, GFXFF);
     tft.drawString("HOLD", x - 55, y + 70, GFXFF);
     tft.drawString("TRIGGER", x - 55, y + 100, GFXFF);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_BLACK);
+    tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 35, y + 150, GFXFF);
   } else {
-    tft.fillRect(168, 18, 140, 135, TFT_BLACK);
+    tft.fillRect(168, 18, 140, 135, themeForeground);
     tft.drawString("THRES-", x + 20, y - 30, GFXFF);
     tft.drawString("HOLD", x + 20, y, GFXFF);
     tft.drawString("TRIGGER", x + 20, y + 30, GFXFF);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_BLACK);
+    tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 110, 9, GFXFF);
   }
 
@@ -422,11 +472,11 @@ void showThresholdQRScreen()
     {
       if (qrcode_getModule(&qrcoded, x, y))
       {
-          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, TFT_BLACK);
+          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, themeForeground);
       }
       else
       {
-          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, TFT_WHITE);
+          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, themeBackground);
       }
     }
   }
