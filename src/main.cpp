@@ -22,6 +22,11 @@ const char *lightningPrefix = "LIGHTNING:";
 const char *lnurl = "";
 String orientation = "h";
 char lightning[300] = "";
+String thresholdKey = "";
+String thresholdAmount = "";
+String thresholdPin = "";
+String thresholdTime = "";
+String thresholdLnurl = "";
 
 String payloadStr;
 String lnbitsServer;
@@ -110,7 +115,9 @@ void readFiles()
 
     const JsonObject maRoot3 = doc[3];
     const char *maRoot3Char = maRoot3["value"];
-    lnurl = maRoot3Char;
+    String lnurlTemp = String(maRoot3Char);
+    lnurlTemp.trim(); // Remove leading/trailing whitespace
+    lnurl = lnurlTemp.c_str();
 
     // Copy values into lightning char, avoiding duplicate prefix
     String lnurlStr = String(lnurl);
@@ -140,12 +147,86 @@ void readFiles()
     const char *maRoot4Char = maRoot4["value"];
     orientation = maRoot4Char;
     Serial.println("Screen orientation: " + orientation);
+
+    // Read threshold configuration (optional)
+    const JsonObject maRoot5 = doc[5];
+    if (!maRoot5.isNull()) {
+      const char *maRoot5Char = maRoot5["value"];
+      thresholdKey = maRoot5Char;
+    }
+
+    const JsonObject maRoot6 = doc[6];
+    if (!maRoot6.isNull()) {
+      const char *maRoot6Char = maRoot6["value"];
+      thresholdAmount = maRoot6Char;
+    }
+
+    const JsonObject maRoot7 = doc[7];
+    if (!maRoot7.isNull()) {
+      const char *maRoot7Char = maRoot7["value"];
+      thresholdPin = maRoot7Char;
+    }
+
+    const JsonObject maRoot8 = doc[8];
+    if (!maRoot8.isNull()) {
+      const char *maRoot8Char = maRoot8["value"];
+      thresholdTime = maRoot8Char;
+    }
+
+    const JsonObject maRoot9 = doc[9];
+    if (!maRoot9.isNull()) {
+      const char *maRoot9Char = maRoot9["value"];
+      thresholdLnurl = maRoot9Char;
+    }
+
+    // Display mode based on threshold configuration
+    Serial.println("\n================================");
+    if (thresholdKey.length() > 0) {
+      Serial.println("       THRESHOLD MODE");
+      Serial.println("================================");
+      Serial.println("Threshold Key: " + thresholdKey);
+      Serial.println("Threshold Amount: " + thresholdAmount + " sats");
+      Serial.println("GPIO Pin: " + thresholdPin);
+      Serial.println("Control Time: " + thresholdTime + " ms");
+      
+      // Process threshold LNURL (add LIGHTNING: prefix if not present)
+      if (thresholdLnurl.length() > 0) {
+        thresholdLnurl.trim(); // Remove leading/trailing whitespace
+        String thresholdLnurlStr = thresholdLnurl;
+        thresholdLnurlStr.toUpperCase();
+        
+        if (thresholdLnurlStr.startsWith("LIGHTNING:")) {
+          // Already has prefix, use as-is but ensure uppercase prefix
+          if (thresholdLnurl.startsWith("LIGHTNING:")) {
+            strcpy(lightning, thresholdLnurl.c_str());
+          } else if (thresholdLnurl.startsWith("lightning:")) {
+            strcpy(lightning, "LIGHTNING:");
+            strcat(lightning, thresholdLnurl.c_str() + 10);
+          }
+        } else {
+          // No prefix, add it
+          strcpy(lightning, lightningPrefix);
+          strcat(lightning, thresholdLnurl.c_str());
+        }
+        Serial.print("Threshold LNURL: ");
+        Serial.println(thresholdLnurl);
+        Serial.print("Threshold QR: ");
+        Serial.println(lightning);
+      }
+    } else {
+      Serial.println("        NORMAL MODE");
+      Serial.println("================================");
+    }
+    Serial.println("");
   }
   else
   {
     Serial.println("Config file not found - using defaults");
     orientation = "h";
     strcpy(lightning, "LIGHTNING:lnurl1dp68gurn8ghj7ctsdyhxkmmvwp5jucm0d9hkuegpr4r33");
+    Serial.println("\n================================");
+    Serial.println("        NORMAL MODE");
+    Serial.println("================================\n");
   }
   paramFile.close();
 }
@@ -271,8 +352,16 @@ void reportMode()
   delay(2100);
   websocketReconnectScreen();
   delay(2100);
+  
+  // Show QR screen again immediately
+  if (thresholdKey.length() > 0) {
+    showThresholdQRScreen();
+  } else {
+    showQRScreen();
+  }
+  
   inReportMode = true;
-  // Flag will cause loop to restart and show QR screen
+  // Flag will cause loop to restart
 }
 
 void showHelp()
@@ -283,7 +372,13 @@ void showHelp()
   delay(3000);
   stepThreeScreen();
   delay(3000);
-  showQRScreen();
+  
+  // Show appropriate screen based on mode
+  if (thresholdKey.length() > 0) {
+    showThresholdQRScreen();
+  } else {
+    showQRScreen();
+  }
 }
 
 void Task1code(void *pvParameters)
@@ -345,7 +440,16 @@ void setup()
     }
   }
 
-  webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+  // Connect to WebSocket based on mode
+  if (thresholdKey.length() > 0) {
+    // THRESHOLD MODE - Connect to wallet
+    Serial.println("[WS] Connecting in THRESHOLD MODE...");
+    webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + thresholdKey);
+  } else {
+    // NORMAL MODE - Connect to specific switch
+    Serial.println("[WS] Connecting in NORMAL MODE...");
+    webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+  }
   webSocket.onEvent(webSocketEvent);
   webSocket.setReconnectInterval(1000);
 
@@ -381,7 +485,12 @@ void loop()
   
   if (inConfigMode) return; // Check again before drawing screen
   
-  showQRScreen();
+  // Show appropriate QR screen based on mode
+  if (thresholdKey.length() > 0) {
+    showThresholdQRScreen(); // THRESHOLD MODE
+  } else {
+    showQRScreen(); // NORMAL MODE
+  }
 
   unsigned long lastWiFiCheck = millis();
   unsigned long lastPingTime = millis();
@@ -482,7 +591,14 @@ void loop()
           webSocket.disconnect();
           delay(500);
           Serial.printf("[WS] Reconnect attempt %d/5...\n", reconnectAttempts + 1);
-          webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+          
+          // Reconnect based on mode
+          if (thresholdKey.length() > 0) {
+            webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + thresholdKey);
+          } else {
+            webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+          }
+          
           delay(2000); // Wait for connection
           reconnectAttempts++;
         }
@@ -520,25 +636,94 @@ void loop()
       Serial.println("[PAYMENT] Payment detected!");
       Serial.printf("[PAYMENT] PayloadStr: %s\n", payloadStr.c_str());
       
-      switchedOnScreen();
-      
-      int pin = getValue(payloadStr, '-', 0).toInt();
-      int duration = getValue(payloadStr, '-', 1).toInt();
-      
-      Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
-      
-      pinMode(pin, OUTPUT);
-      digitalWrite(pin, HIGH);
-      Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
-      
-      delay(duration);
-      
-      digitalWrite(pin, LOW);
-      Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+      if (thresholdKey.length() > 0) {
+        // === THRESHOLD MODE ===
+        Serial.println("[THRESHOLD] Processing payment in threshold mode...");
+        
+        // Parse JSON payload to get payment amount
+        StaticJsonDocument<1900> doc;
+        DeserializationError error = deserializeJson(doc, payloadStr);
+        
+        if (error) {
+          Serial.print("[THRESHOLD] JSON parse error: ");
+          Serial.println(error.c_str());
+          paid = false;
+          return;
+        }
+        
+        // Extract payment amount from JSON
+        JsonObject payment = doc["payment"];
+        int payment_amount = payment["amount"]; // in mSats
+        int payment_sats = payment_amount / 1000; // Convert to sats
+        int threshold_sats = thresholdAmount.toInt();
+        
+        Serial.printf("[THRESHOLD] Payment received: %d sats (%d mSats)\n", payment_sats, payment_amount);
+        Serial.printf("[THRESHOLD] Threshold: %d sats\n", threshold_sats);
+        
+        // Check if payment meets or exceeds threshold
+        if (payment_sats >= threshold_sats) {
+          Serial.println("[THRESHOLD] *** PAYMENT >= THRESHOLD! Triggering GPIO! ***");
+          Serial.printf("[THRESHOLD] Switching GPIO %d for %d ms\n", 
+                        thresholdPin.toInt(), thresholdTime.toInt());
+          
+          switchedOnScreen();
+          
+          // Trigger GPIO pin
+          int pin = thresholdPin.toInt();
+          int duration = thresholdTime.toInt();
+          
+          pinMode(pin, OUTPUT);
+          digitalWrite(pin, HIGH);
+          Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+          
+          delay(duration);
+          
+          digitalWrite(pin, LOW);
+          Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+          
+          thankYouScreen();
+          delay(2000);
+          
+          // Return to threshold QR screen
+          showThresholdQRScreen();
+          Serial.println("[THRESHOLD] Ready for next payment");
+        } else {
+          Serial.printf("[THRESHOLD] Payment too small (%d < %d sats) - ignoring\n", 
+                        payment_sats, threshold_sats);
+        }
+        
+        paid = false;
+        
+      } else {
+        // === NORMAL MODE ===
+        Serial.println("[NORMAL] Processing payment in normal mode...");
+        
+        switchedOnScreen();
+        
+        int pin = getValue(payloadStr, '-', 0).toInt();
+        int duration = getValue(payloadStr, '-', 1).toInt();
+        
+        Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
+        
+        pinMode(pin, OUTPUT);
+        digitalWrite(pin, HIGH);
+        Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+        
+        delay(duration);
+        
+        digitalWrite(pin, LOW);
+        Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+        
+        thankYouScreen();
+        delay(2000);
+        
+        // Return to QR screen
+        showQRScreen();
+        Serial.println("[NORMAL] Ready for next payment");
+        
+        paid = false;
+      }
     }
   }
-  Serial.println("[PAYMENT] Paid!");
-  thankYouScreen();
-  paid = false;
-  delay(2000);
+  Serial.println("[LOOP] Exiting payment wait loop");
 }

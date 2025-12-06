@@ -13,3 +13,4 @@ void stepThreeScreen();
 void switchedOnScreen();
 void thankYouScreen();
 void showQRScreen();
+void showThresholdQRScreen();

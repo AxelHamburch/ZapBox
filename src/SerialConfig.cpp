@@ -93,7 +93,6 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 
 void executeCommand(String commandName, String commandData)
 {
-    Serial.println("executeCommand: " + commandName + " > " + commandData);
     KeyValue kv = extractKeyValue(commandData);
     String path = kv.key;
     String data = kv.value;
@@ -101,10 +100,14 @@ void executeCommand(String commandName, String commandData)
     if (commandName == "/hello")
     {
         // https://patorjk.com/software/taag/#p=display&f=Small+Slant&t=ZAPBOX
-        Serial.println("  ____  ___   ___  ___  ____  _  __");
-        Serial.println(" /_  / / _ | / _ \\\\/ _ )/ __ \\\\| |/_/");
-        Serial.println("  / /_/ __ |/ ___/ _  / /_/ />  <");
-        Serial.println(" /___/_/ |_/_/  /____/\\\\____/_/|_|");
+        // Send logo as single block to prevent chunking
+        String logo = "";
+        logo += "  ____  ___   ___  ___  ____  _  __\n";
+        logo += " /_  / / _ | / _ \\/ _ )/ __ \\| |/_/\n";
+        logo += "  / /_/ __ |/ ___/ _  / /_/ />  <\n";
+        logo += " /___/_/ |_/_/  /____/\\____/_/|_|\n";
+        Serial.print(logo);
+        Serial.flush();
         return;
     }
     if (commandName == "/config-restart")
@@ -170,7 +173,8 @@ void readFile(String path)
         while (file.available())
         {
             String line = file.readStringUntil('\n');
-            Serial.println("/file-read " + line);
+            Serial.print("/file-read " + line);
+            Serial.flush();
         }
         file.close();
     }
