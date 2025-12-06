@@ -173,8 +173,26 @@ void readFile(String path)
         while (file.available())
         {
             String line = file.readStringUntil('\n');
-            Serial.print("/file-read " + line);
+            
+            // Send in chunks to avoid buffer overflow for long lines
+            const int chunkSize = 32; // Smaller chunks for more reliability
+            String prefix = "/file-read ";
+            Serial.print(prefix);
             Serial.flush();
+            delay(10); // Wait after prefix
+            
+            for (int i = 0; i < line.length(); i += chunkSize)
+            {
+                String chunk = line.substring(i, min(i + chunkSize, (int)line.length()));
+                Serial.print(chunk);
+                Serial.flush();
+                delay(10); // Increased delay between chunks
+            }
+            
+            // Ensure newline and final flush
+            Serial.println();
+            Serial.flush();
+            delay(20); // Extra delay after complete line
         }
         file.close();
     }
@@ -183,6 +201,7 @@ void readFile(String path)
         Serial.println("- Failed to open file for reading");
     }
     Serial.println("- Read file done");
+    Serial.flush();
 }
 
 KeyValue extractKeyValue(String s)

@@ -197,7 +197,7 @@
 
         <h3 id="mostimportant">Most important:</h3>
 
-        <p>If something does not work properly, especially with serial communication "📖 Read Config", try again and again. If that does not help, refresh the website 🔄 with CTRL+F5 or CTRL+SHIFT+R and start over.</p>
+        <p>If something doesn't work properly, especially the serial communication "📖 Read Config", then simply try again. If that does not help, refresh the website 🔄 with CTRL+F5 or CTRL+SHIFT+R and start over.</p>
         
         <h3 id="hardwareproblems">Hardware problems:</h3>
 
@@ -288,6 +288,7 @@
         let configModeVerified = false;
         let helloSendTimeout = null;
         let serialBuffer = ""; // Buffer for incoming serial data
+        let justRestarted = false; // Flag to suppress normal mode detection after restart
 
         function onSerialConnectionOpened(eventSender) {
             console.log("onSerialConnectionOpened", eventSender);
@@ -348,6 +349,7 @@
             // Reset verification flag and buffer
             configModeVerified = false;
             serialBuffer = "";
+            justRestarted = false; // Reset the restart flag on disconnect
             
             document.getElementById("connect-button").disabled = false;
             document.getElementById("read-config-button").disabled = true;
@@ -365,39 +367,41 @@
             consoleDebug.appendChild(textNode);
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
 
-            // Check if ESP32 is in Serial Config Mode (only once!)
-            if (!configModeVerified) {
-                // FIRST: Check if we receive normal program output - this means NOT in config mode
-                const hasNormalProgramOutput = newData.includes("[LOOP]") || 
-                                              newData.includes("[WS]") ||
-                                              newData.includes("Still waiting") ||
-                                              newData.includes("[CHECK]");
+            // Check if we receive normal program output - this means NOT in config mode
+            const hasNormalProgramOutput = newData.includes("[LOOP]") || 
+                                          newData.includes("[WS]") ||
+                                          newData.includes("Still waiting") ||
+                                          newData.includes("[CHECK]");
+            
+            // Only show alert if NOT just restarted (allow viewing logs after restart)
+            if (hasNormalProgramOutput && configModeVerified !== true && !justRestarted) {
+                console.log("Normal program detected - NOT in config mode");
                 
-                if (hasNormalProgramOutput) {
-                    console.log("Normal program detected - NOT in config mode");
-                    configModeVerified = null; // Mark as failed (not false, not true)
-                    
-                    // Cancel the /hello send timeout
-                    if (helloSendTimeout) {
-                        clearTimeout(helloSendTimeout);
-                        helloSendTimeout = null;
-                    }
-                    
-                    // Clear the main timeout
-                    if (configModeCheckTimeout) {
-                        clearTimeout(configModeCheckTimeout);
-                        configModeCheckTimeout = null;
-                    }
-                    
-                    const errorMsg = document.createElement('span');
-                    errorMsg.style.color = '#ff4444';
-                    errorMsg.textContent = '⚠️ Normal program running - not in config mode\n';
-                    consoleDebug.appendChild(errorMsg);
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
-                    alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 2-3 seconds, or\n- Flashing fresh firmware with empty config");
-                    serial.close();
-                    return; // Exit early
+                // Cancel the /hello send timeout if still running
+                if (helloSendTimeout) {
+                    clearTimeout(helloSendTimeout);
+                    helloSendTimeout = null;
                 }
+                
+                // Clear the main timeout if still running
+                if (configModeCheckTimeout) {
+                    clearTimeout(configModeCheckTimeout);
+                    configModeCheckTimeout = null;
+                }
+                
+                const errorMsg = document.createElement('span');
+                errorMsg.style.color = '#ff4444';
+                errorMsg.textContent = '⚠️ Normal program running - not in config mode\n';
+                consoleDebug.appendChild(errorMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                
+                alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 2-3 seconds, or\n- Flashing fresh firmware with empty config");
+                serial.close();
+                return; // Exit early
+            }
+            
+            // Check if ESP32 is in Serial Config Mode (only once during initial connect!)
+            if (!configModeVerified) {
                 
                 // SECOND: If we receive the ASCII art response to /hello, config mode is active
                 const hasAsciiArt = newData.includes("____") || 
@@ -573,6 +577,42 @@
 
         async function onWriteConfigButtonClick() {
             console.log("Write config button clicked!");
+            
+            // Check if we're in config mode
+            if (!configModeVerified) {
+                alert("⚠️ Config Mode Required\n\nTo write config data, the device must be in SERIAL CONFIG MODE.\n\nPlease:\n1. Disconnect current connection\n2. Put device in config mode (hold BOOT button 5 seconds)\n3. Reconnect and try again");
+                
+                const errorMsg = document.createElement('span');
+                errorMsg.style.color = '#ff4444';
+                errorMsg.textContent = '⚠️ Not in config mode - write aborted\n';
+                consoleDebug.appendChild(errorMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                return;
+            }
+            
+            // Validate required fields
+            const ssidValue = config[0].value.trim();
+            const wifiPasswordValue = config[1].value.trim();
+            const socketValue = config[2].value.trim();
+            const lnurlValue = config[3].value.trim();
+            const thresholdKeyValue = config[5].value.trim();
+            const thresholdAmountValue = config[6].value.trim();
+            const thresholdPinValue = config[7].value.trim();
+            const thresholdTimeValue = config[8].value.trim();
+            const thresholdLnurlValue = config[9].value.trim();
+            
+            // Check basic required fields
+            if (!ssidValue || !wifiPasswordValue || !socketValue || !lnurlValue) {
+                alert("⚠️ Validation Error\n\nThe following fields are required:\n- WiFi SSID\n- WiFi password\n- Device settings string\n- LNURL for QR-Code");
+                return;
+            }
+            
+            // If Threshold Key is filled, check if all threshold fields are filled
+            if (thresholdKeyValue && (!thresholdAmountValue || !thresholdPinValue || !thresholdTimeValue || !thresholdLnurlValue)) {
+                alert("⚠️ Threshold Mode Validation Error\n\nIf 'Wallet Invoice/Read Key' is filled, all threshold fields are required:\n- Threshold value in satoshi\n- GPIO pin to be controlled\n- Control time for GPIO pin (ms)\n- LNURL or LIGHTNING ADDRESS for QR-Code");
+                return;
+            }
+            
             serial.writeLine("/file-remove config.json");
             serial.writeLine("/file-append config.json " + JSON.stringify(config));
             
@@ -582,13 +622,20 @@
             // Show success message
             const successMsg = document.createElement('span');
             successMsg.style.color = '#00ff00';
-            successMsg.textContent = '✓ Data written\n';
+            successMsg.textContent = '✓ Data written\n\n⚠️ To apply changes:\n- Press 🔄 Restart (if in Config Mode), or\n- Press 🔌 Disconnect and reset device manually\n';
             consoleDebug.appendChild(successMsg);
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
         }
 
         async function onSoftResetButtonClick() {
             console.log("Restart button clicked!");
+            
+            // Check if we're still in config mode
+            if (!configModeVerified) {
+                alert("⚠️ Restart only works in Config Mode\n\nThe device is not in config mode.\nPlease disconnect and enter config mode (hold BOOT 5s) to use restart function.");
+                return;
+            }
+            
             const resetMsg = document.createElement('span');
             resetMsg.style.color = '#ffaa00';
             resetMsg.textContent = 'Sending restart command...\n';
@@ -598,12 +645,21 @@
             // Send soft reset command - keeps connection open
             serial.writeLine("/config-soft-reset");
             
+            // Reset config mode verification - device will be in normal mode after restart
+            configModeVerified = false;
+            justRestarted = true; // Set flag to suppress normal mode alert
+            
+            // Disable config-related buttons after restart (keep restart button enabled)
+            document.getElementById("read-config-button").disabled = true;
+            document.getElementById("write-config-button").disabled = true;
+            // Keep soft-reset-button enabled so user can restart again to see logs
+            
             // Wait for device to restart
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             const doneMsg = document.createElement('span');
             doneMsg.style.color = '#00ff00';
-            doneMsg.textContent = '✓ Device restarted (connection remains open)\n';
+            doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (hold BOOT 5s)\n';
             consoleDebug.appendChild(doneMsg);
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
         }

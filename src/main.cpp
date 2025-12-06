@@ -31,7 +31,7 @@ String thresholdLnurl = "";
 String payloadStr;
 String lnbitsServer;
 String deviceId;
-bool paid;
+bool paid = false;
 byte testState = 0;
 bool inConfigMode = false;
 bool inReportMode = false;
@@ -392,7 +392,7 @@ void Task1code(void *pvParameters)
 
 void setup()
 {
-  Serial.setRxBufferSize(1024);
+  Serial.setRxBufferSize(2048); // Increased for long JSON with LNURL
   Serial.begin(115200);
 
   int timer = 0;
