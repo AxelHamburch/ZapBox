@@ -333,7 +333,7 @@ void stepThreeScreen()
     tft.setTextSize(2);
     tft.setTextColor(themeBackground);
     tft.drawString("HAVE", x + 20, y - 30, GFXFF);
-    tft.drawString("FUN", x + 20, y, GFXFF);
+    tft.drawString("FUN &", x + 20, y, GFXFF);
     tft.drawString("ENJOY", x + 20, y + 30, GFXFF);
   }
 }
@@ -356,6 +356,29 @@ void switchedOnScreen()
   } else {
     tft.setTextSize(6);
     tft.drawString("ZAP", x + 5, y - 15, GFXFF);
+    tft.setTextSize(4);
+    tft.drawString("TIME", x + 3, y + 30, GFXFF);
+  }
+}
+
+// Special Mode Screen
+void specialModeScreen()
+{
+  tft.fillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  if (orientation == "v"){
+    tft.setTextSize(10);
+    tft.drawString("A", x + 5, y - 100, GFXFF);
+    tft.drawString("C", x + 5, y - 45, GFXFF);
+    tft.drawString("T", x + 5, y + 10, GFXFF);
+    tft.drawString(" ", x + 5, y + 65, GFXFF);
+    tft.setTextSize(3);
+    tft.drawString("TIME", x + 3, y + 105, GFXFF);
+  } else {
+    tft.setTextSize(6);
+    tft.drawString("ACTION", x + 5, y - 15, GFXFF);
     tft.setTextSize(4);
     tft.drawString("TIME", x + 3, y + 30, GFXFF);
   }
@@ -415,6 +438,11 @@ void showQRScreen()
     tft.drawString("HELP", x + 110, 9, GFXFF);
   }
 
+  drawQRCode();
+}
+
+void drawQRCode()
+{
   QRCode qrcoded;
   uint8_t qrcodeData[qrcode_getBufferSize(20)];
   qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightning);
@@ -461,23 +489,33 @@ void showThresholdQRScreen()
     tft.drawString("HELP", x + 110, 9, GFXFF);
   }
 
-  QRCode qrcoded;
-  uint8_t qrcodeData[qrcode_getBufferSize(20)];
-  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightning);
+  drawQRCode();
+}
 
-  for (uint8_t y = 0; y < qrcoded.size; y++)
-  {
-    // Each horizontal module
-    for (uint8_t x = 0; x < qrcoded.size; x++)
-    {
-      if (qrcode_getModule(&qrcoded, x, y))
-      {
-          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, themeForeground);
-      }
-      else
-      {
-          tft.fillRect(12 + 3 * x, 12 + 3 * y, 3, 3, themeBackground);
-      }
-    }
+void showSpecialModeQRScreen()
+{
+  tft.setTextDatum(ML_DATUM);
+  tft.fillScreen(themeBackground);
+  tft.setTextSize(3);
+  tft.setTextColor(themeBackground);
+
+  if (orientation == "v"){
+    tft.fillRect(15, 168, 140, 132, themeForeground);
+    tft.drawString("READY", x - 55, y + 40, GFXFF);
+    tft.drawString("FOR", x - 55, y + 70, GFXFF);
+    tft.drawString("ACTION", x - 55, y + 100, GFXFF);
+    tft.setTextSize(2);
+    tft.setTextColor(themeForeground);
+    tft.drawString("HELP", x + 35, y + 150, GFXFF);
+  } else {
+    tft.fillRect(168, 18, 140, 135, themeForeground);
+    tft.drawString("READY", x + 20, y - 30, GFXFF);
+    tft.drawString("FOR", x + 20, y, GFXFF);
+    tft.drawString("ACTION", x + 20, y + 30, GFXFF);
+    tft.setTextSize(2);
+    tft.setTextColor(themeForeground);
+    tft.drawString("HELP", x + 110, 9, GFXFF);
   }
+
+  drawQRCode();
 }

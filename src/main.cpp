@@ -29,6 +29,11 @@ String thresholdPin = "";
 String thresholdTime = "";
 String thresholdLnurl = "";
 
+// Special mode configuration
+String specialMode = "standard";
+float frequency = 1.0;
+float dutyCycleRatio = 1.0;
+
 String payloadStr;
 String lnbitsServer;
 String deviceId;
@@ -36,6 +41,8 @@ bool paid = false;
 byte testState = 0;
 bool inConfigMode = false;
 bool inReportMode = false;
+bool setupComplete = false; // Prevent loop from running before setup finishes
+bool firstLoop = true; // Track first loop iteration
 // int relayPin;
 
 // Error counters (0-9, capped at 9)
@@ -50,6 +57,54 @@ OneButton rightButton(PIN_BUTTON_2, true);
 WebSocketsClient webSocket;
 
 //////////////////HELPERS///////////////////
+
+void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ratio) {
+  Serial.println("[SPECIAL] Executing special mode:");
+  Serial.printf("[SPECIAL] Pin: %d, Duration: %lu ms, Frequency: %.2f Hz, Ratio: %.2f\n", 
+                pin, duration_ms, freq, ratio);
+  
+  // Calculate timing
+  unsigned long period_ms = (unsigned long)(1000.0 / freq);
+  unsigned long onTime_ms = (unsigned long)(period_ms / (1.0 + 1.0/ratio));
+  unsigned long offTime_ms = period_ms - onTime_ms;
+  
+  Serial.printf("[SPECIAL] Period: %lu ms, ON: %lu ms, OFF: %lu ms\n", 
+                period_ms, onTime_ms, offTime_ms);
+  
+  unsigned long startTime = millis();
+  unsigned long elapsed = 0;
+  int cycleCount = 0;
+  
+  pinMode(pin, OUTPUT);
+  
+  // Execute cycles until duration is reached
+  while (elapsed < duration_ms) {
+    // Check for config mode interrupt
+    if (inConfigMode) {
+      Serial.println("[SPECIAL] Interrupted by config mode");
+      digitalWrite(pin, LOW);
+      break;
+    }
+    
+    cycleCount++;
+    
+    // PIN HIGH
+    digitalWrite(pin, HIGH);
+    Serial.printf("[SPECIAL] Cycle %d: Pin HIGH\n", cycleCount);
+    delay(onTime_ms);
+    
+    // PIN LOW
+    digitalWrite(pin, LOW);
+    Serial.printf("[SPECIAL] Cycle %d: Pin LOW\n", cycleCount);
+    delay(offTime_ms);
+    
+    elapsed = millis() - startTime;
+  }
+  
+  // Ensure pin is LOW at the end
+  digitalWrite(pin, LOW);
+  Serial.printf("[SPECIAL] Completed %d cycles in %lu ms\n", cycleCount, elapsed);
+}
 
 String getValue(String data, char separator, int index)
 {
@@ -186,6 +241,51 @@ void readFiles()
       const char *maRoot10Char = maRoot10["value"];
       thresholdLnurl = maRoot10Char;
     }
+
+    // Read special mode configuration (Index 11-13)
+    const JsonObject maRoot11 = doc[11];
+    if (!maRoot11.isNull()) {
+      const char *maRoot11Char = maRoot11["value"];
+      specialMode = maRoot11Char;
+    }
+
+    const JsonObject maRoot12 = doc[12];
+    if (!maRoot12.isNull()) {
+      const char *maRoot12Char = maRoot12["value"];
+      frequency = String(maRoot12Char).toFloat();
+      if (frequency < 0.1) frequency = 0.1;  // Min 0.1 Hz
+      if (frequency > 10.0) frequency = 10.0; // Max 10 Hz
+    }
+
+    const JsonObject maRoot13 = doc[13];
+    if (!maRoot13.isNull()) {
+      const char *maRoot13Char = maRoot13["value"];
+      dutyCycleRatio = String(maRoot13Char).toFloat();
+      if (dutyCycleRatio < 0.1) dutyCycleRatio = 0.1;   // Min 1:10
+      if (dutyCycleRatio > 10.0) dutyCycleRatio = 10.0; // Max 10:1
+    }
+
+    // Apply predefined mode settings
+    if (specialMode == "blink") {
+      frequency = 1.0;
+      dutyCycleRatio = 1.0;
+      Serial.println("[CONFIG] Applied 'blink' preset: 1 Hz, 1:1");
+    } else if (specialMode == "pulse") {
+      frequency = 2.0;
+      dutyCycleRatio = 0.25; // 1:4 = 0.25
+      Serial.println("[CONFIG] Applied 'pulse' preset: 2 Hz, 1:4");
+    } else if (specialMode == "fast-blink") {
+      frequency = 5.0;
+      dutyCycleRatio = 1.0;
+      Serial.println("[CONFIG] Applied 'fast-blink' preset: 5 Hz, 1:1");
+    }
+    
+    Serial.println("Special Mode: " + specialMode);
+    Serial.print("Frequency: ");
+    Serial.print(frequency);
+    Serial.println(" Hz");
+    Serial.print("Duty Cycle Ratio: ");
+    Serial.println(dutyCycleRatio);
 
     // Display mode based on threshold configuration
     Serial.println("\n================================");
@@ -371,6 +471,8 @@ void reportMode()
   // Show QR screen again immediately
   if (thresholdKey.length() > 0) {
     showThresholdQRScreen();
+  } else if (specialMode != "standard") {
+    showSpecialModeQRScreen();
   } else {
     showQRScreen();
   }
@@ -391,6 +493,8 @@ void showHelp()
   // Show appropriate screen based on mode
   if (thresholdKey.length() > 0) {
     showThresholdQRScreen();
+  } else if (specialMode != "standard") {
+    showSpecialModeQRScreen();
   } else {
     showQRScreen();
   }
@@ -410,6 +514,11 @@ void setup()
   Serial.setRxBufferSize(2048); // Increased for long JSON with LNURL
   Serial.begin(115200);
 
+  // Check BOOT button IMMEDIATELY at the very start to block loop() before it runs
+  if (digitalRead(PIN_BUTTON_1) == LOW) {
+    inConfigMode = true; // Set flag immediately to block loop()
+  }
+
   int timer = 0;
 
   pinMode(PIN_POWER_ON, OUTPUT);
@@ -417,6 +526,33 @@ void setup()
 
   FFat.begin(FORMAT_ON_FAIL);
   readFiles(); // get the saved details and store in global variables
+
+  // Check if BOOT button is already pressed at startup for immediate config mode
+  // Do this BEFORE showing any screen to avoid flashing the startup screen
+  int bootButtonHoldTime = 0;
+  while (digitalRead(PIN_BUTTON_1) == LOW && bootButtonHoldTime < 5000) {
+    delay(100);
+    bootButtonHoldTime += 100;
+    if (bootButtonHoldTime >= 5000) {
+      Serial.println("BOOT button held at startup - entering config mode immediately");
+      initDisplay();
+      // Immediately clear any previous screen content (QR code from last run)
+      delay(1); // Tiny delay to ensure display is ready
+      configModeScreen();
+      Serial.println("Config mode screen displayed, entering serial config...");
+      bool hasExistingData = (ssid.length() > 0);
+      Serial.printf("Has existing data: %s\n", hasExistingData ? "YES" : "NO");
+      configOverSerialPort(ssid, wifiPassword, hasExistingData);
+      // Config mode handles restart internally, just wait here
+      Serial.println("Config mode finished - waiting for restart...");
+      while(true) { delay(1000); } // Infinite loop, restart happens from configMode or timeout
+    }
+  }
+  
+  // If button was released before 5 seconds, reset the flag
+  if (inConfigMode && digitalRead(PIN_BUTTON_1) == HIGH) {
+    inConfigMode = false;
+  }
 
   initDisplay();
   startupScreen();
@@ -468,7 +604,7 @@ void setup()
   webSocket.onEvent(webSocketEvent);
   webSocket.setReconnectInterval(1000);
 
-  leftButton.setPressTicks(3000);
+  leftButton.setPressTicks(2000); // 2 seconds for config mode
   leftButton.attachClick(reportMode);
   leftButton.attachLongPressStart(configMode);
   rightButton.attachClick(showHelp);
@@ -481,10 +617,19 @@ void setup()
       0,         /* Priority of the task */
       &Task1,    /* Task handle. */
       0);        /* Core where the task should run */
+  
+  setupComplete = true; // Allow loop to run now
 }
 
 void loop()
 {
+  // Wait for setup to complete before running loop
+  if (!setupComplete)
+  {
+    delay(100);
+    return;
+  }
+  
   // If in config mode, do nothing - config mode is handled by button interrupt
   if (inConfigMode)
   {
@@ -496,13 +641,25 @@ void loop()
   if (inConfigMode) return; // Exit if we entered config mode
 
   payloadStr = "";
-  delay(2000);
   
-  if (inConfigMode) return; // Check again before drawing screen
+  // On first loop, wait a bit to allow button press for config mode
+  int waitIterations = firstLoop ? 10 : 20; // 1s first time, 2s after
+  firstLoop = false;
+  
+  // Wait but check for button presses every 100ms
+  // This allows quick config mode entry without showing QR screen first
+  for (int i = 0; i < waitIterations; i++) {
+    delay(100);
+    if (inConfigMode) return; // Exit immediately if config mode triggered
+  }
+  
+  if (inConfigMode) return; // Final check before drawing screen
   
   // Show appropriate QR screen based on mode
   if (thresholdKey.length() > 0) {
     showThresholdQRScreen(); // THRESHOLD MODE
+  } else if (specialMode != "standard") {
+    showSpecialModeQRScreen(); // SPECIAL MODE
   } else {
     showQRScreen(); // NORMAL MODE
   }
@@ -689,20 +846,27 @@ void loop()
           Serial.printf("[THRESHOLD] Switching GPIO %d for %d ms\n", 
                         thresholdPin.toInt(), thresholdTime.toInt());
           
-          switchedOnScreen();
-          
           // Trigger GPIO pin
           int pin = thresholdPin.toInt();
           int duration = thresholdTime.toInt();
           
-          pinMode(pin, OUTPUT);
-          digitalWrite(pin, HIGH);
-          Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
-          
-          delay(duration);
-          
-          digitalWrite(pin, LOW);
-          Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+          // Check if special mode is enabled
+          if (specialMode != "standard" && specialMode != "") {
+            Serial.println("[THRESHOLD] Using special mode: " + specialMode);
+            specialModeScreen();
+            executeSpecialMode(pin, duration, frequency, dutyCycleRatio);
+          } else {
+            Serial.println("[THRESHOLD] Using standard mode");
+            switchedOnScreen();
+            pinMode(pin, OUTPUT);
+            digitalWrite(pin, HIGH);
+            Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+            
+            delay(duration);
+            
+            digitalWrite(pin, LOW);
+            Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+          }
           
           thankYouScreen();
           delay(2000);
@@ -721,27 +885,38 @@ void loop()
         // === NORMAL MODE ===
         Serial.println("[NORMAL] Processing payment in normal mode...");
         
-        switchedOnScreen();
-        
         int pin = getValue(payloadStr, '-', 0).toInt();
         int duration = getValue(payloadStr, '-', 1).toInt();
         
         Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
         
-        pinMode(pin, OUTPUT);
-        digitalWrite(pin, HIGH);
-        Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
-        
-        delay(duration);
-        
-        digitalWrite(pin, LOW);
-        Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+        // Check if special mode is enabled
+        if (specialMode != "standard" && specialMode != "") {
+          Serial.println("[NORMAL] Using special mode: " + specialMode);
+          specialModeScreen();
+          executeSpecialMode(pin, duration, frequency, dutyCycleRatio);
+        } else {
+          Serial.println("[NORMAL] Using standard mode");
+          switchedOnScreen();
+          pinMode(pin, OUTPUT);
+          digitalWrite(pin, HIGH);
+          Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+          
+          delay(duration);
+          
+          digitalWrite(pin, LOW);
+          Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+        }
         
         thankYouScreen();
         delay(2000);
         
-        // Return to QR screen
-        showQRScreen();
+        // Return to appropriate QR screen
+        if (specialMode != "standard") {
+          showSpecialModeQRScreen();
+        } else {
+          showQRScreen();
+        }
         Serial.println("[NORMAL] Ready for next payment");
         
         paid = false;

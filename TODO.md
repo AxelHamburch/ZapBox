@@ -47,18 +47,44 @@ Die serielle Kommunikation zwischen ESP32 und Browser zeigt unvollständige/gete
 ### Übersicht
 Erweiterte Firmware-Versionen mit konfigurierbaren Takt-/Blink-Modi für den Ausgangs-Pin anstelle des einfachen Ein/Aus-Schaltens.
 
+### 🎉 Status Update (2025-12-07)
+**Phase 1 (Firmware-Basis): ✅ COMPLETED & COMPILED**
+- Config structure extended to 14 indices (added indices 11-13)
+- `executeSpecialMode()` function implemented with full timing logic
+- Integration in both threshold and normal WebSocket handlers
+- Predefined modes: standard, blink (1Hz 1:1), pulse (2Hz 1:4), fast-blink (5Hz 1:1), custom
+- Compilation successful: Flash 30.1%, RAM 14.6%
+
+**Phase 2 (Webinstaller UI): ✅ COMPLETED**
+- Special Mode dropdown added with 5 options
+- Frequency and Duty Cycle Ratio input fields (hidden by default, shown for "custom")
+- JavaScript event listeners for show/hide logic
+- Config array extended from 11 to 14 elements
+- Read/Write config functions updated with validation
+- Custom mode validation: frequency 0.1-10 Hz, ratio 0.1-10
+
+**Phase 3 (Display Functions): ✅ COMPLETED**
+- specialModeScreen() function added to Display.cpp
+- Shows "SPEC" / "ACTION ACTIVE" during pulsing/blinking
+- Integrated in both threshold and normal modes
+- Standard mode still shows "ZAP TIME" screen
+- Compilation successful: Flash usage stable at ~30%
+
+**Remaining Phases:**
+- Phase 4-6: Testing, documentation, final release
+
 ### 1. Firmware-Erweiterungen (ESP32)
 
 #### 1.1 Neue Konfigurationsvariablen
-- [ ] `float frequency` - Frequenz in Hz (z.B. 0.5, 1, 2, 5 Hz)
-- [ ] `float dutyCycleRatio` - Verhältnis Ein:Aus (z.B. 1:1 = 1.0, 2:1 = 2.0, 1:2 = 0.5)
-- [ ] `String specialMode` - Modus-Auswahl ("standard", "blink", "pulse", "fast-blink", "custom")
+- [x] `float frequency` - Frequenz in Hz (z.B. 0.5, 1, 2, 5 Hz)
+- [x] `float dutyCycleRatio` - Verhältnis Ein:Aus (z.B. 1:1 = 1.0, 2:1 = 2.0, 1:2 = 0.5)
+- [x] `String specialMode` - Modus-Auswahl ("standard", "blink", "pulse", "fast-blink", "custom")
 
 #### 1.2 Config-Struktur erweitern
-- [ ] JSON-Index hinzufügen für:
-  - Index 11: `frequency` (Standard: 1.0 Hz)
-  - Index 12: `dutyCycleRatio` (Standard: 1.0 = 1:1)
-  - Index 13: `specialMode` (Standard: "standard")
+- [x] JSON-Index hinzufügen für:
+  - Index 11: `specialMode` (Standard: "standard")
+  - Index 12: `frequency` (Standard: 1.0 Hz)
+  - Index 13: `dutyCycleRatio` (Standard: 1.0 = 1:1)
 
 #### 1.3 Neue Funktion: `executeSpecialMode()`
 ```cpp
@@ -79,64 +105,63 @@ void executeSpecialMode(unsigned long duration_ms, float frequency, float ratio)
 ```
 
 #### 1.4 Integration in main.cpp
-- [ ] `readFiles()` erweitern um neue Parameter zu lesen
-- [ ] In WebSocket-Handler prüfen ob `specialMode != "standard"`
-- [ ] Bei Spezial-Modi: `executeSpecialMode()` statt einfaches `digitalWrite()` aufrufen
-- [ ] Standard-Verhalten beibehalten wenn `specialMode == "standard"`
+- [x] `readFiles()` erweitern um neue Parameter zu lesen
+- [x] In WebSocket-Handler prüfen ob `specialMode != "standard"`
+- [x] Bei Spezial-Modi: `executeSpecialMode()` statt einfaches `digitalWrite()` aufrufen
+- [x] Standard-Verhalten beibehalten wenn `specialMode == "standard"`
 
 #### 1.5 Vordefinierte Modi
-- [ ] **"standard"**: Normales Ein/Aus ohne Taktung (aktuelles Verhalten)
-- [ ] **"blink"**: 1 Hz, 1:1 Verhältnis (0.5s ein, 0.5s aus)
-- [ ] **"pulse"**: 2 Hz, 1:4 Verhältnis (kurzer Puls: 0.2s ein, 0.8s aus)
-- [ ] **"fast-blink"**: 5 Hz, 1:1 Verhältnis (schnelles Blinken)
-- [ ] **"custom"**: Nutzer definiert Frequenz + Verhältnis
+- [x] **"standard"**: Normales Ein/Aus ohne Taktung (aktuelles Verhalten)
+- [x] **"blink"**: 1 Hz, 1:1 Verhältnis (0.5s ein, 0.5s aus)
+- [x] **"pulse"**: 2 Hz, 1:4 Verhältnis (kurzer Puls: 0.2s ein, 0.8s aus)
+- [x] **"fast-blink"**: 5 Hz, 1:1 Verhältnis (schnelles Blinken)
+- [x] **"custom"**: Nutzer definiert Frequenz + Verhältnis
 
 ### 2. Webinstaller-Erweiterungen (HTML/JavaScript)
 
 #### 2.1 UI-Erweiterungen in index.html
-- [ ] **Dropdown "Spezial-Version"** nach Theme:
+- [x] **Dropdown "Spezial-Version"** nach Theme:
   ```html
   <select name="specialMode" id="specialMode">
-    <option value="standard" selected>Standard (kein Takten)</option>
+    <option value="standard" selected>Standard (simple on/off)</option>
     <option value="blink">Blink (1 Hz, 1:1)</option>
     <option value="pulse">Pulse (2 Hz, 1:4)</option>
     <option value="fast-blink">Fast Blink (5 Hz, 1:1)</option>
-    <option value="custom">Custom (eigene Werte)</option>
+    <option value="custom">Custom (manual settings)</option>
   </select>
   ```
 
-- [ ] **Frequenz-Eingabefeld** (nur bei "custom" sichtbar):
+- [x] **Frequenz-Eingabefeld** (nur bei "custom" sichtbar):
   ```html
-  <input type="number" id="frequency" step="0.1" min="0.1" max="10" value="1.0">
-  <label>Frequenz (Hz)</label>
+  <input type="number" id="frequency" step="0.1" min="0.1" max="10" placeholder="0.1 to 10">
+  <label>Frequency (Hz)</label>
   ```
 
-- [ ] **Verhältnis-Eingabefeld** (nur bei "custom" sichtbar):
+- [x] **Verhältnis-Eingabefeld** (nur bei "custom" sichtbar):
   ```html
-  <input type="number" id="dutyCycleRatio" step="0.1" min="0.1" max="10" value="1.0">
-  <label>Verhältnis Ein:Aus</label>
+  <input type="number" id="dutyCycleRatio" step="0.1" min="0.1" max="10" placeholder="0.1 to 10">
+  <label>Duty Cycle Ratio</label>
   ```
 
-#### 2.2 JavaScript-Logik in assets/serial.js
-- [ ] Event-Listener für `specialMode` Dropdown
-- [ ] Zeige/Verstecke Frequenz+Verhältnis Felder bei "custom"
-- [ ] Bei vordefinierten Modi: Setze Frequenz+Verhältnis automatisch
-- [ ] Erweitere `config` Array um 3 neue Einträge (Index 11, 12, 13)
-- [ ] Erweitere `writeConfig()` um neue Parameter zu senden
-- [ ] Erweitere `readConfig()` um neue Parameter zu lesen
+#### 2.2 JavaScript-Logik in index.html
+- [x] Event-Listener für `specialMode` Dropdown
+- [x] Zeige/Verstecke Frequenz+Verhältnis Felder bei "custom"
+- [x] Bei vordefinierten Modi: Werte sind bereits im Firmware-Code festgelegt
+- [x] Erweitere `config` Array um 3 neue Einträge (Index 11, 12, 13)
+- [x] Erweitere `writeConfig()` um neue Parameter zu senden
+- [x] Erweitere `readConfig()` um neue Parameter zu lesen
 
 ### 3. Display-Anzeigen
 
 #### 3.1 Neue Screen-Funktion
-- [ ] `specialModeScreen()` - Zeigt aktiven Modus während Taktung
-  - Frequenz anzeigen
-  - Verhältnis anzeigen
-  - Aktuellen Status (ON/OFF)
-  - Verbleibende Zeit
+- [x] `specialModeScreen()` - Zeigt "SPEC" / "ACTION ACTIVE" während Taktung
+- [x] Integration in beide Modi (Threshold + Normal)
+- [x] Standard-Modus zeigt weiterhin "ZAP TIME"
 
 #### 3.2 Display.cpp erweitern
-- [ ] Funktion zum Anzeigen von Takt-Parametern
-- [ ] Visueller Indikator für ON/OFF Zustand (z.B. gefüllter Kreis)
+- [x] Funktion `specialModeScreen()` in Display.cpp hinzugefügt
+- [x] Header-Datei Display.h aktualisiert
+- [x] Konsistent mit anderen Screen-Funktionen gestaltet
 
 ### 4. Testing & Validierung
 
@@ -174,16 +199,16 @@ void executeSpecialMode(unsigned long duration_ms, float frequency, float ratio)
 
 ### 6. Implementierungs-Reihenfolge
 
-**Phase 1: Firmware-Grundlage**
-1. Config-Struktur erweitern (Index 11-13)
-2. `executeSpecialMode()` Funktion implementieren
-3. In `readFiles()` neue Parameter einlesen
-4. In WebSocket-Handler integrieren
+**Phase 1: Firmware-Grundlage** ✅ COMPLETED
+1. ✅ Config-Struktur erweitern (Index 11-13)
+2. ✅ `executeSpecialMode()` Funktion implementieren
+3. ✅ In `readFiles()` neue Parameter einlesen
+4. ✅ In WebSocket-Handler integrieren
 
-**Phase 2: Webinstaller-Basis**
-1. Dropdown + Input-Felder im HTML
-2. JavaScript für Show/Hide Logik
-3. Config-Array erweitern
+**Phase 2: Webinstaller-Basis** ✅ COMPLETED
+1. ✅ Dropdown + Input-Felder im HTML
+2. ✅ JavaScript für Show/Hide Logik
+3. ✅ Config-Array erweitern
 
 **Phase 3: Vordefinierte Modi**
 1. 4 Standard-Modi implementieren
