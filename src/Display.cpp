@@ -34,6 +34,9 @@ void setThemeColors()
   } else if (theme == "green-red") {
     themeForeground = TFT_GREEN;
     themeBackground = TFT_RED;
+  } else if (theme == "red-green") {
+    themeForeground = TFT_RED;
+    themeBackground = TFT_GREEN;
   } else if (theme == "grey-blue") {
     themeForeground = TFT_LIGHTGREY;
     themeBackground = TFT_BLUE;
@@ -46,9 +49,27 @@ void setThemeColors()
   } else if (theme == "maroon-magenta") {
     themeForeground = TFT_MAROON;
     themeBackground = TFT_MAGENTA;
-  } else if (theme == "olive-navy") {
-    themeForeground = TFT_OLIVE;
+  } else if (theme == "black-red") {
+    themeForeground = TFT_BLACK;
+    themeBackground = TFT_RED;
+  } else if (theme == "brown-orange") {
+    themeForeground = TFT_BROWN;
+    themeBackground = TFT_ORANGE;
+  } else if (theme == "orange-black") {
+    themeForeground = TFT_ORANGE;
+    themeBackground = TFT_BLACK;
+  } else if (theme == "white-darkcyan") {
+    themeForeground = TFT_WHITE;
+    themeBackground = TFT_DARKCYAN;
+  } else if (theme == "white-navy") {
+    themeForeground = TFT_WHITE;
     themeBackground = TFT_NAVY;
+  } else if (theme == "darkcyan-cyan") {
+    themeForeground = TFT_DARKCYAN;
+    themeBackground = TFT_CYAN;
+  } else if (theme == "black-olive") {
+    themeForeground = TFT_BLACK;
+    themeBackground = TFT_OLIVE;
   } else if (theme == "darkgrey-lightgrey") {
     themeForeground = TFT_DARKGREY;
     themeBackground = TFT_LIGHTGREY;

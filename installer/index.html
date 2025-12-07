@@ -139,16 +139,23 @@
                 </select>
             </div>
             <div>
-                <label for="theme">Color choice</label>
+                <label for="theme">Color options</label>
                 <select name="theme" id="theme">
                     <option value="black-white" selected>BLACK & WHITE</option>
                     <option value="white-black">WHITE & BLACK</option>
+                    <option value="black-red">BLACK & RED</option>
+                    <option value="black-olive">BLACK & OLIVE</option>
+                    <option value="white-navy">WHITE & NAVY</option>
+                    <option value="white-darkcyan">WHITE & DARKCYAN</option>
                     <option value="green-red">GREEN & RED</option>
+                    <option value="red-green">RED & GREEN</option>
                     <option value="grey-blue">GREY & BLUE</option>
                     <option value="orange-brown">ORANGE & BROWN</option>
+                    <option value="orange-black">ORANGE & BLACK</option>
+                    <option value="brown-orange">BROWN & ORANGE</option>
                     <option value="brown-yellow">BROWN & YELLOW</option>
                     <option value="maroon-magenta">MAROON & MAGENTA</option>
-                    <option value="olive-navy">OLIVE & NAVY</option>
+                    <option value="darkcyan-cyan">DARKCYAN & CYAN</option>
                     <option value="darkgrey-lightgrey">DARK GREY & LIGHT GREY</option>
                 </select>
             </div>
@@ -486,52 +493,57 @@
                 return; // Exit early
             }
             
-            // Check if ESP32 is entering Serial Config Mode
-            // This can happen during initial connect OR after restart when BOOT button is pressed
-            if (!configModeVerified) {
+            // Check for explicit config mode status markers from ESP32
+            // Config mode sends [CONFIG_MODE_ENTER] when active and [CONFIG_MODE_EXIT] when leaving
+            const hasConfigModeEnter = newData.includes("[CONFIG_MODE_ENTER]");
+            
+            // Also check for ASCII art (fallback for /hello response on first connect)
+            const hasAsciiArt = !configModeVerified && (
+                newData.includes("____") || 
+                newData.includes("/_  /") || 
+                newData.includes("/___/")
+            );
+            
+            if (hasConfigModeEnter || hasAsciiArt) {
+                console.log("Config mode ENTERED - ESP32 in config mode!");
+                configModeVerified = true;
+                justRestarted = false; // Clear restart flag since we're now in config mode
                 
-                // Check for ASCII art response to /hello, config mode is active
-                const hasAsciiArt = newData.includes("____") || 
-                                   newData.includes("/_  /") || 
-                                   newData.includes("/___/");
-                
-                // Also check for explicit config mode entry messages
-                const hasConfigModeEntry = newData.includes("Config mode entering serial config") ||
-                                          newData.includes("Config mode screen displayed") ||
-                                          newData.includes("--- Serial Config Mode Active ---") ||
-                                          newData.includes("Serial Config Mode Active");
-                
-                if (hasAsciiArt || hasConfigModeEntry) {
-                    console.log("Config mode verified - ESP32 in config mode!");
-                    configModeVerified = true; // Set BEFORE doing anything else to prevent re-triggering!
-                    justRestarted = false; // Clear restart flag since we're now in config mode
-                    
-                    // Clear the timeouts
-                    if (helloSendTimeout) {
-                        clearTimeout(helloSendTimeout);
-                        helloSendTimeout = null;
-                    }
-                    if (configModeCheckTimeout) {
-                        clearTimeout(configModeCheckTimeout);
-                        configModeCheckTimeout = null;
-                    }
-                    
-                    // Wait 500ms for ASCII art to finish rendering, then show success message
-                    setTimeout(() => {
-                        const successMsg = document.createElement('span');
-                        successMsg.style.color = '#00ff00';
-                        successMsg.textContent = '\n✓ Config mode active\n';
-                        consoleDebug.appendChild(successMsg);
-                        consoleDebug.scrollTop = consoleDebug.scrollHeight;
-                    }, 500);
-                    
-                    // Enable buttons after verification
-                    document.getElementById("connect-button").disabled = true;
-                    document.getElementById("read-config-button").disabled = false;
-                    document.getElementById("write-config-button").disabled = false;
-                    document.getElementById("soft-reset-button").disabled = false;
-                    document.getElementById("restart-button").disabled = false;
+                // Clear the timeouts
+                if (helloSendTimeout) {
+                    clearTimeout(helloSendTimeout);
+                    helloSendTimeout = null;
                 }
+                if (configModeCheckTimeout) {
+                    clearTimeout(configModeCheckTimeout);
+                    configModeCheckTimeout = null;
+                }
+                
+                // Show success message
+                setTimeout(() => {
+                    const successMsg = document.createElement('span');
+                    successMsg.style.color = '#00ff00';
+                    successMsg.textContent = '\n✓ Config mode active\n';
+                    consoleDebug.appendChild(successMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                }, 300);
+                
+                // Enable buttons after verification
+                document.getElementById("connect-button").disabled = true;
+                document.getElementById("read-config-button").disabled = false;
+                document.getElementById("write-config-button").disabled = false;
+                document.getElementById("soft-reset-button").disabled = false;
+                document.getElementById("restart-button").disabled = false;
+            }
+            
+            // Check for config mode exit
+            if (newData.includes("[CONFIG_MODE_EXIT]")) {
+                console.log("Config mode EXITED - disabling config buttons");
+                configModeVerified = false;
+                
+                // Disable config buttons
+                document.getElementById("read-config-button").disabled = true;
+                document.getElementById("write-config-button").disabled = true;
             }
 
             // Accumulate serial data in buffer

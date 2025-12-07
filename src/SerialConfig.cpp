@@ -12,6 +12,7 @@ void configOverSerialPort(String wifiSSID, String wifiPass, bool hasExistingData
 void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 {
     Serial.println("\n--- Serial Config Mode Active ---");
+    Serial.println("[CONFIG_MODE_ENTER]");
     Serial.println("Waiting for commands...");
     Serial.flush();
 
@@ -31,6 +32,7 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
         if (hasExistingData && (millis() - lastActivity > inactivityTimeout))
         {
             Serial.println("\n--- Inactivity timeout (20s) - returning to QR screen ---");
+            Serial.println("[CONFIG_MODE_EXIT]");
             Serial.flush();
             delay(500);
             ESP.restart();
@@ -43,6 +45,7 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
             if (wifiWasDisconnected && WiFi.status() == WL_CONNECTED)
             {
                 Serial.println("\n--- WiFi reconnected! Restarting... ---");
+                Serial.println("[CONFIG_MODE_EXIT]");
                 Serial.flush();
                 delay(500);
                 ESP.restart();
@@ -113,6 +116,7 @@ void executeCommand(String commandName, String commandData)
     if (commandName == "/config-restart")
     {
         Serial.println("- Restarting ESP32...");
+        Serial.println("[CONFIG_MODE_EXIT]");
         Serial.flush();
         delay(500);
         ESP.restart();
@@ -121,6 +125,7 @@ void executeCommand(String commandName, String commandData)
     if (commandName == "/config-soft-reset")
     {
         Serial.println("- Soft reset: Restarting ESP32 (connection stays open)...");
+        Serial.println("[CONFIG_MODE_EXIT]");
         Serial.flush();
         delay(500);
         ESP.restart();
