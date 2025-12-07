@@ -58,9 +58,9 @@ void setThemeColors()
   } else if (theme == "brown-orange") {
     themeForeground = TFT_BROWN;
     themeBackground = TFT_ORANGE;
-  } else if (theme == "orange-black") {
-    themeForeground = TFT_ORANGE;
-    themeBackground = TFT_BLACK;
+  } else if (theme == "black-orange") {
+    themeForeground = TFT_BLACK;
+    themeBackground = TFT_ORANGE;
   } else if (theme == "white-darkcyan") {
     themeForeground = TFT_WHITE;
     themeBackground = TFT_DARKCYAN;
