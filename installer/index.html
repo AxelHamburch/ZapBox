@@ -486,17 +486,25 @@
                 return; // Exit early
             }
             
-            // Check if ESP32 is in Serial Config Mode (only once during initial connect!)
+            // Check if ESP32 is entering Serial Config Mode
+            // This can happen during initial connect OR after restart when BOOT button is pressed
             if (!configModeVerified) {
                 
-                // SECOND: If we receive the ASCII art response to /hello, config mode is active
+                // Check for ASCII art response to /hello, config mode is active
                 const hasAsciiArt = newData.includes("____") || 
                                    newData.includes("/_  /") || 
                                    newData.includes("/___/");
                 
-                if (hasAsciiArt) {
-                    console.log("Config mode verified - ESP32 responded with ASCII art!");
+                // Also check for explicit config mode entry messages
+                const hasConfigModeEntry = newData.includes("Config mode entering serial config") ||
+                                          newData.includes("Config mode screen displayed") ||
+                                          newData.includes("--- Serial Config Mode Active ---") ||
+                                          newData.includes("Serial Config Mode Active");
+                
+                if (hasAsciiArt || hasConfigModeEntry) {
+                    console.log("Config mode verified - ESP32 in config mode!");
                     configModeVerified = true; // Set BEFORE doing anything else to prevent re-triggering!
+                    justRestarted = false; // Clear restart flag since we're now in config mode
                     
                     // Clear the timeouts
                     if (helloSendTimeout) {
