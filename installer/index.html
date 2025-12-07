@@ -56,14 +56,15 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v926800/manifest.json">v926800 (Latest - Add options for color and special mode (blinking, etc.)) ✅</option>
+                <option value="./firmware/v926855/manifest.json">v926855 (Pre-Release - Moving forward..🚶)</option>
+                <option value="./firmware/v926800/manifest.json">v926800 (Latest Stable - Add options for color and special mode (blinking, etc.))</option>
                 <option value="./firmware/v926705/manifest.json">v926705 (Add Threshold Mode with configurable payment trigger)</option>
                 <option value="./firmware/v926666/manifest.json">v926666 (Add wss:// support for LNbits v1.3.1 and bS_extension v1.1.2)</option>
                 <option value="./firmware/v926561/manifest.json">v926561 (Fix some bugs and edit documentation)</option>
                 <option value="./firmware/v926531/manifest.json">v926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v926800/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v926855/manifest.json">
                 <button slot="activate">🔥 Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -147,7 +148,8 @@
                     <option value="black-olive">BLACK & OLIVE</option>
                     <option value="white-navy">WHITE & NAVY</option>
                     <option value="white-darkcyan">WHITE & DARKCYAN</option>
-                    <option value="green-red">GREEN & RED</option>
+                    <option value="darkgreen-green">DARKGREEN & GREEN</option>
+                    <option value="darkgreen-lightgrey">DARKGREEN & LIGHTGREY</option>
                     <option value="red-green">RED & GREEN</option>
                     <option value="grey-blue">GREY & BLUE</option>
                     <option value="orange-brown">ORANGE & BROWN</option>
@@ -494,17 +496,28 @@
             }
             
             // Check for explicit config mode status markers from ESP32
-            // Config mode sends [CONFIG_MODE_ENTER] when active and [CONFIG_MODE_EXIT] when leaving
+            // Multiple fallbacks to ensure reliable detection:
+            // 1. [CONFIG_MODE_ENTER] marker (primary)
+            // 2. ASCII art from /hello response
+            // 3. "Config mode triggered" log line
+            // 4. "Config mode screen displayed" log line (always appears when CONF screen is shown)
+            // 5. "--- Serial Config Mode Active ---" log line
             const hasConfigModeEnter = newData.includes("[CONFIG_MODE_ENTER]");
             
-            // Also check for ASCII art (fallback for /hello response on first connect)
             const hasAsciiArt = !configModeVerified && (
                 newData.includes("____") || 
                 newData.includes("/_  /") || 
                 newData.includes("/___/")
             );
             
-            if (hasConfigModeEnter || hasAsciiArt) {
+            const hasConfigTriggerLog = !configModeVerified && (
+                newData.includes("Config mode triggered") ||
+                newData.includes("Config mode screen displayed") ||
+                newData.includes("entering serial config") ||
+                newData.includes("--- Serial Config Mode Active ---")
+            );
+            
+            if ((hasConfigModeEnter || hasAsciiArt || hasConfigTriggerLog) && !configModeVerified) {
                 console.log("Config mode ENTERED - ESP32 in config mode!");
                 configModeVerified = true;
                 justRestarted = false; // Clear restart flag since we're now in config mode

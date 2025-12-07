@@ -31,9 +31,12 @@ void setThemeColors()
   } else if (theme == "white-black") {
     themeForeground = TFT_WHITE;
     themeBackground = TFT_BLACK;
-  } else if (theme == "green-red") {
-    themeForeground = TFT_GREEN;
-    themeBackground = TFT_RED;
+  } else if (theme == "darkgreen-green") {
+    themeForeground = TFT_DARKGREEN;
+    themeBackground = TFT_GREEN;
+  } else if (theme == "darkgreen-lightgrey") {
+    themeForeground = TFT_DARKGREEN;
+    themeBackground = TFT_LIGHTGREY;
   } else if (theme == "red-green") {
     themeForeground = TFT_RED;
     themeBackground = TFT_GREEN;
