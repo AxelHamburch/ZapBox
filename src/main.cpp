@@ -43,7 +43,6 @@ bool inConfigMode = false;
 bool inReportMode = false;
 bool setupComplete = false; // Prevent loop from running before setup finishes
 bool firstLoop = true; // Track first loop iteration
-// int relayPin;
 
 // Error counters (0-9, capped at 9)
 byte wifiErrorCount = 0;
@@ -447,9 +446,8 @@ void checkAndReconnectWiFi()
 void configMode()
 {
   Serial.println("Config mode triggered");
-  inConfigMode = true;
-  delay(100); // Give loop() time to check the flag
-  configModeScreen();
+  configModeScreen(); // Draw config screen IMMEDIATELY
+  inConfigMode = true; // Then set flag
   Serial.println("Config mode screen displayed, entering serial config...");
   bool hasExistingData = (ssid.length() > 0);
   Serial.printf("Has existing data: %s\n", hasExistingData ? "YES" : "NO");
@@ -458,6 +456,12 @@ void configMode()
 
 void reportMode()
 {
+  // Ignore if we just entered config mode (prevents triggering on button release)
+  if (inConfigMode) {
+    Serial.println("[REPORT] Ignored - in config mode");
+    return;
+  }
+  
   Serial.println("[REPORT] Report mode activated");
   errorReportScreen(wifiErrorCount, internetErrorCount, websocketErrorCount);
   delay(4200);
@@ -514,11 +518,6 @@ void setup()
   Serial.setRxBufferSize(2048); // Increased for long JSON with LNURL
   Serial.begin(115200);
 
-  // Check BOOT button IMMEDIATELY at the very start to block loop() before it runs
-  if (digitalRead(PIN_BUTTON_1) == LOW) {
-    inConfigMode = true; // Set flag immediately to block loop()
-  }
-
   int timer = 0;
 
   pinMode(PIN_POWER_ON, OUTPUT);
@@ -526,33 +525,6 @@ void setup()
 
   FFat.begin(FORMAT_ON_FAIL);
   readFiles(); // get the saved details and store in global variables
-
-  // Check if BOOT button is already pressed at startup for immediate config mode
-  // Do this BEFORE showing any screen to avoid flashing the startup screen
-  int bootButtonHoldTime = 0;
-  while (digitalRead(PIN_BUTTON_1) == LOW && bootButtonHoldTime < 5000) {
-    delay(100);
-    bootButtonHoldTime += 100;
-    if (bootButtonHoldTime >= 5000) {
-      Serial.println("BOOT button held at startup - entering config mode immediately");
-      initDisplay();
-      // Immediately clear any previous screen content (QR code from last run)
-      delay(1); // Tiny delay to ensure display is ready
-      configModeScreen();
-      Serial.println("Config mode screen displayed, entering serial config...");
-      bool hasExistingData = (ssid.length() > 0);
-      Serial.printf("Has existing data: %s\n", hasExistingData ? "YES" : "NO");
-      configOverSerialPort(ssid, wifiPassword, hasExistingData);
-      // Config mode handles restart internally, just wait here
-      Serial.println("Config mode finished - waiting for restart...");
-      while(true) { delay(1000); } // Infinite loop, restart happens from configMode or timeout
-    }
-  }
-  
-  // If button was released before 5 seconds, reset the flag
-  if (inConfigMode && digitalRead(PIN_BUTTON_1) == HIGH) {
-    inConfigMode = false;
-  }
 
   initDisplay();
   startupScreen();
@@ -642,8 +614,9 @@ void loop()
 
   payloadStr = "";
   
-  // On first loop, wait a bit to allow button press for config mode
-  int waitIterations = firstLoop ? 10 : 20; // 1s first time, 2s after
+  // On first loop, wait longer to allow button press for config mode
+  // This prevents QR screen from showing before user can press button
+  int waitIterations = firstLoop ? 30 : 20; // 3s first time, 2s after
   firstLoop = false;
   
   // Wait but check for button presses every 100ms
