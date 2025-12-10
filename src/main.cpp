@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebSocketsClient.h>
+#include <HTTPClient.h>
 #include <OneButton.h>
 #include <ArduinoJson.h>
 #include "FS.h"
@@ -38,16 +39,24 @@ String payloadStr;
 String lnbitsServer;
 String deviceId;
 bool paid = false;
-byte testState = 0;
 bool inConfigMode = false;
 bool inReportMode = false;
+bool inHelpMode = false;
 bool setupComplete = false; // Prevent loop from running before setup finishes
 bool firstLoop = true; // Track first loop iteration
 
-// Error counters (0-9, capped at 9)
-byte wifiErrorCount = 0;
-byte internetErrorCount = 0;
-byte websocketErrorCount = 0;
+// Error counters (0-99, capped at 99)
+uint8_t wifiErrorCount = 0;
+uint8_t internetErrorCount = 0;
+uint8_t serverErrorCount = 0;
+uint8_t websocketErrorCount = 0;
+
+// Error screen tracking
+bool onErrorScreen = false;
+byte currentErrorType = 0; // 0=none, 1=WiFi (highest), 2=Internet, 3=Server, 4=WebSocket (lowest)
+unsigned long lastPingTime = 0;
+unsigned long lastInternetCheck = 0; // Track when we last checked Internet connectivity
+byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures to detect Internet issues
 
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
@@ -393,34 +402,90 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
   }
 }
 
+// HTTP-based Internet check (doesn't require WebSocket connection)
+bool checkInternetConnectivity()
+{
+  HTTPClient http;
+  http.setTimeout(3000); // 3 second timeout
+  
+  Serial.println("[HTTP] Testing Internet connection...");
+  http.begin("http://clients3.google.com/generate_204"); // Google's connectivity check
+  
+  int httpCode = http.GET();
+  http.end();
+  
+  bool hasInternet = (httpCode == 204 || httpCode == 301 || httpCode == 302 || httpCode > 0);
+  Serial.printf("[HTTP] Internet check result: %s (HTTP code: %d)\n", hasInternet ? "OK" : "FAILED", httpCode);
+  
+  return hasInternet;
+}
+
+// TCP-based Server reachability check (test if LNbits server port is open)
+bool checkServerReachability()
+{
+  WiFiClient client;
+  Serial.printf("[TCP] Testing server reachability: %s:443...\n", lnbitsServer.c_str());
+  
+  bool serverReachable = client.connect(lnbitsServer.c_str(), 443, 3000); // 3 second timeout
+  
+  if (serverReachable) {
+    Serial.println("[TCP] Server is reachable (port 443 open)");
+    client.stop();
+  } else {
+    Serial.println("[TCP] Server is NOT reachable (port 443 closed/timeout)");
+  }
+  
+  return serverReachable;
+}
+
 void checkAndReconnectWiFi()
 {
   if (WiFi.status() != WL_CONNECTED && !inConfigMode)
   {
     Serial.println("WiFi connection lost! Reconnecting...");
-    if (wifiErrorCount < 9) wifiErrorCount++;
+    if (wifiErrorCount < 99) wifiErrorCount++;
     Serial.printf("[ERROR] WiFi error count: %d\n", wifiErrorCount);
+    onErrorScreen = true;
+    currentErrorType = 1; // WiFi error (highest priority)
     wifiReconnectScreen();
     
     // Keep trying to reconnect forever (unless config mode is triggered)
     while (WiFi.status() != WL_CONNECTED && !inConfigMode)
     {
       WiFi.disconnect();
-      WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN); // Force scanning for all APs, not just the first one
+      vTaskDelay(pdMS_TO_TICKS(50)); // Brief delay for button task
+      
+      WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
       WiFi.begin(ssid.c_str(), wifiPassword.c_str());
       
-      int reconnectTimer = 0;
-      while (WiFi.status() != WL_CONNECTED && reconnectTimer < 10000 && !inConfigMode)
+      unsigned long reconnectStartTime = millis();
+      unsigned long lastDotTime = millis();
+      while (WiFi.status() != WL_CONNECTED && (millis() - reconnectStartTime) < 10000 && !inConfigMode)
       {
-        delay(500);
-        Serial.print(".");
-        reconnectTimer += 500;
+        // If Help or Report button pressed, wait for them to finish
+        if (inHelpMode || inReportMode) {
+          Serial.println("\nButton pressed, pausing WiFi reconnect...");
+          while (inHelpMode || inReportMode) {
+            vTaskDelay(pdMS_TO_TICKS(100)); // Wait for button action to complete
+          }
+          Serial.println("Button action complete, resuming WiFi reconnect");
+          // Reset timer after button action
+          reconnectStartTime = millis();
+          lastDotTime = millis();
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(100)); // Allow button task to run
+        
+        // Print dot every 500ms
+        if (millis() - lastDotTime >= 500) {
+          Serial.print(".");
+          lastDotTime = millis();
+        }
       }
       
-      // Exit if config mode was triggered
-      if (inConfigMode)
-      {
-        Serial.println("\nConfig mode triggered during WiFi reconnect!");
+      // Check if config mode was triggered during wait
+      if (inConfigMode) {
+        Serial.println("\nConfig mode triggered during WiFi reconnect");
         break;
       }
       
@@ -428,16 +493,51 @@ void checkAndReconnectWiFi()
       {
         Serial.println("\nWiFi reconnected!");
         
+        // IMPORTANT: Check if Internet is still available
+        Serial.println("[RECOVERY] Checking Internet after WiFi reconnect...");
+        bool hasInternet = checkInternetConnectivity();
+        
+        if (!hasInternet) {
+          // Internet still down - show Internet error
+          Serial.println("[RECOVERY] Internet still down!");
+          internetReconnectScreen();
+          onErrorScreen = true;
+          currentErrorType = 2; // Internet error
+          break; // Exit WiFi reconnect loop but keep error screen
+        }
+        
+        // Internet OK - check Server
+        Serial.println("[RECOVERY] Internet OK, checking Server...");
+        bool serverReachable = checkServerReachability();
+        
+        if (!serverReachable) {
+          // Server still down - show Server error
+          Serial.println("[RECOVERY] Server still down!");
+          serverReconnectScreen();
+          onErrorScreen = true;
+          currentErrorType = 3; // Server error
+          // Try to connect WebSocket anyway (will fail but that's expected)
+        } else {
+          // Server OK - clear error and reconnect WebSocket
+          Serial.println("[RECOVERY] Server OK, reconnecting WebSocket...");
+          onErrorScreen = false;
+          currentErrorType = 0;
+        }
+        
         // Reconnect WebSocket after WiFi is back
         webSocket.disconnect();
-        delay(100);
-        webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
-        Serial.println("WebSocket reconnected!");
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if (thresholdKey.length() > 0) {
+          webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + thresholdKey);
+        } else {
+          webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+        }
         break;
       }
       else
       {
         Serial.println("\nRetrying WiFi connection...");
+        vTaskDelay(pdMS_TO_TICKS(100)); // Brief delay before next attempt
       }
     }
   }
@@ -445,7 +545,7 @@ void checkAndReconnectWiFi()
 
 void configMode()
 {
-  Serial.println("Config mode triggered");
+  Serial.println("[BUTTON] Config mode button pressed");
   configModeScreen(); // Draw config screen IMMEDIATELY
   inConfigMode = true; // Then set flag
   Serial.println("Config mode screen displayed, entering serial config...");
@@ -462,45 +562,79 @@ void reportMode()
     return;
   }
   
-  Serial.println("[REPORT] Report mode activated");
-  errorReportScreen(wifiErrorCount, internetErrorCount, websocketErrorCount);
-  delay(4200);
-  wifiReconnectScreen();
-  delay(2100);
-  internetReconnectScreen();
-  delay(2100);
-  websocketReconnectScreen();
-  delay(2100);
+  Serial.println("[BUTTON] Report mode button pressed");
+  inReportMode = true; // Set flag to interrupt WiFi reconnect loop
   
-  // Show QR screen again immediately
-  if (thresholdKey.length() > 0) {
-    showThresholdQRScreen();
-  } else if (specialMode != "standard") {
-    showSpecialModeQRScreen();
+  errorReportScreen(wifiErrorCount, internetErrorCount, serverErrorCount, websocketErrorCount);
+  vTaskDelay(pdMS_TO_TICKS(4200));
+  wifiReconnectScreen();
+  vTaskDelay(pdMS_TO_TICKS(2100));
+  internetReconnectScreen();
+  vTaskDelay(pdMS_TO_TICKS(2100));
+  serverReconnectScreen();
+  vTaskDelay(pdMS_TO_TICKS(2100));
+  websocketReconnectScreen();
+  vTaskDelay(pdMS_TO_TICKS(2100));
+  
+  // Show appropriate screen based on current error state
+  if (onErrorScreen) {
+    // Check which error is active and show corresponding screen (priority order)
+    if (WiFi.status() != WL_CONNECTED) {
+      wifiReconnectScreen();
+    } else if (!checkInternetConnectivity()) {
+      internetReconnectScreen();
+    } else if (waitingForPong && (millis() - lastPingTime > 10000)) {
+      serverReconnectScreen();
+    } else if (!webSocket.isConnected()) {
+      websocketReconnectScreen();
+    }
   } else {
-    showQRScreen();
+    // No error active, show QR screen
+    if (thresholdKey.length() > 0) {
+      showThresholdQRScreen();
+    } else if (specialMode != "standard") {
+      showSpecialModeQRScreen();
+    } else {
+      showQRScreen();
+    }
   }
   
-  inReportMode = true;
-  // Flag will cause loop to restart
+  inReportMode = false; // Clear flag AFTER showing final screen
 }
 
 void showHelp()
 {
-  stepOneScreen();
-  delay(3000);
-  stepTwoScreen();
-  delay(3000);
-  stepThreeScreen();
-  delay(3000);
+  Serial.println("[BUTTON] Help button pressed");
+  inHelpMode = true; // Set flag to interrupt WiFi reconnect loop
   
-  // Show appropriate screen based on mode
-  if (thresholdKey.length() > 0) {
-    showThresholdQRScreen();
-  } else if (specialMode != "standard") {
-    showSpecialModeQRScreen();
+  stepOneScreen();
+  vTaskDelay(pdMS_TO_TICKS(3000));
+  stepTwoScreen();
+  vTaskDelay(pdMS_TO_TICKS(3000));
+  stepThreeScreen();
+  vTaskDelay(pdMS_TO_TICKS(3000));
+  
+  inHelpMode = false; // Clear flag
+  
+  // Return to error screen if one was active, otherwise show QR screen
+  if (onErrorScreen) {
+    // Check which error is active and show corresponding screen
+    if (WiFi.status() != WL_CONNECTED) {
+      wifiReconnectScreen();
+    } else if (waitingForPong && (millis() - lastPingTime > 10000)) {
+      internetReconnectScreen();
+    } else if (!webSocket.isConnected()) {
+      websocketReconnectScreen();
+    }
   } else {
-    showQRScreen();
+    // No error active, show QR screen
+    if (thresholdKey.length() > 0) {
+      showThresholdQRScreen();
+    } else if (specialMode != "standard") {
+      showSpecialModeQRScreen();
+    } else {
+      showQRScreen();
+    }
   }
 }
 
@@ -510,6 +644,7 @@ void Task1code(void *pvParameters)
   {
     leftButton.tick();
     rightButton.tick();
+    vTaskDelay(pdMS_TO_TICKS(10)); // 10ms delay - allows other tasks and proper button debouncing
   }
 }
 
@@ -529,6 +664,25 @@ void setup()
   initDisplay();
   startupScreen();
 
+  // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
+  leftButton.setPressTicks(3000); // 3 seconds for config mode (documented as 5 sec for users)
+  leftButton.setDebounceTicks(50); // 50ms debounce to prevent accidental report mode
+  leftButton.attachClick(reportMode);
+  leftButton.attachLongPressStart(configMode);
+  rightButton.setDebounceTicks(50); // 50ms debounce
+  rightButton.attachClick(showHelp);
+
+  xTaskCreatePinnedToCore(
+      Task1code, /* Function to implement the task */
+      "Task1",   /* Name of the task */
+      10000,     /* Stack size in words */
+      NULL,      /* Task input parameter */
+      1,         /* Priority of the task (increased from 0 to 1) */
+      &Task1,    /* Task handle. */
+      0);        /* Core where the task should run */
+  
+  Serial.println("Button task created - config mode available");
+
   WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN); // Force scanning for all APs, not just the first one
   WiFi.begin(ssid.c_str(), wifiPassword.c_str());
   Serial.print("Connecting to WiFi");
@@ -536,7 +690,7 @@ void setup()
   // Wait for WiFi connection, showing startup screen
   while (WiFi.status() != WL_CONNECTED && timer < 15000)
   {
-    delay(500);
+    vTaskDelay(pdMS_TO_TICKS(500));
     Serial.print(".");
     timer = timer + 500;
   }
@@ -576,19 +730,7 @@ void setup()
   webSocket.onEvent(webSocketEvent);
   webSocket.setReconnectInterval(1000);
 
-  leftButton.setPressTicks(2000); // 2 seconds for config mode
-  leftButton.attachClick(reportMode);
-  leftButton.attachLongPressStart(configMode);
-  rightButton.attachClick(showHelp);
-
-  xTaskCreatePinnedToCore(
-      Task1code, /* Function to implement the task */
-      "Task1",   /* Name of the task */
-      10000,     /* Stack size in words */
-      NULL,      /* Task input parameter */
-      0,         /* Priority of the task */
-      &Task1,    /* Task handle. */
-      0);        /* Core where the task should run */
+  // Button task already created earlier (before WiFi setup)
   
   setupComplete = true; // Allow loop to run now
 }
@@ -598,14 +740,14 @@ void loop()
   // Wait for setup to complete before running loop
   if (!setupComplete)
   {
-    delay(100);
+    vTaskDelay(pdMS_TO_TICKS(100));
     return;
   }
   
   // If in config mode, do nothing - config mode is handled by button interrupt
   if (inConfigMode)
   {
-    delay(100);
+    vTaskDelay(pdMS_TO_TICKS(100));
     return;
   }
   
@@ -622,28 +764,36 @@ void loop()
   // Wait but check for button presses every 100ms
   // This allows quick config mode entry without showing QR screen first
   for (int i = 0; i < waitIterations; i++) {
-    delay(100);
+    vTaskDelay(pdMS_TO_TICKS(100));
     if (inConfigMode) return; // Exit immediately if config mode triggered
   }
   
   if (inConfigMode) return; // Final check before drawing screen
   
-  // Show appropriate QR screen based on mode
-  if (thresholdKey.length() > 0) {
-    showThresholdQRScreen(); // THRESHOLD MODE
-  } else if (specialMode != "standard") {
-    showSpecialModeQRScreen(); // SPECIAL MODE
+  // CRITICAL: Only show QR screen if no error is active AND not in report mode!
+  if (!onErrorScreen && !inReportMode) {
+    Serial.println("[SCREEN] Showing QR code screen (READY FOR ACTION)");
+    if (thresholdKey.length() > 0) {
+      showThresholdQRScreen(); // THRESHOLD MODE
+    } else if (specialMode != "standard") {
+      showSpecialModeQRScreen(); // SPECIAL MODE
+    } else {
+      showQRScreen(); // NORMAL MODE
+    }
+  } else if (inReportMode) {
+    Serial.println("[SCREEN] Skipping QR screen - in report mode");
   } else {
-    showQRScreen(); // NORMAL MODE
+    Serial.printf("[SCREEN] Skipping QR screen - error active (type %d)\n", currentErrorType);
   }
 
   unsigned long lastWiFiCheck = millis();
-  unsigned long lastPingTime = millis();
+  lastPingTime = millis(); // Initialize global variable
   unsigned long loopCount = 0;
-  bool onErrorScreen = false;
+  // Don't reset onErrorScreen/currentErrorType - they should persist across loop iterations
   
   Serial.println("[LOOP] Entering payment wait loop...");
   Serial.printf("[LOOP] Initial paid state: %d\n", paid);
+  Serial.printf("[LOOP] Error state: onErrorScreen=%d, currentErrorType=%d\n", onErrorScreen, currentErrorType);
   
   // Initialize ping/pong tracking
   lastPongTime = millis();
@@ -651,14 +801,6 @@ void loop()
   
   while (paid == false)
   {
-    // Check if report mode was triggered - return to show QR screen again
-    if (inReportMode)
-    {
-      Serial.println("[REPORT] Report mode finished, restarting loop");
-      inReportMode = false;
-      return;
-    }
-    
     // Check if config mode was triggered during payment wait
     if (inConfigMode)
     {
@@ -676,8 +818,27 @@ void loop()
                     WiFi.status() == WL_CONNECTED, webSocket.isConnected(), paid);
     }
     
-    // Send ping every 60 seconds to check if connection is really alive
-    if (millis() - lastPingTime > 60000 && !inConfigMode)
+    // Check Internet connectivity every 30 seconds (independent of WebSocket)
+    if (millis() - lastInternetCheck > 30000 && !inConfigMode)
+    {
+      if (WiFi.status() == WL_CONNECTED) {
+        bool hasInternet = checkInternetConnectivity();
+        if (!hasInternet && !onErrorScreen) {
+          Serial.println("[INTERNET] Internet connection lost!");
+          if (internetErrorCount < 99) internetErrorCount++;
+          Serial.printf("[ERROR] Internet error count: %d\n", internetErrorCount);
+          internetReconnectScreen();
+          onErrorScreen = true;
+          currentErrorType = 2; // Internet error
+          webSocket.disconnect();
+        }
+        lastInternetCheck = millis();
+      }
+    }
+    
+    // Send ping every 60 seconds to check if WebSocket connection is really alive
+    // Only if WebSocket is connected!
+    if (webSocket.isConnected() && millis() - lastPingTime > 60000 && !inConfigMode)
     {
       Serial.println("[PING] Sending WebSocket ping to verify connection...");
       webSocket.sendPing();
@@ -685,101 +846,140 @@ void loop()
       waitingForPong = true;
     }
     
-    // Check if pong response is missing (connection might be dead - no internet/server)
-    if (waitingForPong && (millis() - lastPingTime > 10000) && !inConfigMode)
-    {
-      Serial.println("[PING] No pong response for 10 seconds - no internet connection!");
-      if (!onErrorScreen)
-      {
-        if (internetErrorCount < 9) internetErrorCount++;
-        Serial.printf("[ERROR] Internet error count: %d\n", internetErrorCount);
-        internetReconnectScreen(); // Show "NO INTERNET" screen
-        onErrorScreen = true;
-      }
-      // Force disconnect to trigger reconnect logic
-      webSocket.disconnect();
-      waitingForPong = false;
-    }
-    
-    // Check WiFi and WebSocket every 5 seconds while waiting for payment
+    // Check WiFi, Server and WebSocket every 5 seconds while waiting for payment
+    // Note: Internet is checked separately every 30 seconds
     if (millis() - lastWiFiCheck > 5000)
     {
-      Serial.println("[CHECK] Performing 5-second check...");
+      // Check connection status step by step
+      bool wifiOk = (WiFi.status() == WL_CONNECTED);
+      bool serverOk = true;
+      bool websocketOk = webSocket.isConnected();
       
-      // Check if WiFi is still connected
-      if (WiFi.status() != WL_CONNECTED && !inConfigMode)
+      // Step 1: WiFi check (always)
+      if (!wifiOk) {
+        // WiFi down - skip all other checks
+        serverOk = false;
+        websocketOk = false;
+      }
+      // Step 2: WebSocket NOT connected - check Server
+      else if (!websocketOk) {
+        // WiFi OK but WebSocket not connected - check if Server is reachable
+        serverOk = checkServerReachability();
+        if (!serverOk) {
+          // Server down - WebSocket can't connect (that's expected)
+          websocketOk = false;
+        }
+        // If server OK but WebSocket not connected → WebSocket problem (checked later)
+      }
+      
+      // Handle errors by priority: WiFi (1) > Internet (2) > Server (3) > WebSocket (4)
+      // Note: Internet errors are handled in the 30-second check above
+      
+      if (!wifiOk && !inConfigMode)
       {
-        Serial.println("[CHECK] WiFi lost, attempting reconnect...");
-        // WiFi lost, try to reconnect
+        currentErrorType = 1; // WiFi error (highest priority)
         checkAndReconnectWiFi();
-        if (inConfigMode) return; // Exit if we entered config mode
-        // After reconnect, restart loop to show QR screen again
+        if (inConfigMode) return;
         return;
       }
       
-      // Check if WebSocket is still connected (only if WiFi is OK)
-      if (!webSocket.isConnected() && WiFi.status() == WL_CONNECTED && !inConfigMode)
+      if (wifiOk && !serverOk && !inConfigMode)
       {
-        if (!onErrorScreen)
+        // Server not reachable (TCP port check failed)
+        // IMPORTANT: Skip if Internet error (type 2) is active - higher priority!
+        if (onErrorScreen && currentErrorType == 2)
         {
-          Serial.println("[CHECK] WebSocket disconnected! Attempting reconnect...");
-          if (websocketErrorCount < 9) websocketErrorCount++;
-          Serial.printf("[ERROR] WebSocket error count: %d\n", websocketErrorCount);
-          websocketReconnectScreen();
-          onErrorScreen = true;
+          // Internet error has higher priority - don't show Server error
+          Serial.println("Server check skipped - Internet error has higher priority");
+          return;
         }
         
-        // Try to reconnect WebSocket up to 5 times (or until config mode is triggered)
-        int reconnectAttempts = 0;
-        while (!webSocket.isConnected() && reconnectAttempts < 5 && WiFi.status() == WL_CONNECTED && !inConfigMode)
+        // Only show/update Server error if no higher priority error
+        if (!onErrorScreen || currentErrorType >= 3)
         {
+          Serial.println("Server not reachable (TCP port 443 closed/timeout)");
+          if (serverErrorCount < 99) serverErrorCount++;
+          Serial.printf("[ERROR] Server error count: %d\n", serverErrorCount);
+          serverReconnectScreen();
+          onErrorScreen = true;
+          currentErrorType = 3; // Server error
+        }
+        // Note: WebSocket can't connect if server is down - that's expected
+        webSocket.disconnect();
+        waitingForPong = false;
+        return;
+      }
+      
+      if (wifiOk && serverOk && !websocketOk && !inConfigMode)
+      {
+        // WebSocket error - only if WiFi AND Server are OK
+        // IMPORTANT: Skip if higher priority error (Internet=2 or Server=3) is active!
+        if (onErrorScreen && currentErrorType < 4)
+        {
+          // Higher priority error (WiFi/Internet/Server) - don't show WebSocket error
+          Serial.println("WebSocket check skipped - higher priority error active");
+          return;
+        }
+        
+        // Only show/update WebSocket error if no higher priority error
+        if (!onErrorScreen || currentErrorType >= 4)
+        {
+          Serial.println("WebSocket disconnected, attempting reconnect...");
+        }
+        
+        // Try to reconnect WebSocket (up to 3 attempts)
+        int reconnectAttempts = 0;
+        int sslErrorCount = 0; // Count SSL connection errors (detected by error events)
+        
+        while (!webSocket.isConnected() && reconnectAttempts < 3 && !inConfigMode)
+        {
+          if (WiFi.status() != WL_CONNECTED || inConfigMode) return;
+          
           webSocket.disconnect();
-          delay(500);
+          vTaskDelay(pdMS_TO_TICKS(500));
           
-          // Exit if config mode was triggered
-          if (inConfigMode)
-          {
-            Serial.println("[WS] Config mode triggered during WebSocket reconnect!");
-            return;
-          }
+          reconnectAttempts++;
+          Serial.printf("WebSocket reconnect attempt %d/3\n", reconnectAttempts);
           
-          Serial.printf("[WS] Reconnect attempt %d/5...\n", reconnectAttempts + 1);
-          
-          // Reconnect based on mode
           if (thresholdKey.length() > 0) {
             webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + thresholdKey);
           } else {
             webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
           }
           
-          delay(2000); // Wait for connection
-          reconnectAttempts++;
+          // Wait for connection to establish (2 seconds)
+          vTaskDelay(pdMS_TO_TICKS(2000));
         }
         
         if (webSocket.isConnected())
         {
-          Serial.println("[WS] Reconnected successfully!");
+          Serial.println("WebSocket reconnected successfully");
           onErrorScreen = false;
-          // Return to restart loop and show QR screen again
+          currentErrorType = 0;
           return;
         }
         else
         {
-          Serial.println("[WS] Reconnect failed, will retry in 5 seconds...");
-          // Stay on websocket error screen, will retry in next 5-second check
+          // WebSocket reconnect failed after 3 attempts
+          Serial.printf("WebSocket reconnect failed after %d attempts\n", reconnectAttempts);
+          if (websocketErrorCount < 99) websocketErrorCount++;
+          Serial.printf("[ERROR] WebSocket error count: %d\n", websocketErrorCount);
+          websocketReconnectScreen();
+          currentErrorType = 4;
+          onErrorScreen = true;
+          return;
         }
       }
-      else if (webSocket.isConnected() && onErrorScreen)
+      
+      // Auto-recovery: All connections restored
+      if (onErrorScreen && wifiOk && serverOk && websocketOk)
       {
-        // WebSocket came back (maybe through library's auto-reconnect)
-        Serial.println("[CHECK] WebSocket reconnected automatically!");
+        Serial.println("All connections recovered");
         onErrorScreen = false;
-        // Return to restart loop and show QR screen again
+        currentErrorType = 0;
+        consecutiveWebSocketFailures = 0; // Reset failure counter
+        waitingForPong = false;
         return;
-      }
-      else if (webSocket.isConnected())
-      {
-        Serial.println("[CHECK] WebSocket is connected OK");
       }
       
       lastWiFiCheck = millis();

@@ -12,7 +12,7 @@
     <!-- Open Graph -->
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="⚡️ZAPBOX WEB INSTALLER" />
+    <meta property="og:title" content="ZAPBOX⚡️WEB INSTALLER" />
     <meta property="og:description"
         content="Flash & config your ZapBox from the browser" />
     <meta property="og:url" content="https://ereignishorizont.xyz/ZapBox/" />
@@ -21,7 +21,7 @@
     <!-- Twitter Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://ereignishorizont.xyz/ZapBox">
-    <meta name="twitter:title" content="⚡️ZAPBOX WEB INSTALLER" />
+    <meta name="twitter:title" content="ZAPBOX⚡️WEB INSTALLER" />
     <meta name="twitter:description" content="Flash & config your ZapBox from the browser">
     <meta name="twitter:image" content="https://ereignishorizont.xyz/ZapBox/assets/zapbox-social.webp" />
 
@@ -40,7 +40,7 @@
             </p>
         </noscript>
 
-        <h1 style="margin-bottom: 5px; display: inline-block;">⚡️ZAPBOX WEB INSTALLER</h1>
+        <h1 style="margin-bottom: 5px; display: inline-block;">ZAPBOX⚡️WEB INSTALLER</h1>
         <p style="display: inline-block; margin: 0 0 0 10px; vertical-align: baseline;"><i>(Use with LILYGO T-Display-S3)</i></p>
         <div style="margin-bottom: 30px;"></div>
 
@@ -56,6 +56,7 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
+                <option value="./firmware/v927292/manifest.json">v927292 (4-step error handling and more cool stuff 🤙)</option>
                 <option value="./firmware/v926855/manifest.json">v926855 (Pre-Release - Moving forward..🚶)</option>
                 <option value="./firmware/v926800/manifest.json">v926800 (Latest Stable - Add options for color and special mode (blinking, etc.))</option>
                 <option value="./firmware/v926705/manifest.json">v926705 (Add Threshold Mode with configurable payment trigger)</option>
@@ -64,7 +65,7 @@
                 <option value="./firmware/v926531/manifest.json">v926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v926855/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v927292/manifest.json">
                 <button slot="activate">🔥 Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -422,7 +423,7 @@
                     timeoutMsg.textContent = '⚠️ Timeout - Device not in config mode\n';
                     consoleDebug.appendChild(timeoutMsg);
                     consoleDebug.scrollTop = consoleDebug.scrollHeight;
-                    alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 2-3 seconds, or\n- Flashing fresh firmware with empty config");
+                    alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 5 seconds, or\n- Flashing fresh firmware with empty config");
                     serial.close();
                 }
             }, 3000);
