@@ -666,8 +666,10 @@ void setup()
 
   // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
   leftButton.setPressTicks(3000); // 3 seconds for config mode (documented as 5 sec for users)
+  leftButton.setDebounceTicks(50); // 50ms debounce to prevent accidental report mode
   leftButton.attachClick(reportMode);
   leftButton.attachLongPressStart(configMode);
+  rightButton.setDebounceTicks(50); // 50ms debounce
   rightButton.attachClick(showHelp);
 
   xTaskCreatePinnedToCore(
