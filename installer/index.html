@@ -422,7 +422,7 @@
                     timeoutMsg.textContent = '⚠️ Timeout - Device not in config mode\n';
                     consoleDebug.appendChild(timeoutMsg);
                     consoleDebug.scrollTop = consoleDebug.scrollHeight;
-                    alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 2-3 seconds, or\n- Flashing fresh firmware with empty config");
+                    alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 5 seconds, or\n- Flashing fresh firmware with empty config");
                     serial.close();
                 }
             }, 3000);

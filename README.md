@@ -36,6 +36,37 @@ See the complete wiring diagram: [E-Layout-ZapBox-Compact.png](assets/electric-l
   - Hold 5 seconds = Configuration mode (serial config interface)
 - **Right Button (HELP)**: Show help page with instructions
 
+### Error Detection & Priority System
+
+The ZapBox features a hierarchical error detection system with automatic diagnostics:
+
+| Priority | Error Type | Abbreviation | Detection Method | Description |
+|----------|-----------|--------------|------------------|-------------|
+| 1 (Highest) | **NO WIFI** | NW | WiFi connection status | WiFi network not connected |
+| 2 | **NO INTERNET** | NI | HTTP check to Google | Internet connectivity lost |
+| 3 | **NO SERVER** | NS | TCP port 443 check | LNbits server unreachable |
+| 4 (Lowest) | **NO WEBSOCKET** | NWS | WebSocket connection status | WebSocket protocol/handshake failure |
+
+**Error Detection Logic:**
+- Each error level is only checked if all higher priority levels are OK
+- Higher priority errors override lower priority error displays
+- **WiFi down** → All other checks skipped, shows "NO WIFI"
+- **WiFi OK, Internet down** → Server/WebSocket checks skipped, shows "NO INTERNET"
+- **WiFi + Internet OK, Server down** → WebSocket check skipped, shows "NO SERVER"
+- **WiFi + Internet + Server OK, WebSocket down** → Shows "NO WEBSOCKET"
+
+**Monitoring Intervals:**
+- **Internet Check**: Every 30 seconds via HTTP GET to `clients3.google.com/generate_204` (Google's connectivity service)
+- **WiFi/Server/WebSocket Check**: Every 5 seconds with priority-based handling
+- **WebSocket Ping**: Every 60 seconds (when connected) for connection quality monitoring
+
+**Smart Recovery:**
+- When WiFi reconnects, automatically checks Internet and Server status
+- Prevents brief "Ready for Action" flash when higher-priority errors persist
+- Automatically returns to correct error screen based on current system state
+
+**Report Mode**: Press BOOT button to display error counters (0-99) for all four error types with their occurrence counts.
+
 ## Features
 
 ### Basic Configuration
