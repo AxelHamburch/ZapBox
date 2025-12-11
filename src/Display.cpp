@@ -475,16 +475,16 @@ void showQRScreen()
   if (orientation == "v"){
     tft.fillRect(15, 168, 140, 132, themeForeground);
     tft.drawString("READY", x - 55, y + 40, GFXFF);
-    tft.drawString("FOR", x - 55, y + 70, GFXFF);
-    tft.drawString("ZAP", x - 55, y + 100, GFXFF);
+    tft.drawString("4 ZAP", x - 55, y + 70, GFXFF);
+    tft.drawString("ACTION", x - 55, y + 100, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 35, y + 150, GFXFF);
   } else {
     tft.fillRect(168, 18, 140, 135, themeForeground);
     tft.drawString("READY", x + 20, y - 30, GFXFF);
-    tft.drawString("FOR", x + 20, y, GFXFF);
-    tft.drawString("ZAP", x + 20, y + 30, GFXFF);
+    tft.drawString("4 ZAP", x + 20, y, GFXFF);
+    tft.drawString("ACTION", x + 20, y + 30, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 110, 9, GFXFF);
@@ -525,17 +525,17 @@ void showThresholdQRScreen()
 
   if (orientation == "v"){
     tft.fillRect(15, 168, 140, 132, themeForeground);
-    tft.drawString("THRES-", x - 55, y + 40, GFXFF);
-    tft.drawString("HOLD", x - 55, y + 70, GFXFF);
-    tft.drawString("TRIGGER", x - 55, y + 100, GFXFF);
+    tft.drawString("READY", x - 55, y + 40, GFXFF);
+    tft.drawString("4 TH", x - 55, y + 70, GFXFF);
+    tft.drawString("ACTION", x - 55, y + 100, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 35, y + 150, GFXFF);
   } else {
     tft.fillRect(168, 18, 140, 135, themeForeground);
-    tft.drawString("THRES-", x + 20, y - 30, GFXFF);
-    tft.drawString("HOLD", x + 20, y, GFXFF);
-    tft.drawString("TRIGGER", x + 20, y + 30, GFXFF);
+    tft.drawString("READY", x + 20, y - 30, GFXFF);
+    tft.drawString("4 TH", x + 20, y, GFXFF);
+    tft.drawString("ACTION", x + 20, y + 30, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 110, 9, GFXFF);
@@ -554,16 +554,16 @@ void showSpecialModeQRScreen()
   if (orientation == "v"){
     tft.fillRect(15, 168, 140, 132, themeForeground);
     tft.drawString("READY", x - 55, y + 40, GFXFF);
-    tft.drawString("FOR", x - 55, y + 70, GFXFF);
-    tft.drawString("SPECIAL", x - 55, y + 100, GFXFF);
+    tft.drawString("4 SP", x - 55, y + 70, GFXFF);
+    tft.drawString("ACTION", x - 55, y + 100, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 35, y + 150, GFXFF);
   } else {
     tft.fillRect(168, 18, 140, 135, themeForeground);
     tft.drawString("READY", x + 20, y - 30, GFXFF);
-    tft.drawString("FOR", x + 20, y, GFXFF);
-    tft.drawString("SPECIAL", x + 20, y + 30, GFXFF);
+    tft.drawString("4 SP", x + 20, y, GFXFF);
+    tft.drawString("ACTION", x + 20, y + 30, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 110, 9, GFXFF);

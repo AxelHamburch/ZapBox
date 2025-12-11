@@ -426,7 +426,7 @@ bool checkServerReachability()
   WiFiClient client;
   Serial.printf("[TCP] Testing server reachability: %s:443...\n", lnbitsServer.c_str());
   
-  bool serverReachable = client.connect(lnbitsServer.c_str(), 443, 3000); // 3 second timeout
+  bool serverReachable = client.connect(lnbitsServer.c_str(), 443, 2000); // 2 second timeout (reduced from 3)
   
   if (serverReachable) {
     Serial.println("[TCP] Server is reachable (port 443 open)");
@@ -669,7 +669,7 @@ void setup()
   leftButton.setDebounceTicks(100); // 100ms debounce to prevent accidental report mode
   leftButton.attachClick(reportMode);
   leftButton.attachLongPressStart(configMode);
-  rightButton.setDebounceTicks(100); // 100ms debounce
+  rightButton.setDebounceTicks(200); // 200ms debounce
   rightButton.attachClick(showHelp);
 
   xTaskCreatePinnedToCore(
@@ -900,6 +900,7 @@ void loop()
           Serial.println("Server not reachable (TCP port 443 closed/timeout)");
           if (serverErrorCount < 99) serverErrorCount++;
           Serial.printf("[ERROR] Server error count: %d\n", serverErrorCount);
+          Serial.println("[SCREEN] Showing Server error screen (type 3)");
           serverReconnectScreen();
           onErrorScreen = true;
           currentErrorType = 3; // Server error
@@ -964,6 +965,7 @@ void loop()
           Serial.printf("WebSocket reconnect failed after %d attempts\n", reconnectAttempts);
           if (websocketErrorCount < 99) websocketErrorCount++;
           Serial.printf("[ERROR] WebSocket error count: %d\n", websocketErrorCount);
+          Serial.println("[SCREEN] Showing WebSocket error screen (type 4)");
           websocketReconnectScreen();
           currentErrorType = 4;
           onErrorScreen = true;
@@ -974,7 +976,8 @@ void loop()
       // Auto-recovery: All connections restored
       if (onErrorScreen && wifiOk && serverOk && websocketOk)
       {
-        Serial.println("All connections recovered");
+        Serial.printf("[RECOVERY] All connections recovered (was error type %d)\n", currentErrorType);
+        Serial.println("[SCREEN] Clearing error screen, returning to normal operation");
         onErrorScreen = false;
         currentErrorType = 0;
         consecutiveWebSocketFailures = 0; // Reset failure counter
