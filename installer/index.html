@@ -27,7 +27,7 @@
 
     <link rel="icon" href="./assets/favicon.webp" sizes="32x32">
     <link rel="stylesheet" href="./assets/style.css">
-    <script src="./assets/serial.js"></script>
+    <script src="./assets/serial.js?v=2"></script>
     <script type="module" src="https://unpkg.com/esp-web-tools@9/dist/web/install-button.js?module"></script>
 </head>
 
@@ -56,9 +56,8 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v927292/manifest.json">v927292 (4-step error handling and more cool stuff 🤙)</option>
-                <option value="./firmware/v926855/manifest.json">v926855 (Pre-Release - Moving forward..🚶)</option>
-                <option value="./firmware/v926800/manifest.json">v926800 (Latest Stable - Add options for color and special mode (blinking, etc.))</option>
+                <option value="./firmware/v927292/manifest.json">v927292 (Latest - Add 4-step error handling and more cool stuff 🤙)</option>
+                <option value="./firmware/v926800/manifest.json">v926800 (Add options for color and special mode (blinking, etc.))</option>
                 <option value="./firmware/v926705/manifest.json">v926705 (Add Threshold Mode with configurable payment trigger)</option>
                 <option value="./firmware/v926666/manifest.json">v926666 (Add wss:// support for LNbits v1.3.1 and bS_extension v1.1.2)</option>
                 <option value="./firmware/v926561/manifest.json">v926561 (Fix some bugs and edit documentation)</option>
@@ -166,7 +165,41 @@
 
         <div class="debug-console" id="consoleDebug"></div>
         
-        <!-- Threshold Feature Section - After Terminal -->
+        <!-- Special Mode Feature Section -->
+        <div style="margin-top: 50px;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
+                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Special Mode</h4>
+                <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
+            </div>
+            
+            <div class="input-wrapper">
+                <div>
+                    <label for="specialMode">Choose your version</label>
+                    <select name="specialMode" id="specialMode">
+                        <option value="standard" selected>Standard (simple on/off)</option>
+                        <option value="blink">Blink (1 Hz, 1:1)</option>
+                        <option value="pulse">Pulse (2 Hz, 1:4)</option>
+                        <option value="fast-blink">Strobe (5 Hz, 1:1)</option>
+                        <option value="custom">Custom (manual settings)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">Choose pulsing/blinking mode for relay control</p>
+                </div>
+                <div id="frequencyDiv" style="display: none;">
+                    <label for="frequency">Frequency (Hz)</label>
+                    <input type="number" name="frequency" id="frequency" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">Cycles per second (0.1 - 10 Hz)</p>
+                </div>
+                <div id="dutyCycleDiv" style="display: none;">
+                    <label for="dutyCycleRatio">Duty Cycle Ratio</label>
+                    <input type="number" name="dutyCycleRatio" id="dutyCycleRatio" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">ON:OFF ratio (0.25 = 1:4, 1.0 = 1:1, 2.0 = 2:1)</p>
+                </div>
+            </div>
+            
+            <p style="margin-top: 20px;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
+        </div>
+
+        <!-- Threshold Feature Section -->
         <div style="margin-top: 50px;">
             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
                 <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Threshold</h4>
@@ -201,40 +234,6 @@
             <p style="margin-top: 20px;"><i><strong>Note:</strong> As soon as something is entered in the "Wallet Invoice/Read Key" field, "THRESHOLD MODE" becomes active. "NORMAL MODE" then no longer works. The data specified in the bitcoinSwitch extension, such as amount, PIN, and time, is ignored. Only a payment to the wallet with the invoice key counts.</i></p>
             
             <p style="margin-top: 10px;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
-        </div>
-
-        <!-- Special Mode Feature Section -->
-        <div style="margin-top: 50px;">
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
-                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Special Mode</h4>
-                <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
-            </div>
-            
-            <div class="input-wrapper">
-                <div>
-                    <label for="specialMode">Choose your version</label>
-                    <select name="specialMode" id="specialMode">
-                        <option value="standard" selected>Standard (simple on/off)</option>
-                        <option value="blink">Blink (1 Hz, 1:1)</option>
-                        <option value="pulse">Pulse (2 Hz, 1:4)</option>
-                        <option value="fast-blink">Strobe (5 Hz, 1:1)</option>
-                        <option value="custom">Custom (manual settings)</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">Choose pulsing/blinking mode for relay control</p>
-                </div>
-                <div id="frequencyDiv" style="display: none;">
-                    <label for="frequency">Frequency (Hz)</label>
-                    <input type="number" name="frequency" id="frequency" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">Cycles per second (0.1 - 10 Hz)</p>
-                </div>
-                <div id="dutyCycleDiv" style="display: none;">
-                    <label for="dutyCycleRatio">Duty Cycle Ratio</label>
-                    <input type="number" name="dutyCycleRatio" id="dutyCycleRatio" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">ON:OFF ratio (0.25 = 1:4, 1.0 = 1:1, 2.0 = 2:1)</p>
-                </div>
-            </div>
-            
-            <p style="margin-top: 20px;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
         </div>
 
         <!-- Visual Separator -->
@@ -802,38 +801,61 @@
         async function onSoftResetButtonClick() {
             console.log("Restart button clicked!");
             
-            // Check if we're still in config mode
-            if (!configModeVerified) {
-                alert("⚠️ Restart only works in Config Mode\n\nThe device is not in config mode.\nPlease disconnect and enter config mode (hold BOOT 5s) to use restart function.");
-                return;
-            }
-            
             const resetMsg = document.createElement('span');
             resetMsg.style.color = '#ffaa00';
-            resetMsg.textContent = 'Sending restart command...\n';
-            consoleDebug.appendChild(resetMsg);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
             
-            // Send soft reset command - keeps connection open
-            serial.writeLine("/config-soft-reset");
-            
-            // Reset config mode verification - device will be in normal mode after restart
-            configModeVerified = false;
-            justRestarted = true; // Set flag to suppress normal mode alert
-            
-            // Disable config-related buttons after restart (keep restart button enabled)
-            document.getElementById("read-config-button").disabled = true;
-            document.getElementById("write-config-button").disabled = true;
-            // Keep soft-reset-button enabled so user can restart again to see logs
-            
-            // Wait for device to restart
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            const doneMsg = document.createElement('span');
-            doneMsg.style.color = '#00ff00';
-            doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (hold BOOT 5s)\n';
-            consoleDebug.appendChild(doneMsg);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            if (configModeVerified) {
+                // In Config Mode: Use software reset (keeps serial connection alive)
+                resetMsg.textContent = 'Sending software restart command...\n';
+                consoleDebug.appendChild(resetMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                
+                // Send soft reset command via serial
+                serial.writeLine("/config-soft-reset");
+                
+                // Reset config mode verification flag
+                configModeVerified = false;
+                justRestarted = true;
+                
+                // Disable config-related buttons after restart
+                document.getElementById("read-config-button").disabled = true;
+                document.getElementById("write-config-button").disabled = true;
+                
+                // Wait for device to restart
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                const doneMsg = document.createElement('span');
+                doneMsg.style.color = '#00ff00';
+                doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (hold BOOT 5s)\n';
+                consoleDebug.appendChild(doneMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                
+            } else {
+                // Not in Config Mode: Use hardware reset (DTR/RTS toggle)
+                resetMsg.textContent = 'Performing hardware reset...\n';
+                consoleDebug.appendChild(resetMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                
+                try {
+                    // Perform hardware reset
+                    await serial.hardwareReset();
+                    
+                    // Wait for device to boot
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    const doneMsg = document.createElement('span');
+                    doneMsg.style.color = '#00ff00';
+                    doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing boot logs\n';
+                    consoleDebug.appendChild(doneMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                } catch (error) {
+                    const errorMsg = document.createElement('span');
+                    errorMsg.style.color = '#ff0000';
+                    errorMsg.textContent = '✗ Hardware reset failed: ' + error.message + '\n';
+                    consoleDebug.appendChild(errorMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                }
+            }
         }
 
         async function onRestartButtonClick() {

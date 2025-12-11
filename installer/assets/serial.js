@@ -122,6 +122,38 @@ class Serial {
   }
 
   /**
+   * Performs a hardware reset by toggling DTR and RTS signals
+   * This mimics the behavior of pressing the physical reset button
+   */
+  async hardwareReset() {
+    if (!this.serialPort) {
+      console.error("Cannot perform hardware reset: no serial port connected");
+      throw new Error("No serial port connected");
+    }
+
+    try {
+      console.log("Starting hardware reset sequence...");
+      
+      // Reset sequence: Toggle DTR and RTS
+      // DTR low, RTS high = Reset ESP32
+      console.log("Setting DTR=false, RTS=true (enter reset)");
+      await this.serialPort.setSignals({ dataTerminalReady: false, requestToSend: true });
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // DTR low, RTS low = Release reset
+      console.log("Setting DTR=false, RTS=false (exit reset)");
+      await this.serialPort.setSignals({ dataTerminalReady: false, requestToSend: false });
+      
+      console.log("Hardware reset sequence completed");
+    } catch (error) {
+      console.error("Hardware reset failed:", error);
+      this.fireEvent(SerialEvents.ERROR_OCCURRED, error);
+      throw error;
+    }
+  }
+
+  /**
    * Close and cleanup serial port
    * Code based on https://web.dev/serial/#close-port
    */
