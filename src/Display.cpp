@@ -444,7 +444,7 @@ void thankYouScreen()
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
   if (orientation == "v"){
-    tft.drawString("^_^", x + 5, y - 70, GFXFF);
+    tft.drawString("ty", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
@@ -453,7 +453,7 @@ void thankYouScreen()
     tft.drawString("YOUR", x - 55, y + 70, GFXFF);
     tft.drawString("DAY", x - 55, y + 100, GFXFF);
   } else {
-      tft.drawString("^_^", x - 70, y, GFXFF);
+      tft.drawString("ty", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
