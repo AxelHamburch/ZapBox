@@ -89,16 +89,6 @@ Configuration is done via the [Web Installer](installer/index.html) with browser
 
 ### Advanced Features
 
-#### Threshold Mode
-Monitor a wallet balance and trigger the relay when a threshold is reached:
-- Configure wallet invoice/read key
-- Set threshold amount in satoshi
-- Define GPIO pin and control duration
-- Use static LNURL or Lightning Address for payments
-- Payments accumulate in the wallet until threshold is reached
-
-**Use Cases**: Crowdfunding triggers, donation goals, pay-per-use with accumulated balance
-
 #### Special Modes
 Control relay switching patterns beyond simple on/off:
 - **Standard**: Simple on/off (default)
@@ -108,6 +98,16 @@ Control relay switching patterns beyond simple on/off:
 - **Custom**: Set your own frequency (0.1-10 Hz) and duty cycle ratio (0.1-10)
 
 **Use Cases**: LED effects, motor speed control, warning signals, custom patterns
+
+#### Threshold Mode
+Monitor a wallet balance and trigger the relay when a threshold is reached:
+- Configure wallet invoice/read key
+- Set threshold amount in satoshi
+- Define GPIO pin and control duration
+- Use static LNURL or Lightning Address for payments
+- Payments accumulate in the wallet until threshold is reached
+
+**Use Cases**: Crowdfunding triggers, donation goals, pay-per-use with accumulated balance
 
 ## Web Installer
 
