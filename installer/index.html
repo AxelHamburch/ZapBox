@@ -165,7 +165,41 @@
 
         <div class="debug-console" id="consoleDebug"></div>
         
-        <!-- Threshold Feature Section - After Terminal -->
+        <!-- Special Mode Feature Section -->
+        <div style="margin-top: 50px;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
+                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Special Mode</h4>
+                <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
+            </div>
+            
+            <div class="input-wrapper">
+                <div>
+                    <label for="specialMode">Choose your version</label>
+                    <select name="specialMode" id="specialMode">
+                        <option value="standard" selected>Standard (simple on/off)</option>
+                        <option value="blink">Blink (1 Hz, 1:1)</option>
+                        <option value="pulse">Pulse (2 Hz, 1:4)</option>
+                        <option value="fast-blink">Strobe (5 Hz, 1:1)</option>
+                        <option value="custom">Custom (manual settings)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">Choose pulsing/blinking mode for relay control</p>
+                </div>
+                <div id="frequencyDiv" style="display: none;">
+                    <label for="frequency">Frequency (Hz)</label>
+                    <input type="number" name="frequency" id="frequency" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">Cycles per second (0.1 - 10 Hz)</p>
+                </div>
+                <div id="dutyCycleDiv" style="display: none;">
+                    <label for="dutyCycleRatio">Duty Cycle Ratio</label>
+                    <input type="number" name="dutyCycleRatio" id="dutyCycleRatio" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">ON:OFF ratio (0.25 = 1:4, 1.0 = 1:1, 2.0 = 2:1)</p>
+                </div>
+            </div>
+            
+            <p style="margin-top: 20px;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
+        </div>
+
+        <!-- Threshold Feature Section -->
         <div style="margin-top: 50px;">
             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
                 <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Threshold</h4>
@@ -200,40 +234,6 @@
             <p style="margin-top: 20px;"><i><strong>Note:</strong> As soon as something is entered in the "Wallet Invoice/Read Key" field, "THRESHOLD MODE" becomes active. "NORMAL MODE" then no longer works. The data specified in the bitcoinSwitch extension, such as amount, PIN, and time, is ignored. Only a payment to the wallet with the invoice key counts.</i></p>
             
             <p style="margin-top: 10px;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
-        </div>
-
-        <!-- Special Mode Feature Section -->
-        <div style="margin-top: 50px;">
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
-                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Special Mode</h4>
-                <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
-            </div>
-            
-            <div class="input-wrapper">
-                <div>
-                    <label for="specialMode">Choose your version</label>
-                    <select name="specialMode" id="specialMode">
-                        <option value="standard" selected>Standard (simple on/off)</option>
-                        <option value="blink">Blink (1 Hz, 1:1)</option>
-                        <option value="pulse">Pulse (2 Hz, 1:4)</option>
-                        <option value="fast-blink">Strobe (5 Hz, 1:1)</option>
-                        <option value="custom">Custom (manual settings)</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">Choose pulsing/blinking mode for relay control</p>
-                </div>
-                <div id="frequencyDiv" style="display: none;">
-                    <label for="frequency">Frequency (Hz)</label>
-                    <input type="number" name="frequency" id="frequency" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">Cycles per second (0.1 - 10 Hz)</p>
-                </div>
-                <div id="dutyCycleDiv" style="display: none;">
-                    <label for="dutyCycleRatio">Duty Cycle Ratio</label>
-                    <input type="number" name="dutyCycleRatio" id="dutyCycleRatio" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">ON:OFF ratio (0.25 = 1:4, 1.0 = 1:1, 2.0 = 2:1)</p>
-                </div>
-            </div>
-            
-            <p style="margin-top: 20px;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
         </div>
 
         <!-- Visual Separator -->
