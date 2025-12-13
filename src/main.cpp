@@ -30,10 +30,23 @@ String thresholdPin = "";
 String thresholdTime = "";
 String thresholdLnurl = "";
 
+// Screensaver and deep sleep configuration
+String screensaver = "off";
+String deepSleep = "off";
+String activationTime = "5";
+
 // Special mode configuration
 String specialMode = "standard";
 float frequency = 1.0;
 float dutyCycleRatio = 1.0;
+
+// Screensaver and Deep Sleep timeout tracking
+unsigned long lastActivityTime = 0;  // Track last button press or activity
+unsigned long activationTimeoutMs = 5 * 60 * 1000; // Default 5 minutes in milliseconds
+bool screensaverActive = false;
+bool deepSleepActive = false;
+unsigned long lastWakeUpTime = 0;  // Track when device woke up from screensaver
+const unsigned long GRACE_PERIOD_MS = 5000;  // 5 seconds grace period after wake-up
 
 String payloadStr;
 String lnbitsServer;
@@ -273,6 +286,29 @@ void readFiles()
       if (dutyCycleRatio > 10.0) dutyCycleRatio = 10.0; // Max 10:1
     }
 
+    // Read screensaver and deep sleep configuration (optional, indices 14-16)
+    const JsonObject maRoot14 = doc[14];
+    if (!maRoot14.isNull()) {
+      const char *maRoot14Char = maRoot14["value"];
+      screensaver = maRoot14Char;
+    }
+
+    const JsonObject maRoot15 = doc[15];
+    if (!maRoot15.isNull()) {
+      const char *maRoot15Char = maRoot15["value"];
+      deepSleep = maRoot15Char;
+    }
+
+    const JsonObject maRoot16 = doc[16];
+    if (!maRoot16.isNull()) {
+      const char *maRoot16Char = maRoot16["value"];
+      activationTime = maRoot16Char;
+      // Validate activation time (1-120 minutes)
+      int actTime = String(activationTime).toInt();
+      if (actTime < 1) activationTime = "1";
+      if (actTime > 120) activationTime = "120";
+    }
+
     // Apply predefined mode settings
     if (specialMode == "blink") {
       frequency = 1.0;
@@ -333,7 +369,41 @@ void readFiles()
       Serial.println("        NORMAL MODE");
       Serial.println("================================");
     }
-    Serial.println("");
+
+    // Display screensaver and deep sleep configuration
+    Serial.println("\n================================");
+    Serial.println("   POWER SAVING CONFIGURATION");
+    Serial.println("================================");
+    Serial.println("Screensaver: " + screensaver);
+    Serial.println("Deep Sleep: " + deepSleep);
+    Serial.println("Activation Time: " + activationTime + " minutes");
+    
+    // Convert activation time from minutes to milliseconds
+    int activationTimeMinutes = String(activationTime).toInt();
+    activationTimeoutMs = activationTimeMinutes * 60 * 1000UL;
+    Serial.println("Activation Timeout: " + String(activationTimeoutMs) + " ms");
+    
+    // Determine and display active power saving mode
+    if (screensaver != "off" && deepSleep == "off") {
+      Serial.println("\n⚡ POWER SAVING MODE: SCREENSAVER");
+      Serial.println("   Display backlight will turn off after " + activationTime + " minutes");
+      Serial.println("   Press BOOT or IO14 button to wake up");
+    } else if (deepSleep != "off" && screensaver == "off") {
+      Serial.println("\n⚡ POWER SAVING MODE: DEEP SLEEP (" + deepSleep + ")");
+      Serial.println("   Device will enter " + deepSleep + " sleep after " + activationTime + " minutes");
+      Serial.println("   Press BOOT or IO14 button to wake up");
+      Serial.println("Deep Sleep enabled - configuring GPIO wake-up sources");
+      // Wake-up sources will be configured in setupDeepSleepWakeup() when sleep is triggered
+    } else {
+      Serial.println("\n⚡ POWER SAVING MODE: DISABLED");
+      Serial.println("   Device will stay active continuously");
+    }
+    
+    // Initialize last activity time
+    lastActivityTime = millis();
+    Serial.println("Last Activity Time initialized: " + String(lastActivityTime) + " ms");
+    
+    Serial.println("================================\n");
   }
   else
   {
@@ -556,6 +626,30 @@ void configMode()
 
 void reportMode()
 {
+  // Check if we're in grace period after wake-up
+  if (lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS) {
+    Serial.println("[REPORT] Ignored - in grace period after wake-up");
+    return;
+  }
+  
+  // Reset activity timer for screensaver/deep sleep
+  lastActivityTime = millis();
+  
+  // If screensaver was active, deactivate it and set wake-up time
+  if (screensaverActive) {
+    Serial.println("[REPORT] Waking from screensaver");
+    screensaverActive = false;
+    deepSleepActive = false;
+    deactivateScreensaver();
+    lastWakeUpTime = millis();
+    lastActivityTime = millis();
+    return; // Don't trigger report mode, just wake up
+  }
+  
+  // Deactivate screensaver if active (safety)
+  deactivateScreensaver();
+  deactivateScreensaver();
+  
   // Ignore if we just entered config mode (prevents triggering on button release)
   if (inConfigMode) {
     Serial.println("[REPORT] Ignored - in config mode");
@@ -604,6 +698,29 @@ void reportMode()
 
 void showHelp()
 {
+  // Check if we're in grace period after wake-up
+  if (lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS) {
+    Serial.println("[HELP] Ignored - in grace period after wake-up");
+    return;
+  }
+  
+  // Reset activity timer for screensaver/deep sleep
+  lastActivityTime = millis();
+  
+  // If screensaver was active, deactivate it and set wake-up time
+  if (screensaverActive) {
+    Serial.println("[HELP] Waking from screensaver");
+    screensaverActive = false;
+    deepSleepActive = false;
+    deactivateScreensaver();
+    lastWakeUpTime = millis();
+    lastActivityTime = millis();
+    return; // Don't trigger help mode, just wake up
+  }
+  
+  // Deactivate screensaver if active (safety)
+  deactivateScreensaver();
+  
   Serial.println("[BUTTON] Help button pressed");
   inHelpMode = true; // Set flag to interrupt WiFi reconnect loop
   
@@ -744,6 +861,50 @@ void loop()
     return;
   }
   
+  // Display power saving status on first loop iteration
+  static bool firstLoopStatusShown = false;
+  if (!firstLoopStatusShown) {
+    firstLoopStatusShown = true;
+    Serial.println("\n================================");
+    Serial.println("   POWER SAVING STATUS");
+    Serial.println("================================");
+    
+    // Display screensaver status with clear description
+    if (screensaver == "backlight") {
+      Serial.println("Screensaver: backlight off");
+    } else {
+      Serial.println("Screensaver: " + screensaver);
+    }
+    
+    // Display deep sleep status with clear description
+    if (deepSleep == "light") {
+      Serial.println("Deep Sleep: light sleep mode");
+    } else if (deepSleep == "freeze") {
+      Serial.println("Deep Sleep: deep sleep (freeze) mode");
+    } else {
+      Serial.println("Deep Sleep: " + deepSleep);
+    }
+    
+    Serial.println("Activation Time: " + String(activationTimeoutMs / 60000) + " minutes (" + String(activationTimeoutMs) + " ms)");
+    Serial.println("screensaverActive: " + String(screensaverActive));
+    Serial.println("deepSleepActive: " + String(deepSleepActive));
+    Serial.println("lastActivityTime: " + String(lastActivityTime));
+    
+    if (screensaver != "off" && deepSleep == "off") {
+      Serial.println("\n⚡ MODE: SCREENSAVER ENABLED");
+      Serial.println("   Backlight will turn off after inactivity");
+    } else if (deepSleep != "off" && screensaver == "off") {
+      Serial.println("\n⚡ MODE: DEEP SLEEP ENABLED (" + deepSleep + ")");
+      Serial.println("   Device will sleep after inactivity");
+    } else {
+      Serial.println("\n⚡ MODE: POWER SAVING DISABLED");
+    }
+    Serial.println("================================\n");
+  }
+  
+  // Screensaver and deep sleep checks are now inside the payment wait loop
+  // to ensure they execute during payment waiting
+  
   // If in config mode, do nothing - config mode is handled by button interrupt
   if (inConfigMode)
   {
@@ -770,8 +931,8 @@ void loop()
   
   if (inConfigMode) return; // Final check before drawing screen
   
-  // CRITICAL: Only show QR screen if no error is active AND not in report mode!
-  if (!onErrorScreen && !inReportMode) {
+  // CRITICAL: Only show QR screen if no error is active AND not in report mode AND not in grace period!
+  if (!onErrorScreen && !inReportMode && !(lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS)) {
     Serial.println("[SCREEN] Showing QR code screen (READY FOR ACTION)");
     if (thresholdKey.length() > 0) {
       showThresholdQRScreen(); // THRESHOLD MODE
@@ -782,6 +943,8 @@ void loop()
     }
   } else if (inReportMode) {
     Serial.println("[SCREEN] Skipping QR screen - in report mode");
+  } else if (lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS) {
+    Serial.println("[SCREEN] Skipping QR screen - in grace period after wake-up");
   } else {
     Serial.printf("[SCREEN] Skipping QR screen - error active (type %d)\n", currentErrorType);
   }
@@ -806,6 +969,114 @@ void loop()
     {
       Serial.println("[LOOP] Config mode detected, exiting payment loop");
       return;
+    }
+    
+    // Check for screensaver/deep sleep timeout activation (inside payment loop)
+    if (!screensaverActive && !deepSleepActive && screensaver != "off" && deepSleep == "off") {
+      unsigned long currentTime = millis();
+      unsigned long elapsedTime = currentTime - lastActivityTime;
+      
+      // Debug output every 10 seconds
+      static unsigned long lastDebugOutput = 0;
+      if (currentTime - lastDebugOutput > 10000) {
+        Serial.printf("[SCREENSAVER_CHECK] Elapsed: %lu ms / Timeout: %lu ms (%.1f%%)\n", 
+                      elapsedTime, activationTimeoutMs, (elapsedTime * 100.0 / activationTimeoutMs));
+        lastDebugOutput = currentTime;
+      }
+      
+      if (elapsedTime >= activationTimeoutMs) {
+        Serial.println("[TIMEOUT] Screensaver timeout reached, activating screensaver");
+        screensaverActive = true;
+        activateScreensaver(screensaver);
+        // Continue with payment loop - screensaver only turns off backlight
+      }
+    }
+    
+    if (!deepSleepActive && deepSleep != "off" && screensaver == "off") {
+      unsigned long currentTime = millis();
+      unsigned long elapsedTime = currentTime - lastActivityTime;
+      
+      // Debug output every 10 seconds
+      static unsigned long lastDebugOutputDeep = 0;
+      if (currentTime - lastDebugOutputDeep > 10000) {
+        Serial.printf("[DEEP_SLEEP_CHECK] Elapsed: %lu ms / Timeout: %lu ms (%.1f%%)\n", 
+                      elapsedTime, activationTimeoutMs, (elapsedTime * 100.0 / activationTimeoutMs));
+        lastDebugOutputDeep = currentTime;
+      }
+      
+      if (elapsedTime >= activationTimeoutMs) {
+        Serial.println("[TIMEOUT] Deep sleep timeout reached, preparing for deep sleep");
+        deepSleepActive = true;
+        
+        // Flush serial output before sleep
+        Serial.flush();
+        
+        // Prepare display for sleep
+        prepareDeepSleep();
+        
+        // Give more time for display operations to complete
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        
+        // Final serial flush
+        Serial.println("[DEEP_SLEEP] Entering sleep mode now...");
+        Serial.flush();
+        
+        // Enter deep sleep (will not return in freeze mode)
+        setupDeepSleepWakeup(deepSleep);
+        
+        // Execution continues here after wake-up from light sleep
+        // (Deep sleep/freeze mode will restart the device instead)
+        Serial.println("[WAKE_UP] Device woke from deep sleep");
+        
+        // Show boot-up screen first
+        bootUpScreen();
+        Serial.println("[WAKE_UP] Boot screen displayed");
+        
+        // Turn backlight back on
+        pinMode(PIN_LCD_BL, OUTPUT);
+        digitalWrite(PIN_LCD_BL, HIGH);
+        Serial.println("[WAKE_UP] Backlight restored");
+        
+        // Check WiFi connection status
+        Serial.println("[WAKE_UP] Checking WiFi connection...");
+        int wifiCheckCount = 0;
+        while (WiFi.status() != WL_CONNECTED && wifiCheckCount < 30) {
+          delay(100);
+          wifiCheckCount++;
+          if (wifiCheckCount % 10 == 0) {
+            Serial.printf("[WAKE_UP] Waiting for WiFi... (%d/30)\n", wifiCheckCount);
+          }
+        }
+        
+        if (WiFi.status() == WL_CONNECTED) {
+          Serial.println("[WAKE_UP] WiFi connected");
+        } else {
+          Serial.println("[WAKE_UP] WiFi not connected after wake-up, will retry in loop");
+          // WiFi reconnection will be handled by checkAndReconnectWiFi() in main loop
+        }
+        
+        // Reset activity time and clear sleep flag
+        lastActivityTime = millis();
+        lastWakeUpTime = millis();
+        deepSleepActive = false;
+        
+        // Small delay before redrawing screen
+        delay(500);
+        
+        // Redraw the appropriate QR screen
+        Serial.println("[WAKE_UP] Redrawing screen...");
+        if (thresholdKey.length() > 0) {
+          showThresholdQRScreen();
+          Serial.println("[WAKE_UP] Threshold QR screen displayed");
+        } else if (specialMode != "standard" && specialMode != "") {
+          showSpecialModeQRScreen();
+          Serial.println("[WAKE_UP] Special mode QR screen displayed");
+        } else {
+          showQRScreen();
+          Serial.println("[WAKE_UP] Normal QR screen displayed");
+        }
+        Serial.println("[WAKE_UP] Ready for payments");
+      }
     }
     
     webSocket.loop();
@@ -1029,10 +1300,20 @@ void loop()
           // Check if special mode is enabled
           if (specialMode != "standard" && specialMode != "") {
             Serial.println("[THRESHOLD] Using special mode: " + specialMode);
+            lastActivityTime = millis(); // Reset screensaver timer on payment start
+            if (screensaverActive) {
+              deactivateScreensaver();
+              screensaverActive = false;
+            }
             specialModeScreen();
             executeSpecialMode(pin, duration, frequency, dutyCycleRatio);
           } else {
             Serial.println("[THRESHOLD] Using standard mode");
+            lastActivityTime = millis(); // Reset screensaver timer on payment start
+            if (screensaverActive) {
+              deactivateScreensaver();
+              screensaverActive = false;
+            }
             switchedOnScreen();
             pinMode(pin, OUTPUT);
             digitalWrite(pin, HIGH);
@@ -1045,6 +1326,11 @@ void loop()
           }
           
           thankYouScreen();
+          lastActivityTime = millis(); // Reset screensaver timer on payment
+          if (screensaverActive) {
+            deactivateScreensaver();
+            screensaverActive = false;
+          }
           delay(2000);
           
           // Return to threshold QR screen
@@ -1069,10 +1355,20 @@ void loop()
         // Check if special mode is enabled
         if (specialMode != "standard" && specialMode != "") {
           Serial.println("[NORMAL] Using special mode: " + specialMode);
+          lastActivityTime = millis(); // Reset screensaver timer on payment start
+          if (screensaverActive) {
+            deactivateScreensaver();
+            screensaverActive = false;
+          }
           specialModeScreen();
           executeSpecialMode(pin, duration, frequency, dutyCycleRatio);
         } else {
           Serial.println("[NORMAL] Using standard mode");
+          lastActivityTime = millis(); // Reset screensaver timer on payment start
+          if (screensaverActive) {
+            deactivateScreensaver();
+            screensaverActive = false;
+          }
           switchedOnScreen();
           pinMode(pin, OUTPUT);
           digitalWrite(pin, HIGH);
@@ -1085,6 +1381,11 @@ void loop()
         }
         
         thankYouScreen();
+        lastActivityTime = millis(); // Reset screensaver timer on payment
+        if (screensaverActive) {
+          deactivateScreensaver();
+          screensaverActive = false;
+        }
         delay(2000);
         
         // Return to appropriate QR screen

@@ -1,7 +1,11 @@
 #include <qrcode.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
+#include <esp_wifi.h>
+#include <esp_task_wdt.h>
+#include <driver/rtc_io.h>
 #include "display.h"
+#include "PinConfig.h"
 
 TFT_eSPI tft = TFT_eSPI();
 #define GFXFF 1
@@ -127,6 +131,35 @@ void startupScreen()
     tft.setTextSize(2);
     tft.drawString("Firmware " VERSION, x, y + 25, GFXFF);
     tft.drawString("Powered by LNbits", x, y + 45, GFXFF);
+  }
+}
+
+// Boot-Up Screen (shown when waking from deep sleep or restarting)
+void bootUpScreen()
+{
+  tft.fillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(4);
+  tft.setTextColor(themeForeground);
+
+  if (orientation == "v"){
+    tft.drawString("BOOT", x + 5, y - 70, GFXFF);
+    tft.fillRect(15, 165, 140, 135, themeForeground);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextSize(3);
+    tft.setTextColor(themeBackground);
+    tft.drawString("STATUS", x - 55, y + 40, GFXFF);
+    tft.drawString("BOOT", x - 55, y + 70, GFXFF);
+    tft.drawString("UP", x - 55, y + 100, GFXFF);
+  } else {
+    tft.drawString("BOOT", x - 70, y, GFXFF);
+    tft.fillRect(165, 15, 140, 135, themeForeground);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextSize(3);
+    tft.setTextColor(themeBackground);
+    tft.drawString("STATUS", x + 20, y - 30, GFXFF);
+    tft.drawString("BOOT", x + 20, y, GFXFF);
+    tft.drawString("UP", x + 20, y + 30, GFXFF);
   }
 }
 
@@ -570,4 +603,189 @@ void showSpecialModeQRScreen()
   }
 
   drawQRCode();
+}
+
+// Screensaver management
+static bool screensaverIsActive = false;
+static String screensaverMode = "off";
+
+void activateScreensaver(String mode)
+{
+  Serial.println("[SCREENSAVER] Activating screensaver mode: " + mode);
+  screensaverIsActive = true;
+  screensaverMode = mode;
+
+  if (mode == "black") {
+    // Black screen - display stays on but shows black
+    tft.fillScreen(TFT_BLACK);
+    Serial.println("[SCREENSAVER] Black screen activated");
+  } else if (mode == "backlight") {
+    // Turn off backlight (most efficient while keeping display controller running)
+    pinMode(PIN_LCD_BL, OUTPUT);
+    digitalWrite(PIN_LCD_BL, LOW);
+    Serial.println("[SCREENSAVER] Backlight turned off");
+  }
+}
+
+void deactivateScreensaver()
+{
+  if (!screensaverIsActive) {
+    return;
+  }
+
+  Serial.println("[SCREENSAVER] Deactivating screensaver mode: " + screensaverMode);
+  
+  if (screensaverMode == "backlight") {
+    // Turn backlight back on
+    pinMode(PIN_LCD_BL, OUTPUT);
+    digitalWrite(PIN_LCD_BL, HIGH);
+    Serial.println("[SCREENSAVER] Backlight turned on");
+  }
+  
+  screensaverIsActive = false;
+  screensaverMode = "off";
+  
+  // Screen will be redrawn by main loop
+}
+
+bool isScreensaverActive()
+{
+  return screensaverIsActive;
+}
+
+// Deep Sleep management
+static bool deepSleepIsActive = false;
+static String deepSleepMode = "off";
+
+void prepareDeepSleep()
+{
+  Serial.println("[DEEP_SLEEP] Preparing for deep sleep...");
+  
+  // Disable watchdog timers to prevent reset during sleep preparation
+  esp_task_wdt_delete(NULL);
+  Serial.println("[DEEP_SLEEP] Watchdog disabled");
+  
+  // Fill screen with black before sleep
+  tft.fillScreen(TFT_BLACK);
+  Serial.println("[DEEP_SLEEP] Screen cleared");
+  
+  // Turn off backlight to save power during sleep
+  pinMode(PIN_LCD_BL, OUTPUT);
+  digitalWrite(PIN_LCD_BL, LOW);
+  Serial.println("[DEEP_SLEEP] Backlight turned OFF");
+  
+  // Longer delay to ensure all operations complete
+  delay(500);
+  
+  Serial.println("[DEEP_SLEEP] Display prepared, ready for sleep");
+}
+
+void setupDeepSleepWakeup(String mode)
+{
+  Serial.println("[DEEP_SLEEP] Setting up wake-up sources, mode: " + mode);
+  
+  deepSleepIsActive = true;
+  deepSleepMode = mode;
+  
+  // Configure power domain settings based on mode
+  if (mode == "light") {
+    // Light sleep: CPU pauses, RAM active, peripherals stay active
+    // WiFi/Bluetooth stay connected, WebSocket remains active
+    // For light sleep, use GPIO wake-up (more reliable than EXT0/EXT1)
+    
+    // Configure BOOT button (GPIO 0) for wake-up on LOW (button pressed)
+    gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
+    
+    // Configure IO14 button (GPIO 14) for wake-up on LOW (button pressed)
+    // Note: Both buttons trigger on LOW when pressed
+    gpio_wakeup_enable(GPIO_NUM_14, GPIO_INTR_LOW_LEVEL);
+    
+    // Enable GPIO wake-up
+    esp_sleep_enable_gpio_wakeup();
+    
+    // Keep WiFi active during light sleep (modem sleep)
+    // This allows the device to wake on network events and keeps connection alive
+    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+    
+    Serial.println("[DEEP_SLEEP] Wake-up sources configured: BOOT (GPIO 0) and IO14 (GPIO 14)");
+    Serial.println("[DEEP_SLEEP] WiFi will remain active (modem sleep)");
+    Serial.println("[DEEP_SLEEP] Entering Light Sleep (~0.8-3mA)");
+    Serial.println("[DEEP_SLEEP] Press BOOT or IO14 button to wake up");
+    
+    esp_light_sleep_start();
+    
+    // Execution continues here after wake-up
+    Serial.println("[WAKE_UP] Device woke from light sleep");
+    
+  } 
+  else if (mode == "freeze") {
+    // Deep sleep/Freeze: CPU off, only RTC active
+    // WiFi/Bluetooth will be disconnected
+    
+    Serial.println("[DEEP_SLEEP] Configuring RTC GPIOs for wake-up...");
+    
+    // Initialize GPIO 0 (BOOT button) as RTC GPIO
+    rtc_gpio_init(GPIO_NUM_0);
+    rtc_gpio_set_direction(GPIO_NUM_0, RTC_GPIO_MODE_INPUT_ONLY);
+    rtc_gpio_pullup_en(GPIO_NUM_0);
+    rtc_gpio_pulldown_dis(GPIO_NUM_0);
+    
+    // Initialize GPIO 14 (HELP button) as RTC GPIO
+    rtc_gpio_init(GPIO_NUM_14);
+    rtc_gpio_set_direction(GPIO_NUM_14, RTC_GPIO_MODE_INPUT_ONLY);
+    rtc_gpio_pullup_en(GPIO_NUM_14);
+    rtc_gpio_pulldown_dis(GPIO_NUM_14);
+    
+    // Wait for pull-ups to stabilize
+    delay(100);
+    
+    // Check current GPIO states
+    int gpio0_state = rtc_gpio_get_level(GPIO_NUM_0);
+    int gpio14_state = rtc_gpio_get_level(GPIO_NUM_14);
+    Serial.printf("[DEEP_SLEEP] GPIO 0 (BOOT) level: %s\n", gpio0_state ? "HIGH" : "LOW");
+    Serial.printf("[DEEP_SLEEP] GPIO 14 (HELP) level: %s\n", gpio14_state ? "HIGH" : "LOW");
+    
+    if (gpio0_state == 0) {
+      Serial.println("[DEEP_SLEEP] ERROR: BOOT button is pressed! Aborting.");
+      rtc_gpio_deinit(GPIO_NUM_0);
+      rtc_gpio_deinit(GPIO_NUM_14);
+      return;
+    }
+    if (gpio14_state == 0) {
+      Serial.println("[DEEP_SLEEP] ERROR: HELP button is pressed! Aborting.");
+      rtc_gpio_deinit(GPIO_NUM_0);
+      rtc_gpio_deinit(GPIO_NUM_14);
+      return;
+    }
+    
+    // Configure EXT0 wake-up for GPIO 0 (BOOT button) - wake on LOW
+    Serial.println("[DEEP_SLEEP] Setting EXT0 wake-up: GPIO 0 (BOOT), trigger on LOW");
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
+    
+    // Configure EXT1 wake-up for GPIO 14 (HELP button) - wake on LOW
+    Serial.println("[DEEP_SLEEP] Setting EXT1 wake-up: GPIO 14 (HELP), trigger on LOW");
+    esp_sleep_enable_ext1_wakeup(BIT64(GPIO_NUM_14), ESP_EXT1_WAKEUP_ALL_LOW);
+    
+    // Disable most power domains for maximum savings
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON); // Keep RTC periph for GPIO
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_OFF);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
+    
+    Serial.println("[DEEP_SLEEP] Wake-up sources: BOOT button (GPIO 0) OR HELP button (GPIO 14)");
+    Serial.println("[DEEP_SLEEP] WiFi will be disconnected");
+    Serial.println("[DEEP_SLEEP] Entering Deep Sleep/Freeze (~0.01-0.15mA)");
+    Serial.println("[DEEP_SLEEP] Press BOOT or HELP button to wake up (device will restart)");
+    
+    // Add delay and flush serial before deep sleep
+    Serial.flush();
+    delay(200);
+    
+    esp_deep_sleep_start();
+    // Note: esp_deep_sleep_start() does not return - device restarts on wake
+  }
+}
+
+bool isDeepSleepActive()
+{
+  return deepSleepIsActive;
 }

@@ -236,6 +236,41 @@
             <p style="margin-top: 10px;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
         </div>
 
+        <!-- Screensaver and Deep Sleep Feature Section -->
+        <div style="margin-top: 50px;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
+                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Screensaver and deep sleep function</h4>
+                <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
+            </div>
+            
+            <div class="input-wrapper">
+                <div>
+                    <label for="screensaver">Screensaver</label>
+                    <select name="screensaver" id="screensaver">
+                        <option value="off" selected>OFF</option>
+                        <option value="backlight">ON (backlight off)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="deepSleep">Deep sleep</label>
+                    <select name="deepSleep" id="deepSleep">
+                        <option value="off" selected>OFF</option>
+                        <option value="light">ON (light, power consumption: ~3-5mA)</option>
+                        <option value="freeze">ON (freeze, power consumption: ~0.01-0.15mA)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="activationTime">Time until activation</label>
+                    <input type="number" name="activationTime" id="activationTime" min="1" max="120" placeholder="5" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">1-120 minutes</p>
+                </div>
+            </div>
+            
+            <p style="margin-top: 20px;"><i><strong>Note:</strong> Screensaver and Deep Sleep cannot be active simultaneously. Press BOOT button or HELP button to deactivate and resume normal operation.</i></p>
+            
+            <p style="margin-top: 10px;"><i><strong>Use Cases:</strong> Energy saving (screensaver ~80-90% and deep sleep up to ~99%), reducing device heat, extending display lifespan in always-on scenarios.</i></p>
+        </div>
+
         <!-- Visual Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #ccc;">
 
@@ -297,6 +332,9 @@
         const thresholdPin = document.getElementById('thresholdPin');
         const thresholdTime = document.getElementById('thresholdTime');
         const thresholdLnurl = document.getElementById('thresholdLnurl');
+        const screensaver = document.getElementById('screensaver');
+        const deepSleep = document.getElementById('deepSleep');
+        const activationTime = document.getElementById('activationTime');
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
@@ -306,6 +344,19 @@
             } else {
                 frequencyDiv.style.display = 'none';
                 dutyCycleDiv.style.display = 'none';
+            }
+        });
+        
+        // Screensaver and Deep Sleep - mutually exclusive
+        screensaver.addEventListener('change', function() {
+            if (screensaver.value !== 'off' && deepSleep.value !== 'off') {
+                deepSleep.value = 'off';
+            }
+        });
+        
+        deepSleep.addEventListener('change', function() {
+            if (deepSleep.value !== 'off' && screensaver.value !== 'off') {
+                screensaver.value = 'off';
             }
         });
 
@@ -365,6 +416,18 @@
             {
                 "name": "dutyCycleRatio",
                 "value": "1.0"
+            },
+            {
+                "name": "screensaver",
+                "value": "off"
+            },
+            {
+                "name": "deepSleep",
+                "value": "off"
+            },
+            {
+                "name": "activationTime",
+                "value": "5"
             }
         ]
 
@@ -649,6 +712,9 @@
                 config[11].value = configData[11]?.value || "standard"; // specialMode
                 config[12].value = configData[12]?.value || "1.0"; // frequency
                 config[13].value = configData[13]?.value || "1.0"; // dutyCycleRatio
+                config[14].value = configData[14]?.value || "off"; // screensaver
+                config[15].value = configData[15]?.value || "off"; // deepSleep
+                config[16].value = configData[16]?.value || "5"; // activationTime
 
                 // Fill form fields
                 ssid.value = config[0].value;
@@ -665,6 +731,9 @@
                 specialMode.value = config[11].value;
                 frequency.value = config[12].value;
                 dutyCycleRatio.value = config[13].value;
+                screensaver.value = config[14].value;
+                deepSleep.value = config[15].value;
+                activationTime.value = config[16].value;
                 
                 // Show/hide custom fields based on loaded special mode
                 if (specialMode.value === 'custom') {
@@ -741,6 +810,9 @@
             config[11].value = specialMode.value;
             config[12].value = frequency.value || "1.0";
             config[13].value = dutyCycleRatio.value || "1.0";
+            config[14].value = screensaver.value;
+            config[15].value = deepSleep.value;
+            config[16].value = activationTime.value || "5";
             
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -924,6 +996,18 @@
 
         thresholdLnurl.addEventListener("input", (event) => {
             config[10].value = event.target.value;
+        });
+
+        screensaver.addEventListener("change", (event) => {
+            config[14].value = event.target.value;
+        });
+
+        deepSleep.addEventListener("change", (event) => {
+            config[15].value = event.target.value;
+        });
+
+        activationTime.addEventListener("input", (event) => {
+            config[16].value = event.target.value;
         });
 
     </script>

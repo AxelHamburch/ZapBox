@@ -2,6 +2,7 @@
 
 void initDisplay();
 void startupScreen();
+void bootUpScreen();
 void configModeScreen();
 void errorReportScreen(uint8_t wifiCount, uint8_t internetCount, uint8_t serverCount, uint8_t websocketCount);
 void wifiReconnectScreen();
@@ -18,3 +19,9 @@ void drawQRCode();
 void showQRScreen();
 void showThresholdQRScreen();
 void showSpecialModeQRScreen();
+void activateScreensaver(String mode);
+void deactivateScreensaver();
+bool isScreensaverActive();
+void prepareDeepSleep();
+void setupDeepSleepWakeup(String mode);
+bool isDeepSleepActive();
