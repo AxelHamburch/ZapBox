@@ -84,13 +84,20 @@ Flash via Web Installer: https://ereignishorizont.xyz/ZapBox/
 See full commit history for details.
 ```
 
-#### 3.5 Optional: Binaries anhängen
-Falls gewünscht, können die kompilierten Binaries als Assets angehängt werden:
-- `bootloader.bin`
-- `partitions.bin`
-- `firmware.bin`
+#### 3.5 Binaries als Assets anhängen
+⚠️ **WICHTIG**: Die folgenden Binaries müssen als Assets angehängt werden:
+- `bootloader.bin` (aus `installer/firmware/v927726/`)
+- `partitions.bin` (aus `installer/firmware/v927726/`)
+- `firmware.bin` (aus `installer/firmware/v927726/`)
 
-Diese sind aber bereits im Web Installer verfügbar, daher optional.
+**So fügst du Assets hinzu:**
+1. Scrolle auf der Release-Seite nach unten zu "Attach binaries"
+2. Ziehe die drei .bin Dateien in das Feld oder klicke "choose your files"
+3. Wähle alle drei Dateien aus `D:\VSCode\ZapBox\installer\firmware\v927726\`:
+   - `bootloader.bin`
+   - `partitions.bin`
+   - `firmware.bin`
+4. Warte bis Upload abgeschlossen ist (grüner Haken erscheint)
 
 #### 3.6 Release veröffentlichen
 - Bei Bedarf "Set as pre-release" aktivieren (für Beta-Versionen)
