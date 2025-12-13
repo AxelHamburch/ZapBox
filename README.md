@@ -27,7 +27,7 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
 
 ### Electrical Layout
 
-See the complete wiring diagram: [E-Layout-ZapBox-Compact.png](assets/electric-layout/E-Layout-ZapBox-Compact.png)
+See the complete wiring diagram: [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
 
 ## Operation
 
