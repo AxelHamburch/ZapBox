@@ -118,28 +118,30 @@ Automatic power-saving modes that activate after a configurable timeout:
 |------|-----------|---------|-----|-----|------|-----------|----------|-------|---------|---------|
 | **Normal** | ON | Active | Running | Active | Active | Active | ✅ Yes | ~150-250mA | 0% | - |
 | **Screensaver** | OFF | Active | Running | Active | Active | Active | ✅ Yes | ~40-60mA | ~80-90% | Instant |
-| **Light Sleep** | OFF | Active | Paused | Active | Active | Active | ✅ Yes | ~3-5mA | ~97-99% | ~3-5ms |
-| **Deep Sleep** | OFF | Active | OFF | RTC only | Reconnect | Reconnect | ❌ No* | ~0.01-0.15mA | ~99.9% | ~200-500ms |
+| **Light Sleep** | OFF | Active | Paused | Active | Reconnect | Reconnect | ❌ No* | ~0.8-3mA | ~98-99% | ~1-2s |
+| **Deep Sleep** | OFF | Active | OFF | RTC only | Reconnect | Reconnect | ❌ No* | ~0.01-0.15mA | ~99.9% | ~3-5s |
 
-*Deep Sleep requires wake-up and WiFi reconnection before payments can be received
+*Light Sleep and Deep Sleep require wake-up (button press) and WiFi reconnection before payments can be received
 
 **Mode Recommendations**:
 
-- **Screensaver (backlight off)**: ⭐ **Best for active terminals** - Instant wake-up, 80-90% power saving, payments always work
+- **Screensaver (backlight off)**: ⭐ **Best for payment terminals** - Instant wake-up, 80-90% power saving, payments always work
   - Use when device should respond immediately to payments
   - Good for public terminals with frequent use
+  - Battery operation: ~7-10 days with 10000mAh battery
   
-- **Light Sleep**: ⭐ **Best for semi-active terminals** - 97-99% power saving, payments work during sleep, fast wake-up
-  - WiFi stays connected, WebSocket active
-  - Payments trigger automatic wake-up
-  - Battery operation: 2-3 weeks instead of 2-3 days
-  - USB terminal stays connected (may disconnect on some systems)
+- **Light Sleep**: ⭐ **Best for button-activated devices** - 98-99% power saving, fast wake-up, good battery life
+  - WiFi reconnects quickly after wake-up (~1-2 seconds)
+  - NO payments received during sleep (CPU is paused)
+  - Press button to wake, then ready for payments quickly
+  - Battery operation: ~83-139 days with 10000mAh battery
   
 - **Deep Sleep (freeze)**: ⭐ **Best for long-term installations** - 99.9% power saving, maximum battery life
-  - WiFi disconnects during sleep
-  - No payments received until wake-up
-  - Battery operation: 3-6 months
-  - Ideal for button-activated use cases
+  - WiFi reconnects after wake-up (~3-5 seconds)
+  - NO payments received during sleep
+  - Press button to wake, slower reconnect than light sleep
+  - Battery operation: 7.5-114 years(!) with 10000mAh battery
+  - Ideal for devices used rarely
 
 **Configuration**:
 
@@ -149,19 +151,18 @@ Automatic power-saving modes that activate after a configurable timeout:
 
 - **Deep Sleep Options**:
   - **OFF**: No deep sleep (default)
-  - **Light**: Light sleep mode - CPU pauses, WiFi active, payments work
-  - **Freeze**: Deep sleep mode - Maximum power saving, WiFi disconnects
+  - **Light**: Light sleep mode - CPU pauses, faster wake-up, NO payments during sleep
+  - **Freeze**: Deep sleep mode - Maximum power saving, slowest wake-up, NO payments during sleep
 
 - **Mutual Exclusion**: Only one mode can be active at a time (Screensaver or Deep Sleep)
 - **Activation Time**: Configurable timeout (1-120 minutes)
-- **Wake-up**: Press BOOT button or IO14 button to deactivate and resume normal operation
-- **Automatic Wake-up**: In Light Sleep mode, incoming payments automatically wake the device
+- **Wake-up**: Press BOOT button or IO14 button to wake from sleep
+- **Payment Processing**: Only Screensaver mode can receive payments during power saving
 
 **Technical Notes**:
-- **Screensaver - Backlight Power**: The T-Display-S3's backlight consumes most display power (~150-200mA). Turning it off saves 80-90% while keeping the display controller active for instant wake-up.
-- **Light Sleep - WiFi Modem**: WiFi stays in modem sleep mode (~3-5mA total), WebSocket connection remains active, CPU wakes on network events or GPIO interrupts.
-- **Deep Sleep - Complete Shutdown**: Only RTC memory active, device restarts on wake-up, requires WiFi reconnection (~200-500ms boot time).
-- **USB Serial**: In Light Sleep, USB connection may disconnect on some systems. Terminal will reconnect automatically after wake-up.
+- **Screensaver - Backlight Power**: The T-Display-S3's backlight consumes most display power (~150-200mA). Turning it off saves 80-90% while keeping the display controller active for instant wake-up. CPU continues running, payments work normally.
+- **Light Sleep - CPU Pause**: CPU is paused to save power (~0.8-3mA total), WiFi disconnects but RAM is retained. Wake-up is fast (~1-2s) because no full reboot needed. NO payment processing during sleep.
+- **Deep Sleep - Complete Shutdown**: Only RTC memory active, device performs full restart on wake-up (~3-5s), requires complete WiFi reconnection. NO payment processing during sleep. Maximum battery life.
 
 **Use Cases**: Energy saving for installations, battery operation, reducing device heat, extending display lifespan in always-on scenarios
 

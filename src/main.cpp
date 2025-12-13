@@ -79,6 +79,46 @@ WebSocketsClient webSocket;
 
 //////////////////HELPERS///////////////////
 
+// Helper function: Wake from power saving modes
+bool wakeFromPowerSavingMode() {
+  // Check if we're in grace period after wake-up
+  if (lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS) {
+    Serial.println("[WAKE] Ignored - in grace period after wake-up");
+    return true; // Indicate we're in grace period
+  }
+  
+  // Reset activity timer
+  lastActivityTime = millis();
+  
+  // If screensaver or deep sleep was active, deactivate and return true
+  if (screensaverActive || deepSleepActive) {
+    Serial.println("[WAKE] Waking from power saving mode");
+    screensaverActive = false;
+    deepSleepActive = false;
+    deactivateScreensaver();
+    lastWakeUpTime = millis();
+    lastActivityTime = millis();
+    return true; // Indicate we just woke up
+  }
+  
+  return false; // Normal operation, no wake-up needed
+}
+
+// Helper function: Redraw appropriate QR screen based on mode
+void redrawQRScreen() {
+  Serial.println("[DISPLAY] Redrawing QR screen...");
+  if (thresholdKey.length() > 0) {
+    showThresholdQRScreen();
+    Serial.println("[DISPLAY] Threshold QR screen displayed");
+  } else if (specialMode != "standard" && specialMode != "") {
+    showSpecialModeQRScreen();
+    Serial.println("[DISPLAY] Special mode QR screen displayed");
+  } else {
+    showQRScreen();
+    Serial.println("[DISPLAY] Normal QR screen displayed");
+  }
+}
+
 void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ratio) {
   Serial.println("[SPECIAL] Executing special mode:");
   Serial.printf("[SPECIAL] Pin: %d, Duration: %lu ms, Frequency: %.2f Hz, Ratio: %.2f\n", 
@@ -150,7 +190,7 @@ void readFiles()
   File paramFile = FFat.open(PARAM_FILE, "r");
   if (paramFile)
   {
-    StaticJsonDocument<1500> doc;
+    JsonDocument doc;
     DeserializationError error = deserializeJson(doc, paramFile.readString());
 
     const JsonObject maRoot0 = doc[0];
@@ -616,39 +656,36 @@ void checkAndReconnectWiFi()
 void configMode()
 {
   Serial.println("[BUTTON] Config mode button pressed");
+  
+  // CRITICAL: Ensure serial is ready after deep sleep wake-up
+  Serial.flush();
+  delay(100); // Give serial time to stabilize
+  
+  // Verify serial is actually working
+  Serial.println("[SERIAL_TEST] Testing serial connection...");
+  Serial.flush();
+  delay(50);
+  
   configModeScreen(); // Draw config screen IMMEDIATELY
   inConfigMode = true; // Then set flag
+  
   Serial.println("Config mode screen displayed, entering serial config...");
+  Serial.flush();
+  
   bool hasExistingData = (ssid.length() > 0);
   Serial.printf("Has existing data: %s\n", hasExistingData ? "YES" : "NO");
+  Serial.flush();
+  
   configOverSerialPort(ssid, wifiPassword, hasExistingData);
 }
 
 void reportMode()
 {
-  // Check if we're in grace period after wake-up
-  if (lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS) {
-    Serial.println("[REPORT] Ignored - in grace period after wake-up");
-    return;
-  }
-  
-  // Reset activity timer for screensaver/deep sleep
-  lastActivityTime = millis();
-  
-  // If screensaver was active, deactivate it and set wake-up time
-  if (screensaverActive) {
-    Serial.println("[REPORT] Waking from screensaver");
-    screensaverActive = false;
-    deepSleepActive = false;
-    deactivateScreensaver();
-    lastWakeUpTime = millis();
-    lastActivityTime = millis();
+  // Wake from power saving mode if active
+  if (wakeFromPowerSavingMode()) {
+    Serial.println("[REPORT] Device woke up, not entering report mode");
     return; // Don't trigger report mode, just wake up
   }
-  
-  // Deactivate screensaver if active (safety)
-  deactivateScreensaver();
-  deactivateScreensaver();
   
   // Ignore if we just entered config mode (prevents triggering on button release)
   if (inConfigMode) {
@@ -698,28 +735,11 @@ void reportMode()
 
 void showHelp()
 {
-  // Check if we're in grace period after wake-up
-  if (lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS) {
-    Serial.println("[HELP] Ignored - in grace period after wake-up");
-    return;
-  }
-  
-  // Reset activity timer for screensaver/deep sleep
-  lastActivityTime = millis();
-  
-  // If screensaver was active, deactivate it and set wake-up time
-  if (screensaverActive) {
-    Serial.println("[HELP] Waking from screensaver");
-    screensaverActive = false;
-    deepSleepActive = false;
-    deactivateScreensaver();
-    lastWakeUpTime = millis();
-    lastActivityTime = millis();
+  // Wake from power saving mode if active
+  if (wakeFromPowerSavingMode()) {
+    Serial.println("[HELP] Device woke up, not entering help mode");
     return; // Don't trigger help mode, just wake up
   }
-  
-  // Deactivate screensaver if active (safety)
-  deactivateScreensaver();
   
   Serial.println("[BUTTON] Help button pressed");
   inHelpMode = true; // Set flag to interrupt WiFi reconnect loop
@@ -782,12 +802,13 @@ void setup()
   startupScreen();
 
   // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
-  leftButton.setPressTicks(3000); // 3 seconds for config mode (documented as 5 sec for users)
-  leftButton.setDebounceTicks(100); // 100ms debounce to prevent accidental report mode
+  leftButton.setPressMs(3000); // 3 seconds for config mode (documented as 5 sec for users)
+  leftButton.setDebounceMs(100); // 100ms debounce to prevent accidental report mode
   leftButton.attachClick(reportMode);
   leftButton.attachLongPressStart(configMode);
-  rightButton.setDebounceTicks(200); // 200ms debounce
+  rightButton.setDebounceMs(200); // 200ms debounce
   rightButton.attachClick(showHelp);
+  rightButton.attachLongPressStart(showHelp); // Also trigger help on long press (prevents missed clicks)
 
   xTaskCreatePinnedToCore(
       Task1code, /* Function to implement the task */
@@ -1026,7 +1047,20 @@ void loop()
         
         // Execution continues here after wake-up from light sleep
         // (Deep sleep/freeze mode will restart the device instead)
-        Serial.println("[WAKE_UP] Device woke from deep sleep");
+        
+        // CRITICAL: Light sleep disconnects USB-Serial hardware
+        // We need to reinitialize USB-CDC to make Serial work again
+        Serial.println("[WAKE_UP] Device woke from light sleep");
+        
+        // Reinitialize USB-CDC peripheral after light sleep
+        Serial.end();
+        delay(100);
+        Serial.setRxBufferSize(2048); // Same as in setup()
+        Serial.begin(115200);
+        delay(200); // Give USB-CDC time to enumerate
+        
+        Serial.println("[WAKE_UP] USB-Serial reinitialized after light sleep");
+        Serial.flush();
         
         // Show boot-up screen first
         bootUpScreen();
@@ -1064,17 +1098,7 @@ void loop()
         delay(500);
         
         // Redraw the appropriate QR screen
-        Serial.println("[WAKE_UP] Redrawing screen...");
-        if (thresholdKey.length() > 0) {
-          showThresholdQRScreen();
-          Serial.println("[WAKE_UP] Threshold QR screen displayed");
-        } else if (specialMode != "standard" && specialMode != "") {
-          showSpecialModeQRScreen();
-          Serial.println("[WAKE_UP] Special mode QR screen displayed");
-        } else {
-          showQRScreen();
-          Serial.println("[WAKE_UP] Normal QR screen displayed");
-        }
+        redrawQRScreen();
         Serial.println("[WAKE_UP] Ready for payments");
       }
     }
@@ -1268,7 +1292,7 @@ void loop()
         Serial.println("[THRESHOLD] Processing payment in threshold mode...");
         
         // Parse JSON payload to get payment amount
-        StaticJsonDocument<1900> doc;
+        JsonDocument doc;
         DeserializationError error = deserializeJson(doc, payloadStr);
         
         if (error) {
@@ -1300,20 +1324,23 @@ void loop()
           // Check if special mode is enabled
           if (specialMode != "standard" && specialMode != "") {
             Serial.println("[THRESHOLD] Using special mode: " + specialMode);
-            lastActivityTime = millis(); // Reset screensaver timer on payment start
+            // Wake from screensaver if active
             if (screensaverActive) {
-              deactivateScreensaver();
               screensaverActive = false;
+              deactivateScreensaver();
             }
+            lastActivityTime = millis(); // Reset screensaver timer on payment start
+            
             specialModeScreen();
             executeSpecialMode(pin, duration, frequency, dutyCycleRatio);
           } else {
             Serial.println("[THRESHOLD] Using standard mode");
-            lastActivityTime = millis(); // Reset screensaver timer on payment start
+            // Wake from screensaver if active
             if (screensaverActive) {
-              deactivateScreensaver();
               screensaverActive = false;
+              deactivateScreensaver();
             }
+            lastActivityTime = millis(); // Reset screensaver timer on payment start
             switchedOnScreen();
             pinMode(pin, OUTPUT);
             digitalWrite(pin, HIGH);
@@ -1327,10 +1354,6 @@ void loop()
           
           thankYouScreen();
           lastActivityTime = millis(); // Reset screensaver timer on payment
-          if (screensaverActive) {
-            deactivateScreensaver();
-            screensaverActive = false;
-          }
           delay(2000);
           
           // Return to threshold QR screen

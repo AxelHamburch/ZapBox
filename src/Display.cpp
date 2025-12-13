@@ -27,64 +27,49 @@ uint16_t themeForeground = TFT_BLACK;
 // Light: TFT_LIGHTGREY, TFT_NAVY, TFT_BROWN
 // Custom RGB565: 0xRRRR (5 bits red, 6 bits green, 5 bits blue)
 
+// Theme configuration struct for cleaner lookup
+struct ThemeConfig {
+  const char* name;
+  uint16_t foreground;
+  uint16_t background;
+};
+
+// Theme lookup table - much cleaner than long if-else chain
+const ThemeConfig themeConfigs[] = {
+  {"black-white", TFT_BLACK, TFT_WHITE},
+  {"white-black", TFT_WHITE, TFT_BLACK},
+  {"darkgreen-green", TFT_DARKGREEN, TFT_GREEN},
+  {"darkgreen-lightgrey", TFT_DARKGREEN, TFT_LIGHTGREY},
+  {"red-green", TFT_RED, TFT_GREEN},
+  {"grey-blue", TFT_LIGHTGREY, TFT_BLUE},
+  {"orange-brown", TFT_ORANGE, TFT_BROWN},
+  {"brown-yellow", TFT_BROWN, TFT_YELLOW},
+  {"maroon-magenta", TFT_MAROON, TFT_MAGENTA},
+  {"black-red", TFT_BLACK, TFT_RED},
+  {"brown-orange", TFT_BROWN, TFT_ORANGE},
+  {"black-orange", TFT_BLACK, TFT_ORANGE},
+  {"white-darkcyan", TFT_WHITE, TFT_DARKCYAN},
+  {"white-navy", TFT_WHITE, TFT_NAVY},
+  {"darkcyan-cyan", TFT_DARKCYAN, TFT_CYAN},
+  {"black-olive", TFT_BLACK, TFT_OLIVE},
+  {"darkgrey-lightgrey", TFT_DARKGREY, TFT_LIGHTGREY}
+};
+
 void setThemeColors()
 {
-  if (theme == "black-white") {
-    themeForeground = TFT_BLACK;
-    themeBackground = TFT_WHITE;
-  } else if (theme == "white-black") {
-    themeForeground = TFT_WHITE;
-    themeBackground = TFT_BLACK;
-  } else if (theme == "darkgreen-green") {
-    themeForeground = TFT_DARKGREEN;
-    themeBackground = TFT_GREEN;
-  } else if (theme == "darkgreen-lightgrey") {
-    themeForeground = TFT_DARKGREEN;
-    themeBackground = TFT_LIGHTGREY;
-  } else if (theme == "red-green") {
-    themeForeground = TFT_RED;
-    themeBackground = TFT_GREEN;
-  } else if (theme == "grey-blue") {
-    themeForeground = TFT_LIGHTGREY;
-    themeBackground = TFT_BLUE;
-  } else if (theme == "orange-brown") {
-    themeForeground = TFT_ORANGE;
-    themeBackground = TFT_BROWN;
-  } else if (theme == "brown-yellow") {
-    themeForeground = TFT_BROWN;
-    themeBackground = TFT_YELLOW;
-  } else if (theme == "maroon-magenta") {
-    themeForeground = TFT_MAROON;
-    themeBackground = TFT_MAGENTA;
-  } else if (theme == "black-red") {
-    themeForeground = TFT_BLACK;
-    themeBackground = TFT_RED;
-  } else if (theme == "brown-orange") {
-    themeForeground = TFT_BROWN;
-    themeBackground = TFT_ORANGE;
-  } else if (theme == "black-orange") {
-    themeForeground = TFT_BLACK;
-    themeBackground = TFT_ORANGE;
-  } else if (theme == "white-darkcyan") {
-    themeForeground = TFT_WHITE;
-    themeBackground = TFT_DARKCYAN;
-  } else if (theme == "white-navy") {
-    themeForeground = TFT_WHITE;
-    themeBackground = TFT_NAVY;
-  } else if (theme == "darkcyan-cyan") {
-    themeForeground = TFT_DARKCYAN;
-    themeBackground = TFT_CYAN;
-  } else if (theme == "black-olive") {
-    themeForeground = TFT_BLACK;
-    themeBackground = TFT_OLIVE;
-  } else if (theme == "darkgrey-lightgrey") {
-    themeForeground = TFT_DARKGREY;
-    themeBackground = TFT_LIGHTGREY;
-  } else {
-    // Default fallback
-    themeForeground = TFT_BLACK;
-    themeBackground = TFT_WHITE;
+  // Default fallback
+  themeForeground = TFT_BLACK;
+  themeBackground = TFT_WHITE;
+  
+  // Lookup theme in table
+  for (const auto& config : themeConfigs) {
+    if (theme == config.name) {
+      themeForeground = config.foreground;
+      themeBackground = config.background;
+      return;
+    }
   }
+  // If not found, defaults are already set above
 }
 
 void initDisplay()
@@ -689,28 +674,27 @@ void setupDeepSleepWakeup(String mode)
   
   // Configure power domain settings based on mode
   if (mode == "light") {
-    // Light sleep: CPU pauses, RAM active, peripherals stay active
-    // WiFi/Bluetooth stay connected, WebSocket remains active
-    // For light sleep, use GPIO wake-up (more reliable than EXT0/EXT1)
+    // Light sleep: CPU pauses, RAM active, faster wake-up than freeze
+    // WiFi disconnects but reconnects faster than full reboot
+    // NO payment processing possible during sleep (CPU is paused)
     
     // Configure BOOT button (GPIO 0) for wake-up on LOW (button pressed)
     gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
     
     // Configure IO14 button (GPIO 14) for wake-up on LOW (button pressed)
-    // Note: Both buttons trigger on LOW when pressed
     gpio_wakeup_enable(GPIO_NUM_14, GPIO_INTR_LOW_LEVEL);
     
     // Enable GPIO wake-up
     esp_sleep_enable_gpio_wakeup();
     
-    // Keep WiFi active during light sleep (modem sleep)
-    // This allows the device to wake on network events and keeps connection alive
-    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
-    
-    Serial.println("[DEEP_SLEEP] Wake-up sources configured: BOOT (GPIO 0) and IO14 (GPIO 14)");
-    Serial.println("[DEEP_SLEEP] WiFi will remain active (modem sleep)");
-    Serial.println("[DEEP_SLEEP] Entering Light Sleep (~0.8-3mA)");
+    Serial.println("[DEEP_SLEEP] Light Sleep mode configured");
+    Serial.println("[DEEP_SLEEP] Wake-up sources: BOOT (GPIO 0) and IO14 (GPIO 14)");
+    Serial.println("[DEEP_SLEEP] Display OFF, WiFi reconnects after wake");
+    Serial.println("[DEEP_SLEEP] Power consumption: ~0.8-3mA");
+    Serial.println("[DEEP_SLEEP] Wake-up time: ~1-2 seconds");
+    Serial.println("[DEEP_SLEEP] NO payment processing during sleep");
     Serial.println("[DEEP_SLEEP] Press BOOT or IO14 button to wake up");
+    Serial.println("[DEEP_SLEEP] Entering Light Sleep now...");
     
     esp_light_sleep_start();
     
@@ -764,7 +748,7 @@ void setupDeepSleepWakeup(String mode)
     
     // Configure EXT1 wake-up for GPIO 14 (HELP button) - wake on LOW
     Serial.println("[DEEP_SLEEP] Setting EXT1 wake-up: GPIO 14 (HELP), trigger on LOW");
-    esp_sleep_enable_ext1_wakeup(BIT64(GPIO_NUM_14), ESP_EXT1_WAKEUP_ALL_LOW);
+    esp_sleep_enable_ext1_wakeup(BIT64(GPIO_NUM_14), ESP_EXT1_WAKEUP_ANY_LOW);
     
     // Disable most power domains for maximum savings
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON); // Keep RTC periph for GPIO

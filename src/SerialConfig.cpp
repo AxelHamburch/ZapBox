@@ -11,14 +11,26 @@ void configOverSerialPort(String wifiSSID, String wifiPass, bool hasExistingData
 
 void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 {
+    // CRITICAL: Ensure serial is fully ready (especially after wake from deep sleep)
+    Serial.flush();
+    delay(200); // Give serial port time to stabilize
+    
     Serial.println("\n--- Serial Config Mode Active ---");
     Serial.println("[CONFIG_MODE_ENTER]");
     Serial.println("Waiting for commands...");
     Serial.flush();
+    
+    // Send multiple CONFIG_MODE_ENTER signals to ensure web installer detects it
+    for (int i = 0; i < 3; i++) {
+        delay(100);
+        Serial.println("[CONFIG_MODE_ENTER]");
+        Serial.flush();
+    }
 
     // Remember initial WiFi state - only restart if WiFi comes BACK (was disconnected)
     bool wifiWasDisconnected = (WiFi.status() != WL_CONNECTED);
     Serial.printf("WiFi initial state: %s\n", wifiWasDisconnected ? "DISCONNECTED" : "CONNECTED");
+    Serial.flush();
 
     unsigned long lastWiFiCheck = millis();
     unsigned long lastActivity = millis(); // Track last serial activity

@@ -448,12 +448,21 @@
         let helloSendTimeout = null;
         let serialBuffer = ""; // Buffer for incoming serial data
         let justRestarted = false; // Flag to suppress normal mode detection after restart
+        let lastDataReceivedTime = 0; // Track when we last received data
+        let connectionMonitorInterval = null; // Connection health monitor
+        let inactivityWarningShown = false; // Flag to show warning only once
 
         function onSerialConnectionOpened(eventSender) {
             console.log("onSerialConnectionOpened", eventSender);
             
             // Reset config mode flag
             configModeVerified = false;
+            lastDataReceivedTime = Date.now(); // Initialize timestamp
+            inactivityWarningShown = false; // Reset warning flag
+            
+            // Connection health monitor removed - caused too many false positives
+            // User can see in the log whether device is responding or not
+            connectionMonitorInterval = null;
             
             // Disable all buttons initially
             document.getElementById("connect-button").disabled = true;
@@ -495,6 +504,12 @@
         function onSerialConnectionClosed(eventSender) {
             console.log("onSerialConnectionClosed", eventSender);
             
+            // Clear connection monitor
+            if (connectionMonitorInterval) {
+                clearInterval(connectionMonitorInterval);
+                connectionMonitorInterval = null;
+            }
+            
             // Clear timeouts if still running
             if (helloSendTimeout) {
                 clearTimeout(helloSendTimeout);
@@ -504,6 +519,10 @@
                 clearTimeout(configModeCheckTimeout);
                 configModeCheckTimeout = null;
             }
+            
+            // Reset all connection state flags
+            inactivityWarningShown = false;
+            lastDataReceivedTime = 0;
             
             // Reset verification flag and buffer
             configModeVerified = false;
@@ -520,6 +539,12 @@
         function onSerialDataReceived(eventSender, newData) {
             console.log("onSerialDataReceived", eventSender);
             console.log("Received data:", newData);
+            
+            // Update last data received timestamp
+            lastDataReceivedTime = Date.now();
+            
+            // Reset inactivity warning flag when new data arrives
+            inactivityWarningShown = false;
             
             // Append text without HTML parsing to preserve ASCII art formatting
             const textNode = document.createTextNode(newData + '\n');
