@@ -222,9 +222,7 @@ ZapBox/
 
 ## Acknowledgement
 
-This project is based on Daniel's [SATOFFEE](https://github.com/danielcharrua/satoffee) and uses parts from [bitcoinswitch](https://github.com/lnbits/bitcoinswitch).
-
-A big thank you goes to [Ben Arc](https://njump.to/nprofile1qqsvrlrhw86l5sv06wkyjgs6rrcekskvk7nx8k50qn9m7mqgeqxjpvgpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtctcf224) and the entire LNbits team for their incredible work.
+This project is based on Daniel's [SATOFFEE](https://github.com/danielcharrua/satoffee) and uses parts from [bitcoinswitch](https://github.com/lnbits/bitcoinswitch). A big thank you goes to [Ben Arc](https://njump.to/nprofile1qqsvrlrhw86l5sv06wkyjgs6rrcekskvk7nx8k50qn9m7mqgeqxjpvgpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtctcf224) and the entire LNbits team for their incredible work.
 ---
 
 **Lightning ZapBox** - Compact, simple, Bitcoin-powered! ⚡
