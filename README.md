@@ -189,16 +189,6 @@ This project is configured for PlatformIO and based on the Arduino framework for
 - TFT_eSPI
 - QRCode
 
-### Build and Upload
-
-```bash
-# Compile and upload to device
-platformio run --target upload
-
-# Monitor serial output
-platformio device monitor
-```
-
 ### Project Structure
 
 ```
@@ -208,10 +198,21 @@ ZapBox/
 │   ├── Display.cpp/h      # Display functions and themes
 │   ├── SerialConfig.cpp/h # Serial configuration interface
 │   └── PinConfig.h        # Hardware pin definitions
-├── installer/             # Web-based installer and configuration tool
+├── installer/
+│   ├── index.html         # Web-based installer and configuration tool
+│   ├── assets/            # Web installer assets (CSS, JS, images)
+│   └── firmware/          # Firmware versions with binaries and manifests
 ├── assets/
-│   └── electric-layout/   # Wiring diagrams and schematics
-└── platformio.ini         # PlatformIO configuration
+│   ├── electric/          # Electrical layouts and circuit diagrams
+│   ├── housing/           # 3D models and FreeCAD files
+│   └── lightning-address.png
+├── lib/                   # TFT_eSPI configuration
+├── include/               # Additional headers
+├── platformio.ini         # PlatformIO configuration
+├── partitions_16mb.csv    # ESP32 partition table
+├── FIRMWARE.md            # Firmware release process documentation
+├── RELEASE.md             # GitHub release process documentation
+└── TODO.md                # Development roadmap
 ```
 
 ## Compatibility
