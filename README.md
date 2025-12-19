@@ -231,7 +231,7 @@ A big thank you goes to [Ben Arc](https://njump.to/nprofile1qqsvrlrhw86l5sv06wky
 Software versioning, see Releases.
 Electrical design and housing variants, see table.
 
-### Housing / 3D modeling
+### Housing / 3D modeling (FreeCAD)
 
 | Version | Type | Comment |
 |---------|------|---------|
@@ -239,7 +239,7 @@ Electrical design and housing variants, see table.
 | b928260 | compact | Prototyp 2, uses e928304 |
 | b928555 | compact | Sample device, uses e928556 |
 
-### Electrical layout / circuit diagram
+### Electrical layout / circuit diagram (Inkscape)
 
 | Version | Type | Comment |
 |---------|------|---------|
