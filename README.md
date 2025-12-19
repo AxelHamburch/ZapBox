@@ -222,7 +222,47 @@ ZapBox/
 
 ## Acknowledgement
 
-This project is based on Daniel's [SATOFFEE](https://github.com/danielcharrua/satoffee) and uses parts from [bitcoinswitch](https://github.com/lnbits/bitcoinswitch). A big thank you goes to [Ben Arc](https://njump.to/nprofile1qqsvrlrhw86l5sv06wkyjgs6rrcekskvk7nx8k50qn9m7mqgeqxjpvgpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtctcf224) and the entire LNbits team for their incredible work.
+This project is based on Daniel's [SATOFFEE](https://github.com/danielcharrua/satoffee) and uses parts from Ben's [bitcoinswitch](https://github.com/lnbits/bitcoinswitch).
+
+A big thank you goes to [Ben Arc](https://njump.to/nprofile1qqsvrlrhw86l5sv06wkyjgs6rrcekskvk7nx8k50qn9m7mqgeqxjpvgpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtctcf224) and the entire LNbits team for their incredible work.
+
+## Versioning
+
+Software versioning, see Releases.
+Electrical design and housing variants, see table.
+
+### Housing / 3D modeling
+
+| Version | Type | Comment |
+|---------|------|---------|
+| b926837 | compact | Prototyp, uses e926834 |
+| b928260 | compact | Prototyp 2, uses e928304 |
+| b928555 | compact | Sample device, uses e928556 |
+
+### Electrical layout / circuit diagram
+
+| Version | Type | Comment |
+|---------|------|---------|
+| e926834 | compact | Prototype |
+| e928304 | compact | Prototype 2 |
+| e928556 | compact | Sample device |
+
+## Support
+
+This is a free and open source project. Support is welcome. Making Bitcoin Lightning technology ⚡ accessible to everyone — worldwide. 🌍
+
+<table>
+<tr>
+<td>
+<img src="assets/lightning-address.png" width="75" alt="Lightning Address QR Code">
+</td>
+<td>
+Lightning⚡Address<br>
+axelhamburch@ereignishorizont.xyz
+</td>
+</tr>
+</table>
+
 ---
 
 **Lightning ZapBox** - Compact, simple, Bitcoin-powered! ⚡
