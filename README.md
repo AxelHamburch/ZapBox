@@ -254,7 +254,7 @@ This is a free and open source project. Support is welcome. Making Bitcoin Light
 <table>
 <tr>
 <td>
-<img src="assets/lightning-address.png" width="75" alt="Lightning Address QR Code">
+<img src="assets/lightning-address.png" width="90" alt="Lightning Address QR Code">
 </td>
 <td>
 Lightning⚡Address<br>
