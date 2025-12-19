@@ -52,7 +52,8 @@ const ThemeConfig themeConfigs[] = {
   {"white-navy", TFT_WHITE, TFT_NAVY},
   {"darkcyan-cyan", TFT_DARKCYAN, TFT_CYAN},
   {"black-olive", TFT_BLACK, TFT_OLIVE},
-  {"darkgrey-lightgrey", TFT_DARKGREY, TFT_LIGHTGREY}
+  {"darkgrey-lightgrey", TFT_DARKGREY, TFT_LIGHTGREY},
+  {"black-lightgrey", TFT_BLACK, TFT_LIGHTGREY}
 };
 
 void setThemeColors()
