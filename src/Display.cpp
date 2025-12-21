@@ -120,6 +120,37 @@ void startupScreen()
   }
 }
 
+// Initialization Screen (shown during connection setup)
+void initializationScreen()
+{
+  tft.fillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  if (orientation == "v"){
+    tft.setTextSize(2);
+    tft.drawString("", x + 5, y - 95, GFXFF);
+    tft.setTextSize(8);
+    tft.drawString("ZAP", x + 5, y - 70, GFXFF);
+    tft.drawString("BOX", x + 5, y - 20, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("", x + 5, y + 15, GFXFF);
+    tft.drawString("Initializ.", x + 5, y + 35, GFXFF);
+    tft.drawString("in", x + 5, y + 55, GFXFF);
+    tft.setTextSize(1);
+    tft.drawString("", x + 5, y + 70, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("progress", x + 5, y + 80, GFXFF);
+    tft.drawString("...", x + 5, y + 100, GFXFF);
+  } else {
+    tft.setTextSize(6);
+    tft.drawString("ZAPBOX", x + 5, y - 15, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("Initialization in", x, y + 25, GFXFF);
+    tft.drawString("progress...", x, y + 45, GFXFF);
+  }
+}
+
 // Boot-Up Screen (shown when waking from deep sleep or restarting)
 void bootUpScreen()
 {

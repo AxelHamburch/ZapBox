@@ -2,6 +2,7 @@
 
 void initDisplay();
 void startupScreen();
+void initializationScreen();
 void bootUpScreen();
 void configModeScreen();
 void errorReportScreen(uint8_t wifiCount, uint8_t internetCount, uint8_t serverCount, uint8_t websocketCount);

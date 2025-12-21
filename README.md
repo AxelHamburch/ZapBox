@@ -36,6 +36,29 @@ See the complete wiring diagram: [E-Layout-ZapBox-Compact.png](assets/electric/E
   - Hold 5 seconds = Configuration mode (serial config interface)
 - **Right Button (HELP)**: Show help page with instructions
 
+### Startup & Initialization Sequence
+
+The ZapBox features an optimized startup sequence with parallel connection establishment:
+
+**Phase 1: Startup Screen (6 seconds)**
+- Displays "ZAPBOX" branding with firmware version
+- Shows "Powered by LNbits"
+- WiFi connection starts in background during this phase
+
+**Phase 2: Initialization Screen (up to 19 seconds)**
+- Displays "ZAPBOX" with "Initialization in progress . . ."
+- All connection tests run in parallel:
+  1. WiFi connection (continues from Phase 1)
+  2. Internet connectivity check (once WiFi connected)
+  3. LNbits server reachability test (once Internet confirmed)
+  4. WebSocket connection establishment (once Server confirmed)
+- **Early Exit**: Screen switches to QR code as soon as all connections are successful
+- **Maximum Time**: 25 seconds total (6s startup + 19s init) if connections take longer
+- **Error Display**: After 25 seconds, shows first detected error if any connection failed
+
+**Optimal Scenario**: ~10-15 seconds from power-on to QR code display
+**Error Scenario**: 25 seconds → displays specific error screen
+
 ### Error Detection & Priority System
 
 The ZapBox features a hierarchical error detection system with automatic diagnostics:
