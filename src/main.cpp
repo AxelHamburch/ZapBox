@@ -878,7 +878,7 @@ void setup()
   WiFi.begin(ssid.c_str(), wifiPassword.c_str());
   Serial.println("[STARTUP] WiFi connection started in background");
 
-  // Show startup screen for 6 seconds
+  // Show startup screen for 5 seconds
   Serial.println("[STARTUP] Showing startup screen for 6 seconds...");
   for (int i = 0; i < 50; i++) { // 50 * 100ms = 5 seconds
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -892,9 +892,9 @@ void setup()
   // Switch to initialization screen
   initializationScreen();
   
-  // Continue initialization for max 19 more seconds (total 25s)
+  // Continue initialization for max 20 more seconds (total 25s)
   // Exit early if all connections are successful
-  Serial.println("[STARTUP] Showing initialization screen (max 19s more) while connections establish...");
+  Serial.println("[STARTUP] Showing initialization screen (max 20s more) while connections establish...");
   
   const int MAX_INIT_TIME = 200; // 200 * 100ms = 20 seconds (5s startup + 20s init = 25s total)
   bool allConnectionsReady = false;
