@@ -514,7 +514,7 @@ void thankYouScreen()
   }
 }
 
-// Show QR
+// Show QR for ZAP action
 void showQRScreen()
 {
   tft.setTextDatum(ML_DATUM);

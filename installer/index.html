@@ -134,7 +134,7 @@
             </div>
             <div>
                 <label for="lnurl">LNURL for QR-Code</label>
-                <input type="text" name="lnurl" id="lnurl" placeholder="LNURL..." autocomplete="off">
+                <input type="text" name="lnurl" id="lnurl" placeholder="LNURL for pin 12" autocomplete="off">
             </div>
             <div>
                 <label for="orientation">Screen orientation</label>
@@ -240,6 +240,89 @@
             
             <p style="margin-top: 10px;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
         </div>
+
+        <!-- Multi-Control / Product Selection Feature Section -->
+        <div style="margin-top: 50px;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
+                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Multi-control / Product selection</h4>
+                <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
+            </div>
+            
+            <div class="input-wrapper">
+                <div>
+                    <label for="multiControl">Multi-Control Mode</label>
+                    <select name="multiControl" id="multiControl">
+                        <option value="off" selected>Off - Single - trigger pin 12</option>
+                        <option value="duo">On - Duo - add pin 13</option>
+                        <option value="quattro">On - Quattro - add pin 13, 10 and 11</option>
+                    </select>
+                </div>
+                <div id="lnurl13-wrapper">
+                    <label for="lnurl13">LNURL QR-Code trigger 2</label>
+                    <input type="text" name="lnurl13" id="lnurl13" placeholder="LNURL for pin 13" autocomplete="off" disabled>
+                </div>
+                <div id="lnurl10-wrapper">
+                    <label for="lnurl10">LNURL QR-Code trigger 3</label>
+                    <input type="text" name="lnurl10" id="lnurl10" placeholder="LNURL for pin 10" autocomplete="off" disabled>
+                </div>
+                <div id="lnurl11-wrapper">
+                    <label for="lnurl11">LNURL QR-Code trigger 4</label>
+                    <input type="text" name="lnurl11" id="lnurl11" placeholder="LNURL for pin 11" autocomplete="off" disabled>
+                </div>
+            </div>
+            
+            <p style="margin-top: 20px;"><i><strong>Note:</strong> Multi-control mode allows you to add up to 3 additional relay outputs (pins 13, 10, 11) with individual LNURL QR codes for each. Each product/trigger can have its own payment link.</i></p>
+            
+            <p style="margin-top: 10px;"><i><strong>How does it work?</strong> In Duo mode, you get 2 QR codes (pin 12 + pin 13). In Quattro mode, you get 4 QR codes (pins 12, 13, 10, 11). Use the product selection screen on the device (appears after 5 seconds) to switch between different QR codes.</i></p>
+        </div>
+
+        <script>
+            // Enable/disable LNURL fields based on multi-control mode
+            document.getElementById('multiControl').addEventListener('change', function(e) {
+                const lnurl13 = document.getElementById('lnurl13');
+                const lnurl10 = document.getElementById('lnurl10');
+                const lnurl11 = document.getElementById('lnurl11');
+                
+                if (e.target.value === 'off') {
+                    // OFF: Disable all fields
+                    lnurl13.disabled = true;
+                    lnurl10.disabled = true;
+                    lnurl11.disabled = true;
+                    lnurl13.style.backgroundColor = '#f0f0f0';
+                    lnurl10.style.backgroundColor = '#f0f0f0';
+                    lnurl11.style.backgroundColor = '#f0f0f0';
+                } else if (e.target.value === 'duo') {
+                    // DUO: Enable only pin 13
+                    lnurl13.disabled = false;
+                    lnurl10.disabled = true;
+                    lnurl11.disabled = true;
+                    lnurl13.style.backgroundColor = '';
+                    lnurl10.style.backgroundColor = '#f0f0f0';
+                    lnurl11.style.backgroundColor = '#f0f0f0';
+                } else if (e.target.value === 'quattro') {
+                    // QUATTRO: Enable all fields
+                    lnurl13.disabled = false;
+                    lnurl10.disabled = false;
+                    lnurl11.disabled = false;
+                    lnurl13.style.backgroundColor = '';
+                    lnurl10.style.backgroundColor = '';
+                    lnurl11.style.backgroundColor = '';
+                }
+            });
+            
+            // Initialize field states on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                const multiControl = document.getElementById('multiControl');
+                const lnurl13 = document.getElementById('lnurl13');
+                const lnurl10 = document.getElementById('lnurl10');
+                const lnurl11 = document.getElementById('lnurl11');
+                
+                // Set initial state (OFF)
+                lnurl13.style.backgroundColor = '#f0f0f0';
+                lnurl10.style.backgroundColor = '#f0f0f0';
+                lnurl11.style.backgroundColor = '#f0f0f0';
+            });
+        </script>
 
         <!-- Screensaver and Deep Sleep Feature Section -->
         <div style="margin-top: 50px;">
@@ -433,6 +516,22 @@
             {
                 "name": "activationTime",
                 "value": "5"
+            },
+            {
+                "name": "multiControl",
+                "value": "off"
+            },
+            {
+                "name": "lnurl13",
+                "value": ""
+            },
+            {
+                "name": "lnurl10",
+                "value": ""
+            },
+            {
+                "name": "lnurl11",
+                "value": ""
             }
         ]
 
@@ -843,6 +942,10 @@
             config[14].value = screensaver.value;
             config[15].value = deepSleep.value;
             config[16].value = activationTime.value || "5";
+            config[17].value = multiControl.value;
+            config[18].value = lnurl13.value;
+            config[19].value = lnurl10.value;
+            config[20].value = lnurl11.value;
             
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -882,6 +985,24 @@
                 
                 if (!dutyCycleRatioValue || isNaN(ratioNum) || ratioNum < 0.1 || ratioNum > 10) {
                     alert("⚠️ Special Mode Validation Error\n\nFor custom mode, duty cycle ratio must be between 0.1 and 10");
+                    return;
+                }
+            }
+            
+            // Validate multi-control fields
+            const multiControlValue = config[17].value.trim();
+            const lnurl13Value = config[18].value.trim();
+            const lnurl10Value = config[19].value.trim();
+            const lnurl11Value = config[20].value.trim();
+            
+            if (multiControlValue === 'duo') {
+                if (!lnurl13Value) {
+                    alert("⚠️ Multi-Control Validation Error\n\nFor Duo mode, LNURL for pin 13 is required.");
+                    return;
+                }
+            } else if (multiControlValue === 'quattro') {
+                if (!lnurl13Value || !lnurl10Value || !lnurl11Value) {
+                    alert("⚠️ Multi-Control Validation Error\n\nFor Quattro mode, all LNURL fields (pins 13, 10, 11) are required.");
                     return;
                 }
             }

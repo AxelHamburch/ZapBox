@@ -42,6 +42,12 @@ String specialMode = "standard";
 float frequency = 1.0;
 float dutyCycleRatio = 1.0;
 
+// Multi-Control / Product selection configuration
+String multiControl = "off";
+String lnurl13 = "";
+String lnurl10 = "";
+String lnurl11 = "";
+
 // Screensaver and Deep Sleep timeout tracking
 unsigned long lastActivityTime = 0;  // Track last button press or activity
 unsigned long activationTimeoutMs = 5 * 60 * 1000; // Default 5 minutes in milliseconds
@@ -366,6 +372,31 @@ void readFiles()
       if (actTime > 120) activationTime = "120";
     }
 
+    // Read multi-control configuration (optional, indices 17-20)
+    const JsonObject maRoot17 = doc[17];
+    if (!maRoot17.isNull()) {
+      const char *maRoot17Char = maRoot17["value"];
+      multiControl = maRoot17Char;
+    }
+
+    const JsonObject maRoot18 = doc[18];
+    if (!maRoot18.isNull()) {
+      const char *maRoot18Char = maRoot18["value"];
+      lnurl13 = maRoot18Char;
+    }
+
+    const JsonObject maRoot19 = doc[19];
+    if (!maRoot19.isNull()) {
+      const char *maRoot19Char = maRoot19["value"];
+      lnurl10 = maRoot19Char;
+    }
+
+    const JsonObject maRoot20 = doc[20];
+    if (!maRoot20.isNull()) {
+      const char *maRoot20Char = maRoot20["value"];
+      lnurl11 = maRoot20Char;
+    }
+
     // Apply predefined mode settings
     if (specialMode == "blink") {
       frequency = 1.0;
@@ -387,6 +418,28 @@ void readFiles()
     Serial.println(" Hz");
     Serial.print("Duty Cycle Ratio: ");
     Serial.println(dutyCycleRatio);
+
+    // Display Multi-Control configuration
+    Serial.print("Multi-Control Mode: ");
+    if (multiControl == "off") {
+      Serial.println("Single (Pin 12 only)");
+    } else if (multiControl == "duo") {
+      Serial.println("Duo (Pins 12, 13)");
+      if (lnurl13.length() > 0) {
+        Serial.println("LNURL Pin 13: " + lnurl13);
+      }
+    } else if (multiControl == "quattro") {
+      Serial.println("Quattro (Pins 12, 13, 10, 11)");
+      if (lnurl13.length() > 0) {
+        Serial.println("LNURL Pin 13: " + lnurl13);
+      }
+      if (lnurl10.length() > 0) {
+        Serial.println("LNURL Pin 10: " + lnurl10);
+      }
+      if (lnurl11.length() > 0) {
+        Serial.println("LNURL Pin 11: " + lnurl11);
+      }
+    }
 
     // Display mode based on threshold configuration
     Serial.println("\n================================");
