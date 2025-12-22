@@ -622,6 +622,41 @@ void showSpecialModeQRScreen()
   drawQRCode();
 }
 
+// Product Selection Screen - shown after 5 seconds of QR screen
+void productSelectionScreen()
+{
+  tft.fillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  if (orientation == "v"){
+    // Vertical orientation
+    tft.setTextSize(2);
+    tft.drawString("Select the", x, y - 40, GFXFF);
+    tft.drawString("product.", x, y - 20, GFXFF);
+    
+    // Draw left arrow
+    tft.setTextSize(4);
+    tft.drawString("<", x - 40, y + 30, GFXFF);
+    
+    // Draw right arrow
+    tft.drawString(">", x + 40, y + 30, GFXFF);
+    
+  } else {
+    // Horizontal orientation
+    tft.setTextSize(3);
+    tft.drawString("Select the", x, y - 30, GFXFF);
+    tft.drawString("product.", x, y, GFXFF);
+    
+    // Draw left arrow
+    tft.setTextSize(5);
+    tft.drawString("<", x - 70, y + 40, GFXFF);
+    
+    // Draw right arrow
+    tft.drawString(">", x + 70, y + 40, GFXFF);
+  }
+}
+
 // Screensaver management
 static bool screensaverIsActive = false;
 static String screensaverMode = "off";

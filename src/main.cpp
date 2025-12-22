@@ -6,10 +6,12 @@
 #include <ArduinoJson.h>
 #include "FS.h"
 #include "FFat.h"
+#include <Wire.h>
 
 #include "PinConfig.h"
 #include "Display.h"
 #include "SerialConfig.h"
+#include "TouchCST816S.h"
 
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
@@ -80,6 +82,15 @@ byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures t
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
 OneButton rightButton(PIN_BUTTON_2, true);
+
+// Touch controller
+TouchCST816S touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_TOUCH_RES, PIN_TOUCH_INT);
+bool touchAvailable = false;
+
+// Product selection screen tracking
+bool onProductSelectionScreen = false;
+unsigned long productSelectionShowTime = 0;
+const unsigned long PRODUCT_SELECTION_DELAY = 5000; // 5 seconds
 
 WebSocketsClient webSocket;
 
@@ -573,6 +584,9 @@ void checkAndReconnectWiFi()
       WiFi.disconnect();
       vTaskDelay(pdMS_TO_TICKS(50)); // Brief delay for button task
       
+      WiFi.mode(WIFI_STA); // Ensure Station mode
+      WiFi.setSleep(false); // Disable WiFi power saving
+      WiFi.setAutoReconnect(true); // Enable auto-reconnect
       WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
       WiFi.begin(ssid.c_str(), wifiPassword.c_str());
       
@@ -688,6 +702,11 @@ void checkAndReconnectWiFi()
             showQRScreen();
             Serial.println("[SCREEN] Normal QR screen displayed after WiFi recovery");
           }
+          
+          // Reset product selection timer so it shows after 5 seconds
+          productSelectionShowTime = millis();
+          onProductSelectionScreen = false;
+          Serial.println("[RECOVERY] Product selection timer reset");
         } else {
           Serial.println("[RECOVERY] WebSocket connection timeout after 5 seconds");
           if (websocketErrorCount < 99) websocketErrorCount++;
@@ -780,6 +799,9 @@ void reportMode()
     } else {
       showQRScreen();
     }
+    // Reset product selection timer
+    productSelectionShowTime = millis();
+    onProductSelectionScreen = false;
   }
   
   inReportMode = false; // Clear flag AFTER showing final screen
@@ -824,6 +846,9 @@ void showHelp()
     } else {
       showQRScreen();
     }
+    // Reset product selection timer
+    productSelectionShowTime = millis();
+    onProductSelectionScreen = false;
   }
 }
 
@@ -874,9 +899,12 @@ void setup()
   Serial.println("Button task created - config mode available");
 
   // Start WiFi connection BEFORE showing startup screen (parallel execution!)
+  WiFi.mode(WIFI_STA); // Set to Station mode
+  WiFi.setSleep(false); // Disable WiFi power saving for stable connection
+  WiFi.setAutoReconnect(true); // Enable auto-reconnect
   WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
   WiFi.begin(ssid.c_str(), wifiPassword.c_str());
-  Serial.println("[STARTUP] WiFi connection started in background");
+  Serial.println("[STARTUP] WiFi connection started in background (Power Save: OFF)");
 
   // Show startup screen for 5 seconds
   Serial.println("[STARTUP] Showing startup screen for 6 seconds...");
@@ -1038,6 +1066,22 @@ void setup()
 
   // Button task already created earlier (before WiFi setup)
   
+  // Initialize touch controller
+  Serial.println("\n========================================");
+  Serial.println("[TOUCH] Initializing touch controller...");
+  Serial.printf("[TOUCH] I2C Pins: SDA=%d, SCL=%d\n", PIN_IIC_SDA, PIN_IIC_SCL);
+  Serial.printf("[TOUCH] Touch Pins: RST=%d, IRQ=%d\n", PIN_TOUCH_RES, PIN_TOUCH_INT);
+  
+  touchAvailable = touch.begin();
+  
+  if (touchAvailable) {
+    Serial.println("[TOUCH] ✓ Touch controller initialized successfully!");
+    Serial.println("[TOUCH] Swipe in any direction or tap left/right side to navigate");
+  } else {
+    Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
+  }
+  Serial.println("========================================\n");
+  
   setupComplete = true; // Allow loop to run now
 }
 
@@ -1121,6 +1165,9 @@ void loop()
     // Clear error screen flag once QR is shown
     onErrorScreen = false;
     currentErrorType = 0;
+    // Start product selection timer
+    productSelectionShowTime = millis();
+    onProductSelectionScreen = false;
   } else if (firstLoop && !allConnectionsConfirmed) {
     Serial.printf("[SCREEN] First loop - waiting for all connections (WiFi:%d, Internet:%d, Server:%d, WS:%d)\n", 
                   wifiConfirmed, internetConfirmed, serverConfirmed, websocketConfirmed);
@@ -1148,6 +1195,145 @@ void loop()
     {
       Serial.println("[LOOP] Config mode detected, exiting payment loop");
       return;
+    }
+    
+    // Check for touch input (if available and not on error screen)
+    static unsigned long lastTouchEvent = 0;
+    static bool wasTouched = false;
+    
+    if (touchAvailable && !onErrorScreen) {
+      // Check for actual touch event (debounce: only process if 200ms passed since last event)
+      if (touch.available() && (millis() - lastTouchEvent > 200)) {
+        uint8_t gesture = touch.getGesture();
+        uint16_t x = touch.getX();
+        uint16_t y = touch.getY();
+        bool isTouched = touch.isPressed();
+        
+        // Log any detected gesture
+        if (gesture != GESTURE_NONE) {
+          Serial.printf("[TOUCH] Detected - Gesture: 0x%02X, X: %d, Y: %d", gesture, x, y);
+          
+          // Show gesture name
+          if (gesture == GESTURE_SWIPE_LEFT) Serial.print(" (SWIPE LEFT)");
+          else if (gesture == GESTURE_SWIPE_RIGHT) Serial.print(" (SWIPE RIGHT)");
+          else if (gesture == GESTURE_SWIPE_UP) Serial.print(" (SWIPE UP)");
+          else if (gesture == GESTURE_SWIPE_DOWN) Serial.print(" (SWIPE DOWN)");
+          else if (gesture == GESTURE_SINGLE_CLICK) Serial.print(" (SINGLE CLICK)");
+          else if (gesture == GESTURE_DOUBLE_CLICK) Serial.print(" (DOUBLE CLICK)");
+          else if (gesture == GESTURE_LONG_PRESS) Serial.print(" (LONG PRESS)");
+          Serial.println();
+        }
+        
+        // Handle touch on product selection screen
+        if (onProductSelectionScreen) {
+          bool navigateBack = false;
+          String actionName = "";
+          
+          // Check for swipe gestures (any direction)
+          // Renamed for horizontal orientation with button on right:
+          // Physical UP (away from button) = SWIPE_DOWN → renamed to LEFT
+          // Physical DOWN (toward button) = SWIPE_UP → renamed to RIGHT  
+          // Physical LEFT = SWIPE_LEFT → renamed to DOWN
+          // Physical RIGHT = SWIPE_RIGHT → renamed to UP
+          if (gesture == GESTURE_SWIPE_UP) {
+            actionName = "SWIPE RIGHT";
+            navigateBack = true;
+          } else if (gesture == GESTURE_SWIPE_DOWN) {
+            actionName = "SWIPE LEFT";
+            navigateBack = true;
+          } else if (gesture == GESTURE_SWIPE_LEFT) {
+            actionName = "SWIPE DOWN";
+            navigateBack = true;
+          } else if (gesture == GESTURE_SWIPE_RIGHT) {
+            actionName = "SWIPE UP";
+            navigateBack = true;
+          }
+          // Check for single click or long press on left or right side of screen
+          else if (gesture == GESTURE_SINGLE_CLICK || gesture == GESTURE_LONG_PRESS) {
+            // Display: 170x320 native, rotated to 320x170 (rotation=1)
+            // Touch coordinates are NOT rotated: X=0-170, Y=0-320
+            // With rotation=1: Touch Y maps to Display X
+            // Left side of display (low Display X) = low Touch Y (< 160)
+            // Right side of display (high Display X) = high Touch Y (> 160)
+            Serial.printf("[TOUCH] %s detected at X=%d, Y=%d - ", 
+                         gesture == GESTURE_SINGLE_CLICK ? "SINGLE CLICK" : "LONG PRESS", x, y);
+            
+            if (y < 160) {
+              Serial.println("LEFT SIDE");
+              actionName = "TOUCH LEFT";
+              navigateBack = true;
+            } else if (y > 160) {
+              Serial.println("RIGHT SIDE");
+              actionName = "TOUCH RIGHT";
+              navigateBack = true;
+            } else {
+              Serial.println("CENTER (ignored)");
+            }
+          }
+          // NEW: Also check for simple touch without gesture (for quick taps)
+          else if (gesture == GESTURE_NONE && isTouched && !wasTouched) {
+            // This is a new touch without a specific gesture
+            // With rotation=1: Touch Y maps to Display X
+            Serial.printf("[TOUCH] Simple touch detected at X=%d, Y=%d (no gesture) - ", x, y);
+            
+            // Check for touch button (outside visible area)
+            if (y > 300) {
+              Serial.println("TOUCH BUTTON (center button)");
+              actionName = "TOUCH BUTTON";
+              navigateBack = true;
+            }
+            // Regular left/right detection
+            else if (y < 160) {
+              Serial.println("LEFT SIDE");
+              actionName = "TOUCH LEFT";
+              navigateBack = true;
+            } else if (y > 160) {
+              Serial.println("RIGHT SIDE");
+              actionName = "TOUCH RIGHT";
+              navigateBack = true;
+            } else {
+              Serial.println("CENTER (ignored)");
+            }
+          }
+          
+          if (navigateBack) {
+            Serial.printf("[TOUCH] >>> %s - Returning to QR screen\n", actionName.c_str());
+            onProductSelectionScreen = false;
+            // Return to QR screen
+            if (thresholdKey.length() > 0) {
+              showThresholdQRScreen();
+            } else if (specialMode != "standard") {
+              showSpecialModeQRScreen();
+            } else {
+              showQRScreen();
+            }
+            // Reset timer
+            productSelectionShowTime = millis();
+          }
+        }
+        
+        // Update last touch time if any gesture detected or touch state changed
+        if (gesture != GESTURE_NONE || (isTouched != wasTouched)) {
+          lastTouchEvent = millis();
+        }
+        
+        // Remember touch state for next iteration
+        wasTouched = isTouched;
+        
+        // Any touch resets activity timer (for screensaver)
+        lastActivityTime = millis();
+      }
+    }
+    
+    // Check if it's time to show product selection screen
+    // Only show if: not on error screen, not already showing, and 5 seconds have passed
+    if (!onErrorScreen && !onProductSelectionScreen && 
+        productSelectionShowTime > 0 && 
+        (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
+      Serial.println("[SCREEN] Showing product selection screen after 5 seconds");
+      productSelectionScreen();
+      onProductSelectionScreen = true;
+      // Don't reset timer - we want to stay on this screen until swipe
     }
     
     // Check for screensaver/deep sleep timeout activation (inside payment loop)
@@ -1288,6 +1474,8 @@ void loop()
             internetReconnectScreen();
             onErrorScreen = true;
             currentErrorType = 2; // Internet error
+            // Reset product selection screen
+            onProductSelectionScreen = false;
           }
           internetConfirmed = false; // Clear confirmation
           serverConfirmed = false; // Also clear server/websocket (they depend on Internet)
@@ -1372,6 +1560,8 @@ void loop()
           serverReconnectScreen();
           onErrorScreen = true;
           currentErrorType = 3; // Server error
+          // Reset product selection screen
+          onProductSelectionScreen = false;
         }
         // Clear server/websocket confirmations
         serverConfirmed = false;
@@ -1397,6 +1587,8 @@ void loop()
         if (!onErrorScreen || currentErrorType >= 4)
         {
           Serial.println("WebSocket disconnected, attempting reconnect...");
+          // Reset product selection screen
+          onProductSelectionScreen = false;
         }
         
         // Try to reconnect WebSocket (up to 3 attempts)
@@ -1442,6 +1634,8 @@ void loop()
           websocketConfirmed = false; // Clear confirmation
           currentErrorType = 4;
           onErrorScreen = true;
+          // Reset product selection screen
+          onProductSelectionScreen = false;
           return;
         }
       }
@@ -1483,6 +1677,9 @@ void loop()
             showQRScreen();
             Serial.println("[SCREEN] Normal QR screen displayed after recovery");
           }
+          // Reset product selection timer
+          productSelectionShowTime = millis();
+          onProductSelectionScreen = false;
         }
         return;
       }
@@ -1566,6 +1763,9 @@ void loop()
           // Return to threshold QR screen
           showThresholdQRScreen();
           Serial.println("[THRESHOLD] Ready for next payment");
+          // Reset product selection timer
+          productSelectionShowTime = millis();
+          onProductSelectionScreen = false;
         } else {
           Serial.printf("[THRESHOLD] Payment too small (%d < %d sats) - ignoring\n", 
                         payment_sats, threshold_sats);
@@ -1625,6 +1825,9 @@ void loop()
           showQRScreen();
         }
         Serial.println("[NORMAL] Ready for next payment");
+        // Reset product selection timer
+        productSelectionShowTime = millis();
+        onProductSelectionScreen = false;
         
         paid = false;
       }
