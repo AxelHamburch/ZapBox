@@ -20,6 +20,7 @@ void drawQRCode();
 void showQRScreen();
 void showThresholdQRScreen();
 void showSpecialModeQRScreen();
+void showProductQRScreen(String label, int pin);
 void productSelectionScreen();
 void activateScreensaver(String mode);
 void deactivateScreensaver();

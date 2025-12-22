@@ -7,6 +7,7 @@
 #include "FS.h"
 #include "FFat.h"
 #include <Wire.h>
+#include <vector>
 
 #include "PinConfig.h"
 #include "Display.h"
@@ -21,8 +22,8 @@ TaskHandle_t Task1;
 String ssid = "";
 String wifiPassword = "";
 String switchStr = "";
-const char *lightningPrefix = "LIGHTNING:";
-const char *lnurl = "";
+const char *lightningPrefix = "lightning:";
+String qrFormat = "bech32"; // "bech32" or "lud17"
 String orientation = "h";
 String theme = "black-white";
 char lightning[300] = "";
@@ -44,9 +45,13 @@ float dutyCycleRatio = 1.0;
 
 // Multi-Control / Product selection configuration
 String multiControl = "off";
-String lnurl13 = "";
-String lnurl10 = "";
-String lnurl11 = "";
+// lnurl13, lnurl10, lnurl11 removed - now dynamically generated
+
+// Switch labels from backend (cached after WebSocket connect)
+String label12 = "";
+String label13 = "";
+String label10 = "";
+String label11 = "";
 
 // Screensaver and Deep Sleep timeout tracking
 unsigned long lastActivityTime = 0;  // Track last button press or activity
@@ -96,11 +101,231 @@ bool touchAvailable = false;
 // Product selection screen tracking
 bool onProductSelectionScreen = false;
 unsigned long productSelectionShowTime = 0;
-const unsigned long PRODUCT_SELECTION_DELAY = 5000; // 5 seconds
+const unsigned long PRODUCT_SELECTION_DELAY = 10000; // 10 seconds
+
+// Multi-Control product navigation
+// 0 = "Select the product" screen
+// 1 = Product 1 (Pin 12)
+// 2 = Product 2 (Pin 13)
+// 3 = Product 3 (Pin 10)
+// 4 = Product 4 (Pin 11)
+int currentProduct = 0;
+int maxProducts = 1; // Will be set based on multiControl mode
 
 WebSocketsClient webSocket;
 
+//////////////////FORWARD DECLARATIONS///////////////////
+
+void fetchSwitchLabels();
+void updateLightningQR(String lnurlStr);
+void navigateToNextProduct();
+String generateLNURL(int pin);
+String encodeBech32(const String& data);
+
 //////////////////HELPERS///////////////////
+
+// Bech32 encoding helper
+const char* BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+
+uint32_t bech32Polymod(const std::vector<uint8_t>& values) {
+  uint32_t chk = 1;
+  for (size_t i = 0; i < values.size(); ++i) {
+    uint8_t top = chk >> 25;
+    chk = (chk & 0x1ffffff) << 5 ^ values[i];
+    if (top & 1) chk ^= 0x3b6a57b2;
+    if (top & 2) chk ^= 0x26508e6d;
+    if (top & 4) chk ^= 0x1ea119fa;
+    if (top & 8) chk ^= 0x3d4233dd;
+    if (top & 16) chk ^= 0x2a1462b3;
+  }
+  return chk;
+}
+
+std::vector<uint8_t> bech32HrpExpand(const String& hrp) {
+  std::vector<uint8_t> ret;
+  ret.reserve(hrp.length() * 2 + 1);
+  for (size_t i = 0; i < hrp.length(); ++i) {
+    ret.push_back(hrp[i] >> 5);
+  }
+  ret.push_back(0);
+  for (size_t i = 0; i < hrp.length(); ++i) {
+    ret.push_back(hrp[i] & 31);
+  }
+  return ret;
+}
+
+std::vector<uint8_t> convertBits(const uint8_t* data, size_t len, int frombits, int tobits, bool pad) {
+  std::vector<uint8_t> ret;
+  int acc = 0;
+  int bits = 0;
+  int maxv = (1 << tobits) - 1;
+  for (size_t i = 0; i < len; i++) {
+    int value = data[i];
+    acc = (acc << frombits) | value;
+    bits += frombits;
+    while (bits >= tobits) {
+      bits -= tobits;
+      ret.push_back((acc >> bits) & maxv);
+    }
+  }
+  if (pad) {
+    if (bits > 0) {
+      ret.push_back((acc << (tobits - bits)) & maxv);
+    }
+  } else if (bits >= frombits || ((acc << (tobits - bits)) & maxv)) {
+    return std::vector<uint8_t>();
+  }
+  return ret;
+}
+
+String encodeBech32(const String& data) {
+  String hrp = "lnurl";
+  
+  // Convert data to bytes (keep original case)
+  std::vector<uint8_t> dataBytes;
+  for (size_t i = 0; i < data.length(); i++) {
+    dataBytes.push_back((uint8_t)data[i]);
+  }
+  
+  // Convert from 8-bit to 5-bit
+  std::vector<uint8_t> data5bit = convertBits(dataBytes.data(), dataBytes.size(), 8, 5, true);
+  
+  if (data5bit.empty()) {
+    return "";
+  }
+  
+  // Calculate checksum
+  std::vector<uint8_t> combined = bech32HrpExpand(hrp);
+  combined.insert(combined.end(), data5bit.begin(), data5bit.end());
+  combined.insert(combined.end(), 6, 0);
+  
+  uint32_t polymod = bech32Polymod(combined) ^ 1;  // XOR with 1 for Bech32 (not Bech32m)
+  std::vector<uint8_t> checksum;
+  for (int i = 0; i < 6; ++i) {
+    checksum.push_back((polymod >> (5 * (5 - i))) & 31);
+  }
+  
+  // Build final string
+  String result = hrp + "1";
+  for (size_t i = 0; i < data5bit.size(); i++) {
+    result += BECH32_CHARSET[data5bit[i]];
+  }
+  for (size_t i = 0; i < checksum.size(); i++) {
+    result += BECH32_CHARSET[checksum[i]];
+  }
+  
+  // Convert to uppercase for LNURL standard
+  result.toUpperCase();
+  
+  return result;
+}
+
+// Helper function: Generate LNURL for a given pin
+String generateLNURL(int pin) {
+  if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
+    Serial.println("[LNURL] Cannot generate - server or deviceId not configured");
+    return "";
+  }
+  
+  // Build URL: https://{server}/bitcoinswitch/api/v1/lnurl/{deviceId}?pin={pin}
+  String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/lnurl/" + deviceId + "?pin=" + String(pin);
+  
+  Serial.printf("[LNURL] Generated for pin %d: %s\n", pin, url.c_str());
+  
+  if (qrFormat == "lud17") {
+    // LUD17 format: replace https: with lnurlp:
+    String result = url;
+    result.replace("https:", "lnurlp:");
+    Serial.printf("[LNURL] LUD17 format: %s\n", result.c_str());
+    return result;
+  } else {
+    // BECH32 format (default)
+    // Encode the https URL with bech32 and prepend lightning:
+    String encoded = encodeBech32(url);
+    if (encoded.length() == 0) {
+      Serial.println("[LNURL] BECH32 encoding failed, falling back to URL format");
+      return "lightning:" + url;
+    }
+    String result = "lightning:" + encoded;
+    Serial.printf("[LNURL] BECH32 format: %s\n", result.c_str());
+    return result;
+  }
+}
+
+// Helper function: Update lightning QR code with given LNURL
+void updateLightningQR(String lnurlStr) {
+  lnurlStr.trim();
+  
+  // Don't convert to uppercase - keep original case (important for LUD17)
+  if (lnurlStr.startsWith("lightning:") || lnurlStr.startsWith("LIGHTNING:")) {
+    // Already has prefix, use as-is
+    strcpy(lightning, lnurlStr.c_str());
+  } else {
+    // No prefix, add it (lowercase for consistency)
+    strcpy(lightning, "lightning:");
+    strcat(lightning, lnurlStr.c_str());
+  }
+  
+  Serial.print("[QR] Updated lightning QR: ");
+  Serial.println(lightning);
+}
+
+// Helper function: Navigate to next product in Multi-Control mode
+void navigateToNextProduct() {
+  if (multiControl == "off") return; // Single mode, no navigation
+  
+  currentProduct++;
+  
+  // Loop through products (1-2 for duo, 1-4 for quattro)
+  if (multiControl == "duo" && currentProduct > 2) {
+    currentProduct = 1; // Loop back to first product
+  } else if (multiControl == "quattro" && currentProduct > 4) {
+    currentProduct = 1; // Loop back to first product
+  }
+  
+  Serial.printf("[NAV] Navigate to product: %d\n", currentProduct);
+  
+  // Always show product QR screen (no selection screen)
+  onProductSelectionScreen = false;
+  if (true) {
+    // Show product QR screen
+    String label = "";
+    int pin = 0;
+    
+    switch(currentProduct) {
+      case 1: // Pin 12
+        label = (label12.length() > 0) ? label12 : "Pin 12";
+        pin = 12;
+        break;
+      case 2: // Pin 13
+        label = (label13.length() > 0) ? label13 : "Pin 13";
+        pin = 13;
+        break;
+      case 3: // Pin 10
+        label = (label10.length() > 0) ? label10 : "Pin 10";
+        pin = 10;
+        break;
+      case 4: // Pin 11
+        label = (label11.length() > 0) ? label11 : "Pin 11";
+        pin = 11;
+        break;
+    }
+    
+    // Generate LNURL dynamically for this pin
+    String lnurlStr = generateLNURL(pin);
+    if (lnurlStr.length() > 0) {
+      updateLightningQR(lnurlStr);
+    }
+    
+    // Show product screen
+    showProductQRScreen(label, pin);
+    Serial.printf("[NAV] Showing product: %s (Pin %d)\n", label.c_str(), pin);
+  }
+  
+  // Reset product selection timer after every navigation
+  productSelectionShowTime = millis();
+  Serial.println("[NAV] Product selection timer reset");
+}
 
 // Helper function: Wake from power saving modes
 bool wakeFromPowerSavingMode() {
@@ -133,10 +358,52 @@ void redrawQRScreen() {
   if (thresholdKey.length() > 0) {
     showThresholdQRScreen();
     Serial.println("[DISPLAY] Threshold QR screen displayed");
+  } else if (multiControl != "off") {
+    // Multi-Control mode: Show current product or selection screen
+    if (currentProduct == 0) {
+      productSelectionScreen();
+      onProductSelectionScreen = true;
+      Serial.println("[DISPLAY] Product selection screen displayed");
+    } else {
+      String label = "";
+      int displayPin = 0;
+      
+      switch(currentProduct) {
+        case 1:
+          label = (label12.length() > 0) ? label12 : "Pin 12";
+          displayPin = 12;
+          break;
+        case 2:
+          label = (label13.length() > 0) ? label13 : "Pin 13";
+          displayPin = 13;
+          break;
+        case 3:
+          label = (label10.length() > 0) ? label10 : "Pin 10";
+          displayPin = 10;
+          break;
+        case 4:
+          label = (label11.length() > 0) ? label11 : "Pin 11";
+          displayPin = 11;
+          break;
+      }
+      
+      // Generate LNURL dynamically for current product's pin
+      String lnurlStr = generateLNURL(displayPin);
+      updateLightningQR(lnurlStr);
+      showProductQRScreen(label, displayPin);
+      onProductSelectionScreen = false;
+      Serial.printf("[DISPLAY] Product %d QR screen displayed\n", currentProduct);
+    }
   } else if (specialMode != "standard" && specialMode != "") {
+    // Generate LNURL for pin 12 before showing special mode QR
+    String lnurlStr = generateLNURL(12);
+    updateLightningQR(lnurlStr);
     showSpecialModeQRScreen();
     Serial.println("[DISPLAY] Special mode QR screen displayed");
   } else {
+    // Generate LNURL for pin 12 before showing normal QR
+    String lnurlStr = generateLNURL(12);
+    updateLightningQR(lnurlStr);
     showQRScreen();
     Serial.println("[DISPLAY] Normal QR screen displayed");
   }
@@ -232,12 +499,16 @@ void readFiles()
     
     // Parse WebSocket URL (works with both ws:// and wss://)
     int protocolIndex = switchStr.indexOf("://");
+    Serial.printf("DEBUG: switchStr='%s', protocolIndex=%d\n", switchStr.c_str(), protocolIndex);
+    
     if (protocolIndex == -1) {
       Serial.println("Invalid switchStr: " + switchStr);
       lnbitsServer = "";
       deviceId = "";
     } else {
       int domainIndex = switchStr.indexOf("/", protocolIndex + 3);
+      Serial.printf("DEBUG: domainIndex=%d\n", domainIndex);
+      
       if (domainIndex == -1) {
         Serial.println("Invalid switchStr: " + switchStr);
         lnbitsServer = "";
@@ -246,6 +517,8 @@ void readFiles()
         int uidLength = 22; // Length of device ID
         lnbitsServer = switchStr.substring(protocolIndex + 3, domainIndex);
         deviceId = switchStr.substring(switchStr.length() - uidLength);
+        
+        Serial.printf("DEBUG: Extracted server from index %d to %d\n", protocolIndex + 3, domainIndex);
       }
     }
 
@@ -255,33 +528,12 @@ void readFiles()
 
     const JsonObject maRoot3 = doc[3];
     const char *maRoot3Char = maRoot3["value"];
-    String lnurlTemp = String(maRoot3Char);
-    lnurlTemp.trim(); // Remove leading/trailing whitespace
-    lnurl = lnurlTemp.c_str();
-
-    // Copy values into lightning char, avoiding duplicate prefix
-    String lnurlStr = String(lnurl);
-    lnurlStr.toUpperCase(); // Convert to uppercase for comparison
-    
-    if (lnurlStr.startsWith("LIGHTNING:")) {
-      // LNURL already has prefix, use as-is but ensure uppercase prefix
-      String originalLnurl = String(lnurl);
-      if (originalLnurl.startsWith("LIGHTNING:")) {
-        strcpy(lightning, lnurl);
-      } else if (originalLnurl.startsWith("lightning:")) {
-        strcpy(lightning, "LIGHTNING:");
-        strcat(lightning, lnurl + 10); // Skip "lightning:" (10 chars)
-      }
-    } else {
-      // No prefix, add it
-      strcpy(lightning, lightningPrefix);
-      strcat(lightning, lnurl);
+    qrFormat = String(maRoot3Char);
+    qrFormat.trim();
+    if (qrFormat.length() == 0) {
+      qrFormat = "bech32"; // Default
     }
-
-    Serial.print("LNURL: ");
-    Serial.println(lnurl);
-    Serial.print("QR: ");
-    Serial.println(lightning);
+    Serial.println("QR Format: " + qrFormat);
 
     const JsonObject maRoot4 = doc[4];
     const char *maRoot4Char = maRoot4["value"];
@@ -372,30 +624,13 @@ void readFiles()
       if (actTime > 120) activationTime = "120";
     }
 
-    // Read multi-control configuration (optional, indices 17-20)
+    // Read multi-control configuration (index 17)
     const JsonObject maRoot17 = doc[17];
     if (!maRoot17.isNull()) {
       const char *maRoot17Char = maRoot17["value"];
       multiControl = maRoot17Char;
     }
-
-    const JsonObject maRoot18 = doc[18];
-    if (!maRoot18.isNull()) {
-      const char *maRoot18Char = maRoot18["value"];
-      lnurl13 = maRoot18Char;
-    }
-
-    const JsonObject maRoot19 = doc[19];
-    if (!maRoot19.isNull()) {
-      const char *maRoot19Char = maRoot19["value"];
-      lnurl10 = maRoot19Char;
-    }
-
-    const JsonObject maRoot20 = doc[20];
-    if (!maRoot20.isNull()) {
-      const char *maRoot20Char = maRoot20["value"];
-      lnurl11 = maRoot20Char;
-    }
+    // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 
     // Apply predefined mode settings
     if (specialMode == "blink") {
@@ -424,21 +659,9 @@ void readFiles()
     if (multiControl == "off") {
       Serial.println("Single (Pin 12 only)");
     } else if (multiControl == "duo") {
-      Serial.println("Duo (Pins 12, 13)");
-      if (lnurl13.length() > 0) {
-        Serial.println("LNURL Pin 13: " + lnurl13);
-      }
+      Serial.println("Duo (Pins 12, 13) - LNURLs auto-generated");
     } else if (multiControl == "quattro") {
-      Serial.println("Quattro (Pins 12, 13, 10, 11)");
-      if (lnurl13.length() > 0) {
-        Serial.println("LNURL Pin 13: " + lnurl13);
-      }
-      if (lnurl10.length() > 0) {
-        Serial.println("LNURL Pin 10: " + lnurl10);
-      }
-      if (lnurl11.length() > 0) {
-        Serial.println("LNURL Pin 11: " + lnurl11);
-      }
+      Serial.println("Quattro (Pins 12, 13, 10, 11) - LNURLs auto-generated");
     }
 
     // Display mode based on threshold configuration
@@ -451,23 +674,21 @@ void readFiles()
       Serial.println("GPIO Pin: " + thresholdPin);
       Serial.println("Control Time: " + thresholdTime + " ms");
       
-      // Process threshold LNURL (add LIGHTNING: prefix if not present)
+      // Process threshold LNURL (add lightning: prefix if not present)
       if (thresholdLnurl.length() > 0) {
         thresholdLnurl.trim(); // Remove leading/trailing whitespace
-        String thresholdLnurlStr = thresholdLnurl;
-        thresholdLnurlStr.toUpperCase();
         
-        if (thresholdLnurlStr.startsWith("LIGHTNING:")) {
-          // Already has prefix, use as-is but ensure uppercase prefix
+        if (thresholdLnurl.startsWith("lightning:") || thresholdLnurl.startsWith("LIGHTNING:")) {
+          // Already has prefix, convert to lowercase lightning:
           if (thresholdLnurl.startsWith("LIGHTNING:")) {
-            strcpy(lightning, thresholdLnurl.c_str());
-          } else if (thresholdLnurl.startsWith("lightning:")) {
-            strcpy(lightning, "LIGHTNING:");
+            strcpy(lightning, "lightning:");
             strcat(lightning, thresholdLnurl.c_str() + 10);
+          } else {
+            strcpy(lightning, thresholdLnurl.c_str());
           }
         } else {
-          // No prefix, add it
-          strcpy(lightning, lightningPrefix);
+          // No prefix, add it (lowercase)
+          strcpy(lightning, "lightning:");
           strcat(lightning, thresholdLnurl.c_str());
         }
         Serial.print("Threshold LNURL: ");
@@ -551,6 +772,9 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       waitingForPong = false;
       websocketConfirmed = true; // Mark WebSocket as confirmed on first connect
       Serial.println("[CONFIRMED] WebSocket connection confirmed!");
+      
+      // Fetch switch labels from backend after successful connection
+      fetchSwitchLabels();
     }
     break;
     case WStype_TEXT:
@@ -582,6 +806,72 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
   {
     Serial.println("[WS] Event ignored - in config mode");
   }
+}
+
+// Fetch switch labels from backend API
+void fetchSwitchLabels()
+{
+  if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
+    Serial.println("[LABELS] Cannot fetch labels - server or deviceId not configured");
+    return;
+  }
+
+  HTTPClient http;
+  String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/public/" + deviceId;
+  
+  Serial.println("[LABELS] Fetching switch configurations from: " + url);
+  http.begin(url);
+  http.setTimeout(5000); // 5 second timeout
+  
+  int httpCode = http.GET();
+  
+  if (httpCode == 200) {
+    String payload = http.getString();
+    Serial.println("[LABELS] Received response: " + payload);
+    
+    // Parse JSON response
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    
+    if (!error) {
+      // Clear existing labels
+      label12 = "";
+      label13 = "";
+      label10 = "";
+      label11 = "";
+      
+      // Extract labels from switches array
+      JsonArray switches = doc["switches"];
+      for (JsonObject switchObj : switches) {
+        int pin = switchObj["pin"];
+        const char* labelChar = switchObj["label"];
+        String labelStr = (labelChar != nullptr) ? String(labelChar) : "";
+        
+        // Store label based on pin number
+        if (pin == 12) {
+          label12 = labelStr;
+          Serial.println("[LABELS] Pin 12 label: " + label12);
+        } else if (pin == 13) {
+          label13 = labelStr;
+          Serial.println("[LABELS] Pin 13 label: " + label13);
+        } else if (pin == 10) {
+          label10 = labelStr;
+          Serial.println("[LABELS] Pin 10 label: " + label10);
+        } else if (pin == 11) {
+          label11 = labelStr;
+          Serial.println("[LABELS] Pin 11 label: " + label11);
+        }
+      }
+      
+      Serial.println("[LABELS] Successfully fetched and cached all labels");
+    } else {
+      Serial.println("[LABELS] JSON parsing failed: " + String(error.c_str()));
+    }
+  } else {
+    Serial.printf("[LABELS] HTTP request failed with code: %d\n", httpCode);
+  }
+  
+  http.end();
 }
 
 // HTTP-based Internet check (doesn't require WebSocket connection)
@@ -745,20 +1035,10 @@ void checkAndReconnectWiFi()
           
           // Redraw QR screen immediately after successful recovery
           Serial.println("[RECOVERY] Redrawing QR screen after WiFi recovery");
-          if (thresholdKey.length() > 0) {
-            showThresholdQRScreen();
-            Serial.println("[SCREEN] Threshold QR screen displayed after WiFi recovery");
-          } else if (specialMode != "standard" && specialMode != "") {
-            showSpecialModeQRScreen();
-            Serial.println("[SCREEN] Special mode QR screen displayed after WiFi recovery");
-          } else {
-            showQRScreen();
-            Serial.println("[SCREEN] Normal QR screen displayed after WiFi recovery");
-          }
+          redrawQRScreen();
           
           // Reset product selection timer so it shows after 5 seconds
           productSelectionShowTime = millis();
-          onProductSelectionScreen = false;
           Serial.println("[RECOVERY] Product selection timer reset");
         } else {
           Serial.println("[RECOVERY] WebSocket connection timeout after 5 seconds");
@@ -845,16 +1125,9 @@ void reportMode()
     }
   } else {
     // No error active, show QR screen
-    if (thresholdKey.length() > 0) {
-      showThresholdQRScreen();
-    } else if (specialMode != "standard") {
-      showSpecialModeQRScreen();
-    } else {
-      showQRScreen();
-    }
+    redrawQRScreen();
     // Reset product selection timer
     productSelectionShowTime = millis();
-    onProductSelectionScreen = false;
   }
   
   inReportMode = false; // Clear flag AFTER showing final screen
@@ -892,13 +1165,7 @@ void showHelp()
     }
   } else {
     // No error active, show QR screen
-    if (thresholdKey.length() > 0) {
-      showThresholdQRScreen();
-    } else if (specialMode != "standard") {
-      showSpecialModeQRScreen();
-    } else {
-      showQRScreen();
-    }
+    redrawQRScreen();
     // Reset product selection timer
     productSelectionShowTime = millis();
     onProductSelectionScreen = false;
@@ -1135,6 +1402,21 @@ void setup()
   }
   Serial.println("========================================\n");
   
+  // Set maxProducts based on multiControl mode
+  if (multiControl == "quattro") {
+    maxProducts = 4;
+    Serial.println("[MULTI-CONTROL] Quattro mode - 4 products available");
+  } else if (multiControl == "duo") {
+    maxProducts = 2;
+    Serial.println("[MULTI-CONTROL] Duo mode - 2 products available");
+  } else {
+    maxProducts = 1;
+    Serial.println("[MULTI-CONTROL] Single mode - 1 product");
+  }
+  
+  // Initialize product navigation
+  currentProduct = 0; // Start at selection screen
+  
   setupComplete = true; // Allow loop to run now
 }
 
@@ -1209,10 +1491,23 @@ void loop()
   if (firstLoop && allConnectionsConfirmed && !inReportMode && !(lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS)) {
     Serial.println("[SCREEN] All connections confirmed - Showing QR code screen (READY FOR ACTION)");
     if (thresholdKey.length() > 0) {
-      showThresholdQRScreen(); // THRESHOLD MODE
+      showThresholdQRScreen(); // THRESHOLD MODE (Multi-Control not compatible)
+    } else if (multiControl != "off") {
+      // MULTI-CONTROL MODE - Start with product selection screen
+      currentProduct = 0;
+      productSelectionScreen();
+      onProductSelectionScreen = true;
+      productSelectionShowTime = millis();
+      Serial.println("[MULTI-CONTROL] Starting in product selection mode");
     } else if (specialMode != "standard") {
+      // Generate LNURL for pin 12 before showing special mode QR
+      String lnurlStr = generateLNURL(12);
+      updateLightningQR(lnurlStr);
       showSpecialModeQRScreen(); // SPECIAL MODE
     } else {
+      // Generate LNURL for pin 12 before showing normal QR
+      String lnurlStr = generateLNURL(12);
+      updateLightningQR(lnurlStr);
       showQRScreen(); // NORMAL MODE
     }
     // Clear error screen flag once QR is shown
@@ -1350,18 +1645,49 @@ void loop()
           }
           
           if (navigateBack) {
-            Serial.printf("[TOUCH] >>> %s - Returning to QR screen\n", actionName.c_str());
+            Serial.printf("[TOUCH] >>> %s - ", actionName.c_str());
             onProductSelectionScreen = false;
-            // Return to QR screen
-            if (thresholdKey.length() > 0) {
-              showThresholdQRScreen();
-            } else if (specialMode != "standard") {
-              showSpecialModeQRScreen();
+            
+            // Multi-Control Mode: Navigate to next product
+            if (multiControl != "off" && thresholdKey.length() == 0) {
+              Serial.println("Navigate to next product");
+              navigateToNextProduct();
             } else {
-              showQRScreen();
+              // Normal/Special/Threshold Mode: Return to QR screen
+              Serial.println("Returning to QR screen");
+              redrawQRScreen();
             }
             // Reset timer
             productSelectionShowTime = millis();
+          }
+        }
+        
+        // Handle touch on product QR screen (Multi-Control mode only)
+        // Allow navigation when showing product QR code
+        else if (multiControl != "off" && thresholdKey.length() == 0 && !onProductSelectionScreen) {
+          bool navigate = false;
+          String actionName = "";
+          
+          // Check for any swipe or touch gesture
+          if (gesture == GESTURE_SWIPE_UP || gesture == GESTURE_SWIPE_DOWN || 
+              gesture == GESTURE_SWIPE_LEFT || gesture == GESTURE_SWIPE_RIGHT) {
+            navigate = true;
+            actionName = "SWIPE";
+          } else if (gesture == GESTURE_SINGLE_CLICK || gesture == GESTURE_LONG_PRESS) {
+            if (y < 160 || y > 160) { // Left or right side
+              navigate = true;
+              actionName = "TOUCH";
+            }
+          } else if (gesture == GESTURE_NONE && isTouched && !wasTouched) {
+            if (y < 160 || y > 160 || y > 300) { // Left, right, or touch button
+              navigate = true;
+              actionName = "TOUCH";
+            }
+          }
+          
+          if (navigate) {
+            Serial.printf("[TOUCH] >>> %s on product screen - Navigate to next product\n", actionName.c_str());
+            navigateToNextProduct();
           }
         }
         
@@ -1379,11 +1705,14 @@ void loop()
     }
     
     // Check if it's time to show product selection screen
-    // Only show if: not on error screen, not already showing, and 5 seconds have passed
+    // Only show in Multi-Control mode or if multi-control is off with old behavior
+    // Not shown in Threshold mode (not compatible)
     if (!onErrorScreen && !onProductSelectionScreen && 
         productSelectionShowTime > 0 && 
-        (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
-      Serial.println("[SCREEN] Showing product selection screen after 5 seconds");
+        (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY &&
+        multiControl != "off" && thresholdKey.length() == 0) {
+      Serial.println("[SCREEN] Showing product selection screen after 5 seconds (Multi-Control)");
+      currentProduct = 0;
       productSelectionScreen();
       onProductSelectionScreen = true;
       // Don't reset timer - we want to stay on this screen until swipe
@@ -1720,16 +2049,8 @@ void loop()
           waitingForPong = false;
           
           // Redraw QR screen immediately
-          if (thresholdKey.length() > 0) {
-            showThresholdQRScreen();
-            Serial.println("[SCREEN] Threshold QR screen displayed after recovery");
-          } else if (specialMode != "standard" && specialMode != "") {
-            showSpecialModeQRScreen();
-            Serial.println("[SCREEN] Special mode QR screen displayed after recovery");
-          } else {
-            showQRScreen();
-            Serial.println("[SCREEN] Normal QR screen displayed after recovery");
-          }
+          redrawQRScreen();
+          Serial.println("[SCREEN] QR screen displayed after recovery");
           // Reset product selection timer
           productSelectionShowTime = millis();
           onProductSelectionScreen = false;
@@ -1872,15 +2193,10 @@ void loop()
         delay(2000);
         
         // Return to appropriate QR screen
-        if (specialMode != "standard") {
-          showSpecialModeQRScreen();
-        } else {
-          showQRScreen();
-        }
+        redrawQRScreen();
         Serial.println("[NORMAL] Ready for next payment");
         // Reset product selection timer
         productSelectionShowTime = millis();
-        onProductSelectionScreen = false;
         
         paid = false;
       }

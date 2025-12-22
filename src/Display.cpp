@@ -622,6 +622,86 @@ void showSpecialModeQRScreen()
   drawQRCode();
 }
 
+// Multi-Control Product QR Screen - displays label text and QR code
+// Label can contain 1-3 words separated by spaces
+void showProductQRScreen(String label, int pin)
+{
+  tft.setTextDatum(ML_DATUM);
+  tft.fillScreen(themeBackground);
+  tft.setTextColor(themeForeground);
+
+  // GFXFF fonts don't support Euro symbol - replace with 'E' to avoid display issues
+  label.replace("€", "E");
+  
+  // Parse label into up to 3 words (split by space)
+  String words[3] = {"", "", ""};
+  int wordCount = 0;
+  int lastIndex = 0;
+  
+  // Split by spaces
+  for (int i = 0; i <= label.length() && wordCount < 3; i++) {
+    if (i == label.length() || label.charAt(i) == ' ') {
+      if (i > lastIndex) {
+        words[wordCount] = label.substring(lastIndex, i);
+        wordCount++;
+      }
+      lastIndex = i + 1;
+    }
+  }
+  
+  // If no words found, use pin number as fallback
+  if (wordCount == 0) {
+    words[0] = "Pin " + String(pin);
+    wordCount = 1;
+  }
+
+  if (orientation == "v"){
+    tft.fillRect(15, 168, 140, 132, themeForeground);
+    
+    // Display up to 3 lines of text
+    tft.setTextSize(3);
+    tft.setTextColor(themeBackground); // White text on black background
+    int startY = y + 40; // Starting Y position
+    if (wordCount == 1) {
+      tft.drawString(words[0], x - 55, startY + 30, GFXFF);
+    } else if (wordCount == 2) {
+      tft.drawString(words[0], x - 55, startY + 15, GFXFF);
+      tft.drawString(words[1], x - 55, startY + 45, GFXFF);
+    } else { // 3 words
+      tft.drawString(words[0], x - 55, startY, GFXFF);
+      tft.drawString(words[1], x - 55, startY + 30, GFXFF);
+      tft.drawString(words[2], x - 55, startY + 60, GFXFF);
+    }
+    
+    tft.setTextSize(2);
+    tft.setTextColor(themeForeground);
+    tft.drawString("HELP", x + 35, y + 150, GFXFF);
+  } else {
+    tft.fillRect(168, 18, 140, 135, themeForeground);
+    
+    // Display up to 3 lines of text
+    tft.setTextSize(3);
+    tft.setTextColor(themeBackground); // White text on black background
+    int startY = y - 30; // Starting Y position
+    if (wordCount == 1) {
+      tft.drawString(words[0], x + 20, startY + 30, GFXFF);
+    } else if (wordCount == 2) {
+      tft.drawString(words[0], x + 20, startY + 15, GFXFF);
+      tft.drawString(words[1], x + 20, startY + 45, GFXFF);
+    } else { // 3 words
+      tft.drawString(words[0], x + 20, startY, GFXFF);
+      tft.drawString(words[1], x + 20, startY + 30, GFXFF);
+      tft.drawString(words[2], x + 20, startY + 60, GFXFF);
+    }
+    
+    tft.setTextSize(2);
+    tft.setTextColor(themeForeground);
+    tft.drawString("HELP", x + 110, 9, GFXFF);
+  }
+
+  drawQRCode();
+}
+
 // Product Selection Screen - shown after 5 seconds of QR screen
 void productSelectionScreen()
 {
@@ -635,12 +715,9 @@ void productSelectionScreen()
     tft.drawString("Select the", x, y - 40, GFXFF);
     tft.drawString("product.", x, y - 20, GFXFF);
     
-    // Draw left arrow
+    // Draw navigation arrows
     tft.setTextSize(4);
-    tft.drawString("<", x - 40, y + 30, GFXFF);
-    
-    // Draw right arrow
-    tft.drawString(">", x + 40, y + 30, GFXFF);
+    tft.drawString("<->", x, y + 30, GFXFF);
     
   } else {
     // Horizontal orientation
@@ -648,12 +725,9 @@ void productSelectionScreen()
     tft.drawString("Select the", x, y - 30, GFXFF);
     tft.drawString("product.", x, y, GFXFF);
     
-    // Draw left arrow
+    // Draw navigation arrows
     tft.setTextSize(5);
-    tft.drawString("<", x - 70, y + 40, GFXFF);
-    
-    // Draw right arrow
-    tft.drawString(">", x + 70, y + 40, GFXFF);
+    tft.drawString("<->", x, y + 40, GFXFF);
   }
 }
 
