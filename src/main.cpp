@@ -52,7 +52,7 @@ String btcprice = "Loading...";
 String blockhigh = "...";
 unsigned long lastBtcUpdate = 0;
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
-bool btcTickerActive = false;
+volatile bool btcTickerActive = false; // volatile: accessed from multiple tasks
 
 // Switch labels from backend (cached after WebSocket connect)
 String label12 = "";
@@ -125,7 +125,7 @@ const unsigned long PRODUCT_SELECTION_DELAY = 5000; // 5 seconds (TEST: default 
 // 2 = Product 2 (Pin 13)
 // 3 = Product 3 (Pin 10)
 // 4 = Product 4 (Pin 11)
-int currentProduct = 0;
+volatile int currentProduct = 0; // volatile: accessed from multiple contexts
 int maxProducts = 1; // Will be set based on multiControl mode
 
 WebSocketsClient webSocket;
@@ -142,6 +142,7 @@ void updateLightningQR(String lnurlStr);
 void navigateToNextProduct();
 String generateLNURL(int pin);
 String encodeBech32(const String& data);
+bool wakeFromPowerSavingMode();
 
 //////////////////HELPERS///////////////////
 
@@ -293,7 +294,18 @@ void updateLightningQR(String lnurlStr) {
 
 // Helper function: Navigate to next product in Multi-Channel-Control mode
 void navigateToNextProduct() {
-  if (multiControl == "off") return; // Single mode, no navigation
+  // Wake from power saving mode if active
+  if (wakeFromPowerSavingMode()) {
+    Serial.println("[NAV] Device woke up, not navigating");
+    return; // Don't navigate, just wake up
+  }
+  
+  Serial.println("[BUTTON] Navigate button pressed");
+  
+  if (multiControl == "off") {
+    Serial.println("[NAV] Single mode - no navigation available");
+    return; // Single mode, no navigation
+  }
   
   currentProduct++;
   
@@ -306,15 +318,22 @@ void navigateToNextProduct() {
   
   Serial.printf("[NAV] Navigate to product: %d\n", currentProduct);
   
-  // Always show product QR screen (no selection screen)
+  // IMPORTANT: Disable BTC ticker FIRST to prevent concurrent screen updates
   onProductSelectionScreen = false;
   btcTickerActive = false; // Exit Bitcoin ticker when navigating to products
+  
+  // Small delay to ensure any ongoing display operation completes
+  vTaskDelay(pdMS_TO_TICKS(50));
+  
+  // Always show product QR screen (no selection screen)
   if (true) {
     // Show product QR screen
+    // Capture currentProduct value to prevent race conditions
+    int productNum = currentProduct;
     String label = "";
     int pin = 0;
     
-    switch(currentProduct) {
+    switch(productNum) {
       case 1: // Pin 12
         label = (label12.length() > 0) ? label12 : "Pin 12";
         pin = 12;
@@ -330,6 +349,11 @@ void navigateToNextProduct() {
       case 4: // Pin 11
         label = (label11.length() > 0) ? label11 : "Pin 11";
         pin = 11;
+        break;
+      default: // Fallback to Pin 12 if invalid product number
+        Serial.printf("[NAV] WARNING: Invalid product number %d, defaulting to Pin 12\n", productNum);
+        label = (label12.length() > 0) ? label12 : "Pin 12";
+        pin = 12;
         break;
     }
     
@@ -967,10 +991,14 @@ void updateBitcoinTicker()
     Serial.println("[BTC] Update interval reached, fetching new data...");
     fetchBitcoinData();
 
-    // Refresh the display if we're on the ticker screen
-    if (btcTickerActive && !screensaverActive && !deepSleepActive) {
-      btctickerScreen();
-      Serial.println("[BTC] Screen refreshed with new data");
+    // Refresh the display ONLY if we're STILL on the ticker screen
+    // Double-check btcTickerActive immediately before drawing to prevent race conditions
+    if (btcTickerActive && !screensaverActive && !deepSleepActive && !onProductSelectionScreen) {
+      // Final check right before screen update to prevent concurrent drawing
+      if (btcTickerActive) {
+        btctickerScreen();
+        Serial.println("[BTC] Screen refreshed with new data");
+      }
     }
   }
 }
@@ -1511,9 +1539,9 @@ void setup()
 
   // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
   leftButton.setPressMs(3000); // 3 seconds for config mode (documented as 5 sec for users)
-  leftButton.setDebounceMs(100); // 100ms debounce to prevent accidental report mode
-  leftButton.attachClick(reportMode);
-  leftButton.attachLongPressStart(configMode);
+  leftButton.setDebounceMs(50); // 50ms debounce - fast response
+  leftButton.attachClick(navigateToNextProduct); // Single click = Navigate products (duo/quattro mode)
+  leftButton.attachLongPressStart(configMode); // Long press = Config mode
   rightButton.setDebounceMs(50); // 50ms debounce - fast response
   rightButton.setClickMs(400); // 400ms max for single click
   rightButton.attachClick(showHelp); // Single click = Help
@@ -2063,7 +2091,7 @@ void loop()
         (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY &&
         multiControl != "off" && thresholdKey.length() == 0) {
       Serial.println("[SCREEN] Showing Bitcoin ticker screen after 5 seconds (Multi-Channel-Control)");
-      currentProduct = 0;
+      // Don't reset currentProduct - keep it for next navigation
       btctickerScreen();
       btcTickerActive = true;
       // Don't reset timer - we want to stay on this screen until swipe

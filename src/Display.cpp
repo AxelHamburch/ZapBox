@@ -126,6 +126,11 @@ void startupScreen()
 void btctickerScreen()
 {
   tft.fillScreen(themeBackground);
+  
+  // Explicitly clear QR code area to prevent ghosting when switching screens
+  // QR code is typically drawn at (12, 12) with size ~72x72 pixels
+  tft.fillRect(12, 12, 80, 80, themeBackground);
+  
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
@@ -592,10 +597,6 @@ void showSpecialModeQRScreen()
 // Label can contain 1-3 words separated by spaces
 void showProductQRScreen(String label, int pin)
 {
-  tft.setTextDatum(ML_DATUM);
-  tft.fillScreen(themeBackground);
-  tft.setTextColor(themeForeground);
-
   // Replace currency symbols with text abbreviations for better compatibility
   // GFXFF fonts only support ASCII, so we use standard abbreviations
   label.replace("€", "EUR");
@@ -628,6 +629,15 @@ void showProductQRScreen(String label, int pin)
     words[0] = "Pin " + String(pin);
     wordCount = 1;
   }
+
+  // Now do all display operations - COMPLETE refresh like help screens
+  tft.fillScreen(themeBackground);
+  
+  // Draw QR code immediately after screen clear, before anything else
+  drawQRCode();
+  
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
     tft.fillRect(15, 168, 140, 132, themeForeground);
@@ -674,8 +684,6 @@ void showProductQRScreen(String label, int pin)
     tft.setTextColor(themeForeground);
     tft.drawString("HELP", x + 110, 9, GFXFF);
   }
-
-  drawQRCode();
 }
 
 // Product Selection Screen - shown after 5 seconds of QR screen
