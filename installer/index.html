@@ -134,8 +134,15 @@
                 <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
             </div>
             <div>
-                <label for="lnurl">LNURL for QR-Code</label>
-                <input type="text" name="lnurl" id="lnurl" placeholder="LNURL for pin 12" autocomplete="off">
+                <label for="lnurl">LNURL / Lightning Address</label>
+                <input type="text" name="lnurl" id="lnurl" placeholder="LNURL or Lightning Address" autocomplete="off">
+            </div>
+            <div>
+                <label for="qrFormat">QR-Code Format</label>
+                <select name="qrFormat" id="qrFormat">
+                    <option value="bech32" selected>LNURL (BECH32)</option>
+                    <option value="lud17">Lightning Address (LUD17)</option>
+                </select>
             </div>
             <div>
                 <label for="orientation">Screen orientation</label>
@@ -253,76 +260,19 @@
                 <div>
                     <label for="multiControl">Multi-Channel-Control Mode</label>
                     <select name="multiControl" id="multiControl">
-                        <option value="off" selected>Off - Single - trigger pin 12</option>
-                        <option value="duo">On - Duo - add pin 13</option>
-                        <option value="quattro">On - Quattro - add pin 13, 10 and 11</option>
+                        <option value="off" selected>Single (default - pin 12)</option>
+                        <option value="duo">Duo (2 channels - pins 12 + 13)</option>
+                        <option value="quattro">Quattro (4 channels - pins 12, 13, 10, 11)</option>
                     </select>
-                </div>
-                <div id="lnurl13-wrapper">
-                    <label for="lnurl13">LNURL QR-Code trigger 2</label>
-                    <input type="text" name="lnurl13" id="lnurl13" placeholder="LNURL for pin 13" autocomplete="off" disabled>
-                </div>
-                <div id="lnurl10-wrapper">
-                    <label for="lnurl10">LNURL QR-Code trigger 3</label>
-                    <input type="text" name="lnurl10" id="lnurl10" placeholder="LNURL for pin 10" autocomplete="off" disabled>
-                </div>
-                <div id="lnurl11-wrapper">
-                    <label for="lnurl11">LNURL QR-Code trigger 4</label>
-                    <input type="text" name="lnurl11" id="lnurl11" placeholder="LNURL for pin 11" autocomplete="off" disabled>
                 </div>
             </div>
             
-            <p style="margin-top: 20px;"><i><strong>Note:</strong> Multi-Channel-Control mode allows you to add up to 3 additional relay outputs (pins 13, 10, 11) with individual LNURL QR codes for each. Each product/trigger can have its own payment link.</i></p>
+            <p style="margin-top: 20px;"><i><strong>Multi-Channel-Control:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are fetched automatically from your LNbits switch configuration. Use touch gestures (swipe ←→) to navigate between products.</i></p>
             
-            <p style="margin-top: 10px;"><i><strong>How does it work?</strong> In Duo mode, you get 2 QR codes (pin 12 + pin 13). In Quattro mode, you get 4 QR codes (pins 12, 13, 10, 11). Use the product selection screen on the device (appears after 5 seconds) to switch between different QR codes.</i></p>
+            <p style="margin-top: 10px;"><i><strong>Features:</strong> Automatic LNURL generation (Bech32/LUD17) • Backend product labels • Touch navigation • Currency symbol conversion (€→EUR, $→USD, etc.)</i></p>
         </div>
 
         <script>
-            // Enable/disable LNURL fields based on multi-channel-control mode
-            document.getElementById('multiControl').addEventListener('change', function(e) {
-                const lnurl13 = document.getElementById('lnurl13');
-                const lnurl10 = document.getElementById('lnurl10');
-                const lnurl11 = document.getElementById('lnurl11');
-                
-                if (e.target.value === 'off') {
-                    // OFF: Disable all fields
-                    lnurl13.disabled = true;
-                    lnurl10.disabled = true;
-                    lnurl11.disabled = true;
-                    lnurl13.style.backgroundColor = '#f0f0f0';
-                    lnurl10.style.backgroundColor = '#f0f0f0';
-                    lnurl11.style.backgroundColor = '#f0f0f0';
-                } else if (e.target.value === 'duo') {
-                    // DUO: Enable only pin 13
-                    lnurl13.disabled = false;
-                    lnurl10.disabled = true;
-                    lnurl11.disabled = true;
-                    lnurl13.style.backgroundColor = '';
-                    lnurl10.style.backgroundColor = '#f0f0f0';
-                    lnurl11.style.backgroundColor = '#f0f0f0';
-                } else if (e.target.value === 'quattro') {
-                    // QUATTRO: Enable all fields
-                    lnurl13.disabled = false;
-                    lnurl10.disabled = false;
-                    lnurl11.disabled = false;
-                    lnurl13.style.backgroundColor = '';
-                    lnurl10.style.backgroundColor = '';
-                    lnurl11.style.backgroundColor = '';
-                }
-            });
-            
-            // Initialize field states on page load
-            document.addEventListener('DOMContentLoaded', function() {
-                const multiControl = document.getElementById('multiControl');
-                const lnurl13 = document.getElementById('lnurl13');
-                const lnurl10 = document.getElementById('lnurl10');
-                const lnurl11 = document.getElementById('lnurl11');
-                
-                // Set initial state (OFF)
-                lnurl13.style.backgroundColor = '#f0f0f0';
-                lnurl10.style.backgroundColor = '#f0f0f0';
-                lnurl11.style.backgroundColor = '#f0f0f0';
-            });
         </script>
 
         <!-- Screensaver and Deep Sleep Feature Section -->
@@ -409,6 +359,7 @@
         const wifiPassword = document.getElementById('wifiPassword');
         const socket = document.getElementById('socket');
         const lnurl = document.getElementById('lnurl');
+        const qrFormat = document.getElementById('qrFormat');
         const orientation = document.getElementById('orientation');
         const theme = document.getElementById('theme');
         const specialMode = document.getElementById('specialMode');
@@ -424,6 +375,7 @@
         const screensaver = document.getElementById('screensaver');
         const deepSleep = document.getElementById('deepSleep');
         const activationTime = document.getElementById('activationTime');
+        const multiControl = document.getElementById('multiControl');
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
@@ -465,6 +417,10 @@
             {
                 "name": "lnurl",
                 "value": ""
+            },
+            {
+                "name": "qrFormat",
+                "value": "bech32"
             },
             {
                 "name": "orientation",
@@ -521,18 +477,6 @@
             {
                 "name": "multiControl",
                 "value": "off"
-            },
-            {
-                "name": "lnurl13",
-                "value": ""
-            },
-            {
-                "name": "lnurl10",
-                "value": ""
-            },
-            {
-                "name": "lnurl11",
-                "value": ""
             }
         ]
 
@@ -832,38 +776,42 @@
                 config[1].value = configData[1].value; // wifiPassword
                 config[2].value = configData[2].value; // socket
                 config[3].value = configData[3].value; // lnurl
-                config[4].value = configData[4].value; // orientation
-                config[5].value = configData[5]?.value || "black-white"; // theme
-                config[6].value = configData[6]?.value || ""; // thresholdKey
-                config[7].value = configData[7]?.value || ""; // thresholdAmount
-                config[8].value = configData[8]?.value || ""; // thresholdPin
-                config[9].value = configData[9]?.value || ""; // thresholdTime
-                config[10].value = configData[10]?.value || ""; // thresholdLnurl
-                config[11].value = configData[11]?.value || "standard"; // specialMode
-                config[12].value = configData[12]?.value || "1.0"; // frequency
-                config[13].value = configData[13]?.value || "1.0"; // dutyCycleRatio
-                config[14].value = configData[14]?.value || "off"; // screensaver
-                config[15].value = configData[15]?.value || "off"; // deepSleep
-                config[16].value = configData[16]?.value || "5"; // activationTime
+                config[4].value = configData[4]?.value || "bech32"; // qrFormat
+                config[5].value = configData[5].value; // orientation
+                config[6].value = configData[6]?.value || "black-white"; // theme
+                config[7].value = configData[7]?.value || ""; // thresholdKey
+                config[8].value = configData[8]?.value || ""; // thresholdAmount
+                config[9].value = configData[9]?.value || ""; // thresholdPin
+                config[10].value = configData[10]?.value || ""; // thresholdTime
+                config[11].value = configData[11]?.value || ""; // thresholdLnurl
+                config[12].value = configData[12]?.value || "standard"; // specialMode
+                config[13].value = configData[13]?.value || "1.0"; // frequency
+                config[14].value = configData[14]?.value || "1.0"; // dutyCycleRatio
+                config[15].value = configData[15]?.value || "off"; // screensaver
+                config[16].value = configData[16]?.value || "off"; // deepSleep
+                config[17].value = configData[17]?.value || "5"; // activationTime
+                config[18].value = configData[18]?.value || "off"; // multiControl
 
                 // Fill form fields
                 ssid.value = config[0].value;
                 wifiPassword.value = config[1].value;
                 socket.value = config[2].value;
                 lnurl.value = config[3].value;
-                orientation.value = config[4].value;
-                theme.value = config[5].value;
-                thresholdKey.value = config[6].value;
-                thresholdAmount.value = config[7].value;
-                thresholdPin.value = config[8].value;
-                thresholdTime.value = config[9].value;
-                thresholdLnurl.value = config[10].value;
-                specialMode.value = config[11].value;
-                frequency.value = config[12].value;
-                dutyCycleRatio.value = config[13].value;
-                screensaver.value = config[14].value;
-                deepSleep.value = config[15].value;
-                activationTime.value = config[16].value;
+                qrFormat.value = config[4].value;
+                orientation.value = config[5].value;
+                theme.value = config[6].value;
+                thresholdKey.value = config[7].value;
+                thresholdAmount.value = config[8].value;
+                thresholdPin.value = config[9].value;
+                thresholdTime.value = config[10].value;
+                thresholdLnurl.value = config[11].value;
+                specialMode.value = config[12].value;
+                frequency.value = config[13].value;
+                dutyCycleRatio.value = config[14].value;
+                screensaver.value = config[15].value;
+                deepSleep.value = config[16].value;
+                activationTime.value = config[17].value;
+                multiControl.value = config[18].value;
                 
                 // Show/hide custom fields based on loaded special mode
                 if (specialMode.value === 'custom') {
@@ -930,37 +878,35 @@
             config[1].value = wifiPassword.value;
             config[2].value = socket.value;
             config[3].value = lnurl.value;
-            config[4].value = orientation.value;
-            config[5].value = theme.value;
-            config[6].value = thresholdKey.value;
-            config[7].value = thresholdAmount.value;
-            config[8].value = thresholdPin.value;
-            config[9].value = thresholdTime.value;
-            config[10].value = thresholdLnurl.value;
-            config[11].value = specialMode.value;
-            config[12].value = frequency.value || "1.0";
-            config[13].value = dutyCycleRatio.value || "1.0";
-            config[14].value = screensaver.value;
-            config[15].value = deepSleep.value;
-            config[16].value = activationTime.value || "5";
-            config[17].value = multiControl.value;
-            config[18].value = lnurl13.value;
-            config[19].value = lnurl10.value;
-            config[20].value = lnurl11.value;
+            config[4].value = qrFormat.value;
+            config[5].value = orientation.value;
+            config[6].value = theme.value;
+            config[7].value = thresholdKey.value;
+            config[8].value = thresholdAmount.value;
+            config[9].value = thresholdPin.value;
+            config[10].value = thresholdTime.value;
+            config[11].value = thresholdLnurl.value;
+            config[12].value = specialMode.value;
+            config[13].value = frequency.value || "1.0";
+            config[14].value = dutyCycleRatio.value || "1.0";
+            config[15].value = screensaver.value;
+            config[16].value = deepSleep.value;
+            config[17].value = activationTime.value || "5";
+            config[18].value = multiControl.value;
             
             // Validate required fields
             const ssidValue = config[0].value.trim();
             const wifiPasswordValue = config[1].value.trim();
             const socketValue = config[2].value.trim();
             const lnurlValue = config[3].value.trim();
-            const thresholdKeyValue = config[6].value.trim();
-            const thresholdAmountValue = config[7].value.trim();
-            const thresholdPinValue = config[8].value.trim();
-            const thresholdTimeValue = config[9].value.trim();
-            const thresholdLnurlValue = config[10].value.trim();
-            const specialModeValue = config[11].value.trim();
-            const frequencyValue = config[12].value.trim();
-            const dutyCycleRatioValue = config[13].value.trim();
+            const thresholdKeyValue = config[7].value.trim();
+            const thresholdAmountValue = config[8].value.trim();
+            const thresholdPinValue = config[9].value.trim();
+            const thresholdTimeValue = config[10].value.trim();
+            const thresholdLnurlValue = config[11].value.trim();
+            const specialModeValue = config[12].value.trim();
+            const frequencyValue = config[13].value.trim();
+            const dutyCycleRatioValue = config[14].value.trim();
             
             // Check basic required fields
             if (!ssidValue || !wifiPasswordValue || !socketValue || !lnurlValue) {
@@ -986,24 +932,6 @@
                 
                 if (!dutyCycleRatioValue || isNaN(ratioNum) || ratioNum < 0.1 || ratioNum > 10) {
                     alert("⚠️ Special Mode Validation Error\n\nFor custom mode, duty cycle ratio must be between 0.1 and 10");
-                    return;
-                }
-            }
-            
-            // Validate multi-channel-control fields
-            const multiControlValue = config[17].value.trim();
-            const lnurl13Value = config[18].value.trim();
-            const lnurl10Value = config[19].value.trim();
-            const lnurl11Value = config[20].value.trim();
-            
-            if (multiControlValue === 'duo') {
-                if (!lnurl13Value) {
-                    alert("⚠️ Multi-Channel-Control Validation Error\n\nFor Duo mode, LNURL for pin 13 is required.");
-                    return;
-                }
-            } else if (multiControlValue === 'quattro') {
-                if (!lnurl13Value || !lnurl10Value || !lnurl11Value) {
-                    alert("⚠️ Multi-Channel-Control Validation Error\n\nFor Quattro mode, all LNURL fields (pins 13, 10, 11) are required.");
                     return;
                 }
             }
