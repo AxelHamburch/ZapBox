@@ -1449,7 +1449,7 @@ void setup()
   Serial.println("[STARTUP] WiFi connection started in background (Power Save: OFF)");
 
   // Show startup screen for 5 seconds
-  Serial.println("[STARTUP] Showing startup screen for 6 seconds...");
+  Serial.println("[STARTUP] Showing startup screen for 5 seconds...");
   for (int i = 0; i < 50; i++) { // 50 * 100ms = 5 seconds
     vTaskDelay(pdMS_TO_TICKS(100));
     if (inConfigMode) {
@@ -2206,6 +2206,15 @@ void loop()
         webSocket.disconnect();
         waitingForPong = false;
         return;
+      }
+      
+      // Server OK but still on Server error screen → Move to WebSocket error check
+      if (wifiOk && serverOk && onErrorScreen && currentErrorType == 3 && !inConfigMode)
+      {
+        Serial.println("[RECOVERY] Server OK - moving to WebSocket error check");
+        serverConfirmed = true;
+        currentErrorType = 4; // Move to WebSocket error check
+        // Don't return - let WebSocket check run below
       }
       
       if (wifiOk && serverOk && !websocketOk && !inConfigMode)
