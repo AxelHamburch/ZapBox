@@ -47,6 +47,13 @@ float dutyCycleRatio = 1.0;
 String multiControl = "off";
 // lnurl13, lnurl10, lnurl11 removed - now dynamically generated
 
+// Bitcoin Ticker data
+String btcprice = "Loading...";
+String blockhigh = "...";
+unsigned long lastBtcUpdate = 0;
+const unsigned long BTC_UPDATE_INTERVAL = 120000; // 2 minutes in milliseconds
+bool btcTickerActive = false;
+
 // Switch labels from backend (cached after WebSocket connect)
 String label12 = "";
 String label13 = "";
@@ -129,6 +136,8 @@ void reportMode();
 void configMode();
 void showHelp();
 void fetchSwitchLabels();
+void fetchBitcoinData();
+void updateBitcoinTicker();
 void updateLightningQR(String lnurlStr);
 void navigateToNextProduct();
 String generateLNURL(int pin);
@@ -299,6 +308,7 @@ void navigateToNextProduct() {
   
   // Always show product QR screen (no selection screen)
   onProductSelectionScreen = false;
+  btcTickerActive = false; // Exit Bitcoin ticker when navigating to products
   if (true) {
     // Show product QR screen
     String label = "";
@@ -371,11 +381,11 @@ void redrawQRScreen() {
     showThresholdQRScreen();
     Serial.println("[DISPLAY] Threshold QR screen displayed");
   } else if (multiControl != "off") {
-    // Multi-Channel-Control mode: Show current product or selection screen
+    // Multi-Channel-Control mode: Show Bitcoin ticker or current product
     if (currentProduct == 0) {
-      productSelectionScreen();
-      onProductSelectionScreen = true;
-      Serial.println("[DISPLAY] Product selection screen displayed");
+      btctickerScreen();
+      btcTickerActive = true;
+      Serial.println("[DISPLAY] Bitcoin ticker screen displayed");
     } else {
       String label = "";
       int displayPin = 0;
@@ -403,9 +413,10 @@ void redrawQRScreen() {
       String lnurlStr = generateLNURL(displayPin);
       updateLightningQR(lnurlStr);
       showProductQRScreen(label, displayPin);
-      onProductSelectionScreen = false;
+      btcTickerActive = false;
       Serial.printf("[DISPLAY] Product %d QR screen displayed\n", currentProduct);
     }
+    onProductSelectionScreen = false;
   } else if (specialMode != "standard" && specialMode != "") {
     // Generate LNURL for pin 12 before showing special mode QR
     String lnurlStr = generateLNURL(12);
@@ -884,6 +895,84 @@ void fetchSwitchLabels()
   }
   
   http.end();
+}
+
+// Fetch Bitcoin data from CoinGecko and mempool.space
+void fetchBitcoinData()
+{
+  Serial.println("[BTC] Fetching Bitcoin data...");
+  HTTPClient http;
+
+  // Fetch BTC price from CoinGecko
+  Serial.println("[BTC] Requesting price from CoinGecko...");
+  http.begin("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+  http.setTimeout(5000);
+
+  int httpCode = http.GET();
+  if (httpCode == 200) {
+    String payload = http.getString();
+    Serial.println("[BTC] CoinGecko response: " + payload);
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+
+    if (!error && doc["bitcoin"].is<JsonObject>()) {
+      float price = doc["bitcoin"]["usd"];
+      btcprice = String((int)price); // Convert to integer string
+      Serial.println("[BTC] Price updated: $" + btcprice);
+    } else {
+      Serial.println("[BTC] Failed to parse CoinGecko JSON");
+      btcprice = "Error";
+    }
+  } else {
+    Serial.printf("[BTC] CoinGecko request failed: %d\n", httpCode);
+    btcprice = "Error";
+  }
+  http.end();
+
+  delay(100); // Small delay between requests
+
+  // Fetch block height from mempool.space
+  Serial.println("[BTC] Requesting block height from mempool.space...");
+  http.begin("https://mempool.space/api/blocks/tip/height");
+  http.setTimeout(5000);
+
+  httpCode = http.GET();
+  if (httpCode == 200) {
+    blockhigh = http.getString();
+    blockhigh.trim();
+    Serial.println("[BTC] Block height updated: " + blockhigh);
+  } else {
+    Serial.printf("[BTC] Mempool.space request failed: %d\n", httpCode);
+    blockhigh = "Error";
+  }
+  http.end();
+
+  Serial.println("[BTC] Bitcoin data fetch completed");
+  lastBtcUpdate = millis();
+}
+
+// Update Bitcoin ticker display if needed
+void updateBitcoinTicker()
+{
+  // Only update if ticker is active and not in error/config/help modes
+  if (!btcTickerActive || onErrorScreen || inConfigMode || inHelpMode) {
+    return;
+  }
+
+  unsigned long currentTime = millis();
+
+  // Check if it's time for an update
+  if (currentTime - lastBtcUpdate >= BTC_UPDATE_INTERVAL) {
+    Serial.println("[BTC] Update interval reached, fetching new data...");
+    fetchBitcoinData();
+
+    // Refresh the display if we're on the ticker screen
+    if (btcTickerActive && !screensaverActive && !deepSleepActive) {
+      btctickerScreen();
+      Serial.println("[BTC] Screen refreshed with new data");
+    }
+  }
 }
 
 // HTTP-based Internet check (doesn't require WebSocket connection)
@@ -1638,6 +1727,11 @@ void setup()
   
   // Initialize product navigation
   currentProduct = 0; // Start at selection screen
+
+  // Fetch initial Bitcoin data after setup is complete
+  Serial.println("[BTC] Fetching initial Bitcoin data...");
+  fetchBitcoinData();
+  Serial.println("[BTC] Initial fetch complete");
   
   setupComplete = true; // Allow loop to run now
 }
@@ -1715,12 +1809,12 @@ void loop()
     if (thresholdKey.length() > 0) {
       showThresholdQRScreen(); // THRESHOLD MODE (Multi-Channel-Control not compatible)
     } else if (multiControl != "off") {
-      // MULTI-CHANNEL-CONTROL MODE - Start with product selection screen
+      // MULTI-CHANNEL-CONTROL MODE - Start with Bitcoin ticker instead of product selection
       currentProduct = 0;
-      productSelectionScreen();
-      onProductSelectionScreen = true;
+      btctickerScreen();
+      btcTickerActive = true;
       productSelectionShowTime = millis();
-      Serial.println("[MULTI-CHANNEL-CONTROL] Starting in product selection mode");
+      Serial.println("[BTC] Starting with Bitcoin ticker screen");
     } else if (specialMode != "standard") {
       // Generate LNURL for pin 12 before showing special mode QR
       String lnurlStr = generateLNURL(12);
@@ -1807,8 +1901,8 @@ void loop()
           Serial.println();
         }
         
-        // Handle touch on product selection screen
-        if (onProductSelectionScreen) {
+        // Handle touch on product selection screen OR Bitcoin ticker screen
+        if (onProductSelectionScreen || btcTickerActive) {
           bool navigateBack = false;
           String actionName = "";
           
@@ -1886,6 +1980,7 @@ void loop()
           if (navigateBack) {
             Serial.printf("[TOUCH] >>> %s - ", actionName.c_str());
             onProductSelectionScreen = false;
+            btcTickerActive = false; // Exit ticker on navigation
             
             // Multi-Channel-Control Mode: Navigate to next product
             if (multiControl != "off" && thresholdKey.length() == 0) {
@@ -1958,17 +2053,17 @@ void loop()
       }
     }
     
-    // Check if it's time to show product selection screen
+    // Check if it's time to show Bitcoin ticker screen
     // Only show in Multi-Channel-Control mode or if multi-channel-control is off with old behavior
     // Not shown in Threshold mode (not compatible)
-    if (!onErrorScreen && !onProductSelectionScreen && 
+    if (!onErrorScreen && !btcTickerActive && 
         productSelectionShowTime > 0 && 
         (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY &&
         multiControl != "off" && thresholdKey.length() == 0) {
-      Serial.println("[SCREEN] Showing product selection screen after 5 seconds (Multi-Channel-Control)");
+      Serial.println("[SCREEN] Showing Bitcoin ticker screen after 5 seconds (Multi-Channel-Control)");
       currentProduct = 0;
-      productSelectionScreen();
-      onProductSelectionScreen = true;
+      btctickerScreen();
+      btcTickerActive = true;
       // Don't reset timer - we want to stay on this screen until swipe
     }
     
@@ -2085,6 +2180,9 @@ void loop()
     
     webSocket.loop();
     loopCount++;
+
+    // Update Bitcoin ticker (checks interval internally, non-blocking)
+    updateBitcoinTicker();
     
     // Log status every 200000 loops (roughly every 10-20 minutes)
     if (loopCount % 200000 == 0)

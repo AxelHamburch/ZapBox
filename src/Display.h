@@ -2,6 +2,7 @@
 
 void initDisplay();
 void startupScreen();
+void btctickerScreen();
 void initializationScreen();
 void bootUpScreen();
 void configModeScreen();

@@ -15,6 +15,8 @@ int y;
 extern char lightning[];
 extern String orientation;
 extern String theme;
+extern String btcprice;
+extern String blockhigh;
 
 // Theme colors - will be set based on theme selection
 uint16_t themeBackground = TFT_WHITE;
@@ -117,6 +119,37 @@ void startupScreen()
     tft.setTextSize(2);
     tft.drawString("Firmware " VERSION, x, y + 25, GFXFF);
     tft.drawString("Powered by LNbits", x, y + 45, GFXFF);
+  }
+}
+
+// Bitcoin Ticker Screen
+void btctickerScreen()
+{
+  tft.fillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  if (orientation == "v"){
+    tft.setTextSize(2);
+    tft.drawString("", x + 5, y - 95, GFXFF);
+    tft.setTextSize(8);
+    tft.drawString("BTC", x + 5, y - 70, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("", x + 5, y - 20, GFXFF);
+    tft.drawString("USD/BTC", x + 5, y + 15, GFXFF);
+    tft.setTextSize(3);
+    tft.drawString(btcprice, x + 5, y + 40, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("", x + 5, y + 65, GFXFF);
+    tft.drawString("Block", x + 5, y + 80, GFXFF);
+    tft.setTextSize(3);
+    tft.drawString(blockhigh, x + 5, y + 105, GFXFF);
+  } else {
+    tft.setTextSize(6);
+    tft.drawString("BITCOIN", x + 5, y - 25, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("USD/BTC: " + btcprice, x, y + 15, GFXFF);
+    tft.drawString("Block: " + blockhigh, x, y + 40, GFXFF);
   }
 }
 
