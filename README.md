@@ -112,6 +112,38 @@ Configuration is done via the [Web Installer](installer/index.html) with browser
 
 ### Advanced Features
 
+#### Multi-Control Mode (Touch Variant)
+**Available on T-Display-S3 Touch variant only**
+
+Control multiple relays with automatic product selection and label integration:
+
+- **Single Mode** (default): Traditional single relay control on Pin 12
+- **Duo Mode**: Two products on Pins 12 and 13
+- **Quattro Mode**: Four products on Pins 12, 13, 10, and 11
+
+**Features:**
+- **Touch Navigation**: Swipe left/right (<-→) on product selection screen to choose product
+- **Automatic LNURL Generation**: 
+  - Each pin gets its own unique LNURL with Bech32 encoding
+  - LUD17 format (LNURL as URL) for maximum compatibility
+  - Encoded with HRP "lnurl" and XOR 1 checksum
+- **Backend Product Labels**: 
+  - Labels are fetched automatically from LNbits backend via `/api/v1/public/{deviceId}`
+  - Labels are displayed on all QR screens (Normal, Special, and Multi-Control modes)
+  - Multi-line display: Up to 3 words separated by spaces
+  - Currency symbols automatically converted to text: €→EUR, $→USD, £→GBP, ¥→YEN, ₿→BTC, ₹→INR, ₽→RUB, ¢→ct
+  - Third line uses smaller font for currency display
+- **5-Second Timeout**: Product selection screen automatically shows after 5 seconds on QR screen
+- **Loop Navigation**: Navigation wraps around (last→first, first→last)
+
+**Configuration:**
+Set Multi-Control Mode in Web Installer:
+- `single` (default): Pin 12 only
+- `duo`: Pins 12, 13
+- `quattro`: Pins 12, 13, 10, 11
+
+**Use Cases**: Vending machines, multi-product payment terminals, flexible product offerings
+
 #### Special Modes
 Control relay switching patterns beyond simple on/off:
 - **Standard**: Simple on/off (default)
