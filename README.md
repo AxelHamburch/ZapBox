@@ -58,7 +58,7 @@ The Touch version features a **virtual touch button** in the bottom area of the 
 - Automatically disabled on non-touch hardware
 
 **Touch Navigation:**
-- **Swipe** or **Tap** on main display area to navigate between products (Multi-Control mode)
+- **Swipe** or **Tap** on main display area to navigate between products (Multi-Channel-Control mode)
 - Touch button area is excluded from product navigation to prevent conflicts
 
 ### Startup & Initialization Sequence
@@ -138,7 +138,7 @@ Configuration is done via the [Web Installer](installer/index.html) with browser
 
 ### Advanced Features
 
-#### Multi-Control Mode (Touch Variant)
+#### Multi-Channel-Control Mode (Touch Variant)
 **Available on T-Display-S3 Touch variant only**
 
 Control multiple relays with automatic product selection and label integration:
@@ -155,7 +155,7 @@ Control multiple relays with automatic product selection and label integration:
   - Encoded with HRP "lnurl" and XOR 1 checksum
 - **Backend Product Labels**: 
   - Labels are fetched automatically from LNbits backend via `/api/v1/public/{deviceId}`
-  - Labels are displayed on all QR screens (Normal, Special, and Multi-Control modes)
+  - Labels are displayed on all QR screens (Normal, Special, and Multi-Channel-Control modes)
   - Multi-line display: Up to 3 words separated by spaces
   - Currency symbols automatically converted to text: €→EUR, $→USD, £→GBP, ¥→YEN, ₿→BTC, ₹→INR, ₽→RUB, ¢→ct
   - Third line uses smaller font for currency display
@@ -163,7 +163,7 @@ Control multiple relays with automatic product selection and label integration:
 - **Loop Navigation**: Navigation wraps around (last→first, first→last)
 
 **Configuration:**
-Set Multi-Control Mode in Web Installer:
+Set Multi-Channel-Control Mode in Web Installer:
 - `single` (default): Pin 12 only
 - `duo`: Pins 12, 13
 - `quattro`: Pins 12, 13, 10, 11

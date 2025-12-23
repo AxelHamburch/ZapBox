@@ -555,7 +555,7 @@ void showSpecialModeQRScreen()
   showProductQRScreen(label12.length() > 0 ? label12 : "READY 4 SP ACTION", 12);
 }
 
-// Multi-Control Product QR Screen - displays label text and QR code
+// Multi-Channel-Control Product QR Screen - displays label text and QR code
 // Label can contain 1-3 words separated by spaces
 void showProductQRScreen(String label, int pin)
 {

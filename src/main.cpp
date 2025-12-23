@@ -43,7 +43,7 @@ String specialMode = "standard";
 float frequency = 1.0;
 float dutyCycleRatio = 1.0;
 
-// Multi-Control / Product selection configuration
+// Multi-Channel-Control / Product selection configuration
 String multiControl = "off";
 // lnurl13, lnurl10, lnurl11 removed - now dynamically generated
 
@@ -111,7 +111,7 @@ bool onProductSelectionScreen = false;
 unsigned long productSelectionShowTime = 0;
 const unsigned long PRODUCT_SELECTION_DELAY = 5000; // 5 seconds (TEST: default 10000ms)
 
-// Multi-Control product navigation
+// Multi-Channel-Control product navigation
 // 0 = "Select the product" screen
 // 1 = Product 1 (Pin 12)
 // 2 = Product 2 (Pin 13)
@@ -281,7 +281,7 @@ void updateLightningQR(String lnurlStr) {
   Serial.println(lightning);
 }
 
-// Helper function: Navigate to next product in Multi-Control mode
+// Helper function: Navigate to next product in Multi-Channel-Control mode
 void navigateToNextProduct() {
   if (multiControl == "off") return; // Single mode, no navigation
   
@@ -370,7 +370,7 @@ void redrawQRScreen() {
     showThresholdQRScreen();
     Serial.println("[DISPLAY] Threshold QR screen displayed");
   } else if (multiControl != "off") {
-    // Multi-Control mode: Show current product or selection screen
+    // Multi-Channel-Control mode: Show current product or selection screen
     if (currentProduct == 0) {
       productSelectionScreen();
       onProductSelectionScreen = true;
@@ -635,7 +635,7 @@ void readFiles()
       if (actTime > 120) activationTime = "120";
     }
 
-    // Read multi-control configuration (index 17)
+    // Read multi-channel-control configuration (index 17)
     const JsonObject maRoot17 = doc[17];
     if (!maRoot17.isNull()) {
       const char *maRoot17Char = maRoot17["value"];
@@ -665,8 +665,8 @@ void readFiles()
     Serial.print("Duty Cycle Ratio: ");
     Serial.println(dutyCycleRatio);
 
-    // Display Multi-Control configuration
-    Serial.print("Multi-Control Mode: ");
+    // Display Multi-Channel-Control configuration
+    Serial.print("Multi-Channel-Control Mode: ");
     if (multiControl == "off") {
       Serial.println("Single (Pin 12 only)");
     } else if (multiControl == "duo") {
@@ -1610,13 +1610,13 @@ void setup()
   // Set maxProducts based on multiControl mode
   if (multiControl == "quattro") {
     maxProducts = 4;
-    Serial.println("[MULTI-CONTROL] Quattro mode - 4 products available");
+    Serial.println("[MULTI-CHANNEL-CONTROL] Quattro mode - 4 products available");
   } else if (multiControl == "duo") {
     maxProducts = 2;
-    Serial.println("[MULTI-CONTROL] Duo mode - 2 products available");
+    Serial.println("[MULTI-CHANNEL-CONTROL] Duo mode - 2 products available");
   } else {
     maxProducts = 1;
-    Serial.println("[MULTI-CONTROL] Single mode - 1 product");
+    Serial.println("[MULTI-CHANNEL-CONTROL] Single mode - 1 product");
   }
   
   // Initialize product navigation
@@ -1696,14 +1696,14 @@ void loop()
   if (firstLoop && allConnectionsConfirmed && !inReportMode && !(lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS)) {
     Serial.println("[SCREEN] All connections confirmed - Showing QR code screen (READY FOR ACTION)");
     if (thresholdKey.length() > 0) {
-      showThresholdQRScreen(); // THRESHOLD MODE (Multi-Control not compatible)
+      showThresholdQRScreen(); // THRESHOLD MODE (Multi-Channel-Control not compatible)
     } else if (multiControl != "off") {
-      // MULTI-CONTROL MODE - Start with product selection screen
+      // MULTI-CHANNEL-CONTROL MODE - Start with product selection screen
       currentProduct = 0;
       productSelectionScreen();
       onProductSelectionScreen = true;
       productSelectionShowTime = millis();
-      Serial.println("[MULTI-CONTROL] Starting in product selection mode");
+      Serial.println("[MULTI-CHANNEL-CONTROL] Starting in product selection mode");
     } else if (specialMode != "standard") {
       // Generate LNURL for pin 12 before showing special mode QR
       String lnurlStr = generateLNURL(12);
@@ -1870,7 +1870,7 @@ void loop()
             Serial.printf("[TOUCH] >>> %s - ", actionName.c_str());
             onProductSelectionScreen = false;
             
-            // Multi-Control Mode: Navigate to next product
+            // Multi-Channel-Control Mode: Navigate to next product
             if (multiControl != "off" && thresholdKey.length() == 0) {
               Serial.println("Navigate to next product");
               navigateToNextProduct();
@@ -1883,7 +1883,7 @@ void loop()
             productSelectionShowTime = millis();
           }
         }
-        // Handle touch on product QR screen (Multi-Control mode only)
+        // Handle touch on product QR screen (Multi-Channel-Control mode only)
         // Allow navigation when showing product QR code
         else if (multiControl != "off" && thresholdKey.length() == 0 && !onProductSelectionScreen) {
           bool navigate = false;
@@ -1942,13 +1942,13 @@ void loop()
     }
     
     // Check if it's time to show product selection screen
-    // Only show in Multi-Control mode or if multi-control is off with old behavior
+    // Only show in Multi-Channel-Control mode or if multi-channel-control is off with old behavior
     // Not shown in Threshold mode (not compatible)
     if (!onErrorScreen && !onProductSelectionScreen && 
         productSelectionShowTime > 0 && 
         (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY &&
         multiControl != "off" && thresholdKey.length() == 0) {
-      Serial.println("[SCREEN] Showing product selection screen after 5 seconds (Multi-Control)");
+      Serial.println("[SCREEN] Showing product selection screen after 5 seconds (Multi-Channel-Control)");
       currentProduct = 0;
       productSelectionScreen();
       onProductSelectionScreen = true;

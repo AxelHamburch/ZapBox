@@ -56,7 +56,7 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v929126/manifest.json">v929126 (Latest - Add Touch button and Multi-Control Mode)</option>
+                <option value="./firmware/v929126/manifest.json">v929126 (Latest - Add Touch control and Multi-Channel-Control Mode) 🎉</option>
                 <option value="./firmware/v928945/manifest.json">v928945 (Proactive error detection and optimized startup)</option>
                 <option value="./firmware/v928559/manifest.json">v928559 (Small fixes and add BLACK & LIGHT GREY color theme)</option>
                 <option value="./firmware/v927737/manifest.json">v927737 (Core dump support + fix config mode after deep sleep)</option>
@@ -242,16 +242,16 @@
             <p style="margin-top: 10px;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
         </div>
 
-        <!-- Multi-Control / Product Selection Feature Section -->
+        <!-- Multi-Channel-Control / Product Selection Feature Section -->
         <div style="margin-top: 50px;">
             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
-                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Multi-control / Product selection</h4>
+                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Multi-Channel-Control / Product selection</h4>
                 <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
             </div>
             
             <div class="input-wrapper">
                 <div>
-                    <label for="multiControl">Multi-Control Mode</label>
+                    <label for="multiControl">Multi-Channel-Control Mode</label>
                     <select name="multiControl" id="multiControl">
                         <option value="off" selected>Off - Single - trigger pin 12</option>
                         <option value="duo">On - Duo - add pin 13</option>
@@ -272,13 +272,13 @@
                 </div>
             </div>
             
-            <p style="margin-top: 20px;"><i><strong>Note:</strong> Multi-control mode allows you to add up to 3 additional relay outputs (pins 13, 10, 11) with individual LNURL QR codes for each. Each product/trigger can have its own payment link.</i></p>
+            <p style="margin-top: 20px;"><i><strong>Note:</strong> Multi-Channel-Control mode allows you to add up to 3 additional relay outputs (pins 13, 10, 11) with individual LNURL QR codes for each. Each product/trigger can have its own payment link.</i></p>
             
             <p style="margin-top: 10px;"><i><strong>How does it work?</strong> In Duo mode, you get 2 QR codes (pin 12 + pin 13). In Quattro mode, you get 4 QR codes (pins 12, 13, 10, 11). Use the product selection screen on the device (appears after 5 seconds) to switch between different QR codes.</i></p>
         </div>
 
         <script>
-            // Enable/disable LNURL fields based on multi-control mode
+            // Enable/disable LNURL fields based on multi-channel-control mode
             document.getElementById('multiControl').addEventListener('change', function(e) {
                 const lnurl13 = document.getElementById('lnurl13');
                 const lnurl10 = document.getElementById('lnurl10');
@@ -990,7 +990,7 @@
                 }
             }
             
-            // Validate multi-control fields
+            // Validate multi-channel-control fields
             const multiControlValue = config[17].value.trim();
             const lnurl13Value = config[18].value.trim();
             const lnurl10Value = config[19].value.trim();
@@ -998,12 +998,12 @@
             
             if (multiControlValue === 'duo') {
                 if (!lnurl13Value) {
-                    alert("⚠️ Multi-Control Validation Error\n\nFor Duo mode, LNURL for pin 13 is required.");
+                    alert("⚠️ Multi-Channel-Control Validation Error\n\nFor Duo mode, LNURL for pin 13 is required.");
                     return;
                 }
             } else if (multiControlValue === 'quattro') {
                 if (!lnurl13Value || !lnurl10Value || !lnurl11Value) {
-                    alert("⚠️ Multi-Control Validation Error\n\nFor Quattro mode, all LNURL fields (pins 13, 10, 11) are required.");
+                    alert("⚠️ Multi-Channel-Control Validation Error\n\nFor Quattro mode, all LNURL fields (pins 13, 10, 11) are required.");
                     return;
                 }
             }
