@@ -3,6 +3,11 @@
 #include "FS.h"
 #include "FFat.h"
 #include "SerialConfig.h"
+#include "TouchCST816S.h"
+
+// Global reference to touch controller (set from main.cpp)
+void* touchControllerPtr = nullptr;
+extern unsigned long configModeStartTime;
 
 void configOverSerialPort(String wifiSSID, String wifiPass, bool hasExistingData)
 {
@@ -34,11 +39,25 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 
     unsigned long lastWiFiCheck = millis();
     unsigned long lastActivity = millis(); // Track last serial activity
-    const unsigned long inactivityTimeout = 60000; // 60 seconds
+    const unsigned long inactivityTimeout = 180000; // 180 seconds
 
     while (true)
     {
         yield(); // Feed the watchdog timer
+        
+        // Check for touch exit (any touch after 2s in config mode)
+        if (touchControllerPtr != nullptr && configModeStartTime > 0 && (millis() - configModeStartTime) > 0)
+        {
+            TouchCST816S* touch = (TouchCST816S*)touchControllerPtr;
+            if (touch->available())
+            {
+                Serial.println("[CONFIG] Touch detected - exiting config mode");
+                Serial.println("[CONFIG_MODE_EXIT]");
+                Serial.flush();
+                delay(500);
+                ESP.restart();
+            }
+        }
         
         // Check for inactivity timeout - only if existing data is present
         if (hasExistingData && (millis() - lastActivity > inactivityTimeout))

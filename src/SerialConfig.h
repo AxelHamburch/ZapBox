@@ -8,6 +8,9 @@ struct KeyValue
 
 void configOverSerialPort(String wifiSSID, String wifiPass, bool hasExistingData);
 void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData);
+
+// Global reference to touch controller (set from main.cpp)
+extern void* touchControllerPtr;
 void executeCommand(String commandName, String commandData);
 void removeFile(String path);
 void appendToFile(String path, String data);

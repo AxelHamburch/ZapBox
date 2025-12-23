@@ -48,7 +48,9 @@ The Touch version features a **virtual touch button** in the bottom area of the 
 - **1x Click** (wait 1 second): **Help Mode** - Shows 3 help screens with usage instructions
 - **2x Click** (within 1 second): **Report Mode** - Shows error counters and diagnostics (2s first screen, 1s per additional)
 - **3x Click** (within 1 second): Nothing (waiting for 4th click)
-- **4x Click** (within 1 second): **Config Mode** - Serial configuration interface (60 second timeout)
+- **4x Click** (within 1 second): **Config Mode** - Serial configuration interface
+  - **Timeout**: 3 minutes (180 seconds) of inactivity
+  - **Early Exit**: Touch screen anywhere after 2 seconds to exit and restart
 
 **Touch Button Features:**
 - Located at hardware position Y > 305 (bottom 15 pixels)

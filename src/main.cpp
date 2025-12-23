@@ -66,6 +66,7 @@ String lnbitsServer;
 String deviceId;
 bool paid = false;
 bool inConfigMode = false;
+unsigned long configModeStartTime = 0; // Track when config mode started for touch exit
 bool inReportMode = false;
 bool inHelpMode = false;
 bool setupComplete = false; // Prevent loop from running before setup finishes
@@ -1083,8 +1084,15 @@ void configMode()
   
   configModeScreen(); // Draw config screen IMMEDIATELY
   inConfigMode = true; // Then set flag
+  delay(2000); // Wait 2 seconds before enabling touch exit
+  configModeStartTime = millis(); // Enable touch exit after 2s
+  
+  // Set touch controller pointer for SerialConfig to access
+  extern void* touchControllerPtr;
+  touchControllerPtr = (void*)&touch;
   
   Serial.println("Config mode screen displayed, entering serial config...");
+  Serial.println("Touch screen anywhere to exit config mode.");
   Serial.flush();
   
   bool hasExistingData = (ssid.length() > 0);
@@ -1234,6 +1242,15 @@ void handleTouchButton()
     // If Help is running and more than 3s passed since last click: Reset
     if (inHelpMode && timeSinceLastTouch > 3000) {
       touchClickCount = 0;
+    }
+  }
+  
+  // Config Mode Touch Exit: Any touch after 2s exits config mode
+  if (inConfigMode && configModeStartTime > 0 && (millis() - configModeStartTime) > 0) {
+    if (digitalRead(PIN_TOUCH_INT) == LOW) {
+      Serial.println("[CONFIG] Touch detected - exiting config mode");
+      delay(100);
+      ESP.restart();
     }
   }
   
@@ -1754,7 +1771,7 @@ void loop()
     static unsigned long lastTouchEvent = 0;
     static bool wasTouched = false;
     
-    if (touchAvailable && !onErrorScreen) {
+    if (touchAvailable && !onErrorScreen && !inConfigMode) {
       // Check for actual touch event
       // Note: Minimal debouncing for main area, button has its own 20ms debounce
       if (touch.available() && (millis() - lastTouchEvent > 10)) {
