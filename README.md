@@ -17,9 +17,12 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
 ## Hardware
 
 - **LilyGo T-Display-S3**: ESP32-S3 microcontroller with integrated 170x320 LCD display
+  - Available in two versions: **Touch** (with CST816S touch controller) and **Non-Touch**
+  - Software automatically detects touch capability at startup
 - **Relay Module**: Switches the USB output
 - **USB Output Socket**: Provides 5V for connected devices
-- **Two Buttons**: For navigation and access to the help page
+- **Two Physical Buttons** (Non-Touch version): For navigation and access to features
+- **Touch Display** (Touch version): Virtual touch button for Help/Report/Config modes
 - **3-Position Switch**:
   - **Position 0**: Everything off
   - **Position 1**: Output permanently on (bypass mode)
@@ -31,10 +34,32 @@ See the complete wiring diagram: [E-Layout-ZapBox-Compact.png](assets/electric/E
 
 ## Operation
 
+### Non-Touch Version (Physical Buttons)
+
 - **Left Button (BOOT)**: 
   - Short press = Report mode (shows error counters)
   - Hold 5 seconds = Configuration mode (serial config interface)
 - **Right Button (HELP)**: Show help page with instructions
+
+### Touch Version (Virtual Touch Button)
+
+The Touch version features a **virtual touch button** in the bottom area of the display (works in all orientations):
+
+- **1x Click** (wait 1 second): **Help Mode** - Shows 3 help screens with usage instructions
+- **2x Click** (within 1 second): **Report Mode** - Shows error counters and diagnostics (2s first screen, 1s per additional)
+- **3x Click** (within 1 second): Nothing (waiting for 4th click)
+- **4x Click** (within 1 second): **Config Mode** - Serial configuration interface (60 second timeout)
+
+**Touch Button Features:**
+- Located at hardware position Y > 305 (bottom 15 pixels)
+- Works in both vertical and horizontal display orientations
+- 100ms debounce prevents accidental double-clicks
+- Independent from main display touch navigation
+- Automatically disabled on non-touch hardware
+
+**Touch Navigation:**
+- **Swipe** or **Tap** on main display area to navigate between products (Multi-Control mode)
+- Touch button area is excluded from product navigation to prevent conflicts
 
 ### Startup & Initialization Sequence
 
