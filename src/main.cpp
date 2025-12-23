@@ -98,10 +98,18 @@ OneButton rightButton(PIN_BUTTON_2, true);
 TouchCST816S touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_TOUCH_RES, PIN_TOUCH_INT);
 bool touchAvailable = false;
 
+// Touch button state tracking (for click/double/triple detection)
+unsigned long lastTouchTime = 0;
+uint8_t touchClickCount = 0;
+const unsigned long TOUCH_DOUBLE_CLICK_MS = 1000; // 1 second window for second click
+const unsigned long TOUCH_LONG_PRESS_MS = 3000;  // 3 seconds for long press
+bool touchPressed = false;
+unsigned long touchPressStartTime = 0;
+
 // Product selection screen tracking
 bool onProductSelectionScreen = false;
 unsigned long productSelectionShowTime = 0;
-const unsigned long PRODUCT_SELECTION_DELAY = 10000; // 10 seconds
+const unsigned long PRODUCT_SELECTION_DELAY = 5000; // 5 seconds (TEST: default 10000ms)
 
 // Multi-Control product navigation
 // 0 = "Select the product" screen
@@ -116,6 +124,9 @@ WebSocketsClient webSocket;
 
 //////////////////FORWARD DECLARATIONS///////////////////
 
+void reportMode();
+void configMode();
+void showHelp();
 void fetchSwitchLabels();
 void updateLightningQR(String lnurlStr);
 void navigateToNextProduct();
@@ -1100,16 +1111,20 @@ void reportMode()
   Serial.println("[BUTTON] Report mode button pressed");
   inReportMode = true; // Set flag to interrupt WiFi reconnect loop
   
+  // Disable product selection timer during report mode
+  productSelectionShowTime = 0;
+  onProductSelectionScreen = false;
+  
   errorReportScreen(wifiErrorCount, internetErrorCount, serverErrorCount, websocketErrorCount);
-  vTaskDelay(pdMS_TO_TICKS(4200));
+  vTaskDelay(pdMS_TO_TICKS(2000)); // First screen: 2 seconds
   wifiReconnectScreen();
-  vTaskDelay(pdMS_TO_TICKS(2100));
+  vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second
   internetReconnectScreen();
-  vTaskDelay(pdMS_TO_TICKS(2100));
+  vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second
   serverReconnectScreen();
-  vTaskDelay(pdMS_TO_TICKS(2100));
+  vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second
   websocketReconnectScreen();
-  vTaskDelay(pdMS_TO_TICKS(2100));
+  vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second
   
   // Show appropriate screen based on current error state
   if (onErrorScreen) {
@@ -1133,6 +1148,164 @@ void reportMode()
   inReportMode = false; // Clear flag AFTER showing final screen
 }
 
+void handleTouchButton()
+{
+  // If in Help mode: Allow second click to switch to Report
+  if (inHelpMode) {
+    // Check for new button press
+    if (digitalRead(PIN_TOUCH_INT) == LOW && !touchPressed) {
+      touchPressed = true;
+      touchPressStartTime = millis();
+      
+      // This is the second click - switch from Help to Report
+      Serial.println("[TOUCH] Second click during Help -> Switching to Report Mode");
+      inHelpMode = false; // Abort Help
+      touchClickCount = 0; // Reset
+      
+      // Check for Config mode (display touch)
+      if (touch.available()) {
+        uint16_t mainTouchX = touch.getX();
+        uint16_t mainTouchY = touch.getY();
+        bool isMainAreaTouch = false;
+        
+        if (orientation == "v") {
+          isMainAreaTouch = (mainTouchY <= 305);
+        } else {
+          isMainAreaTouch = (mainTouchX <= 145);
+        }
+        
+        if (isMainAreaTouch) {
+          Serial.println("[TOUCH] + Display touch -> Config Mode");
+          configMode();
+          return;
+        }
+      }
+      
+      // No display touch -> Report Mode
+      reportMode();
+    }
+    else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchPressed) {
+      touchPressed = false;
+    }
+    return;
+  }
+  
+  // If in Report mode: Button press aborts
+  if (inReportMode) {
+    if (digitalRead(PIN_TOUCH_INT) == LOW && !touchPressed) {
+      Serial.println("[TOUCH] Button press during Report - ABORTING");
+      inReportMode = false;
+      touchPressed = true;
+    }
+    else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchPressed) {
+      touchPressed = false;
+    }
+    touchClickCount = 0;
+    return;
+  }
+  
+  // FIRST: Check if click sequence timeout has expired (ALWAYS check, not just on touch events)
+  if (touchClickCount > 0 && !touchPressed) {
+    unsigned long timeSinceLastTouch = millis() - lastTouchTime;
+    
+    // For 1 click: Wait 1 second for potential second click
+    // If no second click after 1s → Start Help
+    if (touchClickCount == 1 && timeSinceLastTouch > 1000 && !inHelpMode) {
+      Serial.println("[TOUCH] Timeout: 1 click, no second click -> Help");
+      showHelp();
+      touchClickCount = 0;
+    }
+    
+    // For 2 clicks: Wait 1 second for potential third click
+    // If no third click after 1s → Start Report
+    else if (touchClickCount == 2 && timeSinceLastTouch > 1000 && !inReportMode) {
+      Serial.println("[TOUCH] Timeout: 2 clicks, no third click -> Report");
+      reportMode();
+      touchClickCount = 0;
+    }
+    
+    // For 3 clicks: Wait 1 second for potential fourth click
+    // If no fourth click after 1s → Reset (do nothing)
+    else if (touchClickCount == 3 && timeSinceLastTouch > 1000) {
+      Serial.println("[TOUCH] Timeout: 3 clicks, no fourth click -> Reset");
+      touchClickCount = 0;
+    }
+    
+    // If Help is running and more than 3s passed since last click: Reset
+    if (inHelpMode && timeSinceLastTouch > 3000) {
+      touchClickCount = 0;
+    }
+  }
+  
+  // Check if touch interrupt is triggered (GPIO 16 LOW when touched)
+  if (digitalRead(PIN_TOUCH_INT) == LOW && !touchPressed) {
+    // Touch detected - read coordinates to check if it's the button area
+    uint16_t touchX = touch.getX();
+    uint16_t touchY = touch.getY();
+    
+    // Define touch button area based on HARDWARE position
+    // Touch coordinates are hardware-based (0-170 x 0-320), don't rotate with display!
+    // Physical button is ALWAYS at the same hardware location: high Y values (Y > 305)
+    // - Vertical (rotation=0): Button at BOTTOM of display → Y > 305
+    // - Horizontal (rotation=1): Button at RIGHT of display → STILL Y > 305 (not X!)
+    bool inButtonArea = (touchY > 305);
+    
+    // Ignore touches outside button area
+    if (!inButtonArea) {
+      return;
+    }
+    
+    Serial.printf("[TOUCH] Button area touched at X=%d, Y=%d (orientation=%s)\n", 
+                  touchX, touchY, orientation.c_str());
+    
+    // Touch button pressed
+    touchPressed = true;
+    touchPressStartTime = millis();
+    
+    // Increment click count if within double-click window
+    unsigned long timeSinceLastTouch = millis() - lastTouchTime;
+    
+    if (timeSinceLastTouch < TOUCH_DOUBLE_CLICK_MS && timeSinceLastTouch > 100) {
+      // Within double-click window AND minimum 100ms since last touch (debounce)
+      touchClickCount++;
+      Serial.printf("[TOUCH] Click within window (%lu ms since last) - count now: %d\n", 
+                    timeSinceLastTouch, touchClickCount);
+    } else if (timeSinceLastTouch <= 100) {
+      // Too fast - likely bounce or accidental double-click, ignore
+      Serial.printf("[TOUCH] Too fast (%lu ms), ignoring (debounce)\n", timeSinceLastTouch);
+      return;
+    } else {
+      touchClickCount = 1; // Reset to 1 for new click sequence
+      Serial.printf("[TOUCH] New click sequence (last click was %lu ms ago)\n", timeSinceLastTouch);
+    }
+    lastTouchTime = millis();
+    
+    Serial.printf("[TOUCH] Button click count: %d\n", touchClickCount);
+    
+    // Process clicks:
+    // - Click 1: Wait for timeout (1s) → Help
+    // - Click 2: Wait for timeout (1s) → Report (unless click 3 comes)
+    // - Click 3: Wait for timeout (1s) → Nothing (waiting for click 4)
+    // - Click 4: Immediate Config Mode
+    if (touchClickCount == 4) {
+      // Fourth click within timeout -> Config Mode (IMMEDIATE, no waiting)
+      Serial.println("[TOUCH] Fourth click -> Config Mode");
+      inHelpMode = false;
+      inReportMode = false;
+      configMode();
+      touchClickCount = 0;
+    }
+    // For clicks 1, 2, and 3: Do nothing, let timeout handler decide
+  }
+  else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchPressed) {
+    // Touch released
+    touchPressed = false;
+    unsigned long pressDuration = millis() - touchPressStartTime;
+    
+    Serial.printf("[TOUCH] Button released after %lu ms\n", pressDuration);
+  }
+}
+
 void showHelp()
 {
   // Wake from power saving mode if active
@@ -1144,12 +1317,38 @@ void showHelp()
   Serial.println("[BUTTON] Help button pressed");
   inHelpMode = true; // Set flag to interrupt WiFi reconnect loop
   
+  // Disable product selection timer during help mode
+  productSelectionShowTime = 0;
+  onProductSelectionScreen = false;
+  
   stepOneScreen();
-  vTaskDelay(pdMS_TO_TICKS(3000));
+  
+  // Check for button press during first screen
+  unsigned long screenStart = millis();
+  while (millis() - screenStart < 1000 && inHelpMode) { // TEST: 1s (default: 3000ms)
+    vTaskDelay(pdMS_TO_TICKS(50));
+    if (!inHelpMode) break; // Button pressed in handleTouchButton()
+  }
+  if (!inHelpMode) return; // Exit Help early
+  
   stepTwoScreen();
-  vTaskDelay(pdMS_TO_TICKS(3000));
+  
+  // Check for button press during second screen
+  screenStart = millis();
+  while (millis() - screenStart < 1000 && inHelpMode) { // TEST: 1s (default: 3000ms)
+    vTaskDelay(pdMS_TO_TICKS(50));
+    if (!inHelpMode) break;
+  }
+  if (!inHelpMode) return; // Exit Help early
+  
   stepThreeScreen();
-  vTaskDelay(pdMS_TO_TICKS(3000));
+  
+  // Check for button press during third screen
+  screenStart = millis();
+  while (millis() - screenStart < 1000 && inHelpMode) { // TEST: 1s (default: 3000ms)
+    vTaskDelay(pdMS_TO_TICKS(50));
+    if (!inHelpMode) break;
+  }
   
   inHelpMode = false; // Clear flag
   
@@ -1178,7 +1377,13 @@ void Task1code(void *pvParameters)
   {
     leftButton.tick();
     rightButton.tick();
-    vTaskDelay(pdMS_TO_TICKS(10)); // 10ms delay - allows other tasks and proper button debouncing
+    
+    // Handle touch button if available
+    if (touchAvailable) {
+      handleTouchButton();
+    }
+    
+    vTaskDelay(pdMS_TO_TICKS(5)); // 5ms delay - faster response for touch button
   }
 }
 
@@ -1550,15 +1755,29 @@ void loop()
     static bool wasTouched = false;
     
     if (touchAvailable && !onErrorScreen) {
-      // Check for actual touch event (debounce: only process if 200ms passed since last event)
-      if (touch.available() && (millis() - lastTouchEvent > 200)) {
+      // Check for actual touch event
+      // Note: Minimal debouncing for main area, button has its own 20ms debounce
+      if (touch.available() && (millis() - lastTouchEvent > 10)) {
         uint8_t gesture = touch.getGesture();
         uint16_t x = touch.getX();
         uint16_t y = touch.getY();
         bool isTouched = touch.isPressed();
         
-        // Log any detected gesture
-        if (gesture != GESTURE_NONE) {
+        // FIRST: Check if touch is in button area
+        // Touch coordinates are hardware-based (0-170 x 0-320), don't rotate with display!
+        // Physical button is ALWAYS at Y > 305, regardless of display rotation
+        bool inButtonArea = (y > 305);
+        
+        if (inButtonArea) {
+          // Update activity timer but don't process as product navigation
+          lastActivityTime = millis();
+          lastTouchEvent = millis();
+          // Skip the rest of touch processing - button handler in Task1 will handle this
+          goto skip_product_touch_processing;
+        }
+        
+        // Log any detected gesture (except LONG_PRESS which spams continuously)
+        if (gesture != GESTURE_NONE && gesture != GESTURE_LONG_PRESS) {
           Serial.printf("[TOUCH] Detected - Gesture: 0x%02X, X: %d, Y: %d", gesture, x, y);
           
           // Show gesture name
@@ -1568,7 +1787,6 @@ void loop()
           else if (gesture == GESTURE_SWIPE_DOWN) Serial.print(" (SWIPE DOWN)");
           else if (gesture == GESTURE_SINGLE_CLICK) Serial.print(" (SINGLE CLICK)");
           else if (gesture == GESTURE_DOUBLE_CLICK) Serial.print(" (DOUBLE CLICK)");
-          else if (gesture == GESTURE_LONG_PRESS) Serial.print(" (LONG PRESS)");
           Serial.println();
         }
         
@@ -1576,6 +1794,18 @@ void loop()
         if (onProductSelectionScreen) {
           bool navigateBack = false;
           String actionName = "";
+          
+          // IMPORTANT: Check if touch is in button area - if yes, IGNORE for product navigation
+          // Let handleTouchButton() (running in Task1) handle it instead
+          // Physical button is ALWAYS at Y > 305 (hardware coordinates don't rotate!)
+          bool inButtonArea = (y > 305);
+          
+          if (inButtonArea) {
+            // Touch is in button area - ignore for product navigation
+            // handleTouchButton() will process it
+            wasTouched = isTouched;
+            continue; // Skip product navigation logic
+          }
           
           // Check for swipe gestures (any direction)
           // Renamed for horizontal orientation with button on right:
@@ -1600,12 +1830,12 @@ void loop()
           else if (gesture == GESTURE_SINGLE_CLICK || gesture == GESTURE_LONG_PRESS) {
             // Display: 170x320 native, rotated to 320x170 (rotation=1)
             // Touch coordinates are NOT rotated: X=0-170, Y=0-320
-            // With rotation=1: Touch Y maps to Display X
-            // Left side of display (low Display X) = low Touch Y (< 160)
-            // Right side of display (high Display X) = high Touch Y (> 160)
             Serial.printf("[TOUCH] %s detected at X=%d, Y=%d - ", 
                          gesture == GESTURE_SINGLE_CLICK ? "SINGLE CLICK" : "LONG PRESS", x, y);
             
+            // With rotation=1: Touch Y maps to Display X
+            // Left side of display (low Display X) = low Touch Y (< 160)
+            // Right side of display (high Display X) = high Touch Y (> 160)
             if (y < 160) {
               Serial.println("LEFT SIDE");
               actionName = "TOUCH LEFT";
@@ -1618,26 +1848,18 @@ void loop()
               Serial.println("CENTER (ignored)");
             }
           }
-          // NEW: Also check for simple touch without gesture (for quick taps)
+          // Also accept quick touch without gesture (GESTURE_NONE)
+          // BUT only on NEW touch to prevent continuous triggering
           else if (gesture == GESTURE_NONE && isTouched && !wasTouched) {
-            // This is a new touch without a specific gesture
-            // With rotation=1: Touch Y maps to Display X
-            Serial.printf("[TOUCH] Simple touch detected at X=%d, Y=%d (no gesture) - ", x, y);
+            Serial.printf("[TOUCH] QUICK TOUCH at X=%d, Y=%d - ", x, y);
             
-            // Check for touch button (outside visible area)
-            if (y > 300) {
-              Serial.println("TOUCH BUTTON (center button)");
-              actionName = "TOUCH BUTTON";
-              navigateBack = true;
-            }
-            // Regular left/right detection
-            else if (y < 160) {
+            if (y < 160) {
               Serial.println("LEFT SIDE");
-              actionName = "TOUCH LEFT";
+              actionName = "QUICK TOUCH LEFT";
               navigateBack = true;
             } else if (y > 160) {
               Serial.println("RIGHT SIDE");
-              actionName = "TOUCH RIGHT";
+              actionName = "QUICK TOUCH RIGHT";
               navigateBack = true;
             } else {
               Serial.println("CENTER (ignored)");
@@ -1661,27 +1883,39 @@ void loop()
             productSelectionShowTime = millis();
           }
         }
-        
         // Handle touch on product QR screen (Multi-Control mode only)
         // Allow navigation when showing product QR code
         else if (multiControl != "off" && thresholdKey.length() == 0 && !onProductSelectionScreen) {
           bool navigate = false;
           String actionName = "";
           
-          // Check for any swipe or touch gesture
+          // IMPORTANT: Check if touch is in button area - if yes, IGNORE for product navigation
+          // Physical button is ALWAYS at Y > 305 (hardware coordinates don't rotate!)
+          bool inButtonArea = (y > 305);
+          
+          if (inButtonArea) {
+            // Touch is in button area - ignore for product navigation
+            wasTouched = isTouched;
+            continue; // Skip product navigation logic
+          }
+          
+          // Respond to deliberate gestures
           if (gesture == GESTURE_SWIPE_UP || gesture == GESTURE_SWIPE_DOWN || 
               gesture == GESTURE_SWIPE_LEFT || gesture == GESTURE_SWIPE_RIGHT) {
             navigate = true;
             actionName = "SWIPE";
-          } else if (gesture == GESTURE_SINGLE_CLICK || gesture == GESTURE_LONG_PRESS) {
+          } else if (gesture == GESTURE_SINGLE_CLICK) {
             if (y < 160 || y > 160) { // Left or right side
               navigate = true;
-              actionName = "TOUCH";
+              actionName = "SINGLE CLICK";
             }
-          } else if (gesture == GESTURE_NONE && isTouched && !wasTouched) {
-            if (y < 160 || y > 160 || y > 300) { // Left, right, or touch button
+          }
+          // Also accept quick touch without gesture (GESTURE_NONE)
+          // BUT only on NEW touch (not held) to prevent continuous triggering
+          else if (gesture == GESTURE_NONE && isTouched && !wasTouched) {
+            if (y < 160 || y > 160) { // Left or right side
               navigate = true;
-              actionName = "TOUCH";
+              actionName = "QUICK TOUCH";
             }
           }
           
@@ -1701,6 +1935,9 @@ void loop()
         
         // Any touch resets activity timer (for screensaver)
         lastActivityTime = millis();
+        
+        skip_product_touch_processing:
+        ; // Empty statement required after label
       }
     }
     

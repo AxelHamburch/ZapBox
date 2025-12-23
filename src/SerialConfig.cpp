@@ -34,7 +34,7 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 
     unsigned long lastWiFiCheck = millis();
     unsigned long lastActivity = millis(); // Track last serial activity
-    const unsigned long inactivityTimeout = 180000; // 180 seconds
+    const unsigned long inactivityTimeout = 60000; // 60 seconds
 
     while (true)
     {
@@ -43,7 +43,7 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
         // Check for inactivity timeout - only if existing data is present
         if (hasExistingData && (millis() - lastActivity > inactivityTimeout))
         {
-            Serial.println("\n--- Inactivity timeout (20s) - returning to QR screen ---");
+            Serial.println("\n--- Inactivity timeout (60s) - returning to QR screen ---");
             Serial.println("[CONFIG_MODE_EXIT]");
             Serial.flush();
             delay(500);

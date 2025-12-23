@@ -45,7 +45,7 @@ The ZapBox features an optimized startup sequence with parallel connection estab
 - Shows "Powered by LNbits"
 - WiFi connection starts in background during this phase
 
-**Phase 2: Initialization Screen (up to 19 seconds)**
+**Phase 2: Initialization Screen (up to 20 seconds)**
 - Displays "ZAPBOX" with "Initialization in progress . . ."
 - All connection tests run in parallel:
   1. WiFi connection (continues from Phase 1)
@@ -53,7 +53,7 @@ The ZapBox features an optimized startup sequence with parallel connection estab
   3. LNbits server reachability test (once Internet confirmed)
   4. WebSocket connection establishment (once Server confirmed)
 - **Early Exit**: Screen switches to QR code as soon as all connections are successful
-- **Maximum Time**: 25 seconds total (6s startup + 19s init) if connections take longer
+- **Maximum Time**: 25 seconds total (5s startup + 20s init) if connections take longer
 - **Error Display**: After 25 seconds, shows first detected error if any connection failed
 
 **Optimal Scenario**: ~10-15 seconds from power-on to QR code display
@@ -109,6 +109,7 @@ Configuration is done via the [Web Installer](installer/index.html) with browser
   - BROWN & ORANGE, BROWN & YELLOW
   - MAROON & MAGENTA, DARKCYAN & CYAN
   - DARK GREY & LIGHT GREY
+  - BLACK & LIGHT GREY
 
 ### Advanced Features
 
@@ -133,7 +134,7 @@ Control multiple relays with automatic product selection and label integration:
   - Multi-line display: Up to 3 words separated by spaces
   - Currency symbols automatically converted to text: €→EUR, $→USD, £→GBP, ¥→YEN, ₿→BTC, ₹→INR, ₽→RUB, ¢→ct
   - Third line uses smaller font for currency display
-- **5-Second Timeout**: Product selection screen automatically shows after 5 seconds on QR screen
+- **x-Second Timeout**: Product selection screen automatically shows after x seconds on QR screen
 - **Loop Navigation**: Navigation wraps around (last→first, first→last)
 
 **Configuration:**
