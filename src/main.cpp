@@ -51,7 +51,7 @@ String multiControl = "off";
 String btcprice = "Loading...";
 String blockhigh = "...";
 unsigned long lastBtcUpdate = 0;
-const unsigned long BTC_UPDATE_INTERVAL = 120000; // 2 minutes in milliseconds
+const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
 bool btcTickerActive = false;
 
 // Switch labels from backend (cached after WebSocket connect)
@@ -1514,9 +1514,11 @@ void setup()
   leftButton.setDebounceMs(100); // 100ms debounce to prevent accidental report mode
   leftButton.attachClick(reportMode);
   leftButton.attachLongPressStart(configMode);
-  rightButton.setDebounceMs(200); // 200ms debounce
-  rightButton.attachClick(showHelp);
-  rightButton.attachLongPressStart(showHelp); // Also trigger help on long press (prevents missed clicks)
+  rightButton.setDebounceMs(50); // 50ms debounce - fast response
+  rightButton.setClickMs(400); // 400ms max for single click
+  rightButton.attachClick(showHelp); // Single click = Help
+  rightButton.attachDoubleClick(reportMode); // Double click = Report
+  rightButton.attachLongPressStart(showHelp); // Long press = Help (prevents missed clicks)
 
   xTaskCreatePinnedToCore(
       Task1code, /* Function to implement the task */
