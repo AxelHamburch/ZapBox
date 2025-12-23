@@ -441,30 +441,7 @@ void stepThreeScreen()
 }
 
 // Switched ON screen
-void switchedOnScreen()
-{
-  tft.fillScreen(themeBackground);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(themeForeground);
-
-  if (orientation == "v"){
-    tft.setTextSize(10);
-    tft.drawString("A", x + 5, y - 100, GFXFF);
-    tft.drawString("C", x + 5, y - 45, GFXFF);
-    tft.drawString("T", x + 5, y + 10, GFXFF);
-    tft.drawString(" ", x + 5, y + 65, GFXFF);
-    tft.setTextSize(3);
-    tft.drawString("TIME", x + 3, y + 105, GFXFF);
-  } else {
-    tft.setTextSize(6);
-    tft.drawString("ACTION", x + 5, y - 15, GFXFF);
-    tft.setTextSize(4);
-    tft.drawString("TIME", x + 3, y + 30, GFXFF);
-  }
-}
-
-// Special Mode Screen
-void specialModeScreen()
+void actionTimeScreen()
 {
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
@@ -514,33 +491,11 @@ void thankYouScreen()
   }
 }
 
-// Show QR for ZAP action
+// Show QR for ZAP action - uses product label from backend if available
 void showQRScreen()
 {
-  tft.setTextDatum(ML_DATUM);
-  tft.fillScreen(themeBackground);
-  tft.setTextSize(3);
-  tft.setTextColor(themeBackground);
-
-  if (orientation == "v"){
-    tft.fillRect(15, 168, 140, 132, themeForeground);
-    tft.drawString("READY", x - 55, y + 40, GFXFF);
-    tft.drawString("4 ZAP", x - 55, y + 70, GFXFF);
-    tft.drawString("ACTION", x - 55, y + 100, GFXFF);
-    tft.setTextSize(2);
-    tft.setTextColor(themeForeground);
-    tft.drawString("HELP", x + 35, y + 150, GFXFF);
-  } else {
-    tft.fillRect(168, 18, 140, 135, themeForeground);
-    tft.drawString("READY", x + 20, y - 30, GFXFF);
-    tft.drawString("4 ZAP", x + 20, y, GFXFF);
-    tft.drawString("ACTION", x + 20, y + 30, GFXFF);
-    tft.setTextSize(2);
-    tft.setTextColor(themeForeground);
-    tft.drawString("HELP", x + 110, 9, GFXFF);
-  }
-
-  drawQRCode();
+  extern String label12;
+  showProductQRScreen(label12.length() > 0 ? label12 : "READY 4 ZAP ACTION", 12);
 }
 
 void drawQRCode()
@@ -596,30 +551,8 @@ void showThresholdQRScreen()
 
 void showSpecialModeQRScreen()
 {
-  tft.setTextDatum(ML_DATUM);
-  tft.fillScreen(themeBackground);
-  tft.setTextSize(3);
-  tft.setTextColor(themeBackground);
-
-  if (orientation == "v"){
-    tft.fillRect(15, 168, 140, 132, themeForeground);
-    tft.drawString("READY", x - 55, y + 40, GFXFF);
-    tft.drawString("4 SP", x - 55, y + 70, GFXFF);
-    tft.drawString("ACTION", x - 55, y + 100, GFXFF);
-    tft.setTextSize(2);
-    tft.setTextColor(themeForeground);
-    tft.drawString("HELP", x + 35, y + 150, GFXFF);
-  } else {
-    tft.fillRect(168, 18, 140, 135, themeForeground);
-    tft.drawString("READY", x + 20, y - 30, GFXFF);
-    tft.drawString("4 SP", x + 20, y, GFXFF);
-    tft.drawString("ACTION", x + 20, y + 30, GFXFF);
-    tft.setTextSize(2);
-    tft.setTextColor(themeForeground);
-    tft.drawString("HELP", x + 110, 9, GFXFF);
-  }
-
-  drawQRCode();
+  extern String label12;
+  showProductQRScreen(label12.length() > 0 ? label12 : "READY 4 SP ACTION", 12);
 }
 
 // Multi-Control Product QR Screen - displays label text and QR code
@@ -630,8 +563,16 @@ void showProductQRScreen(String label, int pin)
   tft.fillScreen(themeBackground);
   tft.setTextColor(themeForeground);
 
-  // GFXFF fonts don't support Euro symbol - replace with 'E' to avoid display issues
-  label.replace("€", "E");
+  // Replace currency symbols with text abbreviations for better compatibility
+  // GFXFF fonts only support ASCII, so we use standard abbreviations
+  label.replace("€", "EUR");
+  label.replace("$", "USD");
+  label.replace("£", "GBP");
+  label.replace("¥", "YEN");
+  label.replace("₿", "BTC");
+  label.replace("₹", "INR");
+  label.replace("₽", "RUB");
+  label.replace("¢", "ct");
   
   // Parse label into up to 3 words (split by space)
   String words[3] = {"", "", ""};
@@ -670,6 +611,7 @@ void showProductQRScreen(String label, int pin)
     } else { // 3 words
       tft.drawString(words[0], x - 55, startY, GFXFF);
       tft.drawString(words[1], x - 55, startY + 30, GFXFF);
+      tft.setTextSize(2); // Smaller font for third line (currency text)
       tft.drawString(words[2], x - 55, startY + 60, GFXFF);
     }
     
@@ -691,6 +633,7 @@ void showProductQRScreen(String label, int pin)
     } else { // 3 words
       tft.drawString(words[0], x + 20, startY, GFXFF);
       tft.drawString(words[1], x + 20, startY + 30, GFXFF);
+      tft.setTextSize(2); // Smaller font for third line (currency text)
       tft.drawString(words[2], x + 20, startY + 60, GFXFF);
     }
     
@@ -712,8 +655,8 @@ void productSelectionScreen()
   if (orientation == "v"){
     // Vertical orientation
     tft.setTextSize(2);
-    tft.drawString("Select the", x, y - 40, GFXFF);
-    tft.drawString("product.", x, y - 20, GFXFF);
+    tft.drawString("SELECT", x, y - 40, GFXFF);
+    tft.drawString("PRODUCT", x, y - 20, GFXFF);
     
     // Draw navigation arrows
     tft.setTextSize(4);
@@ -722,8 +665,8 @@ void productSelectionScreen()
   } else {
     // Horizontal orientation
     tft.setTextSize(3);
-    tft.drawString("Select the", x, y - 30, GFXFF);
-    tft.drawString("product.", x, y, GFXFF);
+    tft.drawString("SELECT", x, y - 30, GFXFF);
+    tft.drawString("PRODUCT", x, y, GFXFF);
     
     // Draw navigation arrows
     tft.setTextSize(5);

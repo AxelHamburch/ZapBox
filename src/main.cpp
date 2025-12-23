@@ -2109,7 +2109,7 @@ void loop()
             }
             lastActivityTime = millis(); // Reset screensaver timer on payment start
             
-            specialModeScreen();
+            actionTimeScreen();
             executeSpecialMode(pin, duration, frequency, dutyCycleRatio);
           } else {
             Serial.println("[THRESHOLD] Using standard mode");
@@ -2119,7 +2119,7 @@ void loop()
               deactivateScreensaver();
             }
             lastActivityTime = millis(); // Reset screensaver timer on payment start
-            switchedOnScreen();
+            actionTimeScreen();
             pinMode(pin, OUTPUT);
             digitalWrite(pin, HIGH);
             Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
@@ -2164,7 +2164,7 @@ void loop()
             deactivateScreensaver();
             screensaverActive = false;
           }
-          specialModeScreen();
+          actionTimeScreen();
           executeSpecialMode(pin, duration, frequency, dutyCycleRatio);
         } else {
           Serial.println("[NORMAL] Using standard mode");
@@ -2173,7 +2173,7 @@ void loop()
             deactivateScreensaver();
             screensaverActive = false;
           }
-          switchedOnScreen();
+          actionTimeScreen();
           pinMode(pin, OUTPUT);
           digitalWrite(pin, HIGH);
           Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
