@@ -208,6 +208,58 @@
             <p style="margin-top: 20px;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
         </div>
 
+        <!-- Multi-Channel-Control / Product Selection Feature Section -->
+        <div style="margin-top: 50px;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
+                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Multi-Channel-Control / Product selection</h4>
+                <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
+            </div>
+            
+            <div class="input-wrapper">
+                <div>
+                    <label for="multiControl">Multi-Channel-Control Mode</label>
+                    <select name="multiControl" id="multiControl">
+                        <option value="off" selected>Single (default)</option>
+                        <option value="duo">Duo (2 channels)</option>
+                        <option value="quattro">Quattro (4 channels)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <p style="margin-top: 20px;"><i><strong>Multi-Channel-Control:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use touch gestures (swipe ←→) or the button (if available) to navigate between products.</i></p>
+            <p style="margin-top: 10px;"><i><strong>Features:</strong> Automatic LNURL generation (Bech32/LUD17) • Backend product labels • Touch navigation • Currency symbol conversion (€→EUR, $→USD, etc.)</i></p>
+            <p style="margin-top: 10px;"><i><strong>Note:</strong> Not compatible with the Threshold feature. Please disable it.</i></p>
+        </div>
+
+        <!-- BTC-Ticker Feature Section -->
+        <div style="margin-top: 50px;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
+                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - BTC-Ticker</h4>
+                <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
+            </div>
+            
+            <div class="input-wrapper">
+                <div>
+                    <label for="btcTicker">BTC-Ticker Mode</label>
+                    <select name="btcTicker" id="btcTicker">
+                        <option value="off">OFF</option>
+                        <option value="always" selected>ON - always</option>
+                        <option value="selecting">ON - when selecting</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">Control when Bitcoin price/block info is shown</p>
+                </div>
+                <div>
+                    <label for="currency">Currency (ISO Code)</label>
+                    <input type="text" name="currency" id="currency" placeholder="USD" maxlength="3" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #999; font-style: italic;">E.g. USD, EUR, GBP, JPY, TRY, CAD, BRL, CUP, etc.</p>
+                </div>
+            </div>
+            
+            <p style="margin-top: 20px;"><i><strong>OFF:</strong> No ticker shown (Duo/Quattro: productSelectionScreen; Single: only QR code)</i></p>
+            <p style="margin-top: 10px;"><i><strong>ON - always:</strong> Ticker overlays screen, navigate with NEXT/swipe to show products temporarily (returns after timeout)</i></p>
+            <p style="margin-top: 10px;"><i><strong>ON - when selecting:</strong> Single: ticker only visible for 15s after NEXT/swipe. Duo/Quattro: productSelectionScreen → products → ticker (at end of product cycle)</i></p>
+        </div>
+
         <!-- Threshold Feature Section -->
         <div style="margin-top: 50px;">
             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
@@ -244,32 +296,6 @@
             
             <p style="margin-top: 10px;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
         </div>
-
-        <!-- Multi-Channel-Control / Product Selection Feature Section -->
-        <div style="margin-top: 50px;">
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
-                <h4 style="margin: 0; color: #666; font-weight: 500; white-space: nowrap;">Optional feature - Multi-Channel-Control / Product selection</h4>
-                <hr style="flex: 1; border: none; border-top: 1px solid #ddd; margin: 0;">
-            </div>
-            
-            <div class="input-wrapper">
-                <div>
-                    <label for="multiControl">Multi-Channel-Control Mode</label>
-                    <select name="multiControl" id="multiControl">
-                        <option value="off" selected>Single (default)</option>
-                        <option value="duo">Duo (2 channels)</option>
-                        <option value="quattro">Quattro (4 channels)</option>
-                    </select>
-                </div>
-            </div>
-            
-            <p style="margin-top: 20px;"><i><strong>Multi-Channel-Control:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use touch gestures (swipe ←→) or the button (if available) to navigate between products.</i></p>
-            <p style="margin-top: 10px;"><i><strong>Features:</strong> Automatic LNURL generation (Bech32/LUD17) • Backend product labels • Touch navigation • Currency symbol conversion (€→EUR, $→USD, etc.)</i></p>
-            <p style="margin-top: 10px;"><i><strong>Note:</strong> Not compatible with the Threshold feature. Please disable it.</i></p>
-        </div>
-
-        <script>
-        </script>
 
         <!-- Screensaver and Deep Sleep Feature Section -->
         <div style="margin-top: 50px;">
@@ -371,6 +397,8 @@
         const deepSleep = document.getElementById('deepSleep');
         const activationTime = document.getElementById('activationTime');
         const multiControl = document.getElementById('multiControl');
+        const btcTicker = document.getElementById('btcTicker');
+        const currency = document.getElementById('currency');
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
@@ -468,6 +496,14 @@
             {
                 "name": "multiControl",
                 "value": "off"
+            },
+            {
+                "name": "btcTicker",
+                "value": "always"
+            },
+            {
+                "name": "currency",
+                "value": "USD"
             }
         ]
 
@@ -781,6 +817,8 @@
                 config[15].value = configData[15]?.value || "off"; // deepSleep
                 config[16].value = configData[16]?.value || "5"; // activationTime
                 config[17].value = configData[17]?.value || "off"; // multiControl
+                config[18].value = configData[18]?.value || "always"; // btcTicker
+                config[19].value = configData[19]?.value || "USD"; // currency
 
                 // Fill form fields
                 ssid.value = config[0].value;
@@ -801,6 +839,8 @@
                 deepSleep.value = config[15].value;
                 activationTime.value = config[16].value;
                 multiControl.value = config[17].value;
+                btcTicker.value = config[18].value;
+                currency.value = config[19].value;
                 
                 // Show/hide custom fields based on loaded special mode
                 if (specialMode.value === 'custom') {
@@ -881,6 +921,8 @@
             config[15].value = deepSleep.value;
             config[16].value = activationTime.value || "5";
             config[17].value = multiControl.value;
+            config[18].value = btcTicker.value;
+            config[19].value = currency.value.toUpperCase() || "USD"; // Convert to uppercase
             
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -1075,6 +1117,15 @@
 
         activationTime.addEventListener("input", (event) => {
             config[16].value = event.target.value;
+        });
+
+        btcTicker.addEventListener("change", (event) => {
+            config[18].value = event.target.value;
+        });
+
+        currency.addEventListener("input", (event) => {
+            config[19].value = event.target.value.toUpperCase();
+            event.target.value = event.target.value.toUpperCase(); // Show uppercase in input
         });
 
     </script>

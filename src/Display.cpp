@@ -10,13 +10,62 @@
 TFT_eSPI tft = TFT_eSPI();
 #define GFXFF 1
 
+// Bitcoin Logo (64x64 pixels)
+const unsigned char bitcoin_logo[] PROGMEM = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x3f, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xff, 0xff, 0x80, 0x00, 0x00,
+	0x00, 0x00, 0x0f, 0xff, 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x3f, 0xff, 0xff, 0xfc, 0x00, 0x00,
+	0x00, 0x00, 0x7f, 0xff, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00,
+	0x00, 0x03, 0xff, 0xff, 0xff, 0xff, 0xc0, 0x00, 0x00, 0x07, 0xff, 0xff, 0xff, 0xff, 0xe0, 0x00,
+	0x00, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xf0, 0x00, 0x00, 0x0f, 0xff, 0xfc, 0x7f, 0xff, 0xf0, 0x00,
+	0x00, 0x1f, 0xff, 0xfc, 0x63, 0xff, 0xf8, 0x00, 0x00, 0x3f, 0xff, 0xfc, 0x63, 0xff, 0xfc, 0x00,
+	0x00, 0x7f, 0xfe, 0x38, 0xe3, 0xff, 0xfe, 0x00, 0x00, 0x7f, 0xfe, 0x00, 0xe3, 0xff, 0xfe, 0x00,
+	0x00, 0xff, 0xfe, 0x00, 0x03, 0xff, 0xff, 0x00, 0x00, 0xff, 0xff, 0x80, 0x03, 0xff, 0xff, 0x00,
+	0x00, 0xff, 0xff, 0xc0, 0x00, 0xff, 0xff, 0x80, 0x01, 0xff, 0xff, 0xc0, 0x00, 0x7f, 0xff, 0x80,
+	0x01, 0xff, 0xff, 0xc1, 0xe0, 0x3f, 0xff, 0x80, 0x01, 0xff, 0xff, 0x81, 0xf8, 0x1f, 0xff, 0x80,
+	0x03, 0xff, 0xff, 0x83, 0xf8, 0x1f, 0xff, 0xc0, 0x03, 0xff, 0xff, 0x83, 0xf8, 0x1f, 0xff, 0xc0,
+	0x03, 0xff, 0xff, 0x83, 0xf8, 0x1f, 0xff, 0xc0, 0x03, 0xff, 0xff, 0x01, 0xf0, 0x1f, 0xff, 0xc0,
+	0x03, 0xff, 0xff, 0x00, 0x00, 0x3f, 0xff, 0xc0, 0x03, 0xff, 0xff, 0x00, 0x00, 0x7f, 0xff, 0xc0,
+	0x03, 0xff, 0xff, 0x06, 0x00, 0xff, 0xff, 0xc0, 0x03, 0xff, 0xfe, 0x07, 0xc0, 0x7f, 0xff, 0xc0,
+	0x03, 0xff, 0xfe, 0x0f, 0xe0, 0x3f, 0xff, 0xc0, 0x03, 0xff, 0xfe, 0x0f, 0xf0, 0x3f, 0xff, 0xc0,
+	0x03, 0xff, 0xec, 0x0f, 0xf0, 0x3f, 0xff, 0xc0, 0x03, 0xff, 0xe0, 0x0f, 0xf0, 0x3f, 0xff, 0xc0,
+	0x01, 0xff, 0xc0, 0x0f, 0xf0, 0x3f, 0xff, 0x80, 0x01, 0xff, 0xc0, 0x00, 0x00, 0x3f, 0xff, 0x80,
+	0x01, 0xff, 0xf8, 0x00, 0x00, 0x7f, 0xff, 0x80, 0x01, 0xff, 0xfe, 0x00, 0x00, 0x7f, 0xff, 0x00,
+	0x00, 0xff, 0xfe, 0x30, 0x00, 0xff, 0xff, 0x00, 0x00, 0xff, 0xfe, 0x38, 0xc7, 0xff, 0xff, 0x00,
+	0x00, 0x7f, 0xfe, 0x31, 0xff, 0xff, 0xfe, 0x00, 0x00, 0x7f, 0xfc, 0x31, 0xff, 0xff, 0xfe, 0x00,
+	0x00, 0x3f, 0xff, 0xf1, 0xff, 0xff, 0xfc, 0x00, 0x00, 0x1f, 0xff, 0xf1, 0xff, 0xff, 0xf8, 0x00,
+	0x00, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xf0, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xf0, 0x00,
+	0x00, 0x07, 0xff, 0xff, 0xff, 0xff, 0xe0, 0x00, 0x00, 0x03, 0xff, 0xff, 0xff, 0xff, 0xc0, 0x00,
+	0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xfe, 0x00, 0x00,
+	0x00, 0x00, 0x3f, 0xff, 0xff, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xf0, 0x00, 0x00,
+	0x00, 0x00, 0x01, 0xff, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3f, 0xfc, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
 int x;
 int y;
 extern char lightning[];
+
+// Helper function to draw scaled bitmap
+void drawScaledBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint8_t scale) {
+  for (int16_t j = 0; j < h; j++) {
+    for (int16_t i = 0; i < w; i++) {
+      if (bitmap[j * ((w + 7) / 8) + i / 8] & (128 >> (i & 7))) {
+        // Draw scaled pixel as a block
+        tft.fillRect(x + i * scale, y + j * scale, scale, scale, color);
+      }
+    }
+  }
+}
 extern String orientation;
 extern String theme;
 extern String btcprice;
 extern String blockhigh;
+extern String currency;
+extern bool touchAvailable;
 
 // Theme colors - will be set based on theme selection
 uint16_t themeBackground = TFT_WHITE;
@@ -135,26 +184,109 @@ void btctickerScreen()
   tft.setTextColor(themeForeground);
 
   if (orientation == "v"){
+    // VERTICAL LAYOUT
+    // Draw Bitcoin logo (64x64) moved up by 30 pixels more
+    tft.drawBitmap(x - 32, y - 135, bitcoin_logo, 64, 64, themeForeground);
+    
+    // First line: Currency/BTC (closer to logo) - moved down 5 pixels
     tft.setTextSize(2);
-    tft.drawString("", x + 5, y - 95, GFXFF);
-    tft.setTextSize(8);
-    tft.drawString("BTC", x + 5, y - 70, GFXFF);
-    tft.setTextSize(2);
-    tft.drawString("", x + 5, y - 20, GFXFF);
-    tft.drawString("USD/BTC", x + 5, y + 15, GFXFF);
+    tft.drawString(currency + "/BTC", x + 5, y - 50, GFXFF);
+    
+    // Price (larger) - moved down 5 pixels
     tft.setTextSize(3);
-    tft.drawString(btcprice, x + 5, y + 40, GFXFF);
+    tft.drawString(btcprice, x + 5, y - 20, GFXFF);
+    
+    // Calculate sats per currency unit
+    float priceFloat = btcprice.toFloat();
+    String satsPerCurrency = "";
+    if (priceFloat > 0) {
+      long satsValue = (long)((1.0 / priceFloat) * 100000000.0);
+      satsPerCurrency = String(satsValue);
+    } else {
+      satsPerCurrency = "0";
+    }
+    
+    // New line: sats/Currency - moved down 5 pixels
     tft.setTextSize(2);
-    tft.drawString("", x + 5, y + 65, GFXFF);
+    tft.drawString("SAT/" + currency, x + 5, y + 15, GFXFF);
+    
+    // Sats value (larger) - moved down 5 pixels
+    tft.setTextSize(3);
+    tft.drawString(satsPerCurrency, x + 5, y + 45, GFXFF);
+    
+    // Block info at bottom (same spacing as above) - moved down 5 pixels
+    tft.setTextSize(2);
     tft.drawString("Block", x + 5, y + 80, GFXFF);
+    
+    // Block number (larger, same size as price and sats) - moved down 5 pixels
     tft.setTextSize(3);
-    tft.drawString(blockhigh, x + 5, y + 105, GFXFF);
-  } else {
-    tft.setTextSize(6);
-    tft.drawString("BITCOIN", x + 5, y - 25, GFXFF);
+    tft.drawString(blockhigh, x + 5, y + 110, GFXFF);
+    
+    // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
-    tft.drawString("USD/BTC: " + btcprice, x, y + 15, GFXFF);
-    tft.drawString("Block: " + blockhigh, x, y + 40, GFXFF);
+    tft.setTextColor(themeForeground);
+    
+    if (touchAvailable) {
+      // Touch version: HELP centered on bottom
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("HELP", x + 2, 312, GFXFF);
+    } else {
+      // Non-touch version: HELP on right, NEXT on left
+      tft.setTextDatum(ML_DATUM);
+      tft.drawString("HELP", x + 35, y + 150, GFXFF);
+      tft.drawString("NEXT", 5, y + 150, GFXFF);
+    }
+  } else {
+    // HORIZONTAL LAYOUT
+    // Left third: Bitcoin logo (64x64) vertically centered - moved 10 pixels right
+    int logoX = 20; // Was 10, now 20
+    int logoY = y - 32;
+    
+    // Draw Bitcoin logo at normal size
+    tft.drawBitmap(logoX, logoY, bitcoin_logo, 64, 64, themeForeground);
+    
+    // Right side (2/3): Text content - moved 20 more pixels to the left
+    int textX = x + 25; // Was x + 45, now 20 pixels left
+    
+    // Calculate sats per currency unit
+    float priceFloat = btcprice.toFloat();
+    String satsPerCurrency = "";
+    if (priceFloat > 0) {
+      long satsValue = (long)((1.0 / priceFloat) * 100000000.0);
+      satsPerCurrency = String(satsValue);
+    } else {
+      satsPerCurrency = "0";
+    }
+    
+    // Top: Currency/BTC with price - label size 2, value size 3
+    tft.setTextSize(2);
+    String topLabel = currency + "/BTC: ";
+    tft.drawString(topLabel + btcprice, textX, y - 40, GFXFF);
+    
+    // Middle: SAT per currency - label size 2, value size 3
+    tft.setTextSize(2);
+    String midLabel = "SAT/" + currency + ": ";
+    tft.drawString(midLabel + satsPerCurrency, textX, y, GFXFF);
+    
+    // Bottom: Block height - label size 2, value size 3
+    tft.setTextSize(2);
+    tft.drawString("Block: " + blockhigh, textX, y + 40, GFXFF);
+    
+    // Button labels - different layout for touch vs non-touch
+    
+    if (touchAvailable) {
+      // Touch version: HELP as vertical stacked letters on right side
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("H", 311, y - 30, GFXFF);
+      tft.drawString("E", 311, y - 10, GFXFF);
+      tft.drawString("L", 311, y + 10, GFXFF);
+      tft.drawString("P", 311, y + 30, GFXFF);
+    } else {
+      // Non-touch version: HELP on top, NEXT on bottom
+      tft.setTextDatum(ML_DATUM);
+      tft.drawString("HELP", x + 110, 9, GFXFF);
+      tft.drawString("NEXT", x + 110, 163, GFXFF);
+    }
   }
 }
 
@@ -405,18 +537,18 @@ void stepOneScreen()
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(themeBackground);
-    tft.drawString("SCAN", x - 55, y + 40, GFXFF);
-    tft.drawString("QR", x - 55, y + 70, GFXFF);
-    tft.drawString("CODE", x - 55, y + 100, GFXFF);
+    tft.drawString("SELECT", x - 58, y + 40, GFXFF);
+    tft.drawString("YOUR", x - 58, y + 70, GFXFF);
+    tft.drawString("PRODUCT", x - 58, y + 100, GFXFF);
   } else {
     tft.drawString("1", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(themeBackground);
-    tft.drawString("SCAN", x + 20, y - 30, GFXFF);
-    tft.drawString("QR", x + 20, y, GFXFF);
-    tft.drawString("CODE", x + 20, y + 30, GFXFF);
+    tft.drawString("SELECT", x + 17, y - 30, GFXFF);
+    tft.drawString("YOUR", x + 17, y, GFXFF);
+    tft.drawString("PRODUCT", x + 17, y + 30, GFXFF);
   }
 }
 
@@ -434,18 +566,18 @@ void stepTwoScreen()
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(themeBackground);
-    tft.drawString("PAY", x - 55, y + 40, GFXFF);
-    tft.drawString("IN-", x - 55, y + 70, GFXFF);
-    tft.drawString("VOICE", x - 55, y + 100, GFXFF);
+    tft.drawString("SCAN", x - 58, y + 40, GFXFF);
+    tft.drawString("QR", x - 58, y + 70, GFXFF);
+    tft.drawString("CODE", x - 58, y + 100, GFXFF);
   } else {
     tft.drawString("2", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(themeBackground);
-    tft.drawString("PAY", x + 20, y - 30, GFXFF);
-    tft.drawString("IN-", x + 20, y, GFXFF);
-    tft.drawString("VOICE", x + 20, y + 30, GFXFF);
+    tft.drawString("SCAN", x + 17, y - 30, GFXFF);
+    tft.drawString("QR", x + 17, y, GFXFF);
+    tft.drawString("CODE", x + 17, y + 30, GFXFF);
   }
 }
 
@@ -463,18 +595,18 @@ void stepThreeScreen()
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(themeBackground);
-    tft.drawString("HAVE", x - 55, y + 40, GFXFF);
-    tft.drawString("A NICE", x - 55, y + 70, GFXFF);
-    tft.drawString("DAY", x - 55, y + 100, GFXFF);
+    tft.drawString("PAY", x - 58, y + 40, GFXFF);
+    tft.drawString("IN-", x - 58, y + 70, GFXFF);
+    tft.drawString("VOICE", x - 58, y + 100, GFXFF);
   } else {
     tft.drawString("3", x - 70, y, GFXFF);
     tft.fillRect(165, 15, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
     tft.setTextSize(3);
     tft.setTextColor(themeBackground);
-    tft.drawString("HAVE", x + 20, y - 30, GFXFF);
-    tft.drawString("A NICE", x + 20, y, GFXFF);
-    tft.drawString("DAY", x + 20, y + 30, GFXFF);
+    tft.drawString("PAY", x + 17, y - 30, GFXFF);
+    tft.drawString("IN-", x + 17, y, GFXFF);
+    tft.drawString("VOICE", x + 17, y + 30, GFXFF);
   }
 }
 
@@ -608,24 +740,38 @@ void showProductQRScreen(String label, int pin)
   label.replace("₽", "RUB");
   label.replace("¢", "ct");
   
-  // Parse label into up to 3 words (split by space)
+  // Parse label: first word in line 1, second word in line 2, rest in line 3
   String words[3] = {"", "", ""};
   int wordCount = 0;
-  int lastIndex = 0;
   
-  // Split by spaces
-  for (int i = 0; i <= label.length() && wordCount < 3; i++) {
-    if (i == label.length() || label.charAt(i) == ' ') {
-      if (i > lastIndex) {
-        words[wordCount] = label.substring(lastIndex, i);
-        wordCount++;
-      }
-      lastIndex = i + 1;
+  // Find first space to get first word
+  int firstSpace = label.indexOf(' ');
+  if (firstSpace == -1) {
+    // No spaces - entire label is one word
+    words[0] = label;
+    wordCount = 1;
+  } else {
+    // First word
+    words[0] = label.substring(0, firstSpace);
+    wordCount = 1;
+    
+    // Find second space to get second word
+    int secondSpace = label.indexOf(' ', firstSpace + 1);
+    if (secondSpace == -1) {
+      // Only two words total
+      words[1] = label.substring(firstSpace + 1);
+      wordCount = 2;
+    } else {
+      // Second word
+      words[1] = label.substring(firstSpace + 1, secondSpace);
+      // Rest (everything after second space)
+      words[2] = label.substring(secondSpace + 1);
+      wordCount = 3;
     }
   }
   
-  // If no words found, use pin number as fallback
-  if (wordCount == 0) {
+  // If no words found (empty label), use pin number as fallback
+  if (wordCount == 0 || words[0].length() == 0) {
     words[0] = "Pin " + String(pin);
     wordCount = 1;
   }
@@ -647,42 +793,67 @@ void showProductQRScreen(String label, int pin)
     tft.setTextColor(themeBackground); // White text on black background
     int startY = y + 40; // Starting Y position
     if (wordCount == 1) {
-      tft.drawString(words[0], x - 55, startY + 30, GFXFF);
+      tft.drawString(words[0], x - 58, startY + 30, GFXFF);
     } else if (wordCount == 2) {
-      tft.drawString(words[0], x - 55, startY + 15, GFXFF);
-      tft.drawString(words[1], x - 55, startY + 45, GFXFF);
+      tft.drawString(words[0], x - 58, startY + 15, GFXFF);
+      tft.drawString(words[1], x - 58, startY + 45, GFXFF);
     } else { // 3 words
-      tft.drawString(words[0], x - 55, startY, GFXFF);
-      tft.drawString(words[1], x - 55, startY + 30, GFXFF);
+      tft.drawString(words[0], x - 58, startY, GFXFF);
+      tft.drawString(words[1], x - 58, startY + 30, GFXFF);
       tft.setTextSize(2); // Smaller font for third line (currency text)
-      tft.drawString(words[2], x - 55, startY + 60, GFXFF);
+      tft.drawString(words[2], x - 58, startY + 60, GFXFF);
     }
     
+    // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
-    tft.drawString("HELP", x + 35, y + 150, GFXFF);
+    
+    if (touchAvailable) {
+      // Touch version: HELP centered on bottom (short side middle, where touch button is)
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom center, moved down to avoid overlap
+    } else {
+      // Non-touch version: HELP on right, NEXT on left (where physical buttons are)
+      tft.setTextDatum(ML_DATUM);
+      tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side
+      tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side
+    }
   } else {
-    tft.fillRect(168, 18, 140, 135, themeForeground);
+    tft.fillRect(163, 18, 137, 135, themeForeground); // 2 pixels wider for better product text display
     
     // Display up to 3 lines of text
     tft.setTextSize(3);
     tft.setTextColor(themeBackground); // White text on black background
     int startY = y - 30; // Starting Y position
     if (wordCount == 1) {
-      tft.drawString(words[0], x + 20, startY + 30, GFXFF);
+      tft.drawString(words[0], x + 17, startY + 30, GFXFF);
     } else if (wordCount == 2) {
-      tft.drawString(words[0], x + 20, startY + 15, GFXFF);
-      tft.drawString(words[1], x + 20, startY + 45, GFXFF);
+      tft.drawString(words[0], x + 17, startY + 15, GFXFF);
+      tft.drawString(words[1], x + 17, startY + 45, GFXFF);
     } else { // 3 words
-      tft.drawString(words[0], x + 20, startY, GFXFF);
-      tft.drawString(words[1], x + 20, startY + 30, GFXFF);
+      tft.drawString(words[0], x + 17, startY, GFXFF);
+      tft.drawString(words[1], x + 17, startY + 30, GFXFF);
       tft.setTextSize(2); // Smaller font for third line (currency text)
-      tft.drawString(words[2], x + 20, startY + 60, GFXFF);
+      tft.drawString(words[2], x + 17, startY + 60, GFXFF);
     }
     
+    // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
-    tft.drawString("HELP", x + 110, 9, GFXFF);
+    
+    if (touchAvailable) {
+      // Touch version: HELP as vertical stacked letters on right side (where touch button is)
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("H", 311, y - 30, GFXFF); // Slightly back from edge for better visibility
+      tft.drawString("E", 311, y - 10, GFXFF);
+      tft.drawString("L", 311, y + 10, GFXFF);
+      tft.drawString("P", 311, y + 30, GFXFF);
+    } else {
+      // Non-touch version: HELP on top, NEXT on bottom (where physical buttons are)
+      tft.setTextDatum(ML_DATUM);
+      tft.drawString("HELP", x + 110, 9, GFXFF); // Top
+      tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom, positioned to avoid edge
+    }
   }
 }
 
@@ -703,6 +874,20 @@ void productSelectionScreen()
     tft.setTextSize(4);
     tft.drawString("<->", x, y + 30, GFXFF);
     
+    // Button labels - different layout for touch vs non-touch
+    tft.setTextSize(2);
+    
+    if (touchAvailable) {
+      // Touch version: HELP centered on bottom
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("HELP", x + 2, 312, GFXFF);
+    } else {
+      // Non-touch version: HELP on right, NEXT on left
+      tft.setTextDatum(ML_DATUM);
+      tft.drawString("HELP", x + 35, y + 150, GFXFF);
+      tft.drawString("NEXT", 5, y + 150, GFXFF);
+    }
+    
   } else {
     // Horizontal orientation
     tft.setTextSize(3);
@@ -712,6 +897,23 @@ void productSelectionScreen()
     // Draw navigation arrows
     tft.setTextSize(5);
     tft.drawString("<->", x, y + 40, GFXFF);
+    
+    // Button labels - different layout for touch vs non-touch
+    tft.setTextSize(2);
+    
+    if (touchAvailable) {
+      // Touch version: HELP as vertical stacked letters on right side
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("H", 311, y - 30, GFXFF);
+      tft.drawString("E", 311, y - 10, GFXFF);
+      tft.drawString("L", 311, y + 10, GFXFF);
+      tft.drawString("P", 311, y + 30, GFXFF);
+    } else {
+      // Non-touch version: HELP on top, NEXT on bottom
+      tft.setTextDatum(ML_DATUM);
+      tft.drawString("HELP", x + 110, 9, GFXFF);
+      tft.drawString("NEXT", x + 110, 163, GFXFF);
+    }
   }
 }
 

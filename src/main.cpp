@@ -50,6 +50,8 @@ String multiControl = "off";
 // Bitcoin Ticker data
 String btcprice = "Loading...";
 String blockhigh = "...";
+String currency = "USD"; // Currency from config, default USD
+String btcTickerMode = "always"; // BTC ticker mode: off, always, selecting
 unsigned long lastBtcUpdate = 0;
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
 volatile bool btcTickerActive = false; // volatile: accessed from multiple tasks
@@ -117,7 +119,15 @@ unsigned long touchPressStartTime = 0;
 // Product selection screen tracking
 bool onProductSelectionScreen = false;
 unsigned long productSelectionShowTime = 0;
-const unsigned long PRODUCT_SELECTION_DELAY = 5000; // 5 seconds (TEST: default 10000ms)
+
+// Product timeout: configurable via platformio.ini build flag PRODUCT_TIMEOUT
+// Default 10 seconds for testing, use 60 seconds for production
+#ifndef PRODUCT_TIMEOUT
+#define PRODUCT_TIMEOUT 10000
+#endif
+
+const unsigned long PRODUCT_SELECTION_DELAY = PRODUCT_TIMEOUT; // Time to return to product selection
+const unsigned long BTC_TICKER_SELECTING_DELAY = 15000; // 15 seconds for "selecting" mode
 
 // Multi-Channel-Control product navigation
 // 0 = "Select the product" screen
@@ -303,31 +313,69 @@ void navigateToNextProduct() {
   Serial.println("[BUTTON] Navigate button pressed");
   
   if (multiControl == "off") {
-    Serial.println("[NAV] Single mode - no navigation available");
-    return; // Single mode, no navigation
+    // Single mode behavior depends on btcTickerMode
+    if (btcTickerMode == "selecting") {
+      // Show Bitcoin ticker for 15 seconds
+      btctickerScreen();
+      btcTickerActive = true;
+      productSelectionShowTime = millis(); // Start 15-second timer
+      Serial.println("[NAV] Single mode with SELECTING - Showing Bitcoin ticker for 15 seconds");
+    } else {
+      Serial.println("[NAV] Single mode - no navigation available");
+    }
+    return; // Single mode, no multi-product navigation
   }
   
-  currentProduct++;
+  // Check if we're on product selection screen (currentProduct == -1)
+  if (currentProduct == -1) {
+    // Start from first product
+    currentProduct = 1;
+  } else {
+    currentProduct++;
+  }
   
-  // Loop through products (1-2 for duo, 1-4 for quattro)
-  if (multiControl == "duo" && currentProduct > 2) {
-    currentProduct = 1; // Loop back to first product
-  } else if (multiControl == "quattro" && currentProduct > 4) {
-    currentProduct = 1; // Loop back to first product
+  // Determine navigation behavior based on btcTickerMode
+  if (btcTickerMode == "selecting") {
+    // SELECTING mode: After last product, show ticker (don't loop back)
+    if (multiControl == "duo" && currentProduct > 2) {
+      currentProduct = 0; // Show Bitcoin ticker
+    } else if (multiControl == "quattro" && currentProduct > 4) {
+      currentProduct = 0; // Show Bitcoin ticker
+    }
+  } else {
+    // ALWAYS or OFF mode: Loop back to first product
+    if (multiControl == "duo" && currentProduct > 2) {
+      currentProduct = 1; // Loop back to first product
+    } else if (multiControl == "quattro" && currentProduct > 4) {
+      currentProduct = 1; // Loop back to first product
+    }
   }
   
   Serial.printf("[NAV] Navigate to product: %d\n", currentProduct);
   
-  // IMPORTANT: Disable BTC ticker FIRST to prevent concurrent screen updates
+  // IMPORTANT: Disable product selection screen FIRST to prevent concurrent screen updates
   onProductSelectionScreen = false;
-  btcTickerActive = false; // Exit Bitcoin ticker when navigating to products
   
   // Small delay to ensure any ongoing display operation completes
   vTaskDelay(pdMS_TO_TICKS(50));
   
-  // Always show product QR screen (no selection screen)
-  if (true) {
+  // Check if we should show Bitcoin ticker (currentProduct == 0)
+  if (currentProduct == 0) {
+    // Show Bitcoin ticker
+    btctickerScreen();
+    btcTickerActive = true;
+    productSelectionShowTime = millis();
+    Serial.println("[NAV] Showing Bitcoin ticker screen");
+    
+    // In "selecting" mode for Duo/Quattro, reset to product selection on next NEXT press
+    if (btcTickerMode == "selecting" && multiControl != "off") {
+      currentProduct = -1; // Next NEXT press will show product selection screen
+      Serial.println("[NAV] SELECTING mode - Next NEXT will show product selection");
+    }
+  } else {
     // Show product QR screen
+    btcTickerActive = false; // Exit Bitcoin ticker when navigating to products
+    
     // Capture currentProduct value to prevent race conditions
     int productNum = currentProduct;
     String label = "";
@@ -366,11 +414,11 @@ void navigateToNextProduct() {
     // Show product screen
     showProductQRScreen(label, pin);
     Serial.printf("[NAV] Showing product: %s (Pin %d)\n", label.c_str(), pin);
+    
+    // Reset product selection timer after every navigation
+    productSelectionShowTime = millis();
+    Serial.println("[NAV] Product selection timer reset");
   }
-  
-  // Reset product selection timer after every navigation
-  productSelectionShowTime = millis();
-  Serial.println("[NAV] Product selection timer reset");
 }
 
 // Helper function: Wake from power saving modes
@@ -405,11 +453,28 @@ void redrawQRScreen() {
     showThresholdQRScreen();
     Serial.println("[DISPLAY] Threshold QR screen displayed");
   } else if (multiControl != "off") {
-    // Multi-Channel-Control mode: Show Bitcoin ticker or current product
-    if (currentProduct == 0) {
-      btctickerScreen();
-      btcTickerActive = true;
-      Serial.println("[DISPLAY] Bitcoin ticker screen displayed");
+    // Multi-Channel-Control mode: Behavior depends on btcTickerMode and currentProduct
+    if (currentProduct == -1) {
+      // Special value: product selection screen
+      productSelectionScreen();
+      onProductSelectionScreen = true;
+      btcTickerActive = false;
+      Serial.println("[DISPLAY] Product selection screen displayed");
+    } else if (currentProduct == 0) {
+      // Bitcoin ticker screen (only if ticker mode allows it)
+      if (btcTickerMode == "off") {
+        // Should not show ticker if OFF, show product selection instead
+        currentProduct = -1;
+        productSelectionScreen();
+        onProductSelectionScreen = true;
+        btcTickerActive = false;
+        Serial.println("[DISPLAY] BTC-Ticker OFF - Showing product selection screen");
+      } else {
+        // Show ticker for "always" or "selecting" modes
+        btctickerScreen();
+        btcTickerActive = true;
+        Serial.println("[DISPLAY] Bitcoin ticker screen displayed");
+      }
     } else {
       String label = "";
       int displayPin = 0;
@@ -677,6 +742,32 @@ void readFiles()
       const char *maRoot17Char = maRoot17["value"];
       multiControl = maRoot17Char;
     }
+
+    // Read BTC-Ticker configuration (index 18)
+    const JsonObject maRoot18 = doc[18];
+    if (!maRoot18.isNull()) {
+      const char *maRoot18Char = maRoot18["value"];
+      btcTickerMode = maRoot18Char;
+      Serial.println("[CONFIG] Read btcTickerMode from config: " + btcTickerMode);
+    } else {
+      Serial.println("[CONFIG] Index 18 (btcTickerMode) not found in config - using default: " + btcTickerMode);
+    }
+
+    // Read currency configuration (index 19)
+    const JsonObject maRoot19 = doc[19];
+    if (!maRoot19.isNull()) {
+      const char *maRoot19Char = maRoot19["value"];
+      currency = String(maRoot19Char);
+      Serial.println("[CONFIG] Read currency from config (before processing): " + currency);
+      currency.toUpperCase(); // Ensure uppercase
+      if (currency.length() == 0 || currency.length() > 3) {
+        Serial.println("[CONFIG] Invalid currency length, using default USD");
+        currency = "USD"; // Default fallback
+      }
+      Serial.println("[CONFIG] Final currency value: " + currency);
+    } else {
+      Serial.println("[CONFIG] Index 19 (currency) not found in config - using default: " + currency);
+    }
     // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 
     // Apply predefined mode settings
@@ -710,6 +801,16 @@ void readFiles()
     } else if (multiControl == "quattro") {
       Serial.println("Quattro (Pins 12, 13, 10, 11) - LNURLs auto-generated");
     }
+
+    // Display BTC-Ticker configuration
+    Serial.println("\n================================");
+    Serial.println("   BTC-TICKER CONFIGURATION");
+    Serial.println("================================");
+    Serial.print("BTC-Ticker Mode: ");
+    Serial.println(btcTickerMode);
+    Serial.print("Currency: ");
+    Serial.println(currency);
+    Serial.println("================================\n");
 
     // Display mode based on threshold configuration
     Serial.println("\n================================");
@@ -881,6 +982,21 @@ void fetchSwitchLabels()
     DeserializationError error = deserializeJson(doc, payload);
     
     if (!error) {
+      // Extract currency from response
+      const char* currencyChar = doc["currency"];
+      Serial.print("[LABELS] DEBUG - currency field from API: ");
+      if (currencyChar != nullptr) {
+        Serial.println(String(currencyChar));
+        String oldCurrency = currency;
+        currency = String(currencyChar);
+        currency.toUpperCase(); // Ensure uppercase for display and API calls
+        Serial.println("[LABELS] Currency changed from '" + oldCurrency + "' to '" + currency + "'");
+      } else {
+        Serial.println("NULL - field not found in response");
+        // Keep currency from config (don't override with USD)
+        Serial.println("[LABELS] No currency in API response, keeping config value: " + currency);
+      }
+      
       // Clear existing labels
       label12 = "";
       label13 = "";
@@ -911,6 +1027,17 @@ void fetchSwitchLabels()
       }
       
       Serial.println("[LABELS] Successfully fetched and cached all labels");
+      
+      // Always fetch Bitcoin data with the correct currency (not just when ticker is active)
+      // This ensures data is ready when ticker is activated
+      Serial.println("[LABELS] Currency received - fetching Bitcoin data with correct currency");
+      fetchBitcoinData();
+      
+      // If ticker is currently active, redraw screen to show new currency
+      if (btcTickerActive) {
+        Serial.println("[LABELS] Ticker active - refreshing display");
+        btctickerScreen();
+      }
     } else {
       Serial.println("[LABELS] JSON parsing failed: " + String(error.c_str()));
     }
@@ -927,9 +1054,14 @@ void fetchBitcoinData()
   Serial.println("[BTC] Fetching Bitcoin data...");
   HTTPClient http;
 
-  // Fetch BTC price from CoinGecko
-  Serial.println("[BTC] Requesting price from CoinGecko...");
-  http.begin("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+  // Fetch BTC price from CoinGecko using configured currency
+  String currencyLower = currency;
+  currencyLower.toLowerCase(); // CoinGecko expects lowercase currency code
+  String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
+  
+  Serial.println("[BTC] Current currency variable: '" + currency + "'");
+  Serial.println("[BTC] Requesting price from CoinGecko with URL: " + apiUrl);
+  http.begin(apiUrl);
   http.setTimeout(5000);
 
   int httpCode = http.GET();
@@ -941,9 +1073,10 @@ void fetchBitcoinData()
     DeserializationError error = deserializeJson(doc, payload);
 
     if (!error && doc["bitcoin"].is<JsonObject>()) {
-      float price = doc["bitcoin"]["usd"];
+      Serial.println("[BTC] Looking for price key: '" + currencyLower + "'");
+      float price = doc["bitcoin"][currencyLower];
       btcprice = String((int)price); // Convert to integer string
-      Serial.println("[BTC] Price updated: $" + btcprice);
+      Serial.println("[BTC] Price updated: " + btcprice + " " + currency);
     } else {
       Serial.println("[BTC] Failed to parse CoinGecko JSON");
       btcprice = "Error";
@@ -1534,8 +1667,20 @@ void setup()
   FFat.begin(FORMAT_ON_FAIL);
   readFiles(); // get the saved details and store in global variables
 
+  Serial.println("\n[SETUP] readFiles() completed");
+  Serial.println("[SETUP] currency = " + currency);
+  Serial.println("[SETUP] btcTickerMode = " + btcTickerMode);
+
   initDisplay();
   startupScreen();
+
+  // Initialize touch controller (independent of WiFi)
+  touchAvailable = touch.begin();
+  if (touchAvailable) {
+    Serial.println("[TOUCH] ✓ Touch controller initialized successfully!");
+  } else {
+    Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
+  }
 
   // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
   leftButton.setPressMs(3000); // 3 seconds for config mode (documented as 5 sec for users)
@@ -1727,22 +1872,6 @@ void setup()
 
   // Button task already created earlier (before WiFi setup)
   
-  // Initialize touch controller
-  Serial.println("\n========================================");
-  Serial.println("[TOUCH] Initializing touch controller...");
-  Serial.printf("[TOUCH] I2C Pins: SDA=%d, SCL=%d\n", PIN_IIC_SDA, PIN_IIC_SCL);
-  Serial.printf("[TOUCH] Touch Pins: RST=%d, IRQ=%d\n", PIN_TOUCH_RES, PIN_TOUCH_INT);
-  
-  touchAvailable = touch.begin();
-  
-  if (touchAvailable) {
-    Serial.println("[TOUCH] ✓ Touch controller initialized successfully!");
-    Serial.println("[TOUCH] Swipe in any direction or tap left/right side to navigate");
-  } else {
-    Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
-  }
-  Serial.println("========================================\n");
-  
   // Set maxProducts based on multiControl mode
   if (multiControl == "quattro") {
     maxProducts = 4;
@@ -1839,12 +1968,32 @@ void loop()
     if (thresholdKey.length() > 0) {
       showThresholdQRScreen(); // THRESHOLD MODE (Multi-Channel-Control not compatible)
     } else if (multiControl != "off") {
-      // MULTI-CHANNEL-CONTROL MODE - Start with Bitcoin ticker instead of product selection
-      currentProduct = 0;
-      btctickerScreen();
-      btcTickerActive = true;
-      productSelectionShowTime = millis();
-      Serial.println("[BTC] Starting with Bitcoin ticker screen");
+      // MULTI-CHANNEL-CONTROL MODE - Behavior depends on btcTickerMode
+      if (btcTickerMode == "off") {
+        // OFF: Show product selection screen for Duo/Quattro (no ticker)
+        currentProduct = -1; // Special value to indicate product selection screen
+        productSelectionScreen();
+        onProductSelectionScreen = true;
+        btcTickerActive = false;
+        productSelectionShowTime = millis();
+        Serial.println("[BTC] BTC-Ticker OFF - Starting with product selection screen");
+      } else if (btcTickerMode == "always") {
+        // ALWAYS: Show Bitcoin ticker (current behavior)
+        currentProduct = 0;
+        btctickerScreen();
+        btcTickerActive = true;
+        onProductSelectionScreen = false;
+        productSelectionShowTime = millis();
+        Serial.println("[BTC] BTC-Ticker ALWAYS - Starting with Bitcoin ticker screen");
+      } else if (btcTickerMode == "selecting") {
+        // SELECTING: Show product selection screen for Duo/Quattro
+        currentProduct = -1; // Special value to indicate product selection screen
+        productSelectionScreen();
+        onProductSelectionScreen = true;
+        btcTickerActive = false;
+        productSelectionShowTime = millis();
+        Serial.println("[BTC] BTC-Ticker SELECTING - Starting with product selection screen");
+      }
     } else if (specialMode != "standard") {
       // Generate LNURL for pin 12 before showing special mode QR
       String lnurlStr = generateLNURL(12);
@@ -2083,18 +2232,63 @@ void loop()
       }
     }
     
-    // Check if it's time to show Bitcoin ticker screen
-    // Only show in Multi-Channel-Control mode or if multi-channel-control is off with old behavior
-    // Not shown in Threshold mode (not compatible)
-    if (!onErrorScreen && !btcTickerActive && 
-        productSelectionShowTime > 0 && 
-        (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY &&
-        multiControl != "off" && thresholdKey.length() == 0) {
-      Serial.println("[SCREEN] Showing Bitcoin ticker screen after 5 seconds (Multi-Channel-Control)");
-      // Don't reset currentProduct - keep it for next navigation
-      btctickerScreen();
-      btcTickerActive = true;
-      // Don't reset timer - we want to stay on this screen until swipe
+    // Check if it's time to show/hide Bitcoin ticker screen
+    // Behavior depends on btcTickerMode
+    if (!onErrorScreen && thresholdKey.length() == 0) {
+      if (btcTickerMode == "always" && multiControl != "off") {
+        // ALWAYS mode: Show ticker after PRODUCT_SELECTION_DELAY (10 seconds)
+        if (!btcTickerActive && productSelectionShowTime > 0 && 
+            (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
+          Serial.println("[SCREEN] Showing Bitcoin ticker screen after 10 seconds (ALWAYS mode)");
+          btctickerScreen();
+          btcTickerActive = true;
+        }
+      } else if (btcTickerMode == "off" && multiControl != "off") {
+        // OFF mode with Duo/Quattro: Return to product selection after timeout on product
+        if (productSelectionShowTime > 0 && 
+            (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
+          // Check if we're on a product screen
+          if (currentProduct > 0) {
+            Serial.println("[SCREEN] Timeout reached - returning to product selection screen (OFF mode - Duo/Quattro)");
+            currentProduct = -1;
+            onProductSelectionScreen = true;
+            productSelectionScreen();
+            productSelectionShowTime = 0; // Reset timer
+          }
+        }
+      } else if (btcTickerMode == "selecting") {
+        if (multiControl == "off") {
+          // Single mode: Hide ticker after BTC_TICKER_SELECTING_DELAY (15 seconds)
+          if (btcTickerActive && productSelectionShowTime > 0 && 
+              (millis() - productSelectionShowTime) >= BTC_TICKER_SELECTING_DELAY) {
+            Serial.println("[SCREEN] Hiding Bitcoin ticker after 15 seconds (SELECTING mode - Single)");
+            btcTickerActive = false;
+            // Show normal QR screen
+            String lnurlStr = generateLNURL(12);
+            updateLightningQR(lnurlStr);
+            if (specialMode != "standard" && specialMode != "") {
+              showSpecialModeQRScreen();
+            } else {
+              showQRScreen();
+            }
+            productSelectionShowTime = 0; // Reset timer
+          }
+        } else {
+          // Duo/Quattro mode: After timeout on product or ticker, go back to product selection
+          if (productSelectionShowTime > 0 && 
+              (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
+            // Check if we're on a product screen or ticker screen
+            if (currentProduct > 0 || btcTickerActive) {
+              Serial.println("[SCREEN] Timeout reached - returning to product selection screen (SELECTING mode - Duo/Quattro)");
+              currentProduct = -1;
+              btcTickerActive = false;
+              onProductSelectionScreen = true;
+              productSelectionScreen();
+              productSelectionShowTime = 0; // Reset timer
+            }
+          }
+        }
+      }
     }
     
     // Check for screensaver/deep sleep timeout activation (inside payment loop)
@@ -2248,8 +2442,70 @@ void loop()
         } else {
           // Internet OK - set confirmation
           if (!internetConfirmed) {
-            internetConfirmed = true;
             Serial.println("[CONFIRMED] Internet connection confirmed!");
+            internetConfirmed = true;
+            
+            // Always fetch Bitcoin data when Internet is restored (if ticker is active)
+            // BUT: Don't update lastBtcUpdate so the regular timer continues
+            if (btcTickerActive) {
+              Serial.println("[RECOVERY] Internet restored - fetching Bitcoin data for ticker...");
+              HTTPClient http;
+
+              // Fetch BTC price using configured currency
+              String currencyLower = currency;
+              currencyLower.toLowerCase();
+              String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
+              http.begin(apiUrl);
+              http.setTimeout(5000);
+              int httpCode = http.GET();
+              if (httpCode == 200) {
+                String payload = http.getString();
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, payload);
+                if (!error && doc["bitcoin"].is<JsonObject>()) {
+                  float price = doc["bitcoin"][currencyLower];
+                  btcprice = String((int)price);
+                  Serial.println("[BTC] Recovery price updated: " + btcprice + " " + currency);
+                }
+              }
+              http.end();
+              
+              delay(100);
+              
+              // Fetch block height
+              http.begin("https://mempool.space/api/blocks/tip/height");
+              http.setTimeout(5000);
+              httpCode = http.GET();
+              if (httpCode == 200) {
+                blockhigh = http.getString();
+                blockhigh.trim();
+                Serial.println("[BTC] Recovery block height updated: " + blockhigh);
+              }
+              http.end();
+              
+              // DON'T update lastBtcUpdate - let the regular update cycle continue
+              Serial.println("[BTC] Recovery fetch completed (timer NOT reset)");
+              
+              // Redraw ticker screen if it was active
+              if (!onErrorScreen) {
+                btctickerScreen();
+              }
+            }
+            
+            // If recovering from Internet error screen, clear error and refresh display
+            if (onErrorScreen && currentErrorType == 2) {
+              Serial.println("[RECOVERY] Clearing Internet error screen...");
+              onErrorScreen = false;
+              currentErrorType = 0;
+              onProductSelectionScreen = false;
+              
+              // Redraw appropriate screen
+              if (btcTickerActive) {
+                btctickerScreen();
+              } else {
+                redrawQRScreen();
+              }
+            }
           }
         }
         lastInternetCheck = millis();
@@ -2394,6 +2650,11 @@ void loop()
           websocketConfirmed = true; // Set confirmation
           onErrorScreen = false;
           currentErrorType = 0;
+          
+          // Fetch switch labels after successful reconnection
+          Serial.println("[RECOVERY] Fetching switch labels after WebSocket reconnection...");
+          fetchSwitchLabels();
+          
           return;
         }
         else
