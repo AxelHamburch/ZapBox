@@ -2104,8 +2104,9 @@ void loop()
           Serial.println();
         }
         
-        // Handle touch on product selection screen OR Bitcoin ticker screen OR Single mode with selecting
-        if (onProductSelectionScreen || btcTickerActive || 
+        // Handle touch on product selection screen OR Bitcoin ticker (selecting/always) OR Single mode QR with selecting
+        if (onProductSelectionScreen || 
+            (btcTickerActive && (btcTickerMode == "selecting" || btcTickerMode == "always")) ||
             (multiControl == "off" && btcTickerMode == "selecting" && !btcTickerActive)) {
           bool navigateBack = false;
           String actionName = "";
@@ -2184,24 +2185,22 @@ void loop()
           if (navigateBack) {
             Serial.printf("[TOUCH] >>> %s - ", actionName.c_str());
             
-            // For Single mode selecting: Only execute action once per touch cycle
-            if (multiControl == "off" && btcTickerMode == "selecting") {
-              // If action already executed for this touch, skip
-              if (actionExecutedThisTouch && isTouched) {
-                Serial.println("Action already executed for this touch cycle, skipping");
-                wasTouched = isTouched;
-                continue;
-              }
-              // Debounce: Prevent action if less than 300ms since last action
-              if (millis() - lastActionTime < 300) {
-                Serial.println("Debounce: Too soon after last action, skipping");
-                wasTouched = isTouched;
-                continue;
-              }
-              // Mark action as executed for this touch cycle
-              actionExecutedThisTouch = true;
-              lastActionTime = millis(); // Record action time for debouncing
+            // Debounce logic for all touch-based navigation (Single/Duo/Quattro)
+            // If action already executed for this touch, skip
+            if (actionExecutedThisTouch && isTouched) {
+              Serial.println("Action already executed for this touch cycle, skipping");
+              wasTouched = isTouched;
+              continue;
             }
+            // Debounce: Prevent action if less than 300ms since last action
+            if (millis() - lastActionTime < 300) {
+              Serial.println("Debounce: Too soon after last action, skipping");
+              wasTouched = isTouched;
+              continue;
+            }
+            // Mark action as executed for this touch cycle
+            actionExecutedThisTouch = true;
+            lastActionTime = millis(); // Record action time for debouncing
             
             onProductSelectionScreen = false;
             
@@ -2241,6 +2240,23 @@ void loop()
                 btcTickerActive = true;
                 productSelectionShowTime = millis();
               }
+            }
+            // Single Mode with ALWAYS: Show QR on touch, return to ticker after timeout
+            else if (multiControl == "off" && btcTickerMode == "always") {
+              if (btcTickerActive) {
+                // Showing ticker - switch to QR on touch
+                Serial.println("Touch detected - switching from ticker to QR (ALWAYS mode)");
+                btcTickerActive = false;
+                String lnurlStr = generateLNURL(12);
+                updateLightningQR(lnurlStr);
+                if (specialMode != "standard" && specialMode != "") {
+                  showSpecialModeQRScreen();
+                } else {
+                  showQRScreen();
+                }
+                productSelectionShowTime = millis(); // Start timeout to return to ticker
+              }
+              // If on QR, touch does nothing (automatic return to ticker via timeout)
             }
             // Multi-Channel-Control Mode: Navigate to next product
             else if (multiControl != "off" && thresholdKey.length() == 0) {
@@ -2333,28 +2349,13 @@ void loop()
             btcTickerActive = true;
           }
         } else {
-          // ALWAYS mode Single: Switch between ticker and QR after PRODUCT_SELECTION_DELAY
-          if (productSelectionShowTime > 0 && 
+          // ALWAYS mode Single: Return to ticker after PRODUCT_TIMEOUT on QR
+          if (!btcTickerActive && productSelectionShowTime > 0 && 
               (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
-            if (btcTickerActive) {
-              // Switch from ticker to QR
-              Serial.println("[SCREEN] Switching from ticker to QR after timeout (ALWAYS mode - Single)");
-              btcTickerActive = false;
-              String lnurlStr = generateLNURL(12);
-              updateLightningQR(lnurlStr);
-              if (specialMode != "standard" && specialMode != "") {
-                showSpecialModeQRScreen();
-              } else {
-                showQRScreen();
-              }
-              productSelectionShowTime = millis(); // Reset timer
-            } else {
-              // Switch from QR to ticker
-              Serial.println("[SCREEN] Switching from QR to ticker after timeout (ALWAYS mode - Single)");
-              btctickerScreen();
-              btcTickerActive = true;
-              productSelectionShowTime = millis(); // Reset timer
-            }
+            Serial.println("[SCREEN] Returning to ticker after timeout (ALWAYS mode - Single)");
+            btctickerScreen();
+            btcTickerActive = true;
+            productSelectionShowTime = 0; // Reset timer
           }
         }
       } else if (btcTickerMode == "off" && multiControl != "off") {
