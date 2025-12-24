@@ -183,17 +183,17 @@ Real-time Bitcoin price and block height display with configurable visibility mo
 - **Bitcoin Logo**: 64x64 pixel logo displayed on ticker screen
 - **Currency Selection**: ISO code input (max. 3 characters, automatically uppercase)
 - **Auto-Refresh**: Updates automatically after WiFi/Internet recovery
+- **Touch Support**: Touch display to show/hide ticker in always and selecting modes
 - **Three Display Modes**:
   - **OFF**: No ticker display
     - Duo/Quattro: Shows product selection screen instead
     - Single: Shows only QR code (no ticker, no product selection)
-  - **ON - always**: Ticker always visible (default behavior)
-    - Ticker overlays all the time
-    - Navigate with NEXT/swipe shows products temporarily
-    - Returns to ticker after 10 seconds
-  - **ON - when selecting**: Ticker appears only during navigation
-    - Single: Ticker visible for 15 seconds after NEXT/swipe press, then returns to QR
-    - Duo/Quattro: Product selection → products → ticker at end of cycle (no loop back to first)
+  - **ON - always**: Ticker overlay with on-demand QR display
+    - Single: Starts with ticker, touch shows QR for 20s, then returns to ticker
+    - Duo/Quattro: Ticker overlays, navigate with NEXT/swipe shows products temporarily, returns to ticker after 20s
+  - **ON - when selecting**: Ticker appears only on demand
+    - Single: Touch/NEXT shows ticker for 10s, then returns to QR
+    - Duo/Quattro: Product selection → products → ticker on touch/swipe (10s timeout)
 
 **Configuration:**
 Set BTC-Ticker mode and currency in Web Installer:
@@ -239,6 +239,10 @@ Automatic power-saving modes that activate after a configurable timeout:
 | **Deep Sleep** | OFF | Active | OFF | RTC only | Reconnect | Reconnect | ❌ No* | ~0.01-0.15mA | ~99.9% | ~3-5s |
 
 *Light Sleep and Deep Sleep require wake-up (button press) and WiFi reconnection before payments can be received
+
+**Wake-up Methods**:
+- **Screensaver**: Touch display (Touch version) or press any button → Instant wake-up
+- **Deep Sleep**: Press BOOT or HELP button only (touch disabled for maximum power savings)
 
 **Mode Recommendations**:
 
