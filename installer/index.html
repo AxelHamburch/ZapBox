@@ -1041,25 +1041,23 @@
 
         async function onRestartButtonClick() {
             console.log("Disconnect button clicked!");
-            if (confirm("Are you sure you want to disconnect?")) {
-                const restartMsg = document.createElement('span');
-                restartMsg.style.color = '#ffaa00';
-                restartMsg.textContent = 'Disconnecting...\n';
-                consoleDebug.appendChild(restartMsg);
+            const restartMsg = document.createElement('span');
+            restartMsg.style.color = '#ffaa00';
+            restartMsg.textContent = 'Disconnecting...\n';
+            consoleDebug.appendChild(restartMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            
+            // Send restart command
+            serial.writeLine("/config-restart");
+            
+            // Wait a moment for command to be sent
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Close serial connection before device restarts
+            if (serial.isOpen()) {
+                await serial.close();
+                consoleDebug.innerHTML += '<b>Connection closed.</b><br>';
                 consoleDebug.scrollTop = consoleDebug.scrollHeight;
-                
-                // Send restart command
-                serial.writeLine("/config-restart");
-                
-                // Wait a moment for command to be sent
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // Close serial connection before device restarts
-                if (serial.isOpen()) {
-                    await serial.close();
-                    consoleDebug.innerHTML += '<b>Connection closed.</b><br>';
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
-                }
             }
         }
 

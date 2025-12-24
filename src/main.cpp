@@ -122,12 +122,20 @@ unsigned long productSelectionShowTime = 0;
 
 // Product timeout: configurable via platformio.ini build flag PRODUCT_TIMEOUT
 // Default 10 seconds for testing, use 60 seconds for production
+// Used when: QR/Product shown → timeout → back to Ticker/ProductSelection
 #ifndef PRODUCT_TIMEOUT
 #define PRODUCT_TIMEOUT 10000
 #endif
 
+// BTC Ticker timeout: configurable via platformio.ini build flag BTCTICKER_TIMEOUT
+// Default 10 seconds
+// Used when: Ticker shown → timeout → back to QR (only in 'selecting' mode)
+#ifndef BTCTICKER_TIMEOUT
+#define BTCTICKER_TIMEOUT 10000
+#endif
+
 const unsigned long PRODUCT_SELECTION_DELAY = PRODUCT_TIMEOUT; // Time to return to product selection
-const unsigned long BTC_TICKER_SELECTING_DELAY = 15000; // 15 seconds for "selecting" mode
+const unsigned long BTC_TICKER_TIMEOUT_DELAY = BTCTICKER_TIMEOUT; // Time to hide ticker in selecting mode
 
 // Multi-Channel-Control product navigation
 // 0 = "Select the product" screen
@@ -315,11 +323,25 @@ void navigateToNextProduct() {
   if (multiControl == "off") {
     // Single mode behavior depends on btcTickerMode
     if (btcTickerMode == "selecting") {
-      // Show Bitcoin ticker for 15 seconds
-      btctickerScreen();
-      btcTickerActive = true;
-      productSelectionShowTime = millis(); // Start 15-second timer
-      Serial.println("[NAV] Single mode with SELECTING - Showing Bitcoin ticker for 15 seconds");
+      if (btcTickerActive) {
+        // Already showing ticker - skip back to QR immediately
+        Serial.println("[NAV] Single mode SELECTING - Skipping from ticker to QR");
+        btcTickerActive = false;
+        String lnurlStr = generateLNURL(12);
+        updateLightningQR(lnurlStr);
+        if (specialMode != "standard" && specialMode != "") {
+          showSpecialModeQRScreen();
+        } else {
+          showQRScreen();
+        }
+        productSelectionShowTime = 0; // Reset timer
+      } else {
+        // Show Bitcoin ticker for 10 seconds
+        btctickerScreen();
+        btcTickerActive = true;
+        productSelectionShowTime = millis(); // Start 10-second timer
+        Serial.println("[NAV] Single mode with SELECTING - Showing Bitcoin ticker for 10 seconds");
+      }
     } else {
       Serial.println("[NAV] Single mode - no navigation available");
     }
@@ -336,11 +358,11 @@ void navigateToNextProduct() {
   
   // Determine navigation behavior based on btcTickerMode
   if (btcTickerMode == "selecting") {
-    // SELECTING mode: After last product, show ticker (don't loop back)
+    // SELECTING mode: Loop back to first product (ticker shown on demand via touch/button)
     if (multiControl == "duo" && currentProduct > 2) {
-      currentProduct = 0; // Show Bitcoin ticker
+      currentProduct = 1; // Loop back to first product
     } else if (multiControl == "quattro" && currentProduct > 4) {
-      currentProduct = 0; // Show Bitcoin ticker
+      currentProduct = 1; // Loop back to first product
     }
   } else {
     // ALWAYS or OFF mode: Loop back to first product
@@ -359,20 +381,8 @@ void navigateToNextProduct() {
   // Small delay to ensure any ongoing display operation completes
   vTaskDelay(pdMS_TO_TICKS(50));
   
-  // Check if we should show Bitcoin ticker (currentProduct == 0)
-  if (currentProduct == 0) {
-    // Show Bitcoin ticker
-    btctickerScreen();
-    btcTickerActive = true;
-    productSelectionShowTime = millis();
-    Serial.println("[NAV] Showing Bitcoin ticker screen");
-    
-    // In "selecting" mode for Duo/Quattro, reset to product selection on next NEXT press
-    if (btcTickerMode == "selecting" && multiControl != "off") {
-      currentProduct = -1; // Next NEXT press will show product selection screen
-      Serial.println("[NAV] SELECTING mode - Next NEXT will show product selection");
-    }
-  } else {
+  // Show product QR screen (currentProduct should be 1-4 for duo/quattro)
+  if (currentProduct >= 1) {
     // Show product QR screen
     btcTickerActive = false; // Exit Bitcoin ticker when navigating to products
     
@@ -2000,10 +2010,22 @@ void loop()
       updateLightningQR(lnurlStr);
       showSpecialModeQRScreen(); // SPECIAL MODE
     } else {
-      // Generate LNURL for pin 12 before showing normal QR
-      String lnurlStr = generateLNURL(12);
-      updateLightningQR(lnurlStr);
-      showQRScreen(); // NORMAL MODE
+      // SINGLE MODE - Behavior depends on btcTickerMode
+      if (btcTickerMode == "always") {
+        // ALWAYS: Show Bitcoin ticker first
+        btctickerScreen();
+        btcTickerActive = true;
+        onProductSelectionScreen = false;
+        productSelectionShowTime = millis();
+        Serial.println("[BTC] BTC-Ticker ALWAYS (Single mode) - Starting with Bitcoin ticker screen");
+      } else {
+        // OFF or SELECTING: Show normal QR (selecting mode shows ticker after NEXT button)
+        String lnurlStr = generateLNURL(12);
+        updateLightningQR(lnurlStr);
+        showQRScreen(); // NORMAL MODE
+        btcTickerActive = false;
+        Serial.println("[BTC] BTC-Ticker " + btcTickerMode + " (Single mode) - Starting with QR screen");
+      }
     }
     // Clear error screen flag once QR is shown
     onErrorScreen = false;
@@ -2043,6 +2065,8 @@ void loop()
     // Check for touch input (if available and not on error screen)
     static unsigned long lastTouchEvent = 0;
     static bool wasTouched = false;
+    static bool actionExecutedThisTouch = false; // Track if action already executed for current touch
+    static unsigned long lastActionTime = 0; // Track when last action was executed for debouncing
     
     if (touchAvailable && !onErrorScreen && !inConfigMode) {
       // Check for actual touch event
@@ -2080,8 +2104,9 @@ void loop()
           Serial.println();
         }
         
-        // Handle touch on product selection screen OR Bitcoin ticker screen
-        if (onProductSelectionScreen || btcTickerActive) {
+        // Handle touch on product selection screen OR Bitcoin ticker screen OR Single mode with selecting
+        if (onProductSelectionScreen || btcTickerActive || 
+            (multiControl == "off" && btcTickerMode == "selecting" && !btcTickerActive)) {
           bool navigateBack = false;
           String actionName = "";
           
@@ -2158,11 +2183,68 @@ void loop()
           
           if (navigateBack) {
             Serial.printf("[TOUCH] >>> %s - ", actionName.c_str());
-            onProductSelectionScreen = false;
-            btcTickerActive = false; // Exit ticker on navigation
             
+            // For Single mode selecting: Only execute action once per touch cycle
+            if (multiControl == "off" && btcTickerMode == "selecting") {
+              // If action already executed for this touch, skip
+              if (actionExecutedThisTouch && isTouched) {
+                Serial.println("Action already executed for this touch cycle, skipping");
+                wasTouched = isTouched;
+                continue;
+              }
+              // Debounce: Prevent action if less than 300ms since last action
+              if (millis() - lastActionTime < 300) {
+                Serial.println("Debounce: Too soon after last action, skipping");
+                wasTouched = isTouched;
+                continue;
+              }
+              // Mark action as executed for this touch cycle
+              actionExecutedThisTouch = true;
+              lastActionTime = millis(); // Record action time for debouncing
+            }
+            
+            onProductSelectionScreen = false;
+            
+            // Multi-Channel-Control Mode with SELECTING: Show ticker on demand
+            if (multiControl != "off" && thresholdKey.length() == 0 && btcTickerMode == "selecting") {
+              if (btcTickerActive) {
+                // Already showing ticker - skip back to product
+                Serial.println("Skip from ticker to product");
+                btcTickerActive = false;
+                navigateToNextProduct();
+              } else {
+                // Show ticker for 10 seconds
+                Serial.println("Show Bitcoin ticker for 10 seconds");
+                btctickerScreen();
+                btcTickerActive = true;
+                productSelectionShowTime = millis();
+              }
+            }
+            // Single Mode with SELECTING: Show ticker on demand
+            else if (multiControl == "off" && btcTickerMode == "selecting") {
+              if (btcTickerActive) {
+                // Already showing ticker - skip back to QR
+                Serial.println("Skip from ticker to QR (Single mode)");
+                btcTickerActive = false;
+                String lnurlStr = generateLNURL(12);
+                updateLightningQR(lnurlStr);
+                if (specialMode != "standard" && specialMode != "") {
+                  showSpecialModeQRScreen();
+                } else {
+                  showQRScreen();
+                }
+                productSelectionShowTime = 0;
+              } else {
+                // Show ticker for 10 seconds
+                Serial.println("Show Bitcoin ticker for 10 seconds (Single mode)");
+                btctickerScreen();
+                btcTickerActive = true;
+                productSelectionShowTime = millis();
+              }
+            }
             // Multi-Channel-Control Mode: Navigate to next product
-            if (multiControl != "off" && thresholdKey.length() == 0) {
+            else if (multiControl != "off" && thresholdKey.length() == 0) {
+              btcTickerActive = false; // Exit ticker on navigation
               Serial.println("Navigate to next product");
               navigateToNextProduct();
             } else {
@@ -2221,6 +2303,12 @@ void loop()
           lastTouchEvent = millis();
         }
         
+        // Reset action flag when touch is released
+        // (Debounce check happens during action execution instead)
+        if (!isTouched && wasTouched) {
+          actionExecutedThisTouch = false;
+        }
+        
         // Remember touch state for next iteration
         wasTouched = isTouched;
         
@@ -2235,13 +2323,39 @@ void loop()
     // Check if it's time to show/hide Bitcoin ticker screen
     // Behavior depends on btcTickerMode
     if (!onErrorScreen && thresholdKey.length() == 0) {
-      if (btcTickerMode == "always" && multiControl != "off") {
-        // ALWAYS mode: Show ticker after PRODUCT_SELECTION_DELAY (10 seconds)
-        if (!btcTickerActive && productSelectionShowTime > 0 && 
-            (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
-          Serial.println("[SCREEN] Showing Bitcoin ticker screen after 10 seconds (ALWAYS mode)");
-          btctickerScreen();
-          btcTickerActive = true;
+      if (btcTickerMode == "always") {
+        if (multiControl != "off") {
+          // ALWAYS mode Duo/Quattro: Show ticker after PRODUCT_SELECTION_DELAY on products
+          if (!btcTickerActive && productSelectionShowTime > 0 && 
+              (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
+            Serial.println("[SCREEN] Showing Bitcoin ticker screen after timeout (ALWAYS mode - Duo/Quattro)");
+            btctickerScreen();
+            btcTickerActive = true;
+          }
+        } else {
+          // ALWAYS mode Single: Switch between ticker and QR after PRODUCT_SELECTION_DELAY
+          if (productSelectionShowTime > 0 && 
+              (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
+            if (btcTickerActive) {
+              // Switch from ticker to QR
+              Serial.println("[SCREEN] Switching from ticker to QR after timeout (ALWAYS mode - Single)");
+              btcTickerActive = false;
+              String lnurlStr = generateLNURL(12);
+              updateLightningQR(lnurlStr);
+              if (specialMode != "standard" && specialMode != "") {
+                showSpecialModeQRScreen();
+              } else {
+                showQRScreen();
+              }
+              productSelectionShowTime = millis(); // Reset timer
+            } else {
+              // Switch from QR to ticker
+              Serial.println("[SCREEN] Switching from QR to ticker after timeout (ALWAYS mode - Single)");
+              btctickerScreen();
+              btcTickerActive = true;
+              productSelectionShowTime = millis(); // Reset timer
+            }
+          }
         }
       } else if (btcTickerMode == "off" && multiControl != "off") {
         // OFF mode with Duo/Quattro: Return to product selection after timeout on product
@@ -2258,10 +2372,10 @@ void loop()
         }
       } else if (btcTickerMode == "selecting") {
         if (multiControl == "off") {
-          // Single mode: Hide ticker after BTC_TICKER_SELECTING_DELAY (15 seconds)
+          // Single mode: Hide ticker after BTC_TICKER_TIMEOUT_DELAY (10 seconds)
           if (btcTickerActive && productSelectionShowTime > 0 && 
-              (millis() - productSelectionShowTime) >= BTC_TICKER_SELECTING_DELAY) {
-            Serial.println("[SCREEN] Hiding Bitcoin ticker after 15 seconds (SELECTING mode - Single)");
+              (millis() - productSelectionShowTime) >= BTC_TICKER_TIMEOUT_DELAY) {
+            Serial.println("[SCREEN] Hiding Bitcoin ticker after ticker timeout (SELECTING mode - Single)");
             btcTickerActive = false;
             // Show normal QR screen
             String lnurlStr = generateLNURL(12);
@@ -2274,14 +2388,27 @@ void loop()
             productSelectionShowTime = 0; // Reset timer
           }
         } else {
-          // Duo/Quattro mode: After timeout on product or ticker, go back to product selection
-          if (productSelectionShowTime > 0 && 
-              (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
-            // Check if we're on a product screen or ticker screen
-            if (currentProduct > 0 || btcTickerActive) {
+          // Duo/Quattro mode: Different timeout behavior based on what's showing
+          if (productSelectionShowTime > 0) {
+            if (btcTickerActive && (millis() - productSelectionShowTime) >= BTC_TICKER_TIMEOUT_DELAY) {
+              // Ticker showing: Hide ticker after BTC_TICKER_TIMEOUT_DELAY and return to last product
+              Serial.println("[SCREEN] Hiding ticker after ticker timeout (SELECTING mode - Duo/Quattro)");
+              btcTickerActive = false;
+              // Show last product again
+              if (currentProduct >= 1) {
+                navigateToNextProduct();
+              } else {
+                // Fallback: show product selection
+                currentProduct = -1;
+                onProductSelectionScreen = true;
+                productSelectionScreen();
+              }
+              productSelectionShowTime = 0; // Reset timer
+            } else if (currentProduct > 0 && !onProductSelectionScreen && 
+                      (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
+              // Product showing: Return to product selection after PRODUCT_SELECTION_DELAY
               Serial.println("[SCREEN] Timeout reached - returning to product selection screen (SELECTING mode - Duo/Quattro)");
               currentProduct = -1;
-              btcTickerActive = false;
               onProductSelectionScreen = true;
               productSelectionScreen();
               productSelectionShowTime = 0; // Reset timer
