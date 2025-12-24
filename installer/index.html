@@ -56,7 +56,8 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v929126/manifest.json">v929126 (Latest - Add Touch control and Multi-Channel-Control Mode) 🎉</option>
+                <option value="./firmware/v929303/manifest.json">v929303 (Latest - Add BTC-Ticker touch control with debounce) 🎉</option>
+                <option value="./firmware/v929126/manifest.json">v929126 (Add Touch control and Multi-Channel-Control Mode)</option>
                 <option value="./firmware/v928945/manifest.json">v928945 (Proactive error detection and optimized startup)</option>
                 <option value="./firmware/v928559/manifest.json">v928559 (Small fixes and add BLACK & LIGHT GREY color theme)</option>
                 <option value="./firmware/v927737/manifest.json">v927737 (Core dump support + fix config mode after deep sleep)</option>
@@ -69,7 +70,7 @@
                 <option value="./firmware/v926531/manifest.json">v926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v929126/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v929303/manifest.json">
                 <button slot="activate">🔥 Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -136,8 +137,8 @@
             <div>
                 <label for="qrFormat">QR-Code Format</label>
                 <select name="qrFormat" id="qrFormat">
-                    <option value="bech32" selected>LNURL as BECH32</option>
-                    <option value="lud17">LNURL as LUD17</option>
+                    <option value="bech32" selected>LNURL in bech32 format (default)</option>
+                    <option value="lud17">LNURL in LUD17 format (raw)</option>
                 </select>
             </div>
             <div>
