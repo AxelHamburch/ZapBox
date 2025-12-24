@@ -172,6 +172,40 @@ Set Multi-Channel-Control Mode in Web Installer:
 
 **Use Cases**: Vending machines, multi-product payment terminals, flexible product offerings
 
+#### BTC-Ticker with Currency Display
+**Available on all variants**
+
+Real-time Bitcoin price and block height display with configurable visibility modes:
+
+**Features:**
+- **Bitcoin Price**: Live price in configurable currency (e.g., USD, EUR, GBP)
+- **Block Height**: Current blockchain block height from mempool.space
+- **Bitcoin Logo**: 64x64 pixel logo displayed on ticker screen
+- **Currency Selection**: ISO code input (max. 3 characters, automatically uppercase)
+- **Auto-Refresh**: Updates automatically after WiFi/Internet recovery
+- **Three Display Modes**:
+  - **OFF**: No ticker display
+    - Duo/Quattro: Shows product selection screen instead
+    - Single: Shows only QR code (no ticker, no product selection)
+  - **ON - always**: Ticker always visible (default behavior)
+    - Ticker overlays all the time
+    - Navigate with NEXT/swipe shows products temporarily
+    - Returns to ticker after 10 seconds
+  - **ON - when selecting**: Ticker appears only during navigation
+    - Single: Ticker visible for 15 seconds after NEXT/swipe press, then returns to QR
+    - Duo/Quattro: Product selection → products → ticker at end of cycle (no loop back to first)
+
+**Configuration:**
+Set BTC-Ticker mode and currency in Web Installer:
+- Mode: `off`, `always`, or `selecting`
+- Currency: Any 3-letter ISO code (e.g., `USD`, `EUR`, `GBP`, `JPY`, `CHF`)
+
+**Data Sources:**
+- Price API: CoinGecko (supports 50+ currencies)
+- Block Height: mempool.space
+
+**Use Cases**: Bitcoin payment terminals, price information displays, educational demonstrations
+
 #### Special Modes
 Control relay switching patterns beyond simple on/off:
 - **Standard**: Simple on/off (default)
