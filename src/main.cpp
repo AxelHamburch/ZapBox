@@ -99,6 +99,7 @@ byte currentErrorType = 0; // 0=none, 1=WiFi (highest), 2=Internet, 3=Server, 4=
 unsigned long lastPingTime = 0;
 unsigned long lastInternetCheck = 0; // Track when we last checked Internet connectivity
 byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures to detect Internet issues
+bool needsQRRedraw = false; // Flag to trigger QR redraw after WiFi recovery
 
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
@@ -1184,147 +1185,50 @@ bool checkServerReachability()
 
 void checkAndReconnectWiFi()
 {
+  // Simplified version - just show error screen, don't block
   if (WiFi.status() != WL_CONNECTED && !inConfigMode)
   {
-    Serial.println("WiFi connection lost! Reconnecting...");
+    Serial.println("WiFi connection lost!");
     if (wifiErrorCount < 99) wifiErrorCount++;
     Serial.printf("[ERROR] WiFi error count: %d\n", wifiErrorCount);
-    onErrorScreen = true;
-    currentErrorType = 1; // WiFi error (highest priority)
-    wifiReconnectScreen();
     
-    // Keep trying to reconnect forever (unless config mode is triggered)
-    while (WiFi.status() != WL_CONNECTED && !inConfigMode)
-    {
+    if (!onErrorScreen) {
+      // Only show error screen if not already showing one
+      onErrorScreen = true;
+      currentErrorType = 1; // WiFi error (highest priority)
+      wifiReconnectScreen();
+    }
+    
+    // Start WiFi reconnect but don't block waiting for it
+    if (!wifiConfirmed) {
+      // First time - configure WiFi
       WiFi.disconnect();
-      vTaskDelay(pdMS_TO_TICKS(50)); // Brief delay for button task
-      
-      WiFi.mode(WIFI_STA); // Ensure Station mode
-      WiFi.setSleep(false); // Disable WiFi power saving
-      WiFi.setAutoReconnect(true); // Enable auto-reconnect
+      delay(50);
+      WiFi.mode(WIFI_STA);
+      WiFi.setSleep(false);
+      WiFi.setAutoReconnect(true);
       WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
       WiFi.begin(ssid.c_str(), wifiPassword.c_str());
-      
-      unsigned long reconnectStartTime = millis();
-      unsigned long lastDotTime = millis();
-      while (WiFi.status() != WL_CONNECTED && (millis() - reconnectStartTime) < 10000 && !inConfigMode)
-      {
-        // If Help or Report button pressed, wait for them to finish
-        if (inHelpMode || inReportMode) {
-          Serial.println("\nButton pressed, pausing WiFi reconnect...");
-          while (inHelpMode || inReportMode) {
-            vTaskDelay(pdMS_TO_TICKS(100)); // Wait for button action to complete
-          }
-          Serial.println("Button action complete, resuming WiFi reconnect");
-          // Reset timer after button action
-          reconnectStartTime = millis();
-          lastDotTime = millis();
-        }
-        
-        vTaskDelay(pdMS_TO_TICKS(100)); // Allow button task to run
-        
-        // Print dot every 500ms
-        if (millis() - lastDotTime >= 500) {
-          Serial.print(".");
-          lastDotTime = millis();
-        }
-      }
-      
-      // Check if config mode was triggered during wait
-      if (inConfigMode) {
-        Serial.println("\nConfig mode triggered during WiFi reconnect");
-        break;
-      }
-      
-      if (WiFi.status() == WL_CONNECTED)
-      {
-        Serial.println("\nWiFi reconnected!");
-        wifiConfirmed = true; // Confirm WiFi
-        
-        // IMPORTANT: Check if Internet is still available
-        Serial.println("[RECOVERY] Checking Internet after WiFi reconnect...");
-        bool hasInternet = checkInternetConnectivity();
-        
-        if (!hasInternet) {
-          // Internet still down - show Internet error
-          Serial.println("[RECOVERY] Internet still down!");
-          internetReconnectScreen();
-          onErrorScreen = true;
-          currentErrorType = 2; // Internet error
-          internetConfirmed = false; // Clear Internet confirmation
-          break; // Exit WiFi reconnect loop but keep error screen
-        }
-        
-        // Internet OK - check Server
-        Serial.println("[RECOVERY] Internet OK, checking Server...");
-        internetConfirmed = true; // Confirm Internet
-        bool serverReachable = checkServerReachability();
-        
-        if (!serverReachable) {
-          // Server still down - show Server error
-          Serial.println("[RECOVERY] Server still down!");
-          serverReconnectScreen();
-          onErrorScreen = true;
-          currentErrorType = 3; // Server error
-          serverConfirmed = false; // Clear Server confirmation
-          // Try to connect WebSocket anyway (will fail but that's expected)
-        } else {
-          // Server OK - reconnect WebSocket
-          Serial.println("[RECOVERY] Server OK, reconnecting WebSocket...");
-          serverConfirmed = true; // Confirm Server
-          // Don't clear error yet - wait for WebSocket confirmation
-          websocketReconnectScreen();
-          onErrorScreen = true;
-          currentErrorType = 4; // WebSocket error (will be cleared on connect)
-        }
-        
-        // Reconnect WebSocket after WiFi is back
-        webSocket.disconnect();
-        vTaskDelay(pdMS_TO_TICKS(100));
-        if (thresholdKey.length() > 0) {
-          webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + thresholdKey);
-        } else {
-          webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
-        }
-        
-        // Wait up to 5 seconds for WebSocket to connect
-        Serial.println("[RECOVERY] Waiting for WebSocket connection...");
-        int wsWaitCount = 0;
-        while (!webSocket.isConnected() && wsWaitCount < 50) { // 50 * 100ms = 5 seconds
-          webSocket.loop(); // Process WebSocket events
-          vTaskDelay(pdMS_TO_TICKS(100));
-          wsWaitCount++;
-          if (wsWaitCount % 10 == 0) {
-            Serial.printf("[RECOVERY] Waiting... (%d/50)\n", wsWaitCount);
-          }
-        }
-        
-        if (webSocket.isConnected()) {
-          Serial.println("[RECOVERY] WebSocket reconnected successfully!");
-          websocketConfirmed = true; // Confirm WebSocket connection
-          onErrorScreen = false; // Clear error screen
-          currentErrorType = 0; // No error
-          
-          // Redraw QR screen immediately after successful recovery
-          Serial.println("[RECOVERY] Redrawing QR screen after WiFi recovery");
-          redrawQRScreen();
-          
-          // Reset product selection timer so it shows after 5 seconds
-          productSelectionShowTime = millis();
-          Serial.println("[RECOVERY] Product selection timer reset");
-        } else {
-          Serial.println("[RECOVERY] WebSocket connection timeout after 5 seconds");
-          if (websocketErrorCount < 99) websocketErrorCount++;
-          // Keep showing WebSocket error screen
-        }
-        
-        break;
-      }
-      else
-      {
-        Serial.println("\nRetrying WiFi connection...");
-        vTaskDelay(pdMS_TO_TICKS(100)); // Brief delay before next attempt
-      }
+      Serial.println("[RECOVERY] WiFi reconnection started (non-blocking)");
+    }
+    // If WiFi was confirmed before, auto-reconnect will handle it
+  }
+  else if (WiFi.status() == WL_CONNECTED && wifiErrorCount > 0 && onErrorScreen && currentErrorType == 1)
+  {
+    // WiFi recovered while on error screen
+    Serial.println("[RECOVERY] WiFi recovered!");
+    wifiConfirmed = true;
+    onErrorScreen = false;
+    currentErrorType = 0;
+    needsQRRedraw = true;
+    lastActivityTime = millis();
+    productSelectionShowTime = millis();
+    
+    // Force BTC data refresh after WiFi recovery
+    if (btcTickerMode != "off") {
+      Serial.println("[RECOVERY] Forcing BTC data refresh after WiFi recovery");
+      lastBtcUpdate = 0; // Force immediate update
+      fetchBitcoinData(); // Fetch data now
     }
   }
 }
@@ -1527,8 +1431,20 @@ void handleTouchButton()
     // - Horizontal (rotation=1): Button at RIGHT of display → STILL Y > 305 (not X!)
     bool inButtonArea = (touchY > 305);
     
-    // Ignore touches outside button area
+    // FIRST: Wake from screensaver if active (regardless of touch location)
+    if (screensaverActive) {
+      Serial.printf("[TOUCH] Display touched at X=%d, Y=%d during screensaver - WAKING UP\n", touchX, touchY);
+      screensaverActive = false;
+      deactivateScreensaver();
+      lastWakeUpTime = millis();
+      lastActivityTime = millis();
+      // Don't process button click, just wake up
+      return;
+    }
+    
+    // If not in button area, update activity timer but don't process as button click
     if (!inButtonArea) {
+      lastActivityTime = millis();
       return;
     }
     
@@ -1846,10 +1762,9 @@ void setup()
       if (ssid.length() == 0) {
         configMode();
         return;
-      } else {
-        checkAndReconnectWiFi();
-        return;
       }
+      // Don't call checkAndReconnectWiFi here - it will be called below
+      // This allows the loop to continue and handle touch/buttons
     } else if (!internetConfirmed) {
       Serial.println("[STARTUP] Internet failed - showing Internet error");
       internetReconnectScreen();
@@ -1966,12 +1881,23 @@ void loop()
   }
   
   checkAndReconnectWiFi();
+  Serial.println("[DEBUG] Returned from checkAndReconnectWiFi()");
   if (inConfigMode) return; // Exit if we entered config mode
+  
+  // Handle QR redraw after WiFi recovery (outside of deep call stack)
+  if (needsQRRedraw) {
+    Serial.println("[RECOVERY] Redrawing QR screen after WiFi recovery");
+    redrawQRScreen();
+    needsQRRedraw = false;
+    Serial.println("[RECOVERY] QR screen redrawn successfully");
+  }
 
   payloadStr = "";
+  Serial.println("[DEBUG] About to check connections...");
   
   // CRITICAL: Only show QR screen ONCE on first loop if ALL connections confirmed
   bool allConnectionsConfirmed = wifiConfirmed && internetConfirmed && serverConfirmed && websocketConfirmed;
+  Serial.printf("[DEBUG] allConnectionsConfirmed: %d, firstLoop: %d\n", allConnectionsConfirmed, firstLoop);
   
   if (firstLoop && allConnectionsConfirmed && !inReportMode && !(lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS)) {
     Serial.println("[SCREEN] All connections confirmed - Showing QR code screen (READY FOR ACTION)");
@@ -2053,8 +1979,20 @@ void loop()
   lastPongTime = millis();
   waitingForPong = false;
   
+  // Debug counter for loop iterations
+  static unsigned long loopIterations = 0;
+  static unsigned long lastLoopDebugPrint = 0;
+  
   while (paid == false)
   {
+    loopIterations++;
+    
+    // Print debug info every 10 seconds
+    if (millis() - lastLoopDebugPrint > 10000) {
+      Serial.printf("[LOOP_DEBUG] Iterations: %lu, touchAvailable: %d, inConfigMode: %d, onErrorScreen: %d\n", 
+                    loopIterations, touchAvailable, inConfigMode, onErrorScreen);
+      lastLoopDebugPrint = millis();
+    }
     // Check if config mode was triggered during payment wait
     if (inConfigMode)
     {
@@ -2062,13 +2000,35 @@ void loop()
       return;
     }
     
-    // Check for touch input (if available and not on error screen)
+    // Check for touch input (if available)
     static unsigned long lastTouchEvent = 0;
     static bool wasTouched = false;
     static bool actionExecutedThisTouch = false; // Track if action already executed for current touch
     static unsigned long lastActionTime = 0; // Track when last action was executed for debouncing
+    static unsigned long lastTouchDebugPrint = 0;
     
-    if (touchAvailable && !onErrorScreen && !inConfigMode) {
+    if (touchAvailable && !inConfigMode) {
+      // FIRST: Check touch interrupt for screensaver wake-up (even if no new data available)
+      // This ensures we can wake from screensaver by touching anywhere on the screen
+      int touchIntState = digitalRead(PIN_TOUCH_INT);
+      
+      // Debug: Print touch interrupt state every 5 seconds during screensaver
+      if (screensaverActive && (millis() - lastTouchDebugPrint > 5000)) {
+        Serial.printf("[TOUCH_DEBUG] Screensaver active, PIN_TOUCH_INT=%d\n", touchIntState);
+        lastTouchDebugPrint = millis();
+      }
+      
+      if (touchIntState == LOW && screensaverActive) {
+        Serial.println("[TOUCH] Touch interrupt detected during screensaver - WAKING UP");
+        screensaverActive = false;
+        deactivateScreensaver();
+        lastWakeUpTime = millis();
+        lastActivityTime = millis();
+        // Give touch controller time to process and continue to next iteration
+        vTaskDelay(pdMS_TO_TICKS(50));
+        continue;
+      }
+      
       // Check for actual touch event
       // Note: Minimal debouncing for main area, button has its own 20ms debounce
       if (touch.available() && (millis() - lastTouchEvent > 10)) {
@@ -2102,6 +2062,23 @@ void loop()
           else if (gesture == GESTURE_SINGLE_CLICK) Serial.print(" (SINGLE CLICK)");
           else if (gesture == GESTURE_DOUBLE_CLICK) Serial.print(" (DOUBLE CLICK)");
           Serial.println();
+        }
+        
+        // SPECIAL: If on error screen, wake from screensaver but don't allow navigation
+        if (onErrorScreen) {
+          Serial.println("[TOUCH] Touch detected on error screen");
+          // Wake from screensaver if active
+          if (screensaverActive) {
+            Serial.println("[TOUCH] Waking from screensaver (error screen)");
+            screensaverActive = false;
+            deactivateScreensaver();
+            lastWakeUpTime = millis();
+          }
+          // Update activity timer to prevent screensaver from activating again
+          lastActivityTime = millis();
+          lastTouchEvent = millis();
+          wasTouched = isTouched;
+          continue; // Don't process navigation on error screen
         }
         
         // Handle touch on product selection screen OR Bitcoin ticker (selecting/always) OR Single mode QR with selecting
