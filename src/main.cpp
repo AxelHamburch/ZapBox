@@ -559,12 +559,22 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
   
   pinMode(pin, OUTPUT);
   
+  // If Single mode (multiControl == "off") and pin is 12, also prepare pin 13
+  bool parallelPin13 = (multiControl == "off" && pin == 12);
+  if (parallelPin13) {
+    pinMode(13, OUTPUT);
+    Serial.println("[SPECIAL] Pin 13 will be controlled in parallel to Pin 12 (Single mode)");
+  }
+  
   // Execute cycles until duration is reached
   while (elapsed < duration_ms) {
     // Check for config mode interrupt
     if (inConfigMode) {
       Serial.println("[SPECIAL] Interrupted by config mode");
       digitalWrite(pin, LOW);
+      if (parallelPin13) {
+        digitalWrite(13, LOW);
+      }
       break;
     }
     
@@ -572,11 +582,17 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     
     // PIN HIGH
     digitalWrite(pin, HIGH);
+    if (parallelPin13) {
+      digitalWrite(13, HIGH);
+    }
     Serial.printf("[SPECIAL] Cycle %d: Pin HIGH\n", cycleCount);
     delay(onTime_ms);
     
     // PIN LOW
     digitalWrite(pin, LOW);
+    if (parallelPin13) {
+      digitalWrite(13, LOW);
+    }
     Serial.printf("[SPECIAL] Cycle %d: Pin LOW\n", cycleCount);
     delay(offTime_ms);
     
@@ -585,6 +601,9 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
   
   // Ensure pin is LOW at the end
   digitalWrite(pin, LOW);
+  if (parallelPin13) {
+    digitalWrite(13, LOW);
+  }
   Serial.printf("[SPECIAL] Completed %d cycles in %lu ms\n", cycleCount, elapsed);
 }
 
@@ -2983,10 +3002,23 @@ void loop()
           digitalWrite(pin, HIGH);
           Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
           
+          // If Single mode (multiControl == "off") and pin is 12, also control pin 13 in parallel
+          if (multiControl == "off" && pin == 12) {
+            pinMode(13, OUTPUT);
+            digitalWrite(13, HIGH);
+            Serial.println("[RELAY] Pin 13 set HIGH (parallel to Pin 12 in Single mode)");
+          }
+          
           delay(duration);
           
           digitalWrite(pin, LOW);
           Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+          
+          // Turn off pin 13 as well if it was activated
+          if (multiControl == "off" && pin == 12) {
+            digitalWrite(13, LOW);
+            Serial.println("[RELAY] Pin 13 set LOW (parallel to Pin 12 in Single mode)");
+          }
         }
         
         thankYouScreen();

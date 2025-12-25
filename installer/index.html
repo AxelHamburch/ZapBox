@@ -274,16 +274,17 @@
                 <div>
                     <label for="thresholdKey">Threshold Mode - Wallet Invoice/Read Key</label>
                     <input type="text" name="thresholdKey" id="thresholdKey" placeholder="e.g. c9e68ab036.." autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">leave empty for normal mode</p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">leave empty for normal mode (default)</p>
                 </div>
                 <div>
                     <label for="thresholdAmount">Threshold value in satoshi</label>
-                    <input type="number" name="thresholdAmount" id="thresholdAmount" placeholder="e.g. 2100" autocomplete="off">
+                    <input type="number" name="thresholdAmount" id="thresholdAmount" placeholder="e.g. 21" autocomplete="off">
                     <p style="margin: -13px 0 0 0; font-size: 11px; color: transparent; font-style: italic; user-select: none;">placeholder</p>
                 </div>
                 <div>
                     <label for="thresholdPin">GPIO pin to be controlled</label>
-                    <input type="number" name="thresholdPin" id="thresholdPin" placeholder="e.g. 12" autocomplete="off">
+                    <input type="number" name="thresholdPin" id="thresholdPin" placeholder="e.g. 12" value="12" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">12 (default)</p>
                 </div>
                 <div>
                     <label for="thresholdTime">Control time for GPIO pin (ms)</label>
