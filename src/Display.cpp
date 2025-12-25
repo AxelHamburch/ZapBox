@@ -776,7 +776,6 @@ void showThresholdQRScreen()
     if (orientation == "h") {
       tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
     } else {
-      tft.setTextSize(1); // Smaller font for hi
       tft.drawString("HELP", 5, 163, GFXFF); // Bottom left for hi
     }
   }
@@ -939,7 +938,6 @@ void showProductQRScreen(String label, int pin)
         tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom right
       } else {
         // hi: Mirror positions to left side AND swap top/bottom
-        tft.setTextSize(1); // Smaller font for hi
         tft.drawString("HELP", 5, 163, GFXFF); // Bottom left
         tft.drawString("NEXT", 5, 9, GFXFF); // Top left
       }
