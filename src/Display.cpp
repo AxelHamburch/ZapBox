@@ -973,9 +973,9 @@ void productSelectionScreen()
         tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
         tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side bottom
       } else {
-        // vi: Mirror positions to top
-        tft.drawString("NEXT", x + 35, 5, GFXFF); // Right side top
+        // vi: Mirror positions to top AND swap sides (180° rotation)
         tft.drawString("HELP", 5, 5, GFXFF); // Left side top
+        tft.drawString("NEXT", x + 35, 5, GFXFF); // Right side top
       }
     }
     
@@ -1015,9 +1015,9 @@ void productSelectionScreen()
         tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
         tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom right
       } else {
-        // hi: Mirror positions to left side (beside QR code)
-        tft.drawString("NEXT", 5, 9, GFXFF); // Top left
+        // hi: Mirror positions to left side AND swap top/bottom (180° rotation)
         tft.drawString("HELP", 5, 163, GFXFF); // Bottom left
+        tft.drawString("NEXT", 5, 9, GFXFF); // Top left
       }
     }
   }
