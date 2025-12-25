@@ -718,9 +718,17 @@ void drawQRCode()
     offsetX = 17;
   }
   
+  // Shift QR code 7 pixels down for vertical inverse only
+  if (orientation == "vi") {
+    offsetY = 19;
+  }
+  
   QRCode qrcoded;
   uint8_t qrcodeData[qrcode_getBufferSize(20)];
   qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightning);
+
+  // Smaller modules for horizontal inverse to prevent overlap with text
+  int moduleSize = (orientation == "hi") ? 2 : 3;
 
   for (uint8_t y = 0; y < qrcoded.size; y++)
   {
@@ -729,11 +737,11 @@ void drawQRCode()
     {
       if (qrcode_getModule(&qrcoded, x, y))
       {
-          tft.fillRect(offsetX + 3 * x, offsetY + 3 * y, 3, 3, themeForeground);
+          tft.fillRect(offsetX + moduleSize * x, offsetY + moduleSize * y, moduleSize, moduleSize, themeForeground);
       }
       else
       {
-          tft.fillRect(offsetX + 3 * x, offsetY + 3 * y, 3, 3, themeBackground);
+          tft.fillRect(offsetX + moduleSize * x, offsetY + moduleSize * y, moduleSize, moduleSize, themeBackground);
       }
     }
   }
@@ -747,7 +755,8 @@ void showThresholdQRScreen()
   tft.setTextColor(themeBackground);
 
   if (orientation == "v" || orientation == "vi"){
-    tft.fillRect(15, 168, 140, 132, themeForeground);
+    int boxY = (orientation == "vi") ? 175 : 168;
+    tft.fillRect(15, boxY, 140, 132, themeForeground);
     tft.drawString("READY", x - 55, y + 40, GFXFF);
     tft.drawString("4 TH", x - 55, y + 70, GFXFF);
     tft.drawString("ACTION", x - 55, y + 100, GFXFF);
@@ -756,7 +765,7 @@ void showThresholdQRScreen()
     if (orientation == "v") {
       tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
     } else {
-      tft.drawString("HELP", 5, 5, GFXFF); // Left side top for vi
+      tft.drawString("HELP", 5, 10, GFXFF); // Left side top for vi
     }
   } else {
     int boxX = (orientation == "hi") ? 173 : 168;
@@ -844,7 +853,8 @@ void showProductQRScreen(String label, int pin)
   tft.setTextColor(themeForeground);
 
   if (orientation == "v" || orientation == "vi"){
-    tft.fillRect(15, 168, 140, 132, themeForeground);
+    int boxY = (orientation == "vi") ? 175 : 168;
+    tft.fillRect(15, boxY, 140, 132, themeForeground);
     
     // Display up to 3 lines of text
     tft.setTextSize(3);
@@ -878,8 +888,8 @@ void showProductQRScreen(String label, int pin)
         tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side bottom
       } else {
         // vi: Mirror positions to top AND swap sides
-        tft.drawString("HELP", 5, 5, GFXFF); // Left side top
-        tft.drawString("NEXT", x + 35, 5, GFXFF); // Right side top
+        tft.drawString("HELP", 5, 10, GFXFF); // Left side top
+        tft.drawString("NEXT", x + 35, 10, GFXFF); // Right side top
       }
     }
   } else {
@@ -974,8 +984,8 @@ void productSelectionScreen()
         tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side bottom
       } else {
         // vi: Mirror positions to top AND swap sides (180° rotation)
-        tft.drawString("HELP", 5, 5, GFXFF); // Left side top
-        tft.drawString("NEXT", x + 35, 5, GFXFF); // Right side top
+        tft.drawString("HELP", 5, 10, GFXFF); // Left side top
+        tft.drawString("NEXT", x + 35, 10, GFXFF); // Right side top
       }
     }
     
