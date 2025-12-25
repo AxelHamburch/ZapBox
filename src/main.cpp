@@ -68,7 +68,7 @@ unsigned long activationTimeoutMs = 5 * 60 * 1000; // Default 5 minutes in milli
 bool screensaverActive = false;
 bool deepSleepActive = false;
 unsigned long lastWakeUpTime = 0;  // Track when device woke up from screensaver
-const unsigned long GRACE_PERIOD_MS = 5000;  // 5 seconds grace period after wake-up
+const unsigned long GRACE_PERIOD_MS = 1000;  // 1 second grace period after wake-up (reduced from 5s for better UX)
 
 String payloadStr;
 String lnbitsServer;
