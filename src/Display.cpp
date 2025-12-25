@@ -874,6 +874,10 @@ void productSelectionScreen()
     tft.setTextSize(4);
     tft.drawString("<->", x, y + 30, GFXFF);
     
+    // Draw instruction text
+    tft.setTextSize(2);
+    tft.drawString("use NEXT", x, y + 60, GFXFF);
+    
     // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
     
