@@ -754,9 +754,9 @@ void showThresholdQRScreen()
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     if (orientation == "v") {
-      tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side
+      tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
     } else {
-      tft.drawString("HELP", 5, y + 150, GFXFF); // Left side for vi
+      tft.drawString("HELP", 5, 5, GFXFF); // Left side top for vi
     }
   } else {
     int boxX = (orientation == "hi") ? 173 : 168;
@@ -768,9 +768,9 @@ void showThresholdQRScreen()
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     if (orientation == "h") {
-      tft.drawString("HELP", x + 110, 9, GFXFF); // Top
+      tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
     } else {
-      tft.drawString("HELP", x + 110, 163, GFXFF); // Bottom for hi
+      tft.drawString("HELP", 5, 163, GFXFF); // Bottom left for hi
     }
   }
 
@@ -874,12 +874,12 @@ void showProductQRScreen(String label, int pin)
       // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
       if (orientation == "v") {
-        tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side
-        tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side
+        tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
+        tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side bottom
       } else {
-        // vi: Mirror positions
-        tft.drawString("NEXT", x + 35, y + 150, GFXFF); // Right side
-        tft.drawString("HELP", 5, y + 150, GFXFF); // Left side
+        // vi: Mirror positions to top AND swap sides
+        tft.drawString("HELP", 5, 5, GFXFF); // Left side top
+        tft.drawString("NEXT", x + 35, 5, GFXFF); // Right side top
       }
     }
   } else {
@@ -927,12 +927,12 @@ void showProductQRScreen(String label, int pin)
       // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
       if (orientation == "h") {
-        tft.drawString("HELP", x + 110, 9, GFXFF); // Top
-        tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom
+        tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
+        tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom right
       } else {
-        // hi: Mirror positions
-        tft.drawString("NEXT", x + 110, 9, GFXFF); // Top
-        tft.drawString("HELP", x + 110, 163, GFXFF); // Bottom
+        // hi: Mirror positions to left side AND swap top/bottom
+        tft.drawString("HELP", 5, 163, GFXFF); // Bottom left
+        tft.drawString("NEXT", 5, 9, GFXFF); // Top left
       }
     }
   }
