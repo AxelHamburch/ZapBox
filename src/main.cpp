@@ -685,6 +685,12 @@ void readFiles()
     }
     Serial.println("QR Format: " + qrFormat);
 
+    // Screen orientation configuration (maRoot4)
+    // Available options:
+    // "h"  = horizontal (button right)
+    // "v"  = vertical (button bottom)
+    // "hi" = horizontal inverse (button left)
+    // "vi" = vertical inverse (button top)
     const JsonObject maRoot4 = doc[4];
     const char *maRoot4Char = maRoot4["value"];
     orientation = maRoot4Char;
@@ -1386,7 +1392,8 @@ void handleTouchButton()
         uint16_t mainTouchY = touch.getY();
         bool isMainAreaTouch = false;
         
-        if (orientation == "v") {
+        // Touch area detection based on orientation
+        if (orientation == "v" || orientation == "vi") {
           isMainAreaTouch = (mainTouchY <= 305);
         } else {
           isMainAreaTouch = (mainTouchX <= 145);

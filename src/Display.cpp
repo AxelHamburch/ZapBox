@@ -129,11 +129,25 @@ void initDisplay()
   tft.init();
   setThemeColors(); // Set theme colors based on configuration
   
+  // Screen orientation mapping:
+  // h = horizontal (button right)
+  // v = vertical (button bottom)
+  // hi = horizontal inverse (button left)
+  // vi = vertical inverse (button top)
   if (orientation == "v"){
     tft.setRotation(0);
     x = 85;
     y = 160;
+  } else if (orientation == "vi") {
+    tft.setRotation(2);
+    x = 85;
+    y = 160;
+  } else if (orientation == "hi") {
+    tft.setRotation(3);
+    x = 160;
+    y = 85;
   } else {
+    // Default: h (horizontal)
     tft.setRotation(1);
     x = 160;
     y = 85;
@@ -147,7 +161,7 @@ void startupScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.setTextSize(2);
     tft.drawString("", x + 5, y - 95, GFXFF);
     tft.setTextSize(8);
@@ -183,7 +197,7 @@ void btctickerScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     // VERTICAL LAYOUT
     // Draw Bitcoin logo (64x64) moved up by 30 pixels more
     tft.drawBitmap(x - 32, y - 135, bitcoin_logo, 64, 64, themeForeground);
@@ -297,7 +311,7 @@ void initializationScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.setTextSize(2);
     tft.drawString("", x + 5, y - 95, GFXFF);
     tft.setTextSize(8);
@@ -329,7 +343,7 @@ void bootUpScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("BOOT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -358,7 +372,7 @@ void configModeScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("CONF", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -387,7 +401,7 @@ void errorReportScreen(uint8_t wifiCount, uint8_t internetCount, uint8_t serverC
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("REPORT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -418,7 +432,7 @@ void wifiReconnectScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -447,7 +461,7 @@ void internetReconnectScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -476,7 +490,7 @@ void serverReconnectScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -502,7 +516,7 @@ void websocketReconnectScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -531,7 +545,7 @@ void stepOneScreen()
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("1", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -560,7 +574,7 @@ void stepTwoScreen()
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("2", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -589,7 +603,7 @@ void stepThreeScreen()
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("3", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -617,7 +631,7 @@ void actionTimeScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.setTextSize(10);
     tft.drawString("A", x + 5, y - 100, GFXFF);
     tft.drawString("C", x + 5, y - 45, GFXFF);
@@ -640,7 +654,7 @@ void thankYouScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.drawString("ty", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -698,7 +712,7 @@ void showThresholdQRScreen()
   tft.setTextSize(3);
   tft.setTextColor(themeBackground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.fillRect(15, 168, 140, 132, themeForeground);
     tft.drawString("READY", x - 55, y + 40, GFXFF);
     tft.drawString("4 TH", x - 55, y + 70, GFXFF);
@@ -785,7 +799,7 @@ void showProductQRScreen(String label, int pin)
   tft.setTextDatum(ML_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     tft.fillRect(15, 168, 140, 132, themeForeground);
     
     // Display up to 3 lines of text
@@ -864,7 +878,7 @@ void productSelectionScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v"){
+  if (orientation == "v" || orientation == "vi"){
     // Vertical orientation
     tft.setTextSize(2);
     tft.drawString("SELECT", x, y - 40, GFXFF);
