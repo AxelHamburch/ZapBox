@@ -252,12 +252,12 @@ void btctickerScreen()
       // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
       if (orientation == "v") {
-        tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side
-        tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side
+        tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
+        tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side bottom
       } else {
-        // vi: Mirror positions
-        tft.drawString("NEXT", x + 35, y + 150, GFXFF); // Right side
-        tft.drawString("HELP", 5, y + 150, GFXFF); // Left side
+        // vi: Mirror positions to top AND swap sides
+        tft.drawString("HELP", 5, 10, GFXFF); // Left side top
+        tft.drawString("NEXT", x + 35, 10, GFXFF); // Right side top
       }
     }
   } else {
@@ -318,12 +318,12 @@ void btctickerScreen()
       // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
       if (orientation == "h") {
-        tft.drawString("HELP", x + 110, 9, GFXFF); // Top
-        tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom
+        tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
+        tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom right
       } else {
-        // hi: Mirror positions
-        tft.drawString("NEXT", x + 110, 9, GFXFF); // Top
-        tft.drawString("HELP", x + 110, 163, GFXFF); // Bottom
+        // hi: Mirror positions to left side AND swap top/bottom
+        tft.drawString("HELP", 5, 163, GFXFF); // Bottom left
+        tft.drawString("NEXT", 5, 9, GFXFF); // Top left
       }
     }
   }
@@ -727,9 +727,6 @@ void drawQRCode()
   uint8_t qrcodeData[qrcode_getBufferSize(20)];
   qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightning);
 
-  // Smaller modules for horizontal inverse to prevent overlap with text
-  int moduleSize = (orientation == "hi") ? 2 : 3;
-
   for (uint8_t y = 0; y < qrcoded.size; y++)
   {
     // Each horizontal module
@@ -737,11 +734,11 @@ void drawQRCode()
     {
       if (qrcode_getModule(&qrcoded, x, y))
       {
-          tft.fillRect(offsetX + moduleSize * x, offsetY + moduleSize * y, moduleSize, moduleSize, themeForeground);
+          tft.fillRect(offsetX + 3 * x, offsetY + 3 * y, 3, 3, themeForeground);
       }
       else
       {
-          tft.fillRect(offsetX + moduleSize * x, offsetY + moduleSize * y, moduleSize, moduleSize, themeBackground);
+          tft.fillRect(offsetX + 3 * x, offsetY + 3 * y, 3, 3, themeBackground);
       }
     }
   }
