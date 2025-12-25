@@ -241,14 +241,24 @@ void btctickerScreen()
     tft.setTextColor(themeForeground);
     
     if (touchAvailable) {
-      // Touch version: HELP centered on bottom
+      // Touch version: HELP centered on bottom/top depending on orientation
       tft.setTextDatum(MC_DATUM);
-      tft.drawString("HELP", x + 2, 312, GFXFF);
+      if (orientation == "v") {
+        tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
+      } else {
+        tft.drawString("HELP", x + 2, 8, GFXFF); // Top (button at top for vi)
+      }
     } else {
-      // Non-touch version: HELP on right, NEXT on left
+      // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
-      tft.drawString("HELP", x + 35, y + 150, GFXFF);
-      tft.drawString("NEXT", 5, y + 150, GFXFF);
+      if (orientation == "v") {
+        tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side
+        tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side
+      } else {
+        // vi: Mirror positions
+        tft.drawString("NEXT", x + 35, y + 150, GFXFF); // Right side
+        tft.drawString("HELP", 5, y + 150, GFXFF); // Left side
+      }
     }
   } else {
     // HORIZONTAL LAYOUT
@@ -289,17 +299,32 @@ void btctickerScreen()
     // Button labels - different layout for touch vs non-touch
     
     if (touchAvailable) {
-      // Touch version: HELP as vertical stacked letters on right side
+      // Touch version: HELP as vertical stacked letters on right/left side
       tft.setTextDatum(MC_DATUM);
-      tft.drawString("H", 311, y - 30, GFXFF);
-      tft.drawString("E", 311, y - 10, GFXFF);
-      tft.drawString("L", 311, y + 10, GFXFF);
-      tft.drawString("P", 311, y + 30, GFXFF);
+      if (orientation == "h") {
+        // Right side (button at right)
+        tft.drawString("H", 311, y - 30, GFXFF);
+        tft.drawString("E", 311, y - 10, GFXFF);
+        tft.drawString("L", 311, y + 10, GFXFF);
+        tft.drawString("P", 311, y + 30, GFXFF);
+      } else {
+        // Left side (button at left for hi)
+        tft.drawString("H", 9, y - 30, GFXFF);
+        tft.drawString("E", 9, y - 10, GFXFF);
+        tft.drawString("L", 9, y + 10, GFXFF);
+        tft.drawString("P", 9, y + 30, GFXFF);
+      }
     } else {
-      // Non-touch version: HELP on top, NEXT on bottom
+      // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
-      tft.drawString("HELP", x + 110, 9, GFXFF);
-      tft.drawString("NEXT", x + 110, 163, GFXFF);
+      if (orientation == "h") {
+        tft.drawString("HELP", x + 110, 9, GFXFF); // Top
+        tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom
+      } else {
+        // hi: Mirror positions
+        tft.drawString("NEXT", x + 110, 9, GFXFF); // Top
+        tft.drawString("HELP", x + 110, 163, GFXFF); // Bottom
+      }
     }
   }
 }
@@ -719,7 +744,11 @@ void showThresholdQRScreen()
     tft.drawString("ACTION", x - 55, y + 100, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
-    tft.drawString("HELP", x + 35, y + 150, GFXFF);
+    if (orientation == "v") {
+      tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side
+    } else {
+      tft.drawString("HELP", 5, y + 150, GFXFF); // Left side for vi
+    }
   } else {
     tft.fillRect(168, 18, 140, 135, themeForeground);
     tft.drawString("READY", x + 20, y - 30, GFXFF);
@@ -727,7 +756,11 @@ void showThresholdQRScreen()
     tft.drawString("ACTION", x + 20, y + 30, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
-    tft.drawString("HELP", x + 110, 9, GFXFF);
+    if (orientation == "h") {
+      tft.drawString("HELP", x + 110, 9, GFXFF); // Top
+    } else {
+      tft.drawString("HELP", x + 110, 163, GFXFF); // Bottom for hi
+    }
   }
 
   drawQRCode();
@@ -823,14 +856,24 @@ void showProductQRScreen(String label, int pin)
     tft.setTextColor(themeForeground);
     
     if (touchAvailable) {
-      // Touch version: HELP centered on bottom (short side middle, where touch button is)
+      // Touch version: HELP centered on bottom/top depending on orientation
       tft.setTextDatum(MC_DATUM);
-      tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom center, moved down to avoid overlap
+      if (orientation == "v") {
+        tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
+      } else {
+        tft.drawString("HELP", x + 2, 8, GFXFF); // Top (button at top for vi)
+      }
     } else {
-      // Non-touch version: HELP on right, NEXT on left (where physical buttons are)
+      // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
-      tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side
-      tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side
+      if (orientation == "v") {
+        tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side
+        tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side
+      } else {
+        // vi: Mirror positions
+        tft.drawString("NEXT", x + 35, y + 150, GFXFF); // Right side
+        tft.drawString("HELP", 5, y + 150, GFXFF); // Left side
+      }
     }
   } else {
     tft.fillRect(163, 18, 137, 135, themeForeground); // 2 pixels wider for better product text display
@@ -856,17 +899,32 @@ void showProductQRScreen(String label, int pin)
     tft.setTextColor(themeForeground);
     
     if (touchAvailable) {
-      // Touch version: HELP as vertical stacked letters on right side (where touch button is)
+      // Touch version: HELP as vertical stacked letters on right/left side
       tft.setTextDatum(MC_DATUM);
-      tft.drawString("H", 311, y - 30, GFXFF); // Slightly back from edge for better visibility
-      tft.drawString("E", 311, y - 10, GFXFF);
-      tft.drawString("L", 311, y + 10, GFXFF);
-      tft.drawString("P", 311, y + 30, GFXFF);
+      if (orientation == "h") {
+        // Right side (button at right)
+        tft.drawString("H", 311, y - 30, GFXFF);
+        tft.drawString("E", 311, y - 10, GFXFF);
+        tft.drawString("L", 311, y + 10, GFXFF);
+        tft.drawString("P", 311, y + 30, GFXFF);
+      } else {
+        // Left side (button at left for hi)
+        tft.drawString("H", 9, y - 30, GFXFF);
+        tft.drawString("E", 9, y - 10, GFXFF);
+        tft.drawString("L", 9, y + 10, GFXFF);
+        tft.drawString("P", 9, y + 30, GFXFF);
+      }
     } else {
-      // Non-touch version: HELP on top, NEXT on bottom (where physical buttons are)
+      // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
-      tft.drawString("HELP", x + 110, 9, GFXFF); // Top
-      tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom, positioned to avoid edge
+      if (orientation == "h") {
+        tft.drawString("HELP", x + 110, 9, GFXFF); // Top
+        tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom
+      } else {
+        // hi: Mirror positions
+        tft.drawString("NEXT", x + 110, 9, GFXFF); // Top
+        tft.drawString("HELP", x + 110, 163, GFXFF); // Bottom
+      }
     }
   }
 }
@@ -896,14 +954,24 @@ void productSelectionScreen()
     tft.setTextSize(2);
     
     if (touchAvailable) {
-      // Touch version: HELP centered on bottom
+      // Touch version: HELP centered on bottom/top depending on orientation
       tft.setTextDatum(MC_DATUM);
-      tft.drawString("HELP", x + 2, 312, GFXFF);
+      if (orientation == "v") {
+        tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
+      } else {
+        tft.drawString("HELP", x + 2, 8, GFXFF); // Top (button at top for vi)
+      }
     } else {
-      // Non-touch version: HELP on right, NEXT on left
+      // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
-      tft.drawString("HELP", x + 35, y + 150, GFXFF);
-      tft.drawString("NEXT", 5, y + 150, GFXFF);
+      if (orientation == "v") {
+        tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side
+        tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side
+      } else {
+        // vi: Mirror positions
+        tft.drawString("NEXT", x + 35, y + 150, GFXFF); // Right side
+        tft.drawString("HELP", 5, y + 150, GFXFF); // Left side
+      }
     }
     
   } else {
@@ -920,17 +988,32 @@ void productSelectionScreen()
     tft.setTextSize(2);
     
     if (touchAvailable) {
-      // Touch version: HELP as vertical stacked letters on right side
+      // Touch version: HELP as vertical stacked letters on right/left side
       tft.setTextDatum(MC_DATUM);
-      tft.drawString("H", 311, y - 30, GFXFF);
-      tft.drawString("E", 311, y - 10, GFXFF);
-      tft.drawString("L", 311, y + 10, GFXFF);
-      tft.drawString("P", 311, y + 30, GFXFF);
+      if (orientation == "h") {
+        // Right side (button at right)
+        tft.drawString("H", 311, y - 30, GFXFF);
+        tft.drawString("E", 311, y - 10, GFXFF);
+        tft.drawString("L", 311, y + 10, GFXFF);
+        tft.drawString("P", 311, y + 30, GFXFF);
+      } else {
+        // Left side (button at left for hi)
+        tft.drawString("H", 9, y - 30, GFXFF);
+        tft.drawString("E", 9, y - 10, GFXFF);
+        tft.drawString("L", 9, y + 10, GFXFF);
+        tft.drawString("P", 9, y + 30, GFXFF);
+      }
     } else {
-      // Non-touch version: HELP on top, NEXT on bottom
+      // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
-      tft.drawString("HELP", x + 110, 9, GFXFF);
-      tft.drawString("NEXT", x + 110, 163, GFXFF);
+      if (orientation == "h") {
+        tft.drawString("HELP", x + 110, 9, GFXFF); // Top
+        tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom
+      } else {
+        // hi: Mirror positions
+        tft.drawString("NEXT", x + 110, 9, GFXFF); // Top
+        tft.drawString("HELP", x + 110, 163, GFXFF); // Bottom
+      }
     }
   }
 }
