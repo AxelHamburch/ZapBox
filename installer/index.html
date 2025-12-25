@@ -197,7 +197,7 @@
                 <div>
                     <label for="specialMode">Special Mode</label>
                     <select name="specialMode" id="specialMode">
-                        <option value="standard" selected>Standard (simple on/off)</option>
+                        <option value="standard" selected>Standard (simple on/off - default)</option>
                         <option value="blink">Blink (1 Hz, 1:1)</option>
                         <option value="pulse">Pulse (2 Hz, 1:4)</option>
                         <option value="fast-blink">Strobe (5 Hz, 1:1)</option>
@@ -226,7 +226,7 @@
                 <div>
                     <label for="multiControl">Multi-Channel-Control Mode</label>
                     <select name="multiControl" id="multiControl">
-                        <option value="off" selected>Single (default)</option>
+                        <option value="off" selected>Single (1 channel - default)</option>
                         <option value="duo">Duo (2 channels)</option>
                         <option value="quattro">Quattro (4 channels)</option>
                     </select>
@@ -248,8 +248,8 @@
                     <label for="btcTicker">BTC-Ticker Mode</label>
                     <select name="btcTicker" id="btcTicker">
                         <option value="off">OFF</option>
-                        <option value="always" selected>ON - always</option>
-                        <option value="selecting">ON - when selecting</option>
+                        <option value="always">ON - always</option>
+                        <option value="selecting" selected>ON - when selecting (default)</option>
                     </select>
                     <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Control when Bitcoin price/block info is shown</p>
                 </div>
@@ -309,14 +309,14 @@
                 <div>
                     <label for="screensaver">Screensaver</label>
                     <select name="screensaver" id="screensaver">
-                        <option value="off" selected>OFF</option>
+                        <option value="off" selected>OFF (default)</option>
                         <option value="backlight">ON (backlight off)</option>
                     </select>
                 </div>
                 <div>
                     <label for="deepSleep">Deep sleep</label>
                     <select name="deepSleep" id="deepSleep">
-                        <option value="off" selected>OFF</option>
+                        <option value="off" selected>OFF (default)</option>
                         <option value="light">ON (light, power consumption: ~3-5mA)</option>
                         <option value="freeze">ON (freeze, power consumption: ~0.01-0.15mA)</option>
                     </select>
@@ -502,7 +502,7 @@
             },
             {
                 "name": "btcTicker",
-                "value": "always"
+                "value": "selecting"
             },
             {
                 "name": "currency",
