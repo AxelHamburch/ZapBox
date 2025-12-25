@@ -100,6 +100,8 @@ unsigned long lastPingTime = 0;
 unsigned long lastInternetCheck = 0; // Track when we last checked Internet connectivity
 byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures to detect Internet issues
 bool needsQRRedraw = false; // Flag to trigger QR redraw after WiFi recovery
+bool gestureHandledThisTouch = false; // Track if gesture was already handled in current touch session
+unsigned long lastNavigationTime = 0; // Track time of last navigation for timeout-based reset
 
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
@@ -438,6 +440,12 @@ bool wakeFromPowerSavingMode() {
   if (lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS) {
     Serial.println("[WAKE] Ignored - in grace period after wake-up");
     return true; // Indicate we're in grace period
+  }
+  
+  // Clear wake-up timestamp once grace period has passed - allows subsequent touches to navigate normally
+  if (lastWakeUpTime > 0) {
+    Serial.println("[WAKE] Grace period expired, resuming normal operation");
+    lastWakeUpTime = 0;
   }
   
   // Reset activity timer
@@ -1287,36 +1295,55 @@ void reportMode()
   productSelectionShowTime = 0;
   onProductSelectionScreen = false;
   
+  Serial.println("[REPORT] Showing error report screen");
   errorReportScreen(wifiErrorCount, internetErrorCount, serverErrorCount, websocketErrorCount);
+  Serial.println("[REPORT] Error report shown, waiting 2s");
   vTaskDelay(pdMS_TO_TICKS(2000)); // First screen: 2 seconds
+  
+  Serial.println("[REPORT] Showing WiFi screen");
   wifiReconnectScreen();
   vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second
+  
+  Serial.println("[REPORT] Showing Internet screen");
   internetReconnectScreen();
   vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second
+  
+  Serial.println("[REPORT] Showing Server screen");
   serverReconnectScreen();
   vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second
+  
+  Serial.println("[REPORT] Showing WebSocket screen");
   websocketReconnectScreen();
   vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second
   
+  Serial.println("[REPORT] Determining final screen to show");
   // Show appropriate screen based on current error state
   if (onErrorScreen) {
     // Check which error is active and show corresponding screen (priority order)
+    Serial.printf("[REPORT] Error active (type %d) - showing error screen\n", currentErrorType);
     if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("[REPORT] WiFi down - showing WiFi screen");
       wifiReconnectScreen();
     } else if (!checkInternetConnectivity()) {
+      Serial.println("[REPORT] Internet down - showing Internet screen");
       internetReconnectScreen();
     } else if (waitingForPong && (millis() - lastPingTime > 10000)) {
+      Serial.println("[REPORT] Server down - showing Server screen");
       serverReconnectScreen();
     } else if (!webSocket.isConnected()) {
+      Serial.println("[REPORT] WebSocket down - showing WebSocket screen");
       websocketReconnectScreen();
     }
   } else {
     // No error active, show QR screen
+    Serial.println("[REPORT] No errors - showing QR screen");
     redrawQRScreen();
+    Serial.println("[REPORT] QR screen drawn successfully");
     // Reset product selection timer
     productSelectionShowTime = millis();
   }
   
+  Serial.println("[REPORT] Report mode complete, clearing flag");
   inReportMode = false; // Clear flag AFTER showing final screen
 }
 
@@ -2160,24 +2187,24 @@ void loop()
           }
           
           if (navigateBack) {
-            Serial.printf("[TOUCH] >>> %s - ", actionName.c_str());
+            // Hybrid approach: Session-based + timeout fallback (same as product navigation)
+            // - Prevents continuous triggering when holding finger (session control)
+            // - Allows fast consecutive swipes with finger-lift between (timeout reset)
+            unsigned long now = millis();
+            bool timeoutExpired = (now - lastNavigationTime >= 500); // 500ms timeout for new swipe
             
-            // Debounce logic for all touch-based navigation (Single/Duo/Quattro)
-            // If action already executed for this touch, skip
-            if (actionExecutedThisTouch && isTouched) {
-              Serial.println("Action already executed for this touch cycle, skipping");
+            if (!gestureHandledThisTouch || timeoutExpired) {
+              Serial.printf("[TOUCH] >>> %s - ", actionName.c_str());
+              if (timeoutExpired && gestureHandledThisTouch) {
+                Serial.printf("(timeout reset after %lu ms) - ", now - lastNavigationTime);
+              }
+              gestureHandledThisTouch = true; // Mark gesture as handled
+              lastNavigationTime = now; // Update navigation timestamp
+            } else {
+              Serial.printf("[TOUCH] >>> %s IGNORED (only %lu ms since last navigation)\n", actionName.c_str(), now - lastNavigationTime);
               wasTouched = isTouched;
               continue;
             }
-            // Debounce: Prevent action if less than 300ms since last action
-            if (millis() - lastActionTime < 300) {
-              Serial.println("Debounce: Too soon after last action, skipping");
-              wasTouched = isTouched;
-              continue;
-            }
-            // Mark action as executed for this touch cycle
-            actionExecutedThisTouch = true;
-            lastActionTime = millis(); // Record action time for debouncing
             
             onProductSelectionScreen = false;
             
@@ -2277,8 +2304,8 @@ void loop()
             }
           }
           // Also accept quick touch without gesture (GESTURE_NONE)
-          // BUT only on NEW touch (not held) to prevent continuous triggering
-          else if (gesture == GESTURE_NONE && isTouched && !wasTouched) {
+          // React on touch RELEASE (falling edge) for cleaner detection without flicker
+          else if (gesture == GESTURE_NONE && !isTouched && wasTouched) {
             if (y < 160 || y > 160) { // Left or right side
               navigate = true;
               actionName = "QUICK TOUCH";
@@ -2286,14 +2313,35 @@ void loop()
           }
           
           if (navigate) {
-            Serial.printf("[TOUCH] >>> %s on product screen - Navigate to next product\n", actionName.c_str());
-            navigateToNextProduct();
+            // Hybrid approach: Session-based + timeout fallback
+            // - Prevents continuous triggering when holding finger (session control)
+            // - Allows fast consecutive swipes with finger-lift between (timeout reset)
+            unsigned long now = millis();
+            bool timeoutExpired = (now - lastNavigationTime >= 500); // 500ms timeout for new swipe
+            
+            if (!gestureHandledThisTouch || timeoutExpired) {
+              Serial.printf("[TOUCH] >>> %s on product screen - Navigate to next product", actionName.c_str());
+              if (timeoutExpired && gestureHandledThisTouch) {
+                Serial.printf(" (timeout reset after %lu ms)", now - lastNavigationTime);
+              }
+              Serial.println();
+              navigateToNextProduct();
+              gestureHandledThisTouch = true; // Mark gesture as handled
+              lastNavigationTime = now; // Update navigation timestamp
+            } else {
+              Serial.printf("[TOUCH] >>> %s IGNORED (only %lu ms since last navigation)\n", actionName.c_str(), now - lastNavigationTime);
+            }
           }
         }
         
         // Update last touch time if any gesture detected or touch state changed
         if (gesture != GESTURE_NONE || (isTouched != wasTouched)) {
           lastTouchEvent = millis();
+        }
+        
+        // Reset gesture flag when touch is released - allows new gesture on next touch
+        if (!isTouched && wasTouched) {
+          gestureHandledThisTouch = false;
         }
         
         // Reset action flag when touch is released
