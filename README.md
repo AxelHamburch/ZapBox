@@ -27,6 +27,62 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
   - **Position 0**: Everything off
   - **Position 1**: Output permanently on (bypass mode)
   - **Position A**: Automatic mode - ESP32 active, waiting for Lightning payment
+- **PN532 NFC Reader** (Optional): For contactless NFC card/tag reading
+  - Connected via I2C (shared bus with Touch controller)
+  - Enables NFC-based payment triggers and card identification
+
+### Pin Configuration
+
+**T-Display-S3 GPIO Usage:**
+
+| GPIO | Function | Description |
+|------|----------|-------------|
+| 0 | BOOT Button | Physical button (left), Config mode trigger |
+| 14 | HELP Button | Physical button (right), Help/Report mode |
+| 4 | Battery Voltage | ADC for battery monitoring |
+| 15 | Power On | Power control pin |
+| 17 | I2C SCL | Shared: Touch controller + NFC reader |
+| 18 | I2C SDA | Shared: Touch controller + NFC reader |
+| 16 | Touch INT | Touch controller interrupt pin |
+| 21 | Touch RES | Touch controller reset pin |
+| **1** | **NFC IRQ** | **PN532 interrupt (card detection)** |
+| **2** | **NFC RST** | **PN532 hardware reset** |
+| 5-9 | LCD Control | Display control signals (RES, CS, DC, WR, RD) |
+| 38 | LCD Backlight | Display brightness control |
+| 39-42, 45-48 | LCD Data | 8-bit parallel display data bus |
+
+**I2C Bus Addresses:**
+- Touch CST816S/CST328: `0x15` or `0x5A`
+- PN532 NFC Reader: `0x24`
+
+### NFC Reader Setup (Optional)
+
+**Hardware:** PN532 NFC Module (I2C mode)
+
+**Wiring:**
+```
+PN532 Module    →    T-Display-S3
+────────────────────────────────
+VCC (3.3V)      →    3.3V
+GND             →    GND
+SDA             →    GPIO 18 (shared with Touch)
+SCL             →    GPIO 17 (shared with Touch)
+IRQ             →    GPIO 1
+RSTPD_N         →    GPIO 2
+```
+
+**Features:**
+- Reads ISO14443A cards (Mifare Classic, Mifare Ultralight, NTAG, etc.)
+- IRQ-based card detection (low power, fast response)
+- Hardware reset capability for reliable operation
+- Shared I2C bus - no GPIO conflicts with Touch controller
+- Automatic firmware version detection
+
+**Software Integration:**
+- Include `NFCPN532.h` in your code
+- Initialize: `NFCPN532 nfc(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_NFC_IRQ, PIN_NFC_RST);`
+- Call `nfc.begin()` after Touch initialization
+- Use `nfc.readPassiveTargetID()` to read card UIDs
 
 ### Electrical Layout
 
