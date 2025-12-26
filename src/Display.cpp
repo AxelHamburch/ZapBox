@@ -246,7 +246,7 @@ void btctickerScreen()
       if (orientation == "v") {
         tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
       } else {
-        tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom for vi (away from QR code)
+        tft.drawString("HELP", x + 2, 10, GFXFF); // Top for vi (button at top)
       }
     } else {
       // Non-touch version: mirror labels for inverse orientation
@@ -308,11 +308,11 @@ void btctickerScreen()
         tft.drawString("L", 311, y + 10, GFXFF);
         tft.drawString("P", 311, y + 30, GFXFF);
       } else {
-        // Left side, bottom to top (button at left for hi - mirror horizontal AND vertical)
-        tft.drawString("P", 11, y - 30, GFXFF);
-        tft.drawString("L", 11, y - 10, GFXFF);
-        tft.drawString("E", 11, y + 10, GFXFF);
-        tft.drawString("H", 11, y + 30, GFXFF);
+        // Left side - same order as h
+        tft.drawString("H", 11, y - 30, GFXFF);
+        tft.drawString("E", 11, y - 10, GFXFF);
+        tft.drawString("L", 11, y + 10, GFXFF);
+        tft.drawString("P", 11, y + 30, GFXFF);
       }
     } else {
       // Non-touch version: mirror labels for inverse orientation
@@ -874,9 +874,13 @@ void showProductQRScreen(String label, int pin)
     tft.setTextColor(themeForeground);
     
     if (touchAvailable) {
-      // Touch version: HELP centered on bottom (away from QR code for both orientations)
+      // Touch version: HELP on bottom for v, top for vi (where touch button is)
       tft.setTextDatum(MC_DATUM);
-      tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom for both v and vi
+      if (orientation == "v") {
+        tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
+      } else {
+        tft.drawString("HELP", x + 2, 10, GFXFF); // Top for vi (button at top)
+      }
     } else {
       // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
@@ -924,11 +928,11 @@ void showProductQRScreen(String label, int pin)
         tft.drawString("L", 311, y + 10, GFXFF);
         tft.drawString("P", 311, y + 30, GFXFF);
       } else {
-        // Left side, bottom to top (button at left for hi - mirror horizontal AND vertical)
-        tft.drawString("P", 11, y - 30, GFXFF);
-        tft.drawString("L", 11, y - 10, GFXFF);
-        tft.drawString("E", 11, y + 10, GFXFF);
-        tft.drawString("H", 11, y + 30, GFXFF);
+        // Left side - same order as h
+        tft.drawString("H", 11, y - 30, GFXFF);
+        tft.drawString("E", 11, y - 10, GFXFF);
+        tft.drawString("L", 11, y + 10, GFXFF);
+        tft.drawString("P", 11, y + 30, GFXFF);
       }
     } else {
       // Non-touch version: mirror labels for inverse orientation
@@ -964,7 +968,7 @@ void productSelectionScreen()
     
     // Draw instruction text
     tft.setTextSize(2);
-    tft.drawString("use NEXT", x, y + 60, GFXFF);
+    tft.drawString("NEXT", x, y + 60, GFXFF);
     
     // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
@@ -993,7 +997,7 @@ void productSelectionScreen()
     tft.drawString("PRODUCT", x, y, GFXFF);
     
     // Draw navigation arrows
-    tft.setTextSize(5);
+    tft.setTextSize(3);
     tft.drawString("<-NEXT->", x, y + 40, GFXFF);
     
     // Button labels - different layout for touch vs non-touch
@@ -1009,11 +1013,11 @@ void productSelectionScreen()
         tft.drawString("L", 311, y + 10, GFXFF);
         tft.drawString("P", 311, y + 30, GFXFF);
       } else {
-        // Left side, bottom to top (button at left for hi - mirror horizontal AND vertical)
-        tft.drawString("P", 11, y - 30, GFXFF);
-        tft.drawString("L", 11, y - 10, GFXFF);
-        tft.drawString("E", 11, y + 10, GFXFF);
-        tft.drawString("H", 11, y + 30, GFXFF);
+        // Left side - same order as h
+        tft.drawString("H", 11, y - 30, GFXFF);
+        tft.drawString("E", 11, y - 10, GFXFF);
+        tft.drawString("L", 11, y + 10, GFXFF);
+        tft.drawString("P", 11, y + 30, GFXFF);
       }
     } else {
       // Non-touch version: mirror labels for inverse orientation
