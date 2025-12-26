@@ -46,7 +46,6 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
 | 16 | Touch INT | Touch controller interrupt pin |
 | 21 | Touch RES | Touch controller reset pin |
 | **1** | **NFC IRQ** | **PN532 interrupt (card detection)** |
-| **2** | **NFC RST** | **PN532 hardware reset** |
 | 5-9 | LCD Control | Display control signals (RES, CS, DC, WR, RD) |
 | 38 | LCD Backlight | Display brightness control |
 | 39-42, 45-48 | LCD Data | 8-bit parallel display data bus |
@@ -57,30 +56,31 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
 
 ### NFC Reader Setup (Optional)
 
-**Hardware:** PN532 NFC Module (I2C mode)
+**Hardware:** PN532 NFC Module (HW-147, I2C mode)
 
 **Wiring:**
 ```
-PN532 Module    →    T-Display-S3
+PN532 HW-147    →    T-Display-S3
 ────────────────────────────────
 VCC (3.3V)      →    3.3V
 GND             →    GND
 SDA             →    GPIO 18 (shared with Touch)
 SCL             →    GPIO 17 (shared with Touch)
 IRQ             →    GPIO 1
-RSTPD_N         →    GPIO 2
 ```
+
+**Note:** The HW-147 module does not expose a hardware reset pin (RSTPD_N).
+The PN532 chip initializes automatically on power-up.
 
 **Features:**
 - Reads ISO14443A cards (Mifare Classic, Mifare Ultralight, NTAG, etc.)
 - IRQ-based card detection (low power, fast response)
-- Hardware reset capability for reliable operation
 - Shared I2C bus - no GPIO conflicts with Touch controller
 - Automatic firmware version detection
 
 **Software Integration:**
 - Include `NFCPN532.h` in your code
-- Initialize: `NFCPN532 nfc(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_NFC_IRQ, PIN_NFC_RST);`
+- Initialize: `NFCPN532 nfc(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_NFC_IRQ);`
 - Call `nfc.begin()` after Touch initialization
 - Use `nfc.readPassiveTargetID()` to read card UIDs
 

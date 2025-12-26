@@ -36,9 +36,8 @@ public:
      * @param sda I2C SDA pin (shared with Touch)
      * @param scl I2C SCL pin (shared with Touch)
      * @param irq Interrupt pin (GPIO 1)
-     * @param rst Reset pin (GPIO 2)
      */
-    NFCPN532(TwoWire &wire, int sda, int scl, int irq, int rst);
+    NFCPN532(TwoWire &wire, int sda, int scl, int irq);
     
     /**
      * @brief Initialize PN532 NFC reader
@@ -74,11 +73,6 @@ public:
     bool isCardPresent();
     
     /**
-     * @brief Hardware reset of PN532
-     */
-    void reset();
-    
-    /**
      * @brief Check if PN532 is initialized
      * @return true if initialized, false otherwise
      */
@@ -89,7 +83,6 @@ private:
     int _sda;
     int _scl;
     int _irq;
-    int _rst;
     bool _initialized;
     
     /**

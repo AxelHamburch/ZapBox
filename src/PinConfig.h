@@ -40,7 +40,6 @@
 
 // NFC Reader (PN532) - Optional
 #define PIN_NFC_IRQ 1          // NFC interrupt (card detection)
-#define PIN_NFC_RST 2          // NFC hardware reset
 
 // Relay channels (Multi-Channel-Control)
 // PIN 12 - Relay channel 1 (default)

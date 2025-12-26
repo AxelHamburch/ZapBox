@@ -1,7 +1,7 @@
 #include "NFCPN532.h"
 
-NFCPN532::NFCPN532(TwoWire &wire, int sda, int scl, int irq, int rst)
-    : _wire(&wire), _sda(sda), _scl(scl), _irq(irq), _rst(rst), _initialized(false) {
+NFCPN532::NFCPN532(TwoWire &wire, int sda, int scl, int irq)
+    : _wire(&wire), _sda(sda), _scl(scl), _irq(irq), _initialized(false) {
 }
 
 bool NFCPN532::begin() {
@@ -16,18 +16,6 @@ bool NFCPN532::begin() {
         Serial.printf("[NFC] IRQ pin configured: GPIO %d\n", _irq);
     }
     
-    // Setup and perform hardware reset
-    if (_rst >= 0) {
-        pinMode(_rst, OUTPUT);
-        digitalWrite(_rst, HIGH);
-        delay(10);
-        digitalWrite(_rst, LOW);
-        delay(50);  // Min 20ms reset pulse
-        digitalWrite(_rst, HIGH);
-        delay(50);  // Wait for PN532 to boot
-        Serial.printf("[NFC] Hardware reset performed: GPIO %d\n", _rst);
-    }
-    
     // Give PN532 time to initialize
     delay(100);
     
@@ -35,7 +23,7 @@ bool NFCPN532::begin() {
     uint32_t version = getFirmwareVersion();
     if (version == 0) {
         Serial.println("[NFC] ERROR: Failed to communicate with PN532");
-        Serial.println("[NFC] Check wiring: SDA=GPIO18, SCL=GPIO17, IRQ=GPIO1, RST=GPIO2");
+        Serial.println("[NFC] Check wiring: SDA=GPIO18, SCL=GPIO17, IRQ=GPIO1");
         return false;
     }
     
@@ -184,18 +172,6 @@ bool NFCPN532::isCardPresent() {
     
     // PN532 IRQ is active LOW when data is ready
     return (digitalRead(_irq) == LOW);
-}
-
-void NFCPN532::reset() {
-    if (_rst < 0) {
-        return;  // No reset pin configured
-    }
-    
-    Serial.println("[NFC] Performing hardware reset...");
-    digitalWrite(_rst, LOW);
-    delay(50);
-    digitalWrite(_rst, HIGH);
-    delay(100);  // Wait for PN532 to reinitialize
 }
 
 // Private methods
