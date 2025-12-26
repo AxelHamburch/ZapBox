@@ -355,17 +355,33 @@ void navigateToNextProduct() {
   if (currentProduct == -1) {
     // Start from first product
     currentProduct = 1;
+  } else if (btcTickerActive) {
+    // If ticker is active, go back to first product
+    btcTickerActive = false;
+    currentProduct = 1;
+    onProductSelectionScreen = false;
+    Serial.println("[NAV] Ticker active - returning to first product");
   } else {
     currentProduct++;
   }
   
   // Determine navigation behavior based on btcTickerMode
   if (btcTickerMode == "selecting") {
-    // SELECTING mode: Loop back to first product (ticker shown on demand via touch/button)
+    // SELECTING mode: After last product, show BTC ticker (which will auto-return to product selection)
     if (multiControl == "duo" && currentProduct > 2) {
-      currentProduct = 1; // Loop back to first product
+      currentProduct = 0; // Reset for next navigation
+      btctickerScreen();
+      btcTickerActive = true;
+      productSelectionShowTime = millis(); // Start timer for auto-return
+      Serial.println("[NAV] SELECTING mode - Showing Bitcoin ticker after last product");
+      return;
     } else if (multiControl == "quattro" && currentProduct > 4) {
-      currentProduct = 1; // Loop back to first product
+      currentProduct = 0; // Reset for next navigation
+      btctickerScreen();
+      btcTickerActive = true;
+      productSelectionShowTime = millis(); // Start timer for auto-return
+      Serial.println("[NAV] SELECTING mode - Showing Bitcoin ticker after last product");
+      return;
     }
   } else {
     // ALWAYS or OFF mode: Loop back to first product

@@ -713,9 +713,9 @@ void drawQRCode()
   int offsetX = 12;
   int offsetY = 12;
   
-  // Shift QR code 5 pixels right for horizontal inverse only
+  // Shift QR code 8 pixels right for horizontal inverse only
   if (orientation == "hi") {
-    offsetX = 17;
+    offsetX = 20;
   }
   
   // Shift QR code 7 pixels down for vertical inverse only
@@ -894,14 +894,14 @@ void showProductQRScreen(String label, int pin)
       }
     }
   } else {
-    int boxX = (orientation == "hi") ? 168 : 163;
+    int boxX = (orientation == "hi") ? 171 : 163;
     tft.fillRect(boxX, 18, 137, 135, themeForeground); // 2 pixels wider for better product text display
     
     // Display up to 3 lines of text
     tft.setTextSize(3);
     tft.setTextColor(themeBackground); // White text on black background
     int startY = y - 30; // Starting Y position
-    int textOffset = (orientation == "hi") ? 22 : 17;
+    int textOffset = (orientation == "hi") ? 25 : 17;
     if (wordCount == 1) {
       tft.drawString(words[0], x + textOffset, startY + 30, GFXFF);
     } else if (wordCount == 2) {
@@ -974,9 +974,13 @@ void productSelectionScreen()
     tft.setTextSize(2);
     
     if (touchAvailable) {
-      // Touch version: HELP centered on bottom (away from display content for both orientations)
+      // Touch version: HELP on bottom for v, top for vi (where touch button is)
       tft.setTextDatum(MC_DATUM);
-      tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom for both v and vi
+      if (orientation == "v") {
+        tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
+      } else {
+        tft.drawString("HELP", x + 2, 10, GFXFF); // Top for vi (button at top)
+      }
     } else {
       // Non-touch version: mirror labels for inverse orientation
       tft.setTextDatum(ML_DATUM);
