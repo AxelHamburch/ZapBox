@@ -61,6 +61,9 @@ String label12 = "";
 String label13 = "";
 String label10 = "";
 String label11 = "";
+bool labelsLoadedSuccessfully = false; // Track if labels were successfully fetched
+unsigned long lastLabelUpdate = 0;
+const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
 
 // Screensaver and Deep Sleep timeout tracking
 unsigned long lastActivityTime = 0;  // Track last button press or activity
@@ -159,6 +162,7 @@ void showHelp();
 void fetchSwitchLabels();
 void fetchBitcoinData();
 void updateBitcoinTicker();
+void updateSwitchLabels();
 void updateLightningQR(String lnurlStr);
 void navigateToNextProduct();
 String generateLNURL(int pin);
@@ -1087,6 +1091,8 @@ void fetchSwitchLabels()
       }
       
       Serial.println("[LABELS] Successfully fetched and cached all labels");
+      labelsLoadedSuccessfully = true; // Mark labels as successfully loaded
+      lastLabelUpdate = millis(); // Update timestamp
       
       // Always fetch Bitcoin data with the correct currency (not just when ticker is active)
       // This ensures data is ready when ticker is activated
@@ -1193,6 +1199,27 @@ void updateBitcoinTicker()
         Serial.println("[BTC] Screen refreshed with new data");
       }
     }
+  }
+}
+
+// Update switch labels periodically
+void updateSwitchLabels()
+{
+  // Skip if in error/config/help modes
+  if (onErrorScreen || inConfigMode || inHelpMode) {
+    return;
+  }
+
+  unsigned long currentTime = millis();
+
+  // Check if labels failed to load initially or if it's time for periodic update
+  if (!labelsLoadedSuccessfully || (currentTime - lastLabelUpdate >= LABEL_UPDATE_INTERVAL)) {
+    if (!labelsLoadedSuccessfully) {
+      Serial.println("[LABELS] Labels not loaded successfully, retrying...");
+    } else {
+      Serial.println("[LABELS] Periodic update interval reached, fetching labels...");
+    }
+    fetchSwitchLabels();
   }
 }
 
@@ -2602,6 +2629,9 @@ void loop()
 
     // Update Bitcoin ticker (checks interval internally, non-blocking)
     updateBitcoinTicker();
+    
+    // Update switch labels periodically (checks interval internally, non-blocking)
+    updateSwitchLabels();
     
     // Log status every 200000 loops (roughly every 10-20 minutes)
     if (loopCount % 200000 == 0)
