@@ -48,8 +48,8 @@
 // PIN 11 - Relay channel 4
 
 // LED Button (Optional)
-// PIN 43 - LED from LED-button
-// PIN 44 - Switch from LED-button
+#define PIN_LED_BUTTON_LED 43  // LED an externem LED-Button (3.3V treiben)
+#define PIN_LED_BUTTON_SW 44   // Tastereingang vom LED-Button (gegen GND)
 
 // Free GPIO pins (RTC-capable): 3
 // Note: GPIO 1, 2, 10, 11 are assigned to NFC/Relay but can be repurposed

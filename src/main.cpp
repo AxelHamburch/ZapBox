@@ -38,6 +38,21 @@ String screensaver = "off";
 String deepSleep = "off";
 String activationTime = "5";
 
+// External LED button (PIN_LED_BUTTON_LED / PIN_LED_BUTTON_SW)
+bool readyLedState = false; // Track current LED state to avoid redundant writes
+bool initializationActive = true; // Startup/initialization phase flag for LED control
+bool externalButtonPressed = false;
+bool externalButtonHoldActionFired = false;
+uint8_t externalButtonClickCount = 0;
+unsigned long externalButtonSequenceStart = 0;
+unsigned long externalButtonPressStartTime = 0;
+unsigned long externalButtonLastChange = 0;
+const unsigned long EXTERNAL_DEBOUNCE_MS = 50;
+const unsigned long EXTERNAL_TRIPLE_WINDOW_MS = 2000;
+const unsigned long EXTERNAL_HELP_HOLD_MS = 2000;
+const unsigned long EXTERNAL_CONFIG_HOLD_MS = 3000;
+const unsigned long CONFIG_EXIT_GUARD_MS = 2000; // Minimum time before button/touch can exit config
+
 // Special mode configuration
 String specialMode = "standard";
 float frequency = 1.0;
@@ -165,6 +180,11 @@ void updateBitcoinTicker();
 void updateSwitchLabels();
 void updateLightningQR(String lnurlStr);
 void navigateToNextProduct();
+void handleExternalButton();
+void handleExternalSingleClick();
+void handleConfigExitButtons();
+void updateReadyLed();
+bool isReadyForReceive();
 String generateLNURL(int pin);
 String encodeBech32(const String& data);
 bool wakeFromPowerSavingMode();
@@ -484,6 +504,20 @@ bool wakeFromPowerSavingMode() {
   
   return false; // Normal operation, no wake-up needed
 }
+
+  bool isReadyForReceive() {
+    // LED ON when device is past init, not in error/config/help/report, and not in deep sleep
+    return setupComplete && !initializationActive && !onErrorScreen && !inConfigMode && !inHelpMode && !inReportMode && !deepSleepActive;
+  }
+
+  void updateReadyLed() {
+    bool shouldBeOn = isReadyForReceive();
+    if (shouldBeOn != readyLedState) {
+      digitalWrite(PIN_LED_BUTTON_LED, shouldBeOn ? HIGH : LOW); // Source 3.3V when ready
+      readyLedState = shouldBeOn;
+      Serial.printf("[LED] Ready LED %s\n", shouldBeOn ? "ON" : "OFF");
+    }
+  }
 
 // Helper function: Redraw appropriate QR screen based on mode
 void redrawQRScreen() {
@@ -1324,8 +1358,8 @@ void configMode()
   
   configModeScreen(); // Draw config screen IMMEDIATELY
   inConfigMode = true; // Then set flag
-  delay(2000); // Wait 2 seconds before enabling touch exit
-  configModeStartTime = millis(); // Enable touch exit after 2s
+  configModeStartTime = millis(); // Track start to enforce 2s guard for exit
+  updateReadyLed();
   
   // Set touch controller pointer for SerialConfig to access
   extern void* touchControllerPtr;
@@ -1506,7 +1540,7 @@ void handleTouchButton()
   }
   
   // Config Mode Touch Exit: Any touch after 2s exits config mode
-  if (inConfigMode && configModeStartTime > 0 && (millis() - configModeStartTime) > 0) {
+  if (inConfigMode && configModeStartTime > 0 && (millis() - configModeStartTime) >= CONFIG_EXIT_GUARD_MS) {
     if (digitalRead(PIN_TOUCH_INT) == LOW) {
       Serial.println("[CONFIG] Touch detected - exiting config mode");
       delay(100);
@@ -1595,6 +1629,138 @@ void handleTouchButton()
   }
 }
 
+void handleExternalSingleClick() {
+  // Same behavior as NEXT/touch: wake screensaver/backlight and navigate/toggle ticker
+  if (wakeFromPowerSavingMode()) {
+    return;
+  }
+  navigateToNextProduct();
+}
+
+void handleExternalButton() {
+  static int lastStableState = HIGH;
+  unsigned long now = millis();
+  int rawState = digitalRead(PIN_LED_BUTTON_SW); // Pull-up, pressed = LOW
+
+  if (rawState != lastStableState) {
+    externalButtonLastChange = now;
+  }
+
+  // Debounce
+  if ((now - externalButtonLastChange) < EXTERNAL_DEBOUNCE_MS) {
+    lastStableState = rawState;
+    return;
+  }
+
+  int state = rawState;
+
+  // Rising edge detection for config exit handled separately
+
+  // Falling edge: button pressed
+  if (state == LOW && lastStableState == HIGH) {
+    externalButtonPressed = true;
+    externalButtonHoldActionFired = false;
+    externalButtonPressStartTime = now;
+
+    // Start/refresh multi-click window
+    if (externalButtonClickCount == 0 || (now - externalButtonSequenceStart) > EXTERNAL_TRIPLE_WINDOW_MS) {
+      externalButtonClickCount = 0;
+      externalButtonSequenceStart = now;
+    }
+  }
+
+  // While pressed: check holds
+  if (externalButtonPressed && state == LOW) {
+    unsigned long pressDuration = now - externalButtonPressStartTime;
+
+    if (!externalButtonHoldActionFired) {
+      // Second-press hold >=3s → Config (double-click, hold on second)
+      if (externalButtonClickCount == 1 && pressDuration >= EXTERNAL_CONFIG_HOLD_MS) {
+        Serial.println("[EXT_BTN] Second press held >=3s -> Config Mode");
+        externalButtonHoldActionFired = true;
+        externalButtonClickCount = 0;
+        externalButtonSequenceStart = 0;
+        configMode();
+        return;
+      }
+
+      // Single long hold (first press) >=2s → Help
+      if (externalButtonClickCount == 0 && pressDuration >= EXTERNAL_HELP_HOLD_MS) {
+        Serial.println("[EXT_BTN] Long hold >=2s -> Help");
+        externalButtonHoldActionFired = true;
+        externalButtonClickCount = 0;
+        externalButtonSequenceStart = 0;
+        showHelp();
+        return;
+      }
+    }
+  }
+
+  // Rising edge: button released
+  if (externalButtonPressed && state == HIGH) {
+    externalButtonPressed = false;
+    unsigned long pressDuration = now - externalButtonPressStartTime;
+
+    // If a hold action already fired, reset state
+    if (externalButtonHoldActionFired) {
+      externalButtonHoldActionFired = false;
+      externalButtonClickCount = 0;
+      externalButtonSequenceStart = 0;
+    } else {
+      // Treat as short click
+      externalButtonClickCount++;
+      if (externalButtonSequenceStart == 0) {
+        externalButtonSequenceStart = now;
+      }
+
+      // Triple-click within window -> Report
+      if (externalButtonClickCount >= 3 && (now - externalButtonSequenceStart) <= EXTERNAL_TRIPLE_WINDOW_MS) {
+        Serial.println("[EXT_BTN] Triple click -> Report Mode");
+        reportMode();
+        externalButtonClickCount = 0;
+        externalButtonSequenceStart = 0;
+      } else {
+        // Immediate single-click action (wake/navigate)
+        handleExternalSingleClick();
+
+        // Reset window if expired
+        if ((now - externalButtonSequenceStart) > EXTERNAL_TRIPLE_WINDOW_MS) {
+          externalButtonClickCount = 0;
+          externalButtonSequenceStart = 0;
+        }
+      }
+    }
+  }
+
+  lastStableState = state;
+}
+
+void handleConfigExitButtons() {
+  if (!inConfigMode || configModeStartTime == 0 || (millis() - configModeStartTime) < CONFIG_EXIT_GUARD_MS) {
+    return;
+  }
+
+  static int prevNextState = HIGH;
+  static int prevExtState = HIGH;
+
+  int nextState = digitalRead(PIN_BUTTON_1);
+  int extState = digitalRead(PIN_LED_BUTTON_SW);
+
+  // Positive flank (release) exits config
+  if (prevNextState == LOW && nextState == HIGH) {
+    Serial.println("[CONFIG] NEXT button release -> exit config mode");
+    ESP.restart();
+  }
+
+  if (prevExtState == LOW && extState == HIGH) {
+    Serial.println("[CONFIG] External button release -> exit config mode");
+    ESP.restart();
+  }
+
+  prevNextState = nextState;
+  prevExtState = extState;
+}
+
 void showHelp()
 {
   // Wake from power saving mode if active
@@ -1666,6 +1832,11 @@ void Task1code(void *pvParameters)
   {
     leftButton.tick();
     rightButton.tick();
+
+    // Handle external LED-button (GPIO 44 input)
+    handleExternalButton();
+    handleConfigExitButtons();
+    updateReadyLed();
     
     // Handle touch button if available
     if (touchAvailable) {
@@ -1685,6 +1856,11 @@ void setup()
 
   pinMode(PIN_POWER_ON, OUTPUT);
   digitalWrite(PIN_POWER_ON, HIGH);
+
+  // External LED-button wiring: source 3.3V on LED pin when ready; input uses pull-up
+  pinMode(PIN_LED_BUTTON_LED, OUTPUT);
+  digitalWrite(PIN_LED_BUTTON_LED, LOW); // LED off until device is ready
+  pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
 
   FFat.begin(FORMAT_ON_FAIL);
   readFiles(); // get the saved details and store in global variables
@@ -1923,6 +2099,15 @@ void loop()
   {
     vTaskDelay(pdMS_TO_TICKS(100));
     return;
+  }
+
+  // Update ready LED state regularly
+  updateReadyLed();
+
+  // Once loop is running, we are past init screens
+  if (initializationActive && !firstLoop) {
+    initializationActive = false;
+    updateReadyLed();
   }
   
   // Display power saving status on first loop iteration
