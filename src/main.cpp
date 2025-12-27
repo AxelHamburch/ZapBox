@@ -182,6 +182,7 @@ void updateLightningQR(String lnurlStr);
 void navigateToNextProduct();
 void handleExternalButton();
 void handleExternalSingleClick();
+void checkExternalButtonHolds();
 void handleConfigExitButtons();
 void updateReadyLed();
 bool isReadyForReceive();
@@ -1639,25 +1640,47 @@ void handleExternalSingleClick() {
 
 void handleExternalButton() {
   static int lastStableState = HIGH;
+  static int lastRawState = HIGH;
+  static unsigned long lastDebugPrint = 0;
   unsigned long now = millis();
   int rawState = digitalRead(PIN_LED_BUTTON_SW); // Pull-up, pressed = LOW
 
-  if (rawState != lastStableState) {
-    externalButtonLastChange = now;
+  // Debug: Print pin state every 2 seconds
+  if (now - lastDebugPrint > 2000) {
+    Serial.printf("[EXT_BTN_DEBUG] GPIO %d raw=%s, stable=%s\n", 
+                  PIN_LED_BUTTON_SW,
+                  rawState == HIGH ? "HIGH" : "LOW",
+                  lastStableState == HIGH ? "HIGH" : "LOW");
+    lastDebugPrint = now;
   }
 
-  // Debounce
+  // Detect raw state change and start debounce timer
+  if (rawState != lastRawState) {
+    externalButtonLastChange = now;
+    lastRawState = rawState;
+    Serial.printf("[EXT_BTN_DEBUG] Raw change: -> %s (debouncing...)\n", 
+                  rawState == HIGH ? "HIGH" : "LOW");
+  }
+
+  // Still debouncing - wait for stable signal
   if ((now - externalButtonLastChange) < EXTERNAL_DEBOUNCE_MS) {
-    lastStableState = rawState;
     return;
   }
 
-  int state = rawState;
+  // Debounce complete - check if stable state changed
+  if (rawState == lastStableState) {
+    return; // No actual state change after debounce
+  }
 
-  // Rising edge detection for config exit handled separately
+  // State has changed and is stable - this is a real edge!
+  int state = rawState;
+  Serial.printf("[EXT_BTN_DEBUG] ✓ Confirmed edge: %s -> %s\n",
+                lastStableState == HIGH ? "HIGH" : "LOW",
+                state == HIGH ? "HIGH" : "LOW");
 
   // Falling edge: button pressed
   if (state == LOW && lastStableState == HIGH) {
+    Serial.println("[EXT_BTN] Button pressed (falling edge detected)");
     externalButtonPressed = true;
     externalButtonHoldActionFired = false;
     externalButtonPressStartTime = now;
@@ -1669,37 +1692,12 @@ void handleExternalButton() {
     }
   }
 
-  // While pressed: check holds
-  if (externalButtonPressed && state == LOW) {
-    unsigned long pressDuration = now - externalButtonPressStartTime;
-
-    if (!externalButtonHoldActionFired) {
-      // Second-press hold >=3s → Config (double-click, hold on second)
-      if (externalButtonClickCount == 1 && pressDuration >= EXTERNAL_CONFIG_HOLD_MS) {
-        Serial.println("[EXT_BTN] Second press held >=3s -> Config Mode");
-        externalButtonHoldActionFired = true;
-        externalButtonClickCount = 0;
-        externalButtonSequenceStart = 0;
-        configMode();
-        return;
-      }
-
-      // Single long hold (first press) >=2s → Help
-      if (externalButtonClickCount == 0 && pressDuration >= EXTERNAL_HELP_HOLD_MS) {
-        Serial.println("[EXT_BTN] Long hold >=2s -> Help");
-        externalButtonHoldActionFired = true;
-        externalButtonClickCount = 0;
-        externalButtonSequenceStart = 0;
-        showHelp();
-        return;
-      }
-    }
-  }
-
   // Rising edge: button released
-  if (externalButtonPressed && state == HIGH) {
+  if (state == HIGH && lastStableState == LOW) {
+    Serial.println("[EXT_BTN] Button released (rising edge detected)");
     externalButtonPressed = false;
     unsigned long pressDuration = now - externalButtonPressStartTime;
+    Serial.printf("[EXT_BTN] Press duration: %lu ms\n", pressDuration);
 
     // If a hold action already fired, reset state
     if (externalButtonHoldActionFired) {
@@ -1709,9 +1707,7 @@ void handleExternalButton() {
     } else {
       // Treat as short click
       externalButtonClickCount++;
-      if (externalButtonSequenceStart == 0) {
-        externalButtonSequenceStart = now;
-      }
+      Serial.printf("[EXT_BTN] Click count: %d\n", externalButtonClickCount);
 
       // Triple-click within window -> Report
       if (externalButtonClickCount >= 3 && (now - externalButtonSequenceStart) <= EXTERNAL_TRIPLE_WINDOW_MS) {
@@ -1732,7 +1728,37 @@ void handleExternalButton() {
     }
   }
 
+  // CRITICAL: Update lastStableState at the end so next call can detect changes
   lastStableState = state;
+}
+
+// Separate function to check hold actions - called continuously
+void checkExternalButtonHolds() {
+  if (!externalButtonPressed || externalButtonHoldActionFired) {
+    return;
+  }
+
+  unsigned long pressDuration = millis() - externalButtonPressStartTime;
+
+  // Second-press hold >=3s → Config (double-click, hold on second)
+  if (externalButtonClickCount == 1 && pressDuration >= EXTERNAL_CONFIG_HOLD_MS) {
+    Serial.println("[EXT_BTN] Second press held >=3s -> Config Mode");
+    externalButtonHoldActionFired = true;
+    externalButtonClickCount = 0;
+    externalButtonSequenceStart = 0;
+    configMode();
+    return;
+  }
+
+  // Single long hold (first press) >=2s → Help
+  if (externalButtonClickCount == 0 && pressDuration >= EXTERNAL_HELP_HOLD_MS) {
+    Serial.println("[EXT_BTN] Long hold >=2s -> Help");
+    externalButtonHoldActionFired = true;
+    externalButtonClickCount = 0;
+    externalButtonSequenceStart = 0;
+    showHelp();
+    return;
+  }
 }
 
 void handleConfigExitButtons() {
@@ -1835,6 +1861,7 @@ void Task1code(void *pvParameters)
 
     // Handle external LED-button (GPIO 44 input)
     handleExternalButton();
+    checkExternalButtonHolds(); // Continuously check for hold actions
     handleConfigExitButtons();
     updateReadyLed();
     

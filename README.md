@@ -88,6 +88,50 @@ The PN532 chip initializes automatically on power-up.
 
 See the complete wiring diagram: [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
 
+### External LED Button (Optional)
+
+**Optional Feature:** Connect an external illuminated push button for enhanced user interaction and status indication.
+
+**GPIO Assignment:**
+| GPIO | Function | Direction | Configuration |
+|------|----------|-----------|---------------|
+| 43 | LED Control | Output | Sources 3.3V when device is ready |
+| 44 | Button Input | Input | Pull-up to 3.3V, active LOW on press |
+
+**Wiring:**
+```
+External LED Button    →    T-Display-S3    →    GND
+─────────────────────────────────────────────────────
+LED Anode (+)          →    GPIO 43         
+LED Cathode (-)        →                    →    GND
+Button Terminal 1      →    GPIO 44
+Button Terminal 2      →                    →    GND
+```
+
+**3-Wire Connection:**
+- **3.3V (GPIO 43)**: Powers the LED when device is ready
+- **GND (Common)**: Shared ground for LED and button
+- **Input (GPIO 44)**: Button switches GPIO 44 to GND when pressed
+
+**LED Behavior:**
+- **ON**: Device is ready to receive payments (no initialization, errors, or special modes active)
+- **OFF**: During startup, initialization, error states, Config/Help/Report modes, or deep sleep
+
+**Button Functions:**
+- **Single Press**: Wake from screensaver / Navigate to next product or QR screen
+- **Hold ≥2 seconds**: Open Help page (3 screens with instructions)
+- **Triple-click** (within 2 seconds): Open Report page (error diagnostics)
+- **Double-click, hold 2nd press ≥3 seconds**: Enter Config mode
+- **In Config mode** (after 2s guard time): Press again to exit and restart
+
+**Features:**
+- 50ms hardware debounce for reliable operation
+- Works in all operation modes (Single, Duo, Quattro)
+- Compatible with screensaver wake-up (not with deep sleep)
+- Reuses existing navigation/report/help functions from physical buttons
+
+**Note:** GPIOs 43 and 44 are not RTC-capable and cannot be used for deep sleep wake-up.
+
 ## Operation
 
 ### Non-Touch Version (Physical Buttons)
