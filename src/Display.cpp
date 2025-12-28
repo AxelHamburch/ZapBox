@@ -98,7 +98,7 @@ const ThemeConfig themeConfigs[] = {
   {"orange-brown", TFT_ORANGE, TFT_BROWN},
   {"black-yellow", TFT_BLACK, TFT_YELLOW},
   {"yellow-black", TFT_YELLOW, TFT_BLACK},
-  {"zapbox", TFT_YELLOW, TFT_BLACK},
+  {"zapbox", 0xD600, TFT_BLACK},
   {"maroon-magenta", TFT_MAROON, TFT_MAGENTA},
   {"black-red", TFT_BLACK, TFT_RED},
   {"brown-orange", TFT_BROWN, TFT_ORANGE},
@@ -832,7 +832,7 @@ void showProductQRScreen(String label, int pin)
   uint16_t bg = themeBackground;
   if (displayConfig.theme == "zapbox") {
     fg = TFT_BLACK;
-    bg = TFT_YELLOW;
+    bg = 0xD600;
   }
 
   // Replace currency symbols with text abbreviations for better compatibility
