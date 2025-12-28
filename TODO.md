@@ -1,5 +1,9 @@
 # ZapBox TODO
 
+
+zapbox 
+mit yellow & black, aber qr-code seite invertiert
+
 ## Bug:
 
 - Restart geht nicht bei:
