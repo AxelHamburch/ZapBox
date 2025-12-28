@@ -267,7 +267,25 @@ void readFiles()
     if (!maRoot18.isNull()) {
       const char *maRoot18Char = maRoot18["value"];
       multiChannelConfig.btcTickerMode = maRoot18Char;
-      Serial.println("[CONFIG] Read multiChannelConfig.btcTickerMode from config: " + multiChannelConfig.btcTickerMode);
+      // Normalize human-friendly values from installer
+      String modeNorm = multiChannelConfig.btcTickerMode;
+      modeNorm.trim();
+      modeNorm.toLowerCase();
+      // Strip all non-letter characters to be robust against UI formatting
+      String lettersOnly = "";
+      for (size_t i = 0; i < modeNorm.length(); ++i) {
+        char c = modeNorm.charAt(i);
+        if ((c >= 'a' && c <= 'z')) lettersOnly += c;
+      }
+      // Map variants to canonical values
+      if (lettersOnly.indexOf("always") != -1) {
+        multiChannelConfig.btcTickerMode = "always";
+      } else if (lettersOnly.indexOf("selecting") != -1 || lettersOnly.indexOf("select") != -1) {
+        multiChannelConfig.btcTickerMode = "selecting";
+      } else if (lettersOnly == "off") {
+        multiChannelConfig.btcTickerMode = "off";
+      } // else keep original (unknown value)
+      Serial.println("[CONFIG] BTC-Ticker mode normalized: " + multiChannelConfig.btcTickerMode);
     } else {
       Serial.println("[CONFIG] Index 18 (multiChannelConfig.btcTickerMode) not found in config - using default: " + multiChannelConfig.btcTickerMode);
     }
@@ -315,6 +333,7 @@ void readFiles()
     Serial.print("Multi-Channel-Control Mode: ");
     if (multiChannelConfig.mode == "off") {
       Serial.println("Single (Pin 12 only)");
+      // Respect installer setting for btcTickerMode in single mode (off/selecting/always)
     } else if (multiChannelConfig.mode == "duo") {
       Serial.println("Duo (Pins 12, 13) - LNURLs auto-generated");
     } else if (multiChannelConfig.mode == "quattro") {
@@ -593,14 +612,29 @@ void reportMode()
 // TASK - BUTTON HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════════
 
-// Task function that runs handleTouchButton in a loop
-void Task1code(void * pvParameters) {
-  Serial.print("[TASK1] Button handler task running on core ");
-  Serial.println(xPortGetCoreID());
-  
-  for(;;) {
-    handleTouchButton();
-    vTaskDelay(pdMS_TO_TICKS(50)); // Check every 50ms
+// Full Task1 handler: buttons, touch, external LED-button, and WiFi state
+void Task1code(void *pvParameters)
+{
+  for (;;)
+  {
+    // Monitor WiFi state and update device state machine
+    checkWiFiStatus();
+
+    leftButton.tick();
+    rightButton.tick();
+
+    // Handle external LED-button (GPIO 44 input)
+    handleExternalButton();
+    checkExternalButtonHolds(); // Continuously check for hold actions
+    handleConfigExitButtons();
+    updateReadyLed();
+
+    // Handle touch button if available
+    if (touchState.available) {
+      handleTouchButton();
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(5)); // 5ms delay - faster response for touch button
   }
 }
 
@@ -608,17 +642,59 @@ void Task1code(void * pvParameters) {
 // SETUP - INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════════════════════
 
-void setup() {
-  // Create button handler task on core 0
+void setup()
+{
+  Serial.setRxBufferSize(2048); // Increased for long JSON with LNURL
+  Serial.begin(115200);
+
+  int timer = 0;
+
+  pinMode(PIN_POWER_ON, OUTPUT);
+  digitalWrite(PIN_POWER_ON, HIGH);
+
+  // External LED-button wiring: source 3.3V on LED pin when ready; input uses pull-up
+  pinMode(PIN_LED_BUTTON_LED, OUTPUT);
+  digitalWrite(PIN_LED_BUTTON_LED, LOW); // LED off until device is ready
+  pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
+
+  FFat.begin(FORMAT_ON_FAIL);
+  readFiles(); // get the saved details and store in global variables
+
+  Serial.println("\n[SETUP] readFiles() completed");
+  Serial.println("[SETUP] currency = " + currency);
+  Serial.println("[SETUP] multiChannelConfig.btcTickerMode = " + multiChannelConfig.btcTickerMode);
+
+  initDisplay();
+  startupScreen();
+
+  // Initialize touch controller (independent of WiFi)
+  touchState.available = touch.begin();
+  if (touchState.available) {
+    Serial.println("[TOUCH] ✓ Touch controller initialized successfully!");
+  } else {
+    Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
+  }
+
+  // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
+  leftButton.setPressMs(3000); // 3 seconds for config mode (documented as 5 sec for users)
+  leftButton.setDebounceMs(50); // 50ms debounce - fast response
+  leftButton.attachClick(navigateToNextProduct); // Single click = Navigate products (duo/quattro mode)
+  leftButton.attachLongPressStart(configMode); // Long press = Config mode
+  rightButton.setDebounceMs(50); // 50ms debounce - fast response
+  rightButton.setClickMs(400); // 400ms max for single click
+  rightButton.attachClick(showHelp); // Single click = Help
+  rightButton.attachDoubleClick(reportMode); // Double click = Report
+  rightButton.attachLongPressStart(showHelp); // Long press = Help (prevents missed clicks)
+
   xTaskCreatePinnedToCore(
-      Task1code, /* Task function. */
-      "Task1",   /* Name of task. */
+      Task1code, /* Function to implement the task */
+      "Task1",   /* Name of the task */
       10000,     /* Stack size in words */
       NULL,      /* Task input parameter */
       1,         /* Priority of the task (increased from 0 to 1) */
       &Task1,    /* Task handle. */
       0);        /* Core where the task should run */
-  
+
   Serial.println("Button task created - config mode available");
 
   // Start WiFi connection BEFORE showing startup screen (parallel execution!)
@@ -626,8 +702,13 @@ void setup() {
   WiFi.setSleep(false); // Disable WiFi power saving for stable connection
   WiFi.setAutoReconnect(true); // Enable auto-reconnect
   WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
-  WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
-  Serial.println("[STARTUP] WiFi connection started in background (Power Save: OFF)");
+  // Guard: only start WiFi if SSID is present and valid length (<= 32)
+  if (wifiConfig.ssid.length() > 0 && wifiConfig.ssid.length() <= 32) {
+    WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
+    Serial.println("[STARTUP] WiFi connection started in background (Power Save: OFF)");
+  } else {
+    Serial.println("[STARTUP] Skipping WiFi.begin(): SSID missing or invalid length");
+  }
 
   // Show startup screen for 5 seconds
   Serial.println("[STARTUP] Showing startup screen for 5 seconds...");
@@ -639,14 +720,14 @@ void setup() {
     }
   }
   Serial.println("[STARTUP] Startup screen completed, switching to initialization screen");
-  
+
   // Switch to initialization screen
   initializationScreen();
-  
+
   // Continue initialization for max 20 more seconds (total 25s)
   // Exit early if all connections are successful
   Serial.println("[STARTUP] Showing initialization screen (max 20s more) while connections establish...");
-  
+
   const int MAX_INIT_TIME = 200; // 200 * 100ms = 20 seconds (5s startup + 20s init = 25s total)
   bool allConnectionsReady = false;
   bool wifiStarted = true;
@@ -808,6 +889,37 @@ void setup() {
   fetchBitcoinData();
   Serial.println("[BTC] Initial fetch complete");
   
+  // Single mode: show BTC ticker immediately after setup (no product selection exists)
+  Serial.printf("[DEBUG_SETUP] mode=%s, tickerMode=%s, special=%s, thresholdKeyLen=%d, errorState=%d\n",
+                multiChannelConfig.mode.c_str(),
+                multiChannelConfig.btcTickerMode.c_str(),
+                specialModeConfig.mode.c_str(),
+                (int)lightningConfig.thresholdKey.length(),
+                deviceState.isInState(DeviceState::ERROR_RECOVERABLE));
+  if (lightningConfig.thresholdKey.length() == 0 &&
+      multiChannelConfig.mode == "off" &&
+      !deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
+    if (multiChannelConfig.btcTickerMode == "always") {
+      Serial.println("[STARTUP] Single mode (ALWAYS) - showing Bitcoin ticker immediately");
+      btctickerScreen();
+      multiChannelConfig.btcTickerActive = true;
+      productSelectionState.showTime = millis();
+    } else {
+      Serial.println("[STARTUP] Single mode (SELECTING/OFF) - showing QR screen");
+      // Show normal or special QR for single mode
+      String lnurlStr = generateLNURL(12);
+      updateLightningQR(lnurlStr);
+      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+        showSpecialModeQRScreen();
+      } else {
+        showQRScreen();
+      }
+      multiChannelConfig.btcTickerActive = false;
+      productSelectionState.showTime = 0; // No ticker timeout active
+    }
+    deviceState.transition(DeviceState::READY);
+  }
+  
   // Setup complete - device state already set appropriately above
 }
 
@@ -902,10 +1014,38 @@ void loop()
   bool allConnectionsConfirmed = networkStatus.confirmed.wifi && networkStatus.confirmed.internet && networkStatus.confirmed.server && networkStatus.confirmed.websocket;
   Serial.printf("[DEBUG] allConnectionsConfirmed: %d, firstLoop: %d\n", allConnectionsConfirmed, firstLoop);
   
-  if (firstLoop && allConnectionsConfirmed && !deviceState.isInState(DeviceState::REPORT_SCREEN) && !(powerConfig.lastWakeUpTime > 0 && (millis() - powerConfig.lastWakeUpTime) < GRACE_PERIOD_MS)) {
+  // If ticker is already active from setup in Single mode, don't override it
+  if (firstLoop && multiChannelConfig.mode == "off" && multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::REPORT_SCREEN)) {
+    Serial.println("[FIRSTLOOP] Ticker already active in single-mode - skipping redraw");
+    productSelectionState.showTime = millis();
+    deviceState.transition(DeviceState::READY);
+  }
+  else if (firstLoop && allConnectionsConfirmed && !deviceState.isInState(DeviceState::REPORT_SCREEN) && !(powerConfig.lastWakeUpTime > 0 && (millis() - powerConfig.lastWakeUpTime) < GRACE_PERIOD_MS)) {
     Serial.println("[SCREEN] All connections confirmed - Showing QR code screen (READY FOR ACTION)");
     if (lightningConfig.thresholdKey.length() > 0) {
       showThresholdQRScreen(); // THRESHOLD MODE (Multi-Channel-Control not compatible)
+    } else if (multiChannelConfig.mode == "off") {
+      // SINGLE MODE - Decide initial screen by btcTickerMode
+      if (multiChannelConfig.btcTickerMode == "always") {
+        Serial.println("[FIRSTLOOP] Single-mode (ALWAYS) start: BTC ticker");
+        btctickerScreen();
+        multiChannelConfig.btcTickerActive = true;
+        productSelectionState.showTime = millis();
+        Serial.println("[BTC] Single mode - Starting with Bitcoin ticker screen");
+      } else {
+        Serial.println("[FIRSTLOOP] Single-mode (SELECTING/OFF) start: QR screen");
+        String lnurlStr = generateLNURL(12);
+        updateLightningQR(lnurlStr);
+        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+          showSpecialModeQRScreen();
+        } else {
+          showQRScreen();
+        }
+        multiChannelConfig.btcTickerActive = false;
+        productSelectionState.showTime = 0;
+      }
+      deviceState.transition(DeviceState::READY);
+      currentErrorType = 0;
     } else if (multiChannelConfig.mode != "off") {
       // MULTI-CHANNEL-CONTROL MODE - Behavior depends on multiChannelConfig.btcTickerMode
       if (multiChannelConfig.btcTickerMode == "off") {
@@ -938,22 +1078,6 @@ void loop()
       String lnurlStr = generateLNURL(12);
       updateLightningQR(lnurlStr);
       showSpecialModeQRScreen(); // SPECIAL MODE
-    } else {
-      // SINGLE MODE - Behavior depends on multiChannelConfig.btcTickerMode
-      if (multiChannelConfig.btcTickerMode == "always") {
-        // ALWAYS: Show Bitcoin ticker first
-        btctickerScreen();
-        multiChannelConfig.btcTickerActive = true;
-        productSelectionState.showTime = millis();
-        Serial.println("[BTC] BTC-Ticker ALWAYS (Single mode) - Starting with Bitcoin ticker screen");
-      } else {
-        // OFF or SELECTING: Show normal QR (selecting mode shows ticker after NEXT button)
-        String lnurlStr = generateLNURL(12);
-        updateLightningQR(lnurlStr);
-        showQRScreen(); // NORMAL MODE
-        multiChannelConfig.btcTickerActive = false;
-        Serial.println("[BTC] BTC-Ticker " + multiChannelConfig.btcTickerMode + " (Single mode) - Starting with QR screen");
-      }
     }
     // Clear error screen flag once QR is shown
     deviceState.transition(DeviceState::READY);

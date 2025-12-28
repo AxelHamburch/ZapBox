@@ -98,14 +98,14 @@ void updateReadyLed() {
  */
 void redrawQRScreen() {
   Serial.println("[DISPLAY] Redrawing QR screen...");
-  
+
   // Threshold mode
   if (lightningConfig.thresholdKey.length() > 0) {
     showThresholdQRScreen();
     Serial.println("[DISPLAY] Threshold QR screen displayed");
     return;
   }
-  
+
   // Multi-Channel-Control mode
   if (multiChannelConfig.mode != "off") {
     // Behavior depends on btcTickerMode and currentProduct
@@ -115,6 +115,8 @@ void redrawQRScreen() {
       deviceState.transition(DeviceState::PRODUCT_SELECTION);
       multiChannelConfig.btcTickerActive = false;
       Serial.println("[DISPLAY] Product selection screen displayed");
+      deviceState.transition(DeviceState::READY);
+      return;
     } else if (multiChannelConfig.currentProduct == 0) {
       // Bitcoin ticker screen (only if ticker mode allows it)
       if (multiChannelConfig.btcTickerMode == "off") {
@@ -124,17 +126,22 @@ void redrawQRScreen() {
         deviceState.transition(DeviceState::PRODUCT_SELECTION);
         multiChannelConfig.btcTickerActive = false;
         Serial.println("[DISPLAY] BTC-Ticker OFF - Showing product selection screen");
+        deviceState.transition(DeviceState::READY);
+        return;
       } else {
         // Show ticker for "always" or "selecting" modes
         btctickerScreen();
         multiChannelConfig.btcTickerActive = true;
         Serial.println("[DISPLAY] Bitcoin ticker screen displayed");
+        deviceState.transition(DeviceState::READY);
+        return;
       }
     } else {
+      // Show product QR for selected product (1..4)
       String label = "";
       int displayPin = 0;
-      
-      switch(multiChannelConfig.currentProduct) {
+
+      switch (multiChannelConfig.currentProduct) {
         case 1:
           label = (productLabels.label12.length() > 0) ? productLabels.label12 : "Pin 12";
           displayPin = 12;
@@ -152,31 +159,50 @@ void redrawQRScreen() {
           displayPin = 11;
           break;
       }
-      
-      // Generate LNURL dynamically for current product's pin
+
       String lnurlStr = generateLNURL(displayPin);
       updateLightningQR(lnurlStr);
       showProductQRScreen(label, displayPin);
       multiChannelConfig.btcTickerActive = false;
       Serial.printf("[DISPLAY] Product %d QR screen displayed\n", multiChannelConfig.currentProduct);
+      deviceState.transition(DeviceState::READY);
+      return;
     }
-    deviceState.transition(DeviceState::READY);
-    return;
   }
-  
-  // Special mode
-  if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-    // Generate LNURL for pin 12 before showing special mode QR
+
+  // Single mode (1-channel)
+  if (specialModeConfig.mode != "standard") {
+    // SPECIAL MODE: ensure LNURL for pin 12 is up-to-date, then show special QR
     String lnurlStr = generateLNURL(12);
     updateLightningQR(lnurlStr);
     showSpecialModeQRScreen();
-    Serial.println("[DISPLAY] Special mode QR screen displayed");
+    multiChannelConfig.btcTickerActive = false;
+    Serial.println("[DISPLAY] Special mode QR screen displayed (single mode)");
+    deviceState.transition(DeviceState::READY);
     return;
   }
-  
-  // Standard mode
-  String lnurlStr = generateLNURL(12);
-  updateLightningQR(lnurlStr);
-  showQRScreen();
-  Serial.println("[DISPLAY] Normal QR screen displayed");
+
+  if (multiChannelConfig.btcTickerMode == "always") {
+    // ALWAYS: show BTC ticker
+    btctickerScreen();
+    multiChannelConfig.btcTickerActive = true;
+    Serial.println("[DISPLAY] Bitcoin ticker screen displayed (single mode, ALWAYS)");
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
+  // OFF or SELECTING: show QR unless ticker is currently active
+  if (multiChannelConfig.btcTickerActive) {
+    btctickerScreen();
+    Serial.println("[DISPLAY] Bitcoin ticker screen refreshed (single mode, SELECTING active)");
+    deviceState.transition(DeviceState::READY);
+    return;
+  } else {
+    String lnurlStr = generateLNURL(12);
+    updateLightningQR(lnurlStr);
+    showQRScreen();
+    Serial.println("[DISPLAY] QR screen displayed (single mode)");
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
 }
