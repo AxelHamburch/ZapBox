@@ -14,111 +14,24 @@
 #include "SerialConfig.h"
 #include "TouchCST816S.h"
 #include "DeviceState.h"
+#include "GlobalState.h"
 
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
 
 TaskHandle_t Task1;
 
-String ssid = "";
-String wifiPassword = "";
-String switchStr = "";
-const char *lightningPrefix = "lightning:";
 String qrFormat = "bech32"; // "bech32" or "lud17"
-String orientation = "h";
-String theme = "black-white";
-char lightning[300] = "";
-String thresholdKey = "";
-String thresholdAmount = "";
-String thresholdPin = "";
-String thresholdTime = "";
-String thresholdLnurl = "";
-
-// Screensaver and deep sleep configuration
-String screensaver = "off";
-String deepSleep = "off";
-String activationTime = "5";
+const char *lightningPrefix = "lightning:";
 
 // External LED button (PIN_LED_BUTTON_LED / PIN_LED_BUTTON_SW)
 bool readyLedState = false; // Track current LED state to avoid redundant writes
 bool initializationActive = true; // Startup/initialization phase flag for LED control
-bool externalButtonPressed = false;
-bool externalButtonHoldActionFired = false;
-uint8_t externalButtonClickCount = 0;
-unsigned long externalButtonSequenceStart = 0;
-unsigned long externalButtonPressStartTime = 0;
-unsigned long externalButtonLastChange = 0;
 const unsigned long EXTERNAL_DEBOUNCE_MS = 50;
 const unsigned long EXTERNAL_TRIPLE_WINDOW_MS = 2000;
 const unsigned long EXTERNAL_HELP_HOLD_MS = 2000;
 const unsigned long EXTERNAL_CONFIG_HOLD_MS = 3000;
 const unsigned long CONFIG_EXIT_GUARD_MS = 2000; // Minimum time before button/touch can exit config
-
-// Special mode configuration
-String specialMode = "standard";
-float frequency = 1.0;
-float dutyCycleRatio = 1.0;
-
-// Multi-Channel-Control / Product selection configuration
-String multiControl = "off";
-// lnurl13, lnurl10, lnurl11 removed - now dynamically generated
-
-// Bitcoin Ticker data
-String btcprice = "Loading...";
-String blockhigh = "...";
-String currency = "USD"; // Currency from config, default USD
-String btcTickerMode = "always"; // BTC ticker mode: off, always, selecting
-unsigned long lastBtcUpdate = 0;
-const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
-volatile bool btcTickerActive = false; // volatile: accessed from multiple tasks
-
-// Switch labels from backend (cached after WebSocket connect)
-String label12 = "";
-String label13 = "";
-String label10 = "";
-String label11 = "";
-bool labelsLoadedSuccessfully = false; // Track if labels were successfully fetched
-unsigned long lastLabelUpdate = 0;
-const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
-
-// Screensaver and Deep Sleep timeout tracking
-unsigned long lastActivityTime = 0;  // Track last button press or activity
-unsigned long activationTimeoutMs = 5 * 60 * 1000; // Default 5 minutes in milliseconds
-unsigned long lastWakeUpTime = 0;  // Track when device woke up from screensaver
-const unsigned long GRACE_PERIOD_MS = 1000;  // 1 second grace period after wake-up (reduced from 5s for better UX)
-
-// NOTE: screensaverActive, deepSleepActive, and onProductSelectionScreen are now managed by DeviceState
-// Use: deviceState.isInState(DeviceState::SCREENSAVER), DEEP_SLEEP, PRODUCT_SELECTION
-// No separate bool variables needed
-
-String payloadStr;
-String lnbitsServer;
-String deviceId;
-bool paid = false;
-unsigned long configModeStartTime = 0; // Track when config mode started for touch exit
-bool firstLoop = true; // Track first loop iteration
-
-// Error counters (0-99, capped at 99)
-uint8_t wifiErrorCount = 0;
-uint8_t internetErrorCount = 0;
-uint8_t serverErrorCount = 0;
-uint8_t websocketErrorCount = 0;
-
-// Connection confirmation tracking (for first successful connection)
-bool wifiConfirmed = false;
-bool internetConfirmed = false;
-bool serverConfirmed = false;
-bool websocketConfirmed = false;
-
-// Error screen tracking
-byte currentErrorType = 0; // 0=none, 1=WiFi (highest), 2=Internet, 3=Server, 4=WebSocket (lowest)
-bool onErrorScreen = false; // Track if error screen is displayed (synchronized with DeviceState)
-unsigned long lastPingTime = 0;
-unsigned long lastInternetCheck = 0; // Track when we last checked Internet connectivity
-byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures to detect Internet issues
-bool needsQRRedraw = false; // Flag to trigger QR redraw after WiFi recovery
-bool gestureHandledThisTouch = false; // Track if gesture was already handled in current touch session
-unsigned long lastNavigationTime = 0; // Track time of last navigation for timeout-based reset
 
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
@@ -126,18 +39,32 @@ OneButton rightButton(PIN_BUTTON_2, true);
 
 // Touch controller
 TouchCST816S touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_TOUCH_RES, PIN_TOUCH_INT);
-bool touchAvailable = false;
 
-// Touch button state tracking (for click/double/triple detection)
-unsigned long lastTouchTime = 0;
-uint8_t touchClickCount = 0;
+// Variables that remain here (not migrated to GlobalState)
+String currency = "USD"; // Currency from config, default USD
+bool labelsLoadedSuccessfully = false; // Track if labels were successfully fetched
+String payloadStr;
+String lnbitsServer;
+String deviceId;
+unsigned long configModeStartTime = 0; // Track when config mode started for touch exit
+bool firstLoop = true; // Track first loop iteration
+byte currentErrorType = 0; // 0=none, 1=WiFi (highest), 2=Internet, 3=Server, 4=WebSocket (lowest)
+bool onErrorScreen = false; // Track if error screen is displayed (synchronized with DeviceState)
+unsigned long lastInternetCheck = 0; // Track when we last checked Internet connectivity
+byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures to detect Internet issues
+bool needsQRRedraw = false; // Flag to trigger QR redraw after WiFi recovery
+bool gestureHandledThisTouch = false; // Track if gesture was already handled in current touch session
+unsigned long lastNavigationTime = 0; // Track time of last navigation for timeout-based reset
 const unsigned long TOUCH_DOUBLE_CLICK_MS = 1000; // 1 second window for second click
 const unsigned long TOUCH_LONG_PRESS_MS = 3000;  // 3 seconds for long press
-bool touchPressed = false;
-unsigned long touchPressStartTime = 0;
+const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
+const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
+const unsigned long GRACE_PERIOD_MS = 1000;  // 1 second grace period after wake-up (reduced from 5s for better UX)
 
-// Product selection screen tracking
-unsigned long productSelectionShowTime = 0;
+const unsigned long EXTERNAL_DEBOUNCE_MS = 50;
+const unsigned long EXTERNAL_TRIPLE_WINDOW_MS = 2000;
+const unsigned long EXTERNAL_HELP_HOLD_MS = 2000;
+const unsigned long EXTERNAL_CONFIG_HOLD_MS = 3000;
 
 // Product timeout: configurable via platformio.ini build flag PRODUCT_TIMEOUT
 // Default 10 seconds for testing, use 60 seconds for production
@@ -689,8 +616,8 @@ void readFiles()
 
     const JsonObject maRoot0 = doc[0];
     const char *maRoot0Char = maRoot0["value"];
-    ssid = maRoot0Char;
-    Serial.println("SSID: " + ssid);
+    wifiConfig.ssid = maRoot0Char;
+    Serial.println("SSID: " + wifiConfig.ssid);
 
     const JsonObject maRoot1 = doc[1];
     const char *maRoot1Char = maRoot1["value"];
