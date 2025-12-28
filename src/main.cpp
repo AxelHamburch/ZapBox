@@ -1641,25 +1641,13 @@ void handleExternalSingleClick() {
 void handleExternalButton() {
   static int lastStableState = HIGH;
   static int lastRawState = HIGH;
-  static unsigned long lastDebugPrint = 0;
   unsigned long now = millis();
   int rawState = digitalRead(PIN_LED_BUTTON_SW); // Pull-up, pressed = LOW
-
-  // Debug: Print pin state every 2 seconds
-  if (now - lastDebugPrint > 2000) {
-    Serial.printf("[EXT_BTN_DEBUG] GPIO %d raw=%s, stable=%s\n", 
-                  PIN_LED_BUTTON_SW,
-                  rawState == HIGH ? "HIGH" : "LOW",
-                  lastStableState == HIGH ? "HIGH" : "LOW");
-    lastDebugPrint = now;
-  }
 
   // Detect raw state change and start debounce timer
   if (rawState != lastRawState) {
     externalButtonLastChange = now;
     lastRawState = rawState;
-    Serial.printf("[EXT_BTN_DEBUG] Raw change: -> %s (debouncing...)\n", 
-                  rawState == HIGH ? "HIGH" : "LOW");
   }
 
   // Still debouncing - wait for stable signal
@@ -1674,9 +1662,6 @@ void handleExternalButton() {
 
   // State has changed and is stable - this is a real edge!
   int state = rawState;
-  Serial.printf("[EXT_BTN_DEBUG] ✓ Confirmed edge: %s -> %s\n",
-                lastStableState == HIGH ? "HIGH" : "LOW",
-                state == HIGH ? "HIGH" : "LOW");
 
   // Falling edge: button pressed
   if (state == LOW && lastStableState == HIGH) {
