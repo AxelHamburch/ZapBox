@@ -44,13 +44,13 @@ const unsigned long GRACE_PERIOD_MS = 1000;
 bool wakeFromPowerSavingMode() {
   // Check if we're in grace period after wake-up
   if (powerConfig.lastWakeUpTime > 0 && (millis() - powerConfig.lastWakeUpTime) < GRACE_PERIOD_MS) {
-    Serial.println("[WAKE] Ignored - in grace period after wake-up");
+    LOG_DEBUG("Wake", "Ignored - in grace period after wake-up");
     return true; // Indicate we're in grace period
   }
   
   // Clear wake-up timestamp once grace period has passed - allows subsequent touches to navigate normally
   if (powerConfig.lastWakeUpTime > 0) {
-    Serial.println("[WAKE] Grace period expired, resuming normal operation");
+    LOG_DEBUG("Wake", "Grace period expired, resuming normal operation");
     powerConfig.lastWakeUpTime = 0;
   }
   
@@ -59,7 +59,7 @@ bool wakeFromPowerSavingMode() {
   
   // If screensaver or deep sleep was active, deactivate and return true
   if (deviceState.isInState(DeviceState::SCREENSAVER) || deviceState.isInState(DeviceState::DEEP_SLEEP)) {
-    Serial.println("[WAKE] Waking from power saving mode");
+    LOG_INFO("Wake", "Waking from power saving mode");
     deviceState.transition(DeviceState::READY);
     deactivateScreensaver();
     powerConfig.lastWakeUpTime = millis();
@@ -103,12 +103,12 @@ void updateReadyLed() {
  * Handles threshold mode, multi-channel mode with ticker, and product selection.
  */
 void redrawQRScreen() {
-  Serial.println("[DISPLAY] Redrawing QR screen...");
+  LOG_DEBUG("Display", "Redrawing QR screen...");
 
   // Threshold mode
   if (lightningConfig.thresholdKey.length() > 0) {
     showThresholdQRScreen();
-    Serial.println("[DISPLAY] Threshold QR screen displayed");
+    LOG_DEBUG("Display", "Threshold QR screen displayed");
     return;
   }
 
@@ -120,7 +120,7 @@ void redrawQRScreen() {
       productSelectionScreen();
       deviceState.transition(DeviceState::PRODUCT_SELECTION);
       multiChannelConfig.btcTickerActive = false;
-      Serial.println("[DISPLAY] Product selection screen displayed");
+      LOG_DEBUG("Display", "Product selection screen displayed");
       deviceState.transition(DeviceState::READY);
       return;
     } else if (multiChannelConfig.currentProduct == 0) {
@@ -131,14 +131,14 @@ void redrawQRScreen() {
         productSelectionScreen();
         deviceState.transition(DeviceState::PRODUCT_SELECTION);
         multiChannelConfig.btcTickerActive = false;
-        Serial.println("[DISPLAY] BTC-Ticker OFF - Showing product selection screen");
+        LOG_DEBUG("Display", "BTC-Ticker OFF - Showing product selection screen");
         deviceState.transition(DeviceState::READY);
         return;
       } else {
         // Show ticker for "always" or "selecting" modes
         btctickerScreen();
         multiChannelConfig.btcTickerActive = true;
-        Serial.println("[DISPLAY] Bitcoin ticker screen displayed");
+        LOG_DEBUG("Display", "Bitcoin ticker screen displayed");
         deviceState.transition(DeviceState::READY);
         return;
       }
@@ -169,7 +169,7 @@ void redrawQRScreen() {
       ensureQrForPin(displayPin);
       showProductQRScreen(label, displayPin);
       multiChannelConfig.btcTickerActive = false;
-      Serial.printf("[DISPLAY] Product %d QR screen displayed\n", multiChannelConfig.currentProduct);
+      LOG_DEBUG("Display", String("Product ") + String(multiChannelConfig.currentProduct) + String(" QR screen displayed"));
       deviceState.transition(DeviceState::READY);
       return;
     }
@@ -181,7 +181,7 @@ void redrawQRScreen() {
     ensureQrForPin(12);
     showSpecialModeQRScreen();
     multiChannelConfig.btcTickerActive = false;
-    Serial.println("[DISPLAY] Special mode QR screen displayed (single mode)");
+    LOG_DEBUG("Display", "Special mode QR screen displayed (single mode)");
     deviceState.transition(DeviceState::READY);
     return;
   }
@@ -190,7 +190,7 @@ void redrawQRScreen() {
     // ALWAYS: show BTC ticker
     btctickerScreen();
     multiChannelConfig.btcTickerActive = true;
-    Serial.println("[DISPLAY] Bitcoin ticker screen displayed (single mode, ALWAYS)");
+    LOG_DEBUG("Display", "Bitcoin ticker screen displayed (single mode, ALWAYS)");
     deviceState.transition(DeviceState::READY);
     return;
   }
@@ -198,13 +198,13 @@ void redrawQRScreen() {
   // OFF or SELECTING: show QR unless ticker is currently active
   if (multiChannelConfig.btcTickerActive) {
     btctickerScreen();
-    Serial.println("[DISPLAY] Bitcoin ticker screen refreshed (single mode, SELECTING active)");
+    LOG_DEBUG("Display", "Bitcoin ticker screen refreshed (single mode, SELECTING active)");
     deviceState.transition(DeviceState::READY);
     return;
   } else {
     ensureQrForPin(12);
     showQRScreen();
-    Serial.println("[DISPLAY] QR screen displayed (single mode)");
+    LOG_DEBUG("Display", "QR screen displayed (single mode)");
     deviceState.transition(DeviceState::READY);
     return;
   }
@@ -316,7 +316,7 @@ void handlePowerSavingChecks() {
       vTaskDelay(pdMS_TO_TICKS(1000));
 
       // Final serial flush
-      Serial.println("[DEEP_SLEEP] Entering sleep mode now...");
+      LOG_INFO("DeepSleep", "Entering sleep mode now...");
       Serial.flush();
 
       // Enter deep sleep (will not return in freeze mode)
@@ -327,7 +327,7 @@ void handlePowerSavingChecks() {
 
       // CRITICAL: Light sleep disconnects USB-Serial hardware
       // We need to reinitialize USB-CDC to make Serial work again
-      Serial.println("[WAKE_UP] Device woke from light sleep");
+      LOG_INFO("WakeUp", "Device woke from light sleep");
 
       // Reinitialize USB-CDC peripheral after light sleep
       Serial.end();
@@ -336,33 +336,33 @@ void handlePowerSavingChecks() {
       Serial.begin(115200);
       delay(200); // Give USB-CDC time to enumerate
 
-      Serial.println("[WAKE_UP] USB-Serial reinitialized after light sleep");
+      LOG_INFO("WakeUp", "USB-Serial reinitialized after light sleep");
       Serial.flush();
 
       // Show boot-up screen first
       bootUpScreen();
-      Serial.println("[WAKE_UP] Boot screen displayed");
+      LOG_INFO("WakeUp", "Boot screen displayed");
 
       // Turn backlight back on
       pinMode(PIN_LCD_BL, OUTPUT);
       digitalWrite(PIN_LCD_BL, HIGH);
-      Serial.println("[WAKE_UP] Backlight restored");
+      LOG_INFO("WakeUp", "Backlight restored");
 
       // Check WiFi connection status
-      Serial.println("[WAKE_UP] Checking WiFi connection...");
+      LOG_INFO("WakeUp", "Checking WiFi connection...");
       int wifiCheckCount = 0;
       while (WiFi.status() != WL_CONNECTED && wifiCheckCount < 30) {
         delay(100);
         wifiCheckCount++;
         if (wifiCheckCount % 10 == 0) {
-          Serial.printf("[WAKE_UP] Waiting for WiFi... (%d/30)\n", wifiCheckCount);
+          LOG_DEBUG("WakeUp", String("Waiting for WiFi... (") + String(wifiCheckCount) + String("/30)"));
         }
       }
 
       if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("[WAKE_UP] WiFi connected");
+        LOG_INFO("WakeUp", "WiFi connected");
       } else {
-        Serial.println("[WAKE_UP] WiFi not connected after wake-up, will retry in loop");
+        LOG_WARN("WakeUp", "WiFi not connected after wake-up, will retry in loop");
         // WiFi reconnection will be handled by checkAndReconnectWiFi() in main loop
       }
 
@@ -376,7 +376,7 @@ void handlePowerSavingChecks() {
 
       // Redraw the appropriate QR screen
       redrawQRScreen();
-      Serial.println("[WAKE_UP] Ready for payments");
+      LOG_INFO("WakeUp", "Ready for payments");
     }
   }
 }
