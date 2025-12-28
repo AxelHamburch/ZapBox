@@ -665,11 +665,13 @@ void actionTimeScreen()
   tft.setTextColor(themeForeground);
 
   if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
-    tft.setTextSize(10);
-    tft.drawString("A", x + 5, y - 100, GFXFF);
-    tft.drawString("C", x + 5, y - 45, GFXFF);
-    tft.drawString("T", x + 5, y + 10, GFXFF);
-    tft.drawString(" ", x + 5, y + 65, GFXFF);
+    tft.setTextSize(4);
+    tft.drawString("A", x + 5, y - 105, GFXFF);
+    tft.drawString("C", x + 5, y - 70, GFXFF);
+    tft.drawString("T", x + 5, y - 35, GFXFF);
+    tft.drawString("I", x + 5, y, GFXFF);
+    tft.drawString("O", x + 5, y + 35, GFXFF);
+    tft.drawString("N", x + 5, y + 70, GFXFF);
     tft.setTextSize(3);
     tft.drawString("TIME", x + 3, y + 105, GFXFF);
   } else {
