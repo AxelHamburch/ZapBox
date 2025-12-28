@@ -98,6 +98,7 @@ const ThemeConfig themeConfigs[] = {
   {"orange-brown", TFT_ORANGE, TFT_BROWN},
   {"black-yellow", TFT_BLACK, TFT_YELLOW},
   {"yellow-black", TFT_YELLOW, TFT_BLACK},
+  {"zapbox", TFT_YELLOW, TFT_BLACK},
   {"maroon-magenta", TFT_MAROON, TFT_MAGENTA},
   {"black-red", TFT_BLACK, TFT_RED},
   {"brown-orange", TFT_BROWN, TFT_ORANGE},
@@ -752,6 +753,30 @@ void drawQRCode()
   }
 }
 
+// Draw QRCode using explicit foreground/background colors (used for special themes)
+void drawQRCodeWithColors(uint16_t fg, uint16_t bg)
+{
+  int offsetX = 12;
+  int offsetY = 12;
+  if (displayConfig.orientation == "hi") {
+    offsetX = 20;
+  }
+  if (displayConfig.orientation == "vi") {
+    offsetY = 19;
+  }
+
+  QRCode qrcoded;
+  uint8_t qrcodeData[qrcode_getBufferSize(20)];
+  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightningConfig.lightning);
+
+  for (uint8_t y = 0; y < qrcoded.size; y++) {
+    for (uint8_t x = 0; x < qrcoded.size; x++) {
+      uint16_t color = qrcode_getModule(&qrcoded, x, y) ? fg : bg;
+      tft.fillRect(offsetX + 3 * x, offsetY + 3 * y, 3, 3, color);
+    }
+  }
+}
+
 void showThresholdQRScreen()
 {
   tft.setTextDatum(ML_DATUM);
@@ -802,6 +827,14 @@ void showSpecialModeQRScreen()
 // Label can contain 1-3 words separated by spaces
 void showProductQRScreen(String label, int pin)
 {
+  // Select colors; invert for "zapbox" theme only on product QR screens
+  uint16_t fg = themeForeground;
+  uint16_t bg = themeBackground;
+  if (displayConfig.theme == "zapbox") {
+    fg = TFT_BLACK;
+    bg = TFT_YELLOW;
+  }
+
   // Replace currency symbols with text abbreviations for better compatibility
   // GFXFF fonts only support ASCII, so we use standard abbreviations
   label.replace("€", "EUR");
@@ -850,21 +883,25 @@ void showProductQRScreen(String label, int pin)
   }
 
   // Now do all display operations - COMPLETE refresh like help screens
-  tft.fillScreen(themeBackground);
+  tft.fillScreen(bg);
   
   // Draw QR code immediately after screen clear, before anything else
-  drawQRCode();
+  if (displayConfig.theme == "zapbox") {
+    drawQRCodeWithColors(fg, bg);
+  } else {
+    drawQRCode();
+  }
   
   tft.setTextDatum(ML_DATUM);
-  tft.setTextColor(themeForeground);
+  tft.setTextColor(fg);
 
   if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     int boxY = (displayConfig.orientation == "vi") ? 175 : 168;
-    tft.fillRect(15, boxY, 140, 132, themeForeground);
+    tft.fillRect(15, boxY, 140, 132, fg);
     
     // Display up to 3 lines of text
     tft.setTextSize(3);
-    tft.setTextColor(themeBackground); // White text on black background
+    tft.setTextColor(bg);
     int startY = y + 40; // Starting Y position
     if (wordCount == 1) {
       tft.drawString(words[0], x - 58, startY + 30, GFXFF);
@@ -880,35 +917,34 @@ void showProductQRScreen(String label, int pin)
     
     // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
-    tft.setTextColor(themeForeground);
+    tft.setTextColor(fg);
     
     if (touchState.available) {
       // Touch version: HELP on bottom for v, top for vi (where touch button is)
       tft.setTextDatum(MC_DATUM);
       if (displayConfig.orientation == "v") {
-        tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
+        tft.drawString("HELP", x + 2, 312, GFXFF);
       } else {
-        tft.drawString("HELP", x + 2, 10, GFXFF); // Top for vi (button at top)
+        tft.drawString("HELP", x + 2, 10, GFXFF);
       }
     } else {
       // Non-touch version: mirror labels for inverse displayConfig.orientation
       tft.setTextDatum(ML_DATUM);
       if (displayConfig.orientation == "v") {
-        tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
-        tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side bottom
+        tft.drawString("HELP", x + 35, y + 150, GFXFF);
+        tft.drawString("NEXT", 5, y + 150, GFXFF);
       } else {
-        // vi: Mirror positions to top AND swap sides
-        tft.drawString("HELP", 5, 10, GFXFF); // Left side top
-        tft.drawString("NEXT", x + 35, 10, GFXFF); // Right side top
+        tft.drawString("HELP", 5, 10, GFXFF);
+        tft.drawString("NEXT", x + 35, 10, GFXFF);
       }
     }
   } else {
     int boxX = (displayConfig.orientation == "hi") ? 171 : 163;
-    tft.fillRect(boxX, 18, 137, 135, themeForeground); // 2 pixels wider for better product text display
+    tft.fillRect(boxX, 18, 137, 135, fg);
     
     // Display up to 3 lines of text
     tft.setTextSize(3);
-    tft.setTextColor(themeBackground); // White text on black background
+    tft.setTextColor(bg);
     int startY = y - 30; // Starting Y position
     int textOffset = (displayConfig.orientation == "hi") ? 25 : 17;
     if (wordCount == 1) {
@@ -925,7 +961,7 @@ void showProductQRScreen(String label, int pin)
     
     // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
-    tft.setTextColor(themeForeground);
+    tft.setTextColor(fg);
     
     if (touchState.available) {
       // Touch version: HELP as vertical stacked letters on right/left side
@@ -947,12 +983,11 @@ void showProductQRScreen(String label, int pin)
       // Non-touch version: mirror labels for inverse displayConfig.orientation
       tft.setTextDatum(ML_DATUM);
       if (displayConfig.orientation == "h") {
-        tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
-        tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom right
+        tft.drawString("HELP", x + 110, 9, GFXFF);
+        tft.drawString("NEXT", x + 110, 163, GFXFF);
       } else {
-        // hi: Mirror positions to left side AND swap top/bottom
-        tft.drawString("HELP", 5, 163, GFXFF); // Bottom left
-        tft.drawString("NEXT", 5, 9, GFXFF); // Top left
+        tft.drawString("HELP", 5, 163, GFXFF);
+        tft.drawString("NEXT", 5, 9, GFXFF);
       }
     }
   }
