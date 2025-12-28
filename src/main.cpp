@@ -87,10 +87,9 @@ unsigned long activationTimeoutMs = 5 * 60 * 1000; // Default 5 minutes in milli
 unsigned long lastWakeUpTime = 0;  // Track when device woke up from screensaver
 const unsigned long GRACE_PERIOD_MS = 1000;  // 1 second grace period after wake-up (reduced from 5s for better UX)
 
-// Screensaver and deep sleep internal state (synchronized with DeviceState)
-bool screensaverActive = false;
-bool deepSleepActive = false;
-bool onProductSelectionScreen = false; // Track product selection screen state
+// NOTE: screensaverActive, deepSleepActive, and onProductSelectionScreen are now managed by DeviceState
+// Use: deviceState.isInState(DeviceState::SCREENSAVER), DEEP_SLEEP, PRODUCT_SELECTION
+// No separate bool variables needed
 
 String payloadStr;
 String lnbitsServer;
@@ -496,8 +495,7 @@ bool wakeFromPowerSavingMode() {
   // If screensaver or deep sleep was active, deactivate and return true
   if (deviceState.isInState(DeviceState::SCREENSAVER) || deviceState.isInState(DeviceState::DEEP_SLEEP)) {
     Serial.println("[WAKE] Waking from power saving mode");
-    screensaverActive = false;
-    deepSleepActive = false;
+    deviceState.transition(DeviceState::READY);
     deactivateScreensaver();
     lastWakeUpTime = millis();
     lastActivityTime = millis();
@@ -1295,6 +1293,28 @@ bool checkServerReachability()
   return serverReachable;
 }
 
+// ============================================================================
+// WiFi State Monitoring - Updates DeviceState based on WiFi connectivity
+// ============================================================================
+void checkWiFiStatus() {
+  WiFiState newWiFiState;
+  
+  if (WiFi.status() != WL_CONNECTED) {
+    // WiFi disconnected
+    newWiFiState = WiFiState::DISCONNECTED;
+  } else if (!webSocket.isConnected()) {
+    // WiFi connected but WebSocket not yet connected
+    newWiFiState = WiFiState::CONNECTING;
+  } else {
+    // WiFi connected and WebSocket operational
+    newWiFiState = WiFiState::CONNECTED;
+  }
+  
+  // Update state machine with WiFi status
+  // This will automatically trigger state transitions on connection loss/gain
+  deviceState.updateWiFiState(newWiFiState);
+}
+
 void checkAndReconnectWiFi()
 {
   // Simplified version - just show error screen, don't block
@@ -1785,7 +1805,6 @@ void showHelp()
   
   // Disable product selection timer during help mode
   productSelectionShowTime = 0;
-  deviceState.transition(DeviceState::READY);
   
   stepOneScreen();
   
@@ -1841,6 +1860,9 @@ void Task1code(void *pvParameters)
 {
   for (;;)
   {
+    // Monitor WiFi state and update device state machine
+    checkWiFiStatus();
+    
     leftButton.tick();
     rightButton.tick();
 
@@ -2234,7 +2256,6 @@ void loop()
         // ALWAYS: Show Bitcoin ticker first
         btctickerScreen();
         btcTickerActive = true;
-        onProductSelectionScreen = false;
         productSelectionShowTime = millis();
         Serial.println("[BTC] BTC-Ticker ALWAYS (Single mode) - Starting with Bitcoin ticker screen");
       } else {
@@ -2313,7 +2334,7 @@ void loop()
       
       if (touchIntState == LOW && deviceState.isInState(DeviceState::SCREENSAVER)) {
         Serial.println("[TOUCH] Touch interrupt detected during screensaver - WAKING UP");
-        screensaverActive = false;
+        deviceState.transition(DeviceState::READY);
         deactivateScreensaver();
         lastWakeUpTime = millis();
         lastActivityTime = millis();
@@ -2363,7 +2384,7 @@ void loop()
           // Wake from screensaver if active
           if (deviceState.isInState(DeviceState::SCREENSAVER)) {
             Serial.println("[TOUCH] Waking from screensaver (error screen)");
-            screensaverActive = false;
+            deviceState.transition(DeviceState::READY);
             deactivateScreensaver();
             lastWakeUpTime = millis();
           }
@@ -2544,7 +2565,7 @@ void loop()
         }
         // Handle touch on product QR screen (Multi-Channel-Control mode only)
         // Allow navigation when showing product QR code
-        else if (multiControl != "off" && thresholdKey.length() == 0 && !onProductSelectionScreen) {
+        else if (multiControl != "off" && thresholdKey.length() == 0 && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
           bool navigate = false;
           String actionName = "";
           
@@ -2725,7 +2746,6 @@ void loop()
       
       if (elapsedTime >= activationTimeoutMs) {
         Serial.println("[TIMEOUT] Screensaver timeout reached, activating screensaver");
-        screensaverActive = true;  // Keep this for deactivateScreensaver()
         deviceState.transition(DeviceState::SCREENSAVER);
         activateScreensaver(screensaver);
         // Continue with payment loop - screensaver only turns off backlight
@@ -2746,7 +2766,7 @@ void loop()
       
       if (elapsedTime >= activationTimeoutMs) {
         Serial.println("[TIMEOUT] Deep sleep timeout reached, preparing for deep sleep");
-        deepSleepActive = true;
+        deviceState.transition(DeviceState::DEEP_SLEEP);
         
         // Flush serial output before sleep
         Serial.flush();
@@ -2811,7 +2831,7 @@ void loop()
         // Reset activity time and clear sleep flag
         lastActivityTime = millis();
         lastWakeUpTime = millis();
-        deepSleepActive = false;
+        deviceState.transition(DeviceState::READY);
         
         // Small delay before redrawing screen
         delay(500);
@@ -3003,8 +3023,8 @@ void loop()
           serverReconnectScreen();
           onErrorScreen = true;
           currentErrorType = 3; // Server error
-          // Reset product selection screen
-          onProductSelectionScreen = false;
+          // Reset product selection screen (transition to READY as base state)
+          deviceState.transition(DeviceState::READY);
         }
         // Clear server/websocket confirmations
         serverConfirmed = false;
@@ -3039,8 +3059,8 @@ void loop()
         if (!onErrorScreen || currentErrorType >= 4)
         {
           Serial.println("WebSocket disconnected, attempting reconnect...");
-          // Reset product selection screen
-          onProductSelectionScreen = false;
+          // Reset product selection screen (transition to READY as base state)
+          deviceState.transition(DeviceState::READY);
         }
         
         // Try to reconnect WebSocket (up to 3 attempts)
@@ -3091,8 +3111,8 @@ void loop()
           websocketConfirmed = false; // Clear confirmation
           currentErrorType = 4;
           onErrorScreen = true;
-          // Reset product selection screen
-          onProductSelectionScreen = false;
+          // Reset product selection screen (transition to READY as base state)
+          deviceState.transition(DeviceState::READY);
           return;
         }
       }
@@ -3128,7 +3148,7 @@ void loop()
           Serial.println("[SCREEN] QR screen displayed after recovery");
           // Reset product selection timer
           productSelectionShowTime = millis();
-          onProductSelectionScreen = false;
+          deviceState.transition(DeviceState::READY);
         }
         return;
       }
@@ -3178,8 +3198,8 @@ void loop()
           if (specialMode != "standard" && specialMode != "") {
             Serial.println("[THRESHOLD] Using special mode: " + specialMode);
             // Wake from screensaver if active
-            if (screensaverActive) {
-              screensaverActive = false;
+            if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+              deviceState.transition(DeviceState::READY);
               deactivateScreensaver();
             }
             lastActivityTime = millis(); // Reset screensaver timer on payment start
@@ -3189,8 +3209,8 @@ void loop()
           } else {
             Serial.println("[THRESHOLD] Using standard mode");
             // Wake from screensaver if active
-            if (screensaverActive) {
-              screensaverActive = false;
+            if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+              deviceState.transition(DeviceState::READY);
               deactivateScreensaver();
             }
             lastActivityTime = millis(); // Reset screensaver timer on payment start
@@ -3214,7 +3234,7 @@ void loop()
           Serial.println("[THRESHOLD] Ready for next payment");
           // Reset product selection timer
           productSelectionShowTime = millis();
-          onProductSelectionScreen = false;
+          deviceState.transition(DeviceState::READY);
         } else {
           Serial.printf("[THRESHOLD] Payment too small (%d < %d sats) - ignoring\n", 
                         payment_sats, threshold_sats);
@@ -3235,18 +3255,18 @@ void loop()
         if (specialMode != "standard" && specialMode != "") {
           Serial.println("[NORMAL] Using special mode: " + specialMode);
           lastActivityTime = millis(); // Reset screensaver timer on payment start
-          if (screensaverActive) {
+          if (deviceState.isInState(DeviceState::SCREENSAVER)) {
             deactivateScreensaver();
-            screensaverActive = false;
+            deviceState.transition(DeviceState::READY);
           }
           actionTimeScreen();
           executeSpecialMode(pin, duration, frequency, dutyCycleRatio);
         } else {
           Serial.println("[NORMAL] Using standard mode");
           lastActivityTime = millis(); // Reset screensaver timer on payment start
-          if (screensaverActive) {
+          if (deviceState.isInState(DeviceState::SCREENSAVER)) {
             deactivateScreensaver();
-            screensaverActive = false;
+            deviceState.transition(DeviceState::READY);
           }
           actionTimeScreen();
           pinMode(pin, OUTPUT);
@@ -3274,9 +3294,9 @@ void loop()
         
         thankYouScreen();
         lastActivityTime = millis(); // Reset screensaver timer on payment
-        if (screensaverActive) {
+        if (deviceState.isInState(DeviceState::SCREENSAVER)) {
           deactivateScreensaver();
-          screensaverActive = false;
+          deviceState.transition(DeviceState::READY);
         }
         delay(2000);
         

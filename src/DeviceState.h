@@ -256,16 +256,24 @@ private:
     void onStateExit(DeviceState state) {
         switch (state) {
             case DeviceState::CONFIG_MODE:
-                // Clear config mode timer
-                Serial.println("[STATE_EXIT] CONFIG_MODE - saving config");
+                // Config mode cleanup handled by handleConfigExitButtons()
+                Serial.println("[STATE_EXIT] CONFIG_MODE");
                 break;
 
             case DeviceState::SCREENSAVER:
-                Serial.println("[STATE_EXIT] SCREENSAVER - turning off sleep timer");
+                Serial.println("[STATE_EXIT] SCREENSAVER");
+                break;
+
+            case DeviceState::DEEP_SLEEP:
+                Serial.println("[STATE_EXIT] DEEP_SLEEP");
                 break;
 
             case DeviceState::HELP_SCREEN:
-                Serial.println("[STATE_EXIT] HELP_SCREEN - clearing help mode");
+                Serial.println("[STATE_EXIT] HELP_SCREEN");
+                break;
+
+            case DeviceState::REPORT_SCREEN:
+                Serial.println("[STATE_EXIT] REPORT_SCREEN");
                 break;
 
             default:
@@ -275,14 +283,14 @@ private:
 
     /**
      * Called when entering a new state
-     * Used for state-specific initialization and display updates
-     * NOTE: These are declarations only - actual implementation in main.cpp
-     *       is needed because they require access to hardware/display functions
+     * Used for state-specific initialization
+     * Actual hardware operations (display update, etc.) must be called from main.cpp
      */
     void onStateEnter(DeviceState state) {
         switch (state) {
             case DeviceState::READY:
-                Serial.println("[STATE_ENTRY] READY - updating LED, displaying QR");
+                Serial.println("[STATE_ENTRY] READY - display QR code");
+                // Actual display update done in main loop
                 break;
 
             case DeviceState::CONFIG_MODE:
@@ -298,11 +306,32 @@ private:
                 break;
 
             case DeviceState::SCREENSAVER:
-                Serial.println("[STATE_ENTRY] SCREENSAVER - starting sleep timer");
+                Serial.println("[STATE_ENTRY] SCREENSAVER - display off");
+                break;
+
+            case DeviceState::DEEP_SLEEP:
+                Serial.println("[STATE_ENTRY] DEEP_SLEEP - entering deep sleep");
                 break;
 
             case DeviceState::ERROR_CRITICAL:
-                Serial.println("[STATE_ENTRY] ERROR_CRITICAL - showing error screen");
+            case DeviceState::ERROR_RECOVERABLE:
+                Serial.println("[STATE_ENTRY] ERROR - showing error screen");
+                break;
+
+            case DeviceState::PRODUCT_SELECTION:
+                Serial.println("[STATE_ENTRY] PRODUCT_SELECTION");
+                break;
+
+            case DeviceState::BTC_TICKER:
+                Serial.println("[STATE_ENTRY] BTC_TICKER");
+                break;
+
+            case DeviceState::REPORT_SCREEN:
+                Serial.println("[STATE_ENTRY] REPORT_SCREEN");
+                break;
+
+            case DeviceState::RECEIVING_PAYMENT:
+                Serial.println("[STATE_ENTRY] RECEIVING_PAYMENT");
                 break;
 
             default:
