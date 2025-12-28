@@ -82,6 +82,7 @@ struct ExternalButtonConfig {
   static constexpr unsigned long TRIPLE_WINDOW_MS = 2000;
   static constexpr unsigned long HELP_HOLD_MS = 2000;
   static constexpr unsigned long CONFIG_HOLD_MS = 3000;
+  static constexpr unsigned long CONFIG_EXIT_GUARD_MS = 2000; // Minimum time before button/touch can exit config
 };
 
 extern ExternalButtonState externalButtonState;

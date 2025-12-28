@@ -17,6 +17,8 @@
 #include "GlobalState.h"
 #include "Payment.h"
 #include "Input.h"
+#include "Network.h"
+#include "UI.h"
 
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
@@ -28,11 +30,6 @@ String qrFormat = "bech32"; // "bech32" or "lud17"
 // External LED button (PIN_LED_BUTTON_LED / PIN_LED_BUTTON_SW)
 bool readyLedState = false; // Track current LED state to avoid redundant writes
 bool initializationActive = true; // Startup/initialization phase flag for LED control
-const unsigned long EXTERNAL_DEBOUNCE_MS = 50;
-const unsigned long EXTERNAL_TRIPLE_WINDOW_MS = 2000;
-const unsigned long EXTERNAL_HELP_HOLD_MS = 2000;
-const unsigned long EXTERNAL_CONFIG_HOLD_MS = 3000;
-const unsigned long CONFIG_EXIT_GUARD_MS = 2000; // Minimum time before button/touch can exit config
 
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
@@ -242,125 +239,6 @@ void navigateToNextProduct() {
     // Reset product selection timer after every navigation
     productSelectionState.showTime = millis();
     Serial.println("[NAV] Product selection timer reset");
-  }
-}
-
-// Helper function: Wake from power saving modes
-bool wakeFromPowerSavingMode() {
-  // Check if we're in grace period after wake-up
-  if (powerConfig.lastWakeUpTime > 0 && (millis() - powerConfig.lastWakeUpTime) < GRACE_PERIOD_MS) {
-    Serial.println("[WAKE] Ignored - in grace period after wake-up");
-    return true; // Indicate we're in grace period
-  }
-  
-  // Clear wake-up timestamp once grace period has passed - allows subsequent touches to navigate normally
-  if (powerConfig.lastWakeUpTime > 0) {
-    Serial.println("[WAKE] Grace period expired, resuming normal operation");
-    powerConfig.lastWakeUpTime = 0;
-  }
-  
-  // Reset activity timer
-  activityTracking.lastActivityTime = millis();
-  
-  // If powerConfig.screensaver or deep sleep was active, deactivate and return true
-  if (deviceState.isInState(DeviceState::SCREENSAVER) || deviceState.isInState(DeviceState::DEEP_SLEEP)) {
-    Serial.println("[WAKE] Waking from power saving mode");
-    deviceState.transition(DeviceState::READY);
-    deactivateScreensaver();
-    powerConfig.lastWakeUpTime = millis();
-    activityTracking.lastActivityTime = millis();
-    return true; // Indicate we just woke up
-  }
-  
-  return false; // Normal operation, no wake-up needed
-}
-
-  bool isReadyForReceive() {
-    // LED ON when device is past init, not in error/config/help/report, and not in deep sleep
-    return deviceState.getState() != DeviceState::INITIALIZING && !initializationActive && !deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && !deviceState.isInState(DeviceState::CONFIG_MODE) && !deviceState.isInState(DeviceState::HELP_SCREEN) && !deviceState.isInState(DeviceState::REPORT_SCREEN) && !deviceState.isInState(DeviceState::DEEP_SLEEP);
-  }
-
-  void updateReadyLed() {
-    bool shouldBeOn = isReadyForReceive();
-    if (shouldBeOn != readyLedState) {
-      digitalWrite(PIN_LED_BUTTON_LED, shouldBeOn ? HIGH : LOW); // Source 3.3V when ready
-      readyLedState = shouldBeOn;
-      Serial.printf("[LED] Ready LED %s\n", shouldBeOn ? "ON" : "OFF");
-    }
-  }
-
-// Helper function: Redraw appropriate QR screen based on mode
-void redrawQRScreen() {
-  Serial.println("[DISPLAY] Redrawing QR screen...");
-  if (lightningConfig.thresholdKey.length() > 0) {
-    showThresholdQRScreen();
-    Serial.println("[DISPLAY] Threshold QR screen displayed");
-  } else if (multiChannelConfig.mode != "off") {
-    // Multi-Channel-Control mode: Behavior depends on multiChannelConfig.btcTickerMode and multiChannelConfig.currentProduct
-    if (multiChannelConfig.currentProduct == -1) {
-      // Special value: product selection screen
-      productSelectionScreen();
-      deviceState.transition(DeviceState::PRODUCT_SELECTION);
-      multiChannelConfig.btcTickerActive = false;
-      Serial.println("[DISPLAY] Product selection screen displayed");
-    } else if (multiChannelConfig.currentProduct == 0) {
-      // Bitcoin ticker screen (only if ticker mode allows it)
-      if (multiChannelConfig.btcTickerMode == "off") {
-        // Should not show ticker if OFF, show product selection instead
-        multiChannelConfig.currentProduct = -1;
-        productSelectionScreen();
-        deviceState.transition(DeviceState::PRODUCT_SELECTION);
-        multiChannelConfig.btcTickerActive = false;
-        Serial.println("[DISPLAY] BTC-Ticker OFF - Showing product selection screen");
-      } else {
-        // Show ticker for "always" or "selecting" modes
-        btctickerScreen();
-        multiChannelConfig.btcTickerActive = true;
-        Serial.println("[DISPLAY] Bitcoin ticker screen displayed");
-      }
-    } else {
-      String label = "";
-      int displayPin = 0;
-      
-      switch(multiChannelConfig.currentProduct) {
-        case 1:
-          label = (productLabels.label12.length() > 0) ? productLabels.label12 : "Pin 12";
-          displayPin = 12;
-          break;
-        case 2:
-          label = (productLabels.label13.length() > 0) ? productLabels.label13 : "Pin 13";
-          displayPin = 13;
-          break;
-        case 3:
-          label = (productLabels.label10.length() > 0) ? productLabels.label10 : "Pin 10";
-          displayPin = 10;
-          break;
-        case 4:
-          label = (productLabels.label11.length() > 0) ? productLabels.label11 : "Pin 11";
-          displayPin = 11;
-          break;
-      }
-      
-      // Generate LNURL dynamically for current product's pin
-      String lnurlStr = generateLNURL(displayPin);
-      updateLightningQR(lnurlStr);
-      showProductQRScreen(label, displayPin);
-      multiChannelConfig.btcTickerActive = false;
-      Serial.printf("[DISPLAY] Product %d QR screen displayed\n", multiChannelConfig.currentProduct);
-    }
-    deviceState.transition(DeviceState::READY);
-  } else if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-    // Generate LNURL for pin 12 before showing special mode QR
-    String lnurlStr = generateLNURL(12);
-    updateLightningQR(lnurlStr);
-    showSpecialModeQRScreen();
-    Serial.println("[DISPLAY] Special mode QR screen displayed");
-  } else {
-    // Generate LNURL for pin 12 before showing normal QR
-    String lnurlStr = generateLNURL(12);
-    updateLightningQR(lnurlStr);
-    showQRScreen();
-    Serial.println("[DISPLAY] Normal QR screen displayed");
   }
 }
 
@@ -766,62 +644,7 @@ void readFiles()
 
 //////////////////WEBSOCKET///////////////////
 
-// networkStatus.lastPongTime and networkStatus.waitingForPong are now in networkStatus struct
-
-void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
-{
-  Serial.printf("[WS Event] Type: %d, ConfigMode: %d\n", type, (int)deviceState.isInState(DeviceState::CONFIG_MODE));
-  
-  if (!deviceState.isInState(DeviceState::CONFIG_MODE))
-  {
-    switch (type)
-    {
-    case WStype_DISCONNECTED:
-      Serial.println("[WS] Disconnected!");
-      break;
-    case WStype_CONNECTED:
-    {
-      Serial.printf("[WS] Connected to url: %s\n", payload);
-      webSocket.sendTXT("Connected");
-      networkStatus.lastPongTime = millis(); // Reset pong timer on connect
-      networkStatus.waitingForPong = false;
-      networkStatus.confirmed.websocket = true; // Mark WebSocket as confirmed on first connect
-      Serial.println("[CONFIRMED] WebSocket connection confirmed!");
-      
-      // Fetch switch labels from backend after successful connection
-      fetchSwitchLabels();
-    }
-    break;
-    case WStype_TEXT:
-      Serial.printf("[WS] Received text: %s\n", payload);
-      payloadStr = (char *)payload;
-      Serial.printf("[WS] PayloadStr set to: %s\n", payloadStr.c_str());
-      paymentStatus.paid = true;
-      Serial.println("[WS] 'paymentStatus.paid' flag set to TRUE");
-      break;
-    case WStype_PING:
-      Serial.println("[WS] Received Ping");
-      break;
-    case WStype_PONG:
-      Serial.println("[WS] Received Pong - connection alive!");
-      networkStatus.lastPongTime = millis();
-      networkStatus.waitingForPong = false;
-      break;
-    case WStype_ERROR:
-      Serial.println("[WS] Error occurred!");
-      break;
-    case WStype_FRAGMENT_TEXT_START:
-    case WStype_FRAGMENT_BIN_START:
-    case WStype_FRAGMENT:
-    case WStype_FRAGMENT_FIN:
-      break;
-    }
-  }
-  else
-  {
-    Serial.println("[WS] Event ignored - in config mode");
-  }
-}
+// Network functions moved to src/Network.cpp
 
 // Fetch switch labels from backend API
 void fetchSwitchLabels()
@@ -1026,113 +849,7 @@ void updateSwitchLabels()
   }
 }
 
-// HTTP-based Internet check (doesn't require WebSocket connection)
-bool checkInternetConnectivity()
-{
-  HTTPClient http;
-  http.setTimeout(3000); // 3 second timeout
-  
-  Serial.println("[HTTP] Testing Internet connection...");
-  http.begin("http://clients3.google.com/generate_204"); // Google's connectivity check
-  
-  int httpCode = http.GET();
-  http.end();
-  
-  bool hasInternet = (httpCode == 204 || httpCode == 301 || httpCode == 302 || httpCode > 0);
-  Serial.printf("[HTTP] Internet check result: %s (HTTP code: %d)\n", hasInternet ? "OK" : "FAILED", httpCode);
-  
-  return hasInternet;
-}
-
-// TCP-based Server reachability check (test if LNbits server port is open)
-bool checkServerReachability()
-{
-  WiFiClient client;
-  Serial.printf("[TCP] Testing server reachability: %s:443...\n", lnbitsServer.c_str());
-  
-  bool serverReachable = client.connect(lnbitsServer.c_str(), 443, 2000); // 2 second timeout (reduced from 3)
-  
-  if (serverReachable) {
-    Serial.println("[TCP] Server is reachable (port 443 open)");
-    client.stop();
-  } else {
-    Serial.println("[TCP] Server is NOT reachable (port 443 closed/timeout)");
-  }
-  
-  return serverReachable;
-}
-
-// ============================================================================
-// WiFi State Monitoring - Updates DeviceState based on WiFi connectivity
-// ============================================================================
-void checkWiFiStatus() {
-  WiFiState newWiFiState;
-  
-  if (WiFi.status() != WL_CONNECTED) {
-    // WiFi disconnected
-    newWiFiState = WiFiState::DISCONNECTED;
-  } else if (!webSocket.isConnected()) {
-    // WiFi connected but WebSocket not yet connected
-    newWiFiState = WiFiState::CONNECTING;
-  } else {
-    // WiFi connected and WebSocket operational
-    newWiFiState = WiFiState::CONNECTED;
-  }
-  
-  // Update state machine with WiFi status
-  // This will automatically trigger state transitions on connection loss/gain
-  deviceState.updateWiFiState(newWiFiState);
-}
-
-void checkAndReconnectWiFi()
-{
-  // Simplified version - just show error screen, don't block
-  if (WiFi.status() != WL_CONNECTED && !deviceState.isInState(DeviceState::CONFIG_MODE))
-  {
-    Serial.println("WiFi connection lost!");
-    if (networkStatus.errors.wifi < 99) networkStatus.errors.wifi++;
-    Serial.printf("[ERROR] WiFi error count: %d\n", networkStatus.errors.wifi);
-    
-    if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
-      // Only show error screen if not already showing one
-      deviceState.transition(DeviceState::ERROR_RECOVERABLE);
-      currentErrorType = 1; // WiFi error (highest priority)
-      wifiReconnectScreen();
-    }
-    
-    // Start WiFi reconnect but don't block waiting for it
-    if (!networkStatus.confirmed.wifi) {
-      // First time - configure WiFi
-      WiFi.disconnect();
-      delay(50);
-      WiFi.mode(WIFI_STA);
-      WiFi.setSleep(false);
-      WiFi.setAutoReconnect(true);
-      WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
-      WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
-      Serial.println("[RECOVERY] WiFi reconnection started (non-blocking)");
-    }
-    // If WiFi was confirmed before, auto-reconnect will handle it
-  }
-  else if (WiFi.status() == WL_CONNECTED && networkStatus.errors.wifi > 0 && deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && currentErrorType == 1)
-  {
-    // WiFi recovered while on error screen
-    Serial.println("[RECOVERY] WiFi recovered!");
-    networkStatus.confirmed.wifi = true;
-    deviceState.transition(DeviceState::READY);
-    currentErrorType = 0;
-    needsQRRedraw = true;
-    activityTracking.lastActivityTime = millis();
-    productSelectionState.showTime = millis();
-    
-    // Force BTC data refresh after WiFi recovery
-    if (multiChannelConfig.btcTickerMode != "off") {
-      Serial.println("[RECOVERY] Forcing BTC data refresh after WiFi recovery");
-      bitcoinData.lastUpdate = 0; // Force immediate update
-      fetchBitcoinData(); // Fetch data now
-    }
-  }
-}
+// Network connectivity checks moved to src/Network.cpp
 
 void configMode()
 {
@@ -1331,7 +1048,7 @@ void handleTouchButton()
   }
   
   // Config Mode Touch Exit: Any touch after 2s exits config mode
-  if (deviceState.isInState(DeviceState::CONFIG_MODE) && configModeStartTime > 0 && (millis() - configModeStartTime) >= CONFIG_EXIT_GUARD_MS) {
+  if (deviceState.isInState(DeviceState::CONFIG_MODE) && configModeStartTime > 0 && (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
     if (digitalRead(PIN_TOUCH_INT) == LOW) {
       Serial.println("[CONFIG] Touch detected - exiting config mode");
       delay(100);
