@@ -7,6 +7,7 @@
 #include "UI.h"
 #include "TouchCST816S.h"
 #include <Arduino.h>
+#include "Log.h"
 
 // External references to main.cpp
 extern StateManager deviceState;
@@ -43,18 +44,18 @@ extern void showHelp();
 void navigateToNextProduct() {
   // Wake from power saving mode if active
   if (wakeFromPowerSavingMode()) {
-    Serial.println("[NAV] Device woke up, not navigating");
+    LOG_DEBUG("Navigation", "Device woke up, not navigating");
     return; // Don't navigate, just wake up
   }
   
-  Serial.println("[BUTTON] Navigate button pressed");
+  LOG_INFO("Navigation", "Navigate button pressed");
   
   if (multiChannelConfig.mode == "off") {
     // Single mode behavior depends on multiChannelConfig.btcTickerMode
     if (multiChannelConfig.btcTickerMode == "selecting") {
       if (multiChannelConfig.btcTickerActive) {
         // Already showing ticker - skip back to QR immediately
-        Serial.println("[NAV] Single mode SELECTING - Skipping from ticker to QR");
+        LOG_INFO("Navigation", "Single mode SELECTING - Skipping from ticker to QR");
         multiChannelConfig.btcTickerActive = false;
         ensureQrForPin(12);
         if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
@@ -68,10 +69,10 @@ void navigateToNextProduct() {
         btctickerScreen();
         multiChannelConfig.btcTickerActive = true;
         productSelectionState.showTime = millis(); // Start 10-second timer
-        Serial.println("[NAV] Single mode with SELECTING - Showing Bitcoin ticker for 10 seconds");
+        LOG_INFO("Navigation", "Single mode with SELECTING - Showing Bitcoin ticker for 10 seconds");
       }
     } else {
-      Serial.println("[NAV] Single mode - no navigation available");
+      LOG_INFO("Navigation", "Single mode - no navigation available");
     }
     return; // Single mode, no multi-product navigation
   }
@@ -85,7 +86,7 @@ void navigateToNextProduct() {
     multiChannelConfig.btcTickerActive = false;
     multiChannelConfig.currentProduct = 1;
     deviceState.transition(DeviceState::READY);
-    Serial.println("[NAV] Ticker active - returning to first product");
+    LOG_INFO("Navigation", "Ticker active - returning to first product");
   } else {
     multiChannelConfig.currentProduct++;
   }
@@ -98,14 +99,14 @@ void navigateToNextProduct() {
       btctickerScreen();
       multiChannelConfig.btcTickerActive = true;
       productSelectionState.showTime = millis(); // Start timer for auto-return
-      Serial.println("[NAV] SELECTING mode - Showing Bitcoin ticker after last product");
+      LOG_INFO("Navigation", "SELECTING mode - Showing Bitcoin ticker after last product");
       return;
     } else if (multiChannelConfig.mode == "quattro" && multiChannelConfig.currentProduct > 4) {
       multiChannelConfig.currentProduct = 0; // Reset for next navigation
       btctickerScreen();
       multiChannelConfig.btcTickerActive = true;
       productSelectionState.showTime = millis(); // Start timer for auto-return
-      Serial.println("[NAV] SELECTING mode - Showing Bitcoin ticker after last product");
+      LOG_INFO("Navigation", "SELECTING mode - Showing Bitcoin ticker after last product");
       return;
     }
   } else {
@@ -117,7 +118,7 @@ void navigateToNextProduct() {
     }
   }
   
-  Serial.printf("[NAV] Navigate to product: %d\n", multiChannelConfig.currentProduct);
+  LOG_INFO("Navigation", String("Navigate to product: ") + String(multiChannelConfig.currentProduct));
   
   // IMPORTANT: Disable product selection screen FIRST to prevent concurrent screen updates
   deviceState.transition(DeviceState::READY);
@@ -153,7 +154,7 @@ void navigateToNextProduct() {
         pin = 11;
         break;
       default: // Fallback to Pin 12 if invalid product number
-        Serial.printf("[NAV] WARNING: Invalid product number %d, defaulting to Pin 12\n", productNum);
+        LOG_WARN("Navigation", String("Invalid product number ") + String(productNum) + String(", defaulting to Pin 12"));
         label = (productLabels.label12.length() > 0) ? productLabels.label12 : "Pin 12";
         pin = 12;
         break;
@@ -164,11 +165,11 @@ void navigateToNextProduct() {
     
     // Show product screen
     showProductQRScreen(label, pin);
-    Serial.printf("[NAV] Showing product: %s (Pin %d)\n", label.c_str(), pin);
+    LOG_INFO("Navigation", String("Showing product: ") + label + String(" (Pin ") + String(pin) + String(")"));
     
     // Reset product selection timer after every navigation
     productSelectionState.showTime = millis();
-    Serial.println("[NAV] Product selection timer reset");
+    LOG_DEBUG("Navigation", "Product selection timer reset");
   }
 }
 
@@ -185,7 +186,7 @@ void handleTouchButton()
       touchState.pressStartTime = millis();
       
       // This is the second click - switch from Help to Report
-      Serial.println("[TOUCH] Second click during Help -> Switching to Report Mode");
+      LOG_INFO("Touch", "Second click during Help -> Switching to Report Mode");
       deviceState.transition(DeviceState::REPORT_SCREEN); // Abort Help
       touchState.clickCount = 0; // Reset
       
@@ -203,7 +204,7 @@ void handleTouchButton()
         }
         
         if (isMainAreaTouch) {
-          Serial.println("[TOUCH] + Display touch -> Config Mode");
+          LOG_INFO("Touch", "+ Display touch -> Config Mode");
           configMode();
           return;
         }
@@ -221,7 +222,7 @@ void handleTouchButton()
   // If in Report mode: Button press aborts
   if (deviceState.isInState(DeviceState::REPORT_SCREEN)) {
     if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
-      Serial.println("[TOUCH] Button press during Report - ABORTING");
+      LOG_INFO("Touch", "Button press during Report - ABORTING");
       deviceState.transition(DeviceState::READY);
       touchState.pressed = true;
     }
@@ -239,7 +240,7 @@ void handleTouchButton()
     // For 1 click: Wait 1 second for potential second click
     // If no second click after 1s → Start Help
     if (touchState.clickCount == 1 && timeSinceLastTouch > 1000 && !deviceState.isInState(DeviceState::HELP_SCREEN)) {
-      Serial.println("[TOUCH] Timeout: 1 click, no second click -> Help");
+      LOG_INFO("Touch", "Timeout: 1 click, no second click -> Help");
       showHelp();
       touchState.clickCount = 0;
     }
@@ -247,7 +248,7 @@ void handleTouchButton()
     // For 2 clicks: Wait 1 second for potential third click
     // If no third click after 1s → Start Report
     else if (touchState.clickCount == 2 && timeSinceLastTouch > 1000 && !deviceState.isInState(DeviceState::REPORT_SCREEN)) {
-      Serial.println("[TOUCH] Timeout: 2 clicks, no third click -> Report");
+      LOG_INFO("Touch", "Timeout: 2 clicks, no third click -> Report");
       reportMode();
       touchState.clickCount = 0;
     }
@@ -255,7 +256,7 @@ void handleTouchButton()
     // For 3 clicks: Wait 1 second for potential fourth click
     // If no fourth click after 1s → Reset (do nothing)
     else if (touchState.clickCount == 3 && timeSinceLastTouch > 1000) {
-      Serial.println("[TOUCH] Timeout: 3 clicks, no fourth click -> Reset");
+      LOG_DEBUG("Touch", "Timeout: 3 clicks, no fourth click -> Reset");
       touchState.clickCount = 0;
     }
     
@@ -268,7 +269,7 @@ void handleTouchButton()
   // Config Mode Touch Exit: Any touch after 2s exits config mode
   if (deviceState.isInState(DeviceState::CONFIG_MODE) && configModeStartTime > 0 && (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
     if (digitalRead(PIN_TOUCH_INT) == LOW) {
-      Serial.println("[CONFIG] Touch detected - exiting config mode");
+      LOG_INFO("Touch", "Touch detected - exiting config mode");
       delay(100);
       ESP.restart();
     }
@@ -289,7 +290,7 @@ void handleTouchButton()
     
     // FIRST: Wake from powerConfig.screensaver if active (regardless of touch location)
     if (deviceState.isInState(DeviceState::SCREENSAVER)) {
-      Serial.printf("[TOUCH] Display touched at X=%d, Y=%d during powerConfig.screensaver - WAKING UP\n", touchX, touchY);
+      LOG_DEBUG("Touch", String("Display touched at X=") + String(touchX) + String(" Y=") + String(touchY) + String(" during screensaver - WAKING UP"));
       deviceState.transition(DeviceState::READY);
       deactivateScreensaver();
       powerConfig.lastWakeUpTime = millis();
@@ -304,8 +305,7 @@ void handleTouchButton()
       return;
     }
     
-    Serial.printf("[TOUCH] Button area touched at X=%d, Y=%d (displayConfig.orientation=%s)\n", 
-                  touchX, touchY, displayConfig.orientation.c_str());
+    LOG_DEBUG("Touch", String("Button area touched at X=") + String(touchX) + String(" Y=") + String(touchY) + String(" (orientation=") + displayConfig.orientation + String(")"));
     
     // Touch button pressed
     touchState.pressed = true;
@@ -317,19 +317,18 @@ void handleTouchButton()
     if (timeSinceLastTouch < TOUCH_DOUBLE_CLICK_MS && timeSinceLastTouch > 100) {
       // Within double-click window AND minimum 100ms since last touch (debounce)
       touchState.clickCount++;
-      Serial.printf("[TOUCH] Click within window (%lu ms since last) - count now: %d\n", 
-                    timeSinceLastTouch, touchState.clickCount);
+      LOG_DEBUG("Touch", String("Click within window (") + String(timeSinceLastTouch) + String(" ms since last) - count now: ") + String(touchState.clickCount));
     } else if (timeSinceLastTouch <= 100) {
       // Too fast - likely bounce or accidental double-click, ignore
-      Serial.printf("[TOUCH] Too fast (%lu ms), ignoring (debounce)\n", timeSinceLastTouch);
+      LOG_DEBUG("Touch", String("Too fast (") + String(timeSinceLastTouch) + String(" ms), ignoring (debounce)"));
       return;
     } else {
       touchState.clickCount = 1; // Reset to 1 for new click sequence
-      Serial.printf("[TOUCH] New click sequence (last click was %lu ms ago)\n", timeSinceLastTouch);
+      LOG_DEBUG("Touch", String("New click sequence (last click was ") + String(timeSinceLastTouch) + String(" ms ago)"));
     }
     touchState.lastTime = millis();
     
-    Serial.printf("[TOUCH] Button click count: %d\n", touchState.clickCount);
+    LOG_DEBUG("Touch", String("Button click count: ") + String(touchState.clickCount));
     
     // Process clicks:
     // - Click 1: Wait for timeout (1s) → Help
@@ -338,7 +337,7 @@ void handleTouchButton()
     // - Click 4: Immediate Config Mode
     if (touchState.clickCount == 4) {
       // Fourth click within timeout -> Config Mode (IMMEDIATE, no waiting)
-      Serial.println("[TOUCH] Fourth click -> Config Mode");
+      LOG_INFO("Touch", "Fourth click -> Config Mode");
       deviceState.transition(DeviceState::READY);  // Reset state before entering config
       configMode();
       touchState.clickCount = 0;
@@ -350,6 +349,6 @@ void handleTouchButton()
     touchState.pressed = false;
     unsigned long pressDuration = millis() - touchState.pressStartTime;
     
-    Serial.printf("[TOUCH] Button released after %lu ms\n", pressDuration);
+    LOG_DEBUG("Touch", String("Button released after ") + String(pressDuration) + String(" ms"));
   }
 }
