@@ -21,6 +21,72 @@ const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
 // External function declarations from main.cpp
 extern void btctickerScreen();
 
+// Task handles for parallel requests
+static TaskHandle_t coinGeckoTaskHandle = NULL;
+static TaskHandle_t mempoolTaskHandle = NULL;
+
+// Temporary storage for parallel BTC data fetch
+static struct {
+  String price;
+  String blockHeight;
+  bool priceReady = false;
+  bool blockHeightReady = false;
+} parallelBtcData;
+
+/**
+ * Task: Fetch BTC price from CoinGecko (runs in parallel)
+ */
+void fetchCoinGeckoTask(void* parameter) {
+  HTTPClient http;
+  String currencyLower = currency;
+  currencyLower.toLowerCase();
+  String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
+  
+  http.begin(apiUrl);
+  http.setTimeout(5000);
+  int httpCode = http.GET();
+  
+  if (httpCode == 200) {
+    String payload = http.getString();
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    
+    if (!error && doc["bitcoin"].is<JsonObject>()) {
+      float price = doc["bitcoin"][currencyLower];
+      parallelBtcData.price = String((int)price);
+    } else {
+      parallelBtcData.price = "Error";
+    }
+  } else {
+    parallelBtcData.price = "Error";
+  }
+  http.end();
+  
+  parallelBtcData.priceReady = true;
+  vTaskDelete(NULL);
+}
+
+/**
+ * Task: Fetch block height from Mempool.space (runs in parallel)
+ */
+void fetchMempoolTask(void* parameter) {
+  HTTPClient http;
+  http.begin("https://mempool.space/api/blocks/tip/height");
+  http.setTimeout(5000);
+  int httpCode = http.GET();
+  
+  if (httpCode == 200) {
+    parallelBtcData.blockHeight = http.getString();
+    parallelBtcData.blockHeight.trim();
+  } else {
+    parallelBtcData.blockHeight = "Error";
+  }
+  http.end();
+  
+  parallelBtcData.blockHeightReady = true;
+  vTaskDelete(NULL);
+}
+
 /**
  * Fetch switch labels and configuration from LNbits server.
  */
@@ -118,65 +184,57 @@ void fetchSwitchLabels()
 }
 
 /**
- * Fetch Bitcoin price and block height from external APIs.
+ * Fetch Bitcoin price and block height from external APIs (in parallel for speed).
  */
 void fetchBitcoinData()
 {
-  Serial.println("[BTC] Fetching Bitcoin data...");
-  HTTPClient http;
-
-  // Fetch BTC price from CoinGecko using configured currency
-  String currencyLower = currency;
-  currencyLower.toLowerCase(); // CoinGecko expects lowercase currency code
-  String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
+  Serial.println("[BTC] Fetching Bitcoin data (parallel)...");
   
-  Serial.println("[BTC] Current currency variable: '" + currency + "'");
-  Serial.println("[BTC] Requesting price from CoinGecko with URL: " + apiUrl);
-  http.begin(apiUrl);
-  http.setTimeout(5000);
-
-  int httpCode = http.GET();
-  if (httpCode == 200) {
-    String payload = http.getString();
-    Serial.println("[BTC] CoinGecko response: " + payload);
-
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
-
-    if (!error && doc["bitcoin"].is<JsonObject>()) {
-      Serial.println("[BTC] Looking for price key: '" + currencyLower + "'");
-      float price = doc["bitcoin"][currencyLower];
-      bitcoinData.price = String((int)price); // Convert to integer string
-      Serial.println("[BTC] Price updated: " + bitcoinData.price + " " + currency);
-    } else {
-      Serial.println("[BTC] Failed to parse CoinGecko JSON");
-      bitcoinData.price = "Error";
+  // Reset parallel data flags
+  parallelBtcData.priceReady = false;
+  parallelBtcData.blockHeightReady = false;
+  parallelBtcData.price = "Error";
+  parallelBtcData.blockHeight = "Error";
+  
+  // Start CoinGecko task on Core 0 (lower priority)
+  xTaskCreatePinnedToCore(
+    fetchCoinGeckoTask,
+    "CoinGecko",
+    4096,
+    NULL,
+    1,
+    &coinGeckoTaskHandle,
+    0
+  );
+  
+  // Start Mempool task on Core 0 (lower priority)
+  xTaskCreatePinnedToCore(
+    fetchMempoolTask,
+    "Mempool",
+    4096,
+    NULL,
+    1,
+    &mempoolTaskHandle,
+    0
+  );
+  
+  // Wait for both tasks with timeout (max 6 seconds)
+  unsigned long startTime = millis();
+  while ((millis() - startTime) < 6000) {
+    if (parallelBtcData.priceReady && parallelBtcData.blockHeightReady) {
+      break; // Both ready
     }
-  } else {
-    Serial.printf("[BTC] CoinGecko request failed: %d\n", httpCode);
-    bitcoinData.price = "Error";
+    delay(100);
   }
-  http.end();
-
-  delay(100); // Small delay between requests
-
-  // Fetch block height from mempool.space
-  Serial.println("[BTC] Requesting block height from mempool.space...");
-  http.begin("https://mempool.space/api/blocks/tip/height");
-  http.setTimeout(5000);
-
-  httpCode = http.GET();
-  if (httpCode == 200) {
-    bitcoinData.blockHigh = http.getString();
-    bitcoinData.blockHigh.trim();
-    Serial.println("[BTC] Block height updated: " + bitcoinData.blockHigh);
-  } else {
-    Serial.printf("[BTC] Mempool.space request failed: %d\n", httpCode);
-    bitcoinData.blockHigh = "Error";
-  }
-  http.end();
-
+  
+  // Get results (use values from parallel tasks, or "Error" if timeout)
+  bitcoinData.price = parallelBtcData.price;
+  bitcoinData.blockHigh = parallelBtcData.blockHeight;
+  
+  Serial.println("[BTC] Price: " + bitcoinData.price + " " + currency);
+  Serial.println("[BTC] Block height: " + bitcoinData.blockHigh);
   Serial.println("[BTC] Bitcoin data fetch completed");
+  
   bitcoinData.lastUpdate = millis();
 }
 
