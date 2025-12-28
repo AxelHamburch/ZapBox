@@ -1,0 +1,134 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build firmware after Punkt 3 extraction",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe run",
+			"isBackground": false,
+			"problemMatcher": [
+				"$platformio"
+			]
+		},
+		{
+			"label": "Rebuild after Json fix",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe run",
+			"isBackground": false,
+			"problemMatcher": [
+				"$platformio"
+			]
+		},
+		{
+			"label": "Rebuild after ArduinoJson variant fix",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe run",
+			"isBackground": false,
+			"problemMatcher": [
+				"$platformio"
+			]
+		},
+		{
+			"label": "PlatformIO: Build",
+			"type": "shell",
+			"command": "platformio",
+			"args": [
+				"run"
+			],
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build",
+			"type": "shell",
+			"command": "platformio",
+			"args": [
+				"run"
+			],
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Fix",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe",
+			"args": [
+				"run"
+			],
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Punkt 4",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe",
+			"args": [
+				"run"
+			],
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Retry",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe",
+			"args": [
+				"run"
+			],
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Navigation",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe",
+			"args": [
+				"run"
+			],
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Fix 2",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe",
+			"args": [
+				"run"
+			],
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Navigation Fix 3",
+			"type": "shell",
+			"command": "pio run",
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build after UI single-mode fix",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe run",
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		}
+	]
+}

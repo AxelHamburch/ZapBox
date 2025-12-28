@@ -140,3 +140,13 @@ void updateLightningQR(const String& lnurlStr) {
   Serial.print("[QR] Updated lightning QR: ");
   Serial.println(lightningConfig.lightning);
 }
+
+// Convenience wrapper: Generate LNURL and update QR for given pin
+void ensureQrForPin(int pin) {
+  String lnurlStr = generateLNURL(pin);
+  if (lnurlStr.length() > 0) {
+    updateLightningQR(lnurlStr);
+  } else {
+    Serial.printf("[LNURL] Skipping QR update for pin %d (empty LNURL)\n", pin);
+  }
+}
