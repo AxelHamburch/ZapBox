@@ -132,36 +132,41 @@ Button Terminal 2      →                    →    GND
 
 **Note:** GPIOs 43 and 44 are not RTC-capable and cannot be used for deep sleep wake-up.
 
+
 ## Operation
 
-### Non-Touch Version (Physical Buttons)
+### On-board Button - Reset
+- **System reset**: Restarts the device completely
 
-- **Left Button (BOOT)**: 
-  - Short press = Report mode (shows error counters)
-  - Hold 5 seconds = Configuration mode (serial config interface)
-- **Right Button (HELP)**: Show help page with instructions
+### On-board Button - HELP (GPIO 14)
+- **Click once**: Open the Help page
+- **Double-click**: Open the Report page
 
-### Touch Version (Virtual Touch Button)
+### On-board Button - NEXT (BOOT / GPIO 0)
+- **General**: Wakes up from screensaver and deep sleep
+- **1x click**: Display product page / Change page
+- **Hold for more than 5 seconds**: Start Config mode
+  - ⚠️ **Note**: Clicking again closes the Config page prematurely
+- **Special function**: Hold down the BOOT button, press the reset button once, and then release the BOOT button → Activates reception mode for firmware updates
 
-The Touch version features a **virtual touch button** in the bottom area of the display (works in all orientations):
+### Touch display (touch version only)
+- **General**: Wakes up from screensaver (not compatible with deep sleep)
+- **1x click/swipe**: Display product page / Change page
 
-- **1x Click** (wait 1 second): **Help Mode** - Shows 3 help screens with usage instructions
-- **2x Click** (within 1 second): **Report Mode** - Shows error counters and diagnostics (2s first screen, 1s per additional)
-- **3x Click** (within 1 second): Nothing (waiting for 4th click)
-- **4x Click** (within 1 second): **Config Mode** - Serial configuration interface
-  - **Timeout**: 3 minutes (180 seconds) of inactivity
-  - **Early Exit**: Touch screen anywhere after 2 seconds to exit and restart
+### Touch button (Red circle next to the touch field)
+- **Click once**: Open the help page
+- **Double-click**: Open the report page
+- **Quadruple-click**: Open the Config page
+  - ⚠️ **Note**: A delayed click on the display deactivates the Config page prematurely
 
-**Touch Button Features:**
-- Located at hardware position Y > 305 (bottom 15 pixels)
-- Works in both vertical and horizontal display orientations
-- 100ms debounce prevents accidental double-clicks
-- Independent from main display touch navigation
-- Automatically disabled on non-touch hardware
-
-**Touch Navigation:**
-- **Swipe** or **Tap** on main display area to navigate between products (Multi-Channel-Control mode)
-- Touch button area is excluded from product navigation to prevent conflicts
+### External LED-Button (if available)
+- **LED Indicator**: Active when device is ready (no initialization, error, or special mode active)
+- **General**: Wakes up from screensaver (not compatible with deep sleep)
+- **Press once**: Display product page / Change page
+- **Press and hold for at least 2 seconds**: Open the help page
+- **Press 3x quickly**: Open the report page
+- **Press briefly once, then hold for at least 3 seconds**: Activate Config mode
+  - ⚠️ **Note**: Clicking again closes the Config page prematurely
 
 ### Startup & Initialization Sequence
 
@@ -386,41 +391,6 @@ Automatic power-saving modes that activate after a configurable timeout:
 - **Deep Sleep - Complete Shutdown**: Only RTC memory active, device performs full restart on wake-up (~3-5s), requires complete WiFi reconnection. NO payment processing during sleep. Maximum battery life.
 
 **Use Cases**: Energy saving for installations, battery operation, reducing device heat, extending display lifespan in always-on scenarios
-
-## Operation - Overview of buttons and functions
-
-### On-board Button - Reset
-- **System reset**: Restarts the device completely
-
-### On-board Button - HELP (GPIO 14)
-- **Click once**: Open the Help page
-- **Double-click**: Open the Report page
-
-### On-board Button - NEXT (BOOT / GPIO 0)
-- **General**: Wakes up from screensaver and deep sleep
-- **1x click**: Display product page / Change page
-- **Hold for more than 5 seconds**: Start Config mode
-  - ⚠️ **Note**: Clicking again closes the Config page prematurely
-- **Special function**: Hold down the BOOT button, press the reset button once, and then release the BOOT button → Activates reception mode for firmware updates
-
-### Touch display (touch version only)
-- **General**: Wakes up from screensaver (not compatible with deep sleep)
-- **1x click/swipe**: Display product page / Change page
-
-### Touch button (Red circle next to the touch field)
-- **Click once**: Open the help page
-- **Double-click**: Open the report page
-- **Quadruple-click**: Open the Config page
-  - ⚠️ **Note**: A delayed click on the display deactivates the Config page prematurely
-
-### External LED-Button (if available)
-- **LED Indicator**: Active when device is ready (no initialization, error, or special mode active)
-- **General**: Wakes up from screensaver (not compatible with deep sleep)
-- **Press once**: Display product page / Change page
-- **Press and hold for at least 2 seconds**: Open the help page
-- **Press 3x quickly**: Open the report page
-- **Press briefly once, then hold for at least 3 seconds**: Activate Config mode
-  - ⚠️ **Note**: Clicking again closes the Config page prematurely
 
 ## Web Installer
 
