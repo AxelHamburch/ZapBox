@@ -13,6 +13,7 @@
 #include "Display.h"
 #include "SerialConfig.h"
 #include "TouchCST816S.h"
+#include "DeviceState.h"
 
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
@@ -83,20 +84,19 @@ const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
 // Screensaver and Deep Sleep timeout tracking
 unsigned long lastActivityTime = 0;  // Track last button press or activity
 unsigned long activationTimeoutMs = 5 * 60 * 1000; // Default 5 minutes in milliseconds
-bool screensaverActive = false;
-bool deepSleepActive = false;
 unsigned long lastWakeUpTime = 0;  // Track when device woke up from screensaver
 const unsigned long GRACE_PERIOD_MS = 1000;  // 1 second grace period after wake-up (reduced from 5s for better UX)
+
+// Screensaver and deep sleep internal state (synchronized with DeviceState)
+bool screensaverActive = false;
+bool deepSleepActive = false;
+bool onProductSelectionScreen = false; // Track product selection screen state
 
 String payloadStr;
 String lnbitsServer;
 String deviceId;
 bool paid = false;
-bool inConfigMode = false;
 unsigned long configModeStartTime = 0; // Track when config mode started for touch exit
-bool inReportMode = false;
-bool inHelpMode = false;
-bool setupComplete = false; // Prevent loop from running before setup finishes
 bool firstLoop = true; // Track first loop iteration
 
 // Error counters (0-99, capped at 99)
@@ -112,8 +112,8 @@ bool serverConfirmed = false;
 bool websocketConfirmed = false;
 
 // Error screen tracking
-bool onErrorScreen = false;
 byte currentErrorType = 0; // 0=none, 1=WiFi (highest), 2=Internet, 3=Server, 4=WebSocket (lowest)
+bool onErrorScreen = false; // Track if error screen is displayed (synchronized with DeviceState)
 unsigned long lastPingTime = 0;
 unsigned long lastInternetCheck = 0; // Track when we last checked Internet connectivity
 byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures to detect Internet issues
@@ -138,7 +138,6 @@ bool touchPressed = false;
 unsigned long touchPressStartTime = 0;
 
 // Product selection screen tracking
-bool onProductSelectionScreen = false;
 unsigned long productSelectionShowTime = 0;
 
 // Product timeout: configurable via platformio.ini build flag PRODUCT_TIMEOUT
@@ -166,6 +165,8 @@ const unsigned long BTC_TICKER_TIMEOUT_DELAY = BTCTICKER_TIMEOUT; // Time to hid
 // 4 = Product 4 (Pin 11)
 volatile int currentProduct = 0; // volatile: accessed from multiple contexts
 int maxProducts = 1; // Will be set based on multiControl mode
+
+StateManager deviceState;  // Global state machine instance
 
 WebSocketsClient webSocket;
 
@@ -384,7 +385,7 @@ void navigateToNextProduct() {
     // If ticker is active, go back to first product
     btcTickerActive = false;
     currentProduct = 1;
-    onProductSelectionScreen = false;
+    deviceState.transition(DeviceState::READY);
     Serial.println("[NAV] Ticker active - returning to first product");
   } else {
     currentProduct++;
@@ -420,7 +421,7 @@ void navigateToNextProduct() {
   Serial.printf("[NAV] Navigate to product: %d\n", currentProduct);
   
   // IMPORTANT: Disable product selection screen FIRST to prevent concurrent screen updates
-  onProductSelectionScreen = false;
+  deviceState.transition(DeviceState::READY);
   
   // Small delay to ensure any ongoing display operation completes
   vTaskDelay(pdMS_TO_TICKS(50));
@@ -493,7 +494,7 @@ bool wakeFromPowerSavingMode() {
   lastActivityTime = millis();
   
   // If screensaver or deep sleep was active, deactivate and return true
-  if (screensaverActive || deepSleepActive) {
+  if (deviceState.isInState(DeviceState::SCREENSAVER) || deviceState.isInState(DeviceState::DEEP_SLEEP)) {
     Serial.println("[WAKE] Waking from power saving mode");
     screensaverActive = false;
     deepSleepActive = false;
@@ -508,7 +509,7 @@ bool wakeFromPowerSavingMode() {
 
   bool isReadyForReceive() {
     // LED ON when device is past init, not in error/config/help/report, and not in deep sleep
-    return setupComplete && !initializationActive && !onErrorScreen && !inConfigMode && !inHelpMode && !inReportMode && !deepSleepActive;
+    return deviceState.getState() != DeviceState::INITIALIZING && !initializationActive && !deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && !deviceState.isInState(DeviceState::CONFIG_MODE) && !deviceState.isInState(DeviceState::HELP_SCREEN) && !deviceState.isInState(DeviceState::REPORT_SCREEN) && !deviceState.isInState(DeviceState::DEEP_SLEEP);
   }
 
   void updateReadyLed() {
@@ -531,7 +532,7 @@ void redrawQRScreen() {
     if (currentProduct == -1) {
       // Special value: product selection screen
       productSelectionScreen();
-      onProductSelectionScreen = true;
+      deviceState.transition(DeviceState::PRODUCT_SELECTION);
       btcTickerActive = false;
       Serial.println("[DISPLAY] Product selection screen displayed");
     } else if (currentProduct == 0) {
@@ -540,7 +541,7 @@ void redrawQRScreen() {
         // Should not show ticker if OFF, show product selection instead
         currentProduct = -1;
         productSelectionScreen();
-        onProductSelectionScreen = true;
+        deviceState.transition(DeviceState::PRODUCT_SELECTION);
         btcTickerActive = false;
         Serial.println("[DISPLAY] BTC-Ticker OFF - Showing product selection screen");
       } else {
@@ -579,7 +580,7 @@ void redrawQRScreen() {
       btcTickerActive = false;
       Serial.printf("[DISPLAY] Product %d QR screen displayed\n", currentProduct);
     }
-    onProductSelectionScreen = false;
+    deviceState.transition(DeviceState::READY);
   } else if (specialMode != "standard" && specialMode != "") {
     // Generate LNURL for pin 12 before showing special mode QR
     String lnurlStr = generateLNURL(12);
@@ -624,7 +625,7 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
   // Execute cycles until duration is reached
   while (elapsed < duration_ms) {
     // Check for config mode interrupt
-    if (inConfigMode) {
+    if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
       Serial.println("[SPECIAL] Interrupted by config mode");
       digitalWrite(pin, LOW);
       if (parallelPin13) {
@@ -1002,9 +1003,9 @@ bool waitingForPong = false;
 
 void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
-  Serial.printf("[WS Event] Type: %d, ConfigMode: %d\n", type, inConfigMode);
+  Serial.printf("[WS Event] Type: %d, ConfigMode: %d\n", type, (int)deviceState.isInState(DeviceState::CONFIG_MODE));
   
-  if (inConfigMode == false)
+  if (!deviceState.isInState(DeviceState::CONFIG_MODE))
   {
     switch (type)
     {
@@ -1214,7 +1215,7 @@ void fetchBitcoinData()
 void updateBitcoinTicker()
 {
   // Only update if ticker is active and not in error/config/help modes
-  if (!btcTickerActive || onErrorScreen || inConfigMode || inHelpMode) {
+  if (!btcTickerActive || deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
     return;
   }
 
@@ -1227,7 +1228,7 @@ void updateBitcoinTicker()
 
     // Refresh the display ONLY if we're STILL on the ticker screen
     // Double-check btcTickerActive immediately before drawing to prevent race conditions
-    if (btcTickerActive && !screensaverActive && !deepSleepActive && !onProductSelectionScreen) {
+    if (btcTickerActive && !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
       // Final check right before screen update to prevent concurrent drawing
       if (btcTickerActive) {
         btctickerScreen();
@@ -1241,7 +1242,7 @@ void updateBitcoinTicker()
 void updateSwitchLabels()
 {
   // Skip if in error/config/help modes
-  if (onErrorScreen || inConfigMode || inHelpMode) {
+  if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
     return;
   }
 
@@ -1297,15 +1298,15 @@ bool checkServerReachability()
 void checkAndReconnectWiFi()
 {
   // Simplified version - just show error screen, don't block
-  if (WiFi.status() != WL_CONNECTED && !inConfigMode)
+  if (WiFi.status() != WL_CONNECTED && !deviceState.isInState(DeviceState::CONFIG_MODE))
   {
     Serial.println("WiFi connection lost!");
     if (wifiErrorCount < 99) wifiErrorCount++;
     Serial.printf("[ERROR] WiFi error count: %d\n", wifiErrorCount);
     
-    if (!onErrorScreen) {
+    if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
       // Only show error screen if not already showing one
-      onErrorScreen = true;
+      deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 1; // WiFi error (highest priority)
       wifiReconnectScreen();
     }
@@ -1324,12 +1325,12 @@ void checkAndReconnectWiFi()
     }
     // If WiFi was confirmed before, auto-reconnect will handle it
   }
-  else if (WiFi.status() == WL_CONNECTED && wifiErrorCount > 0 && onErrorScreen && currentErrorType == 1)
+  else if (WiFi.status() == WL_CONNECTED && wifiErrorCount > 0 && deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && currentErrorType == 1)
   {
     // WiFi recovered while on error screen
     Serial.println("[RECOVERY] WiFi recovered!");
     wifiConfirmed = true;
-    onErrorScreen = false;
+    deviceState.transition(DeviceState::READY);
     currentErrorType = 0;
     needsQRRedraw = true;
     lastActivityTime = millis();
@@ -1358,7 +1359,7 @@ void configMode()
   delay(50);
   
   configModeScreen(); // Draw config screen IMMEDIATELY
-  inConfigMode = true; // Then set flag
+  deviceState.transition(DeviceState::CONFIG_MODE); // Then set flag
   configModeStartTime = millis(); // Track start to enforce 2s guard for exit
   updateReadyLed();
   
@@ -1386,17 +1387,17 @@ void reportMode()
   }
   
   // Ignore if we just entered config mode (prevents triggering on button release)
-  if (inConfigMode) {
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
     Serial.println("[REPORT] Ignored - in config mode");
     return;
   }
   
   Serial.println("[BUTTON] Report mode button pressed");
-  inReportMode = true; // Set flag to interrupt WiFi reconnect loop
+  deviceState.transition(DeviceState::REPORT_SCREEN); // Set flag to interrupt WiFi reconnect loop
   
   // Disable product selection timer during report mode
   productSelectionShowTime = 0;
-  onProductSelectionScreen = false;
+  deviceState.transition(DeviceState::READY);
   
   Serial.println("[REPORT] Showing error report screen");
   errorReportScreen(wifiErrorCount, internetErrorCount, serverErrorCount, websocketErrorCount);
@@ -1421,7 +1422,7 @@ void reportMode()
   
   Serial.println("[REPORT] Determining final screen to show");
   // Show appropriate screen based on current error state
-  if (onErrorScreen) {
+  if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
     // Check which error is active and show corresponding screen (priority order)
     Serial.printf("[REPORT] Error active (type %d) - showing error screen\n", currentErrorType);
     if (WiFi.status() != WL_CONNECTED) {
@@ -1447,13 +1448,13 @@ void reportMode()
   }
   
   Serial.println("[REPORT] Report mode complete, clearing flag");
-  inReportMode = false; // Clear flag AFTER showing final screen
+  deviceState.transition(DeviceState::READY); // Clear flag AFTER showing final screen
 }
 
 void handleTouchButton()
 {
   // If in Help mode: Allow second click to switch to Report
-  if (inHelpMode) {
+  if (deviceState.isInState(DeviceState::HELP_SCREEN)) {
     // Check for new button press
     if (digitalRead(PIN_TOUCH_INT) == LOW && !touchPressed) {
       touchPressed = true;
@@ -1461,7 +1462,7 @@ void handleTouchButton()
       
       // This is the second click - switch from Help to Report
       Serial.println("[TOUCH] Second click during Help -> Switching to Report Mode");
-      inHelpMode = false; // Abort Help
+      deviceState.transition(DeviceState::REPORT_SCREEN); // Abort Help
       touchClickCount = 0; // Reset
       
       // Check for Config mode (display touch)
@@ -1494,10 +1495,10 @@ void handleTouchButton()
   }
   
   // If in Report mode: Button press aborts
-  if (inReportMode) {
+  if (deviceState.isInState(DeviceState::REPORT_SCREEN)) {
     if (digitalRead(PIN_TOUCH_INT) == LOW && !touchPressed) {
       Serial.println("[TOUCH] Button press during Report - ABORTING");
-      inReportMode = false;
+      deviceState.transition(DeviceState::READY);
       touchPressed = true;
     }
     else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchPressed) {
@@ -1513,7 +1514,7 @@ void handleTouchButton()
     
     // For 1 click: Wait 1 second for potential second click
     // If no second click after 1s → Start Help
-    if (touchClickCount == 1 && timeSinceLastTouch > 1000 && !inHelpMode) {
+    if (touchClickCount == 1 && timeSinceLastTouch > 1000 && !deviceState.isInState(DeviceState::HELP_SCREEN)) {
       Serial.println("[TOUCH] Timeout: 1 click, no second click -> Help");
       showHelp();
       touchClickCount = 0;
@@ -1521,7 +1522,7 @@ void handleTouchButton()
     
     // For 2 clicks: Wait 1 second for potential third click
     // If no third click after 1s → Start Report
-    else if (touchClickCount == 2 && timeSinceLastTouch > 1000 && !inReportMode) {
+    else if (touchClickCount == 2 && timeSinceLastTouch > 1000 && !deviceState.isInState(DeviceState::REPORT_SCREEN)) {
       Serial.println("[TOUCH] Timeout: 2 clicks, no third click -> Report");
       reportMode();
       touchClickCount = 0;
@@ -1535,13 +1536,13 @@ void handleTouchButton()
     }
     
     // If Help is running and more than 3s passed since last click: Reset
-    if (inHelpMode && timeSinceLastTouch > 3000) {
+    if (deviceState.isInState(DeviceState::HELP_SCREEN) && timeSinceLastTouch > 3000) {
       touchClickCount = 0;
     }
   }
   
   // Config Mode Touch Exit: Any touch after 2s exits config mode
-  if (inConfigMode && configModeStartTime > 0 && (millis() - configModeStartTime) >= CONFIG_EXIT_GUARD_MS) {
+  if (deviceState.isInState(DeviceState::CONFIG_MODE) && configModeStartTime > 0 && (millis() - configModeStartTime) >= CONFIG_EXIT_GUARD_MS) {
     if (digitalRead(PIN_TOUCH_INT) == LOW) {
       Serial.println("[CONFIG] Touch detected - exiting config mode");
       delay(100);
@@ -1563,9 +1564,9 @@ void handleTouchButton()
     bool inButtonArea = (touchY > 305);
     
     // FIRST: Wake from screensaver if active (regardless of touch location)
-    if (screensaverActive) {
+    if (deviceState.isInState(DeviceState::SCREENSAVER)) {
       Serial.printf("[TOUCH] Display touched at X=%d, Y=%d during screensaver - WAKING UP\n", touchX, touchY);
-      screensaverActive = false;
+      deviceState.transition(DeviceState::READY);
       deactivateScreensaver();
       lastWakeUpTime = millis();
       lastActivityTime = millis();
@@ -1614,8 +1615,7 @@ void handleTouchButton()
     if (touchClickCount == 4) {
       // Fourth click within timeout -> Config Mode (IMMEDIATE, no waiting)
       Serial.println("[TOUCH] Fourth click -> Config Mode");
-      inHelpMode = false;
-      inReportMode = false;
+      deviceState.transition(DeviceState::READY);  // Reset state before entering config
       configMode();
       touchClickCount = 0;
     }
@@ -1747,7 +1747,7 @@ void checkExternalButtonHolds() {
 }
 
 void handleConfigExitButtons() {
-  if (!inConfigMode || configModeStartTime == 0 || (millis() - configModeStartTime) < CONFIG_EXIT_GUARD_MS) {
+  if (!deviceState.isInState(DeviceState::CONFIG_MODE) || configModeStartTime == 0 || (millis() - configModeStartTime) < CONFIG_EXIT_GUARD_MS) {
     return;
   }
 
@@ -1781,45 +1781,45 @@ void showHelp()
   }
   
   Serial.println("[BUTTON] Help button pressed");
-  inHelpMode = true; // Set flag to interrupt WiFi reconnect loop
+  deviceState.transition(DeviceState::HELP_SCREEN); // Set flag to interrupt WiFi reconnect loop
   
   // Disable product selection timer during help mode
   productSelectionShowTime = 0;
-  onProductSelectionScreen = false;
+  deviceState.transition(DeviceState::READY);
   
   stepOneScreen();
   
   // Check for button press during first screen
   unsigned long screenStart = millis();
-  while (millis() - screenStart < 1000 && inHelpMode) { // TEST: 1s (default: 3000ms)
+  while (millis() - screenStart < 1000 && deviceState.isInState(DeviceState::HELP_SCREEN)) { // TEST: 1s (default: 3000ms)
     vTaskDelay(pdMS_TO_TICKS(50));
-    if (!inHelpMode) break; // Button pressed in handleTouchButton()
+    if (!deviceState.isInState(DeviceState::HELP_SCREEN)) break; // Button pressed in handleTouchButton()
   }
-  if (!inHelpMode) return; // Exit Help early
+  if (!deviceState.isInState(DeviceState::HELP_SCREEN)) return; // Exit Help early
   
   stepTwoScreen();
   
   // Check for button press during second screen
   screenStart = millis();
-  while (millis() - screenStart < 1000 && inHelpMode) { // TEST: 1s (default: 3000ms)
+  while (millis() - screenStart < 1000 && deviceState.isInState(DeviceState::HELP_SCREEN)) { // TEST: 1s (default: 3000ms)
     vTaskDelay(pdMS_TO_TICKS(50));
-    if (!inHelpMode) break;
+    if (!deviceState.isInState(DeviceState::HELP_SCREEN)) break;
   }
-  if (!inHelpMode) return; // Exit Help early
+  if (!deviceState.isInState(DeviceState::HELP_SCREEN)) return; // Exit Help early
   
   stepThreeScreen();
   
   // Check for button press during third screen
   screenStart = millis();
-  while (millis() - screenStart < 1000 && inHelpMode) { // TEST: 1s (default: 3000ms)
+  while (millis() - screenStart < 1000 && deviceState.isInState(DeviceState::HELP_SCREEN)) { // TEST: 1s (default: 3000ms)
     vTaskDelay(pdMS_TO_TICKS(50));
-    if (!inHelpMode) break;
+    if (!deviceState.isInState(DeviceState::HELP_SCREEN)) break;
   }
   
-  inHelpMode = false; // Clear flag
+  deviceState.transition(DeviceState::READY); // Clear flag
   
   // Return to error screen if one was active, otherwise show QR screen
-  if (onErrorScreen) {
+  if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
     // Check which error is active and show corresponding screen
     if (WiFi.status() != WL_CONNECTED) {
       wifiReconnectScreen();
@@ -1833,7 +1833,7 @@ void showHelp()
     redrawQRScreen();
     // Reset product selection timer
     productSelectionShowTime = millis();
-    onProductSelectionScreen = false;
+    deviceState.transition(DeviceState::READY);
   }
 }
 
@@ -1926,7 +1926,7 @@ void setup()
   Serial.println("[STARTUP] Showing startup screen for 5 seconds...");
   for (int i = 0; i < 50; i++) { // 50 * 100ms = 5 seconds
     vTaskDelay(pdMS_TO_TICKS(100));
-    if (inConfigMode) {
+    if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
       Serial.println("[STARTUP] Config mode triggered during startup");
       return;
     }
@@ -1951,7 +1951,7 @@ void setup()
     vTaskDelay(pdMS_TO_TICKS(100));
     
     // Check for config mode
-    if (inConfigMode) {
+    if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
       Serial.println("[STARTUP] Config mode triggered during startup");
       return;
     }
@@ -2031,14 +2031,14 @@ void setup()
   // Determine what to show after startup screen
   if (allConnectionsReady) {
     Serial.println("[STARTUP] All connections successful - ready to show QR code");
-    onErrorScreen = false;
+    deviceState.transition(DeviceState::READY);
     currentErrorType = 0;
   } else {
     // Show appropriate error screen based on what failed (priority order)
     if (!wifiConfirmed) {
       Serial.println("[STARTUP] WiFi failed - showing WiFi error");
       wifiReconnectScreen();
-      onErrorScreen = true;
+      deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 1;
       if (wifiErrorCount < 99) wifiErrorCount++;
       
@@ -2052,17 +2052,17 @@ void setup()
     } else if (!internetConfirmed) {
       Serial.println("[STARTUP] Internet failed - showing Internet error");
       internetReconnectScreen();
-      onErrorScreen = true;
+      deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 2;
     } else if (!serverConfirmed) {
       Serial.println("[STARTUP] Server failed - showing Server error");
       serverReconnectScreen();
-      onErrorScreen = true;
+      deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 3;
     } else if (!websocketConfirmed) {
       Serial.println("[STARTUP] WebSocket failed - showing WebSocket error");
       websocketReconnectScreen();
-      onErrorScreen = true;
+      deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 4;
       if (websocketErrorCount < 99) websocketErrorCount++;
       
@@ -2101,13 +2101,13 @@ void setup()
   fetchBitcoinData();
   Serial.println("[BTC] Initial fetch complete");
   
-  setupComplete = true; // Allow loop to run now
+  // Setup complete - device state already set appropriately above
 }
 
 void loop()
 {
   // Wait for setup to complete before running loop
-  if (!setupComplete)
+  if (deviceState.getState() == DeviceState::INITIALIZING)
   {
     vTaskDelay(pdMS_TO_TICKS(100));
     return;
@@ -2147,8 +2147,8 @@ void loop()
     }
     
     Serial.println("Activation Time: " + String(activationTimeoutMs / 60000) + " minutes (" + String(activationTimeoutMs) + " ms)");
-    Serial.println("screensaverActive: " + String(screensaverActive));
-    Serial.println("deepSleepActive: " + String(deepSleepActive));
+    Serial.println("screensaverActive: " + String(deviceState.isInState(DeviceState::SCREENSAVER)));
+    Serial.println("deepSleepActive: " + String(deviceState.isInState(DeviceState::DEEP_SLEEP)));
     Serial.println("lastActivityTime: " + String(lastActivityTime));
     
     if (screensaver != "off" && deepSleep == "off") {
@@ -2167,7 +2167,7 @@ void loop()
   // to ensure they execute during payment waiting
   
   // If in config mode, do nothing - config mode is handled by button interrupt
-  if (inConfigMode)
+  if (deviceState.isInState(DeviceState::CONFIG_MODE))
   {
     vTaskDelay(pdMS_TO_TICKS(100));
     return;
@@ -2175,7 +2175,7 @@ void loop()
   
   checkAndReconnectWiFi();
   Serial.println("[DEBUG] Returned from checkAndReconnectWiFi()");
-  if (inConfigMode) return; // Exit if we entered config mode
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) return; // Exit if we entered config mode
   
   // Handle QR redraw after WiFi recovery (outside of deep call stack)
   if (needsQRRedraw) {
@@ -2192,7 +2192,7 @@ void loop()
   bool allConnectionsConfirmed = wifiConfirmed && internetConfirmed && serverConfirmed && websocketConfirmed;
   Serial.printf("[DEBUG] allConnectionsConfirmed: %d, firstLoop: %d\n", allConnectionsConfirmed, firstLoop);
   
-  if (firstLoop && allConnectionsConfirmed && !inReportMode && !(lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS)) {
+  if (firstLoop && allConnectionsConfirmed && !deviceState.isInState(DeviceState::REPORT_SCREEN) && !(lastWakeUpTime > 0 && (millis() - lastWakeUpTime) < GRACE_PERIOD_MS)) {
     Serial.println("[SCREEN] All connections confirmed - Showing QR code screen (READY FOR ACTION)");
     if (thresholdKey.length() > 0) {
       showThresholdQRScreen(); // THRESHOLD MODE (Multi-Channel-Control not compatible)
@@ -2202,7 +2202,7 @@ void loop()
         // OFF: Show product selection screen for Duo/Quattro (no ticker)
         currentProduct = -1; // Special value to indicate product selection screen
         productSelectionScreen();
-        onProductSelectionScreen = true;
+        deviceState.transition(DeviceState::PRODUCT_SELECTION);
         btcTickerActive = false;
         productSelectionShowTime = millis();
         Serial.println("[BTC] BTC-Ticker OFF - Starting with product selection screen");
@@ -2211,14 +2211,14 @@ void loop()
         currentProduct = 0;
         btctickerScreen();
         btcTickerActive = true;
-        onProductSelectionScreen = false;
+        deviceState.transition(DeviceState::READY);
         productSelectionShowTime = millis();
         Serial.println("[BTC] BTC-Ticker ALWAYS - Starting with Bitcoin ticker screen");
       } else if (btcTickerMode == "selecting") {
         // SELECTING: Show product selection screen for Duo/Quattro
         currentProduct = -1; // Special value to indicate product selection screen
         productSelectionScreen();
-        onProductSelectionScreen = true;
+        deviceState.transition(DeviceState::PRODUCT_SELECTION);
         btcTickerActive = false;
         productSelectionShowTime = millis();
         Serial.println("[BTC] BTC-Ticker SELECTING - Starting with product selection screen");
@@ -2247,11 +2247,11 @@ void loop()
       }
     }
     // Clear error screen flag once QR is shown
-    onErrorScreen = false;
+    deviceState.transition(DeviceState::READY);
     currentErrorType = 0;
     // Start product selection timer
     productSelectionShowTime = millis();
-    onProductSelectionScreen = false;
+    deviceState.transition(DeviceState::READY);
   } else if (firstLoop && !allConnectionsConfirmed) {
     Serial.printf("[SCREEN] First loop - waiting for all connections (WiFi:%d, Internet:%d, Server:%d, WS:%d)\n", 
                   wifiConfirmed, internetConfirmed, serverConfirmed, websocketConfirmed);
@@ -2266,7 +2266,7 @@ void loop()
   
   Serial.println("[LOOP] Entering payment wait loop...");
   Serial.printf("[LOOP] Initial paid state: %d\n", paid);
-  Serial.printf("[LOOP] Error state: onErrorScreen=%d, currentErrorType=%d\n", onErrorScreen, currentErrorType);
+  Serial.printf("[LOOP] Error state: onErrorScreen=%d, currentErrorType=%d\n", deviceState.isInState(DeviceState::ERROR_RECOVERABLE), currentErrorType);
   
   // Initialize ping/pong tracking
   lastPongTime = millis();
@@ -2283,11 +2283,11 @@ void loop()
     // Print debug info every 10 seconds
     if (millis() - lastLoopDebugPrint > 10000) {
       Serial.printf("[LOOP_DEBUG] Iterations: %lu, touchAvailable: %d, inConfigMode: %d, onErrorScreen: %d\n", 
-                    loopIterations, touchAvailable, inConfigMode, onErrorScreen);
+                    loopIterations, touchAvailable, deviceState.isInState(DeviceState::CONFIG_MODE), deviceState.isInState(DeviceState::ERROR_RECOVERABLE));
       lastLoopDebugPrint = millis();
     }
     // Check if config mode was triggered during payment wait
-    if (inConfigMode)
+    if (deviceState.isInState(DeviceState::CONFIG_MODE))
     {
       Serial.println("[LOOP] Config mode detected, exiting payment loop");
       return;
@@ -2300,18 +2300,18 @@ void loop()
     static unsigned long lastActionTime = 0; // Track when last action was executed for debouncing
     static unsigned long lastTouchDebugPrint = 0;
     
-    if (touchAvailable && !inConfigMode) {
+    if (touchAvailable && !deviceState.isInState(DeviceState::CONFIG_MODE)) {
       // FIRST: Check touch interrupt for screensaver wake-up (even if no new data available)
       // This ensures we can wake from screensaver by touching anywhere on the screen
       int touchIntState = digitalRead(PIN_TOUCH_INT);
       
       // Debug: Print touch interrupt state every 5 seconds during screensaver
-      if (screensaverActive && (millis() - lastTouchDebugPrint > 5000)) {
+      if (deviceState.isInState(DeviceState::SCREENSAVER) && (millis() - lastTouchDebugPrint > 5000)) {
         Serial.printf("[TOUCH_DEBUG] Screensaver active, PIN_TOUCH_INT=%d\n", touchIntState);
         lastTouchDebugPrint = millis();
       }
       
-      if (touchIntState == LOW && screensaverActive) {
+      if (touchIntState == LOW && deviceState.isInState(DeviceState::SCREENSAVER)) {
         Serial.println("[TOUCH] Touch interrupt detected during screensaver - WAKING UP");
         screensaverActive = false;
         deactivateScreensaver();
@@ -2358,10 +2358,10 @@ void loop()
         }
         
         // SPECIAL: If on error screen, wake from screensaver but don't allow navigation
-        if (onErrorScreen) {
+        if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
           Serial.println("[TOUCH] Touch detected on error screen");
           // Wake from screensaver if active
-          if (screensaverActive) {
+          if (deviceState.isInState(DeviceState::SCREENSAVER)) {
             Serial.println("[TOUCH] Waking from screensaver (error screen)");
             screensaverActive = false;
             deactivateScreensaver();
@@ -2375,7 +2375,7 @@ void loop()
         }
         
         // Handle touch on product selection screen OR Bitcoin ticker (selecting/always) OR Single mode QR with selecting
-        if (onProductSelectionScreen || 
+        if (deviceState.isInState(DeviceState::PRODUCT_SELECTION) || 
             (btcTickerActive && (btcTickerMode == "selecting" || btcTickerMode == "always")) ||
             (multiControl == "off" && btcTickerMode == "selecting" && !btcTickerActive)) {
           bool navigateBack = false;
@@ -2472,7 +2472,7 @@ void loop()
               continue;
             }
             
-            onProductSelectionScreen = false;
+            deviceState.transition(DeviceState::READY);
             
             // Multi-Channel-Control Mode with SELECTING: Show ticker on demand
             if (multiControl != "off" && thresholdKey.length() == 0 && btcTickerMode == "selecting") {
@@ -2629,7 +2629,7 @@ void loop()
     
     // Check if it's time to show/hide Bitcoin ticker screen
     // Behavior depends on btcTickerMode
-    if (!onErrorScreen && thresholdKey.length() == 0) {
+    if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && thresholdKey.length() == 0) {
       if (btcTickerMode == "always") {
         if (multiControl != "off") {
           // ALWAYS mode Duo/Quattro: Show ticker after PRODUCT_SELECTION_DELAY on products
@@ -2657,7 +2657,7 @@ void loop()
           if (currentProduct > 0) {
             Serial.println("[SCREEN] Timeout reached - returning to product selection screen (OFF mode - Duo/Quattro)");
             currentProduct = -1;
-            onProductSelectionScreen = true;
+            deviceState.transition(DeviceState::PRODUCT_SELECTION);
             productSelectionScreen();
             productSelectionShowTime = 0; // Reset timer
           }
@@ -2692,16 +2692,16 @@ void loop()
               } else {
                 // Fallback: show product selection
                 currentProduct = -1;
-                onProductSelectionScreen = true;
+                deviceState.transition(DeviceState::PRODUCT_SELECTION);
                 productSelectionScreen();
               }
               productSelectionShowTime = 0; // Reset timer
-            } else if (currentProduct > 0 && !onProductSelectionScreen && 
+            } else if (currentProduct > 0 && !deviceState.isInState(DeviceState::PRODUCT_SELECTION) && 
                       (millis() - productSelectionShowTime) >= PRODUCT_SELECTION_DELAY) {
               // Product showing: Return to product selection after PRODUCT_SELECTION_DELAY
               Serial.println("[SCREEN] Timeout reached - returning to product selection screen (SELECTING mode - Duo/Quattro)");
               currentProduct = -1;
-              onProductSelectionScreen = true;
+              deviceState.transition(DeviceState::PRODUCT_SELECTION);
               productSelectionScreen();
               productSelectionShowTime = 0; // Reset timer
             }
@@ -2711,7 +2711,7 @@ void loop()
     }
     
     // Check for screensaver/deep sleep timeout activation (inside payment loop)
-    if (!screensaverActive && !deepSleepActive && screensaver != "off" && deepSleep == "off") {
+    if (!deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && screensaver != "off" && deepSleep == "off") {
       unsigned long currentTime = millis();
       unsigned long elapsedTime = currentTime - lastActivityTime;
       
@@ -2725,13 +2725,14 @@ void loop()
       
       if (elapsedTime >= activationTimeoutMs) {
         Serial.println("[TIMEOUT] Screensaver timeout reached, activating screensaver");
-        screensaverActive = true;
+        screensaverActive = true;  // Keep this for deactivateScreensaver()
+        deviceState.transition(DeviceState::SCREENSAVER);
         activateScreensaver(screensaver);
         // Continue with payment loop - screensaver only turns off backlight
       }
     }
     
-    if (!deepSleepActive && deepSleep != "off" && screensaver == "off") {
+    if (!deviceState.isInState(DeviceState::DEEP_SLEEP) && deepSleep != "off" && screensaver == "off") {
       unsigned long currentTime = millis();
       unsigned long elapsedTime = currentTime - lastActivityTime;
       
@@ -2838,7 +2839,7 @@ void loop()
     }
     
     // Check Internet connectivity every 30 seconds (independent of WebSocket)
-    if (millis() - lastInternetCheck > 30000 && !inConfigMode)
+    if (millis() - lastInternetCheck > 30000 && !deviceState.isInState(DeviceState::CONFIG_MODE))
     {
       // CRITICAL: Check WiFi first! Don't show "No Internet" if WiFi is down
       if (WiFi.status() != WL_CONNECTED) {
@@ -2847,15 +2848,15 @@ void loop()
       } else if (WiFi.status() == WL_CONNECTED) {
         bool hasInternet = checkInternetConnectivity();
         if (!hasInternet) {
-          if (!onErrorScreen || currentErrorType > 2) {
+          if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || currentErrorType > 2) {
             Serial.println("[INTERNET] Internet connection lost!");
             if (internetErrorCount < 99) internetErrorCount++;
             Serial.printf("[ERROR] Internet error count: %d\n", internetErrorCount);
             internetReconnectScreen();
-            onErrorScreen = true;
+            deviceState.transition(DeviceState::ERROR_RECOVERABLE);
             currentErrorType = 2; // Internet error
             // Reset product selection screen
-            onProductSelectionScreen = false;
+            deviceState.transition(DeviceState::READY);
           }
           internetConfirmed = false; // Clear confirmation
           serverConfirmed = false; // Also clear server/websocket (they depend on Internet)
@@ -2909,17 +2910,17 @@ void loop()
               Serial.println("[BTC] Recovery fetch completed (timer NOT reset)");
               
               // Redraw ticker screen if it was active
-              if (!onErrorScreen) {
+              if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
                 btctickerScreen();
               }
             }
             
             // If recovering from Internet error screen, clear error and refresh display
-            if (onErrorScreen && currentErrorType == 2) {
+            if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && currentErrorType == 2) {
               Serial.println("[RECOVERY] Clearing Internet error screen...");
-              onErrorScreen = false;
+              deviceState.transition(DeviceState::READY);
               currentErrorType = 0;
-              onProductSelectionScreen = false;
+              deviceState.transition(DeviceState::READY);
               
               // Redraw appropriate screen
               if (btcTickerActive) {
@@ -2936,7 +2937,7 @@ void loop()
     
     // Send ping every 60 seconds to check if WebSocket connection is really alive
     // Only if WebSocket is connected!
-    if (webSocket.isConnected() && millis() - lastPingTime > 60000 && !inConfigMode)
+    if (webSocket.isConnected() && millis() - lastPingTime > 60000 && !deviceState.isInState(DeviceState::CONFIG_MODE))
     {
       Serial.println("[PING] Sending WebSocket ping to verify connection...");
       webSocket.sendPing();
@@ -2963,7 +2964,7 @@ void loop()
         serverConfirmed = false;
         websocketConfirmed = false;
         checkAndReconnectWiFi();
-        if (inConfigMode) return;
+        if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
         return; // Exit immediately after WiFi check
       }
       // Step 2: WebSocket NOT connected - check Server
@@ -2981,7 +2982,7 @@ void loop()
       // Note: Internet errors are handled in the 30-second check above
       // Note: WiFi error already handled above with immediate return
       
-      if (wifiOk && !serverOk && !inConfigMode)
+      if (wifiOk && !serverOk && !deviceState.isInState(DeviceState::CONFIG_MODE))
       {
         // Server not reachable (TCP port check failed)
         // IMPORTANT: Skip if Internet error (type 2) is active - higher priority!
@@ -3015,7 +3016,7 @@ void loop()
       }
       
       // Server OK but still on Server error screen → Move to WebSocket error check
-      if (wifiOk && serverOk && onErrorScreen && currentErrorType == 3 && !inConfigMode)
+      if (wifiOk && serverOk && onErrorScreen && currentErrorType == 3 && !deviceState.isInState(DeviceState::CONFIG_MODE))
       {
         Serial.println("[RECOVERY] Server OK - moving to WebSocket error check");
         serverConfirmed = true;
@@ -3023,7 +3024,7 @@ void loop()
         // Don't return - let WebSocket check run below
       }
       
-      if (wifiOk && serverOk && !websocketOk && !inConfigMode)
+      if (wifiOk && serverOk && !websocketOk && !deviceState.isInState(DeviceState::CONFIG_MODE))
       {
         // WebSocket error - only if WiFi AND Server are OK
         // IMPORTANT: Skip if higher priority error (Internet=2 or Server=3) is active!
@@ -3046,9 +3047,9 @@ void loop()
         int reconnectAttempts = 0;
         int sslErrorCount = 0; // Count SSL connection errors (detected by error events)
         
-        while (!webSocket.isConnected() && reconnectAttempts < 3 && !inConfigMode)
+        while (!webSocket.isConnected() && reconnectAttempts < 3 && !deviceState.isInState(DeviceState::CONFIG_MODE))
         {
-          if (WiFi.status() != WL_CONNECTED || inConfigMode) return;
+          if (WiFi.status() != WL_CONNECTED || deviceState.isInState(DeviceState::CONFIG_MODE)) return;
           
           webSocket.disconnect();
           vTaskDelay(pdMS_TO_TICKS(500));
