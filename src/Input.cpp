@@ -3,6 +3,7 @@
 #include "DeviceState.h"
 #include "GlobalState.h"
 #include "Input.h"
+#include "Log.h"
 
 // Externals from main.cpp
 extern bool wakeFromPowerSavingMode();
@@ -48,7 +49,7 @@ void handleExternalButton() {
 
   // Falling edge: button pressed
   if (state == LOW && lastStableState == HIGH) {
-    Serial.println("[EXT_BTN] Button pressed (falling edge detected)");
+    LOG_INFO("Button", "Pressed (falling edge detected)");
     externalButtonState.pressed = true;
     externalButtonState.holdActionFired = false;
     externalButtonState.pressStartTime = now;
@@ -62,10 +63,10 @@ void handleExternalButton() {
 
   // Rising edge: button released
   if (state == HIGH && lastStableState == LOW) {
-    Serial.println("[EXT_BTN] Button released (rising edge detected)");
+    LOG_INFO("Button", "Released (rising edge detected)");
     externalButtonState.pressed = false;
     unsigned long pressDuration = now - externalButtonState.pressStartTime;
-    Serial.printf("[EXT_BTN] Press duration: %lu ms\n", pressDuration);
+    LOG_DEBUG("Button", String("Press duration: ") + String(pressDuration) + String(" ms"));
 
     // If a hold action already fired, reset state
     if (externalButtonState.holdActionFired) {
@@ -75,11 +76,11 @@ void handleExternalButton() {
     } else {
       // Treat as short click
       externalButtonState.clickCount++;
-      Serial.printf("[EXT_BTN] Click count: %d\n", externalButtonState.clickCount);
+      LOG_DEBUG("Button", String("Click count: ") + String(externalButtonState.clickCount));
 
       // Triple-click within window -> Report
       if (externalButtonState.clickCount >= 3 && (now - externalButtonState.sequenceStart) <= ExternalButtonConfig::TRIPLE_WINDOW_MS) {
-        Serial.println("[EXT_BTN] Triple click -> Report Mode");
+        LOG_INFO("Button", "Triple click -> Report Mode");
         reportMode();
         externalButtonState.clickCount = 0;
         externalButtonState.sequenceStart = 0;
@@ -110,7 +111,7 @@ void checkExternalButtonHolds() {
 
   // Second-press hold >=3s → Config (double-click, hold on second)
   if (externalButtonState.clickCount == 1 && pressDuration >= ExternalButtonConfig::CONFIG_HOLD_MS) {
-    Serial.println("[EXT_BTN] Second press held >=3s -> Config Mode");
+    LOG_INFO("Button", "Second press held >=3s -> Config Mode");
     externalButtonState.holdActionFired = true;
     externalButtonState.clickCount = 0;
     externalButtonState.sequenceStart = 0;
@@ -120,7 +121,7 @@ void checkExternalButtonHolds() {
 
   // Single long hold (first press) >=2s → Help
   if (externalButtonState.clickCount == 0 && pressDuration >= ExternalButtonConfig::HELP_HOLD_MS) {
-    Serial.println("[EXT_BTN] Long hold >=2s -> Help");
+    LOG_INFO("Button", "Long hold >=2s -> Help");
     externalButtonState.holdActionFired = true;
     externalButtonState.clickCount = 0;
     externalButtonState.sequenceStart = 0;
@@ -142,12 +143,12 @@ void handleConfigExitButtons() {
 
   // Positive flank (release) exits config
   if (prevNextState == LOW && nextState == HIGH) {
-    Serial.println("[CONFIG] NEXT button release -> exit config mode");
+    LOG_INFO("Button", "NEXT button release -> exit config mode");
     ESP.restart();
   }
 
   if (prevExtState == LOW && extState == HIGH) {
-    Serial.println("[CONFIG] External button release -> exit config mode");
+    LOG_INFO("Button", "External button release -> exit config mode");
     ESP.restart();
   }
 
