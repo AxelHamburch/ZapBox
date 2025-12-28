@@ -387,6 +387,41 @@ Automatic power-saving modes that activate after a configurable timeout:
 
 **Use Cases**: Energy saving for installations, battery operation, reducing device heat, extending display lifespan in always-on scenarios
 
+## Operation - Overview of buttons and functions
+
+### On-board Button - Reset
+- **System reset**: Restarts the device completely
+
+### On-board Button - HELP (GPIO 14)
+- **Click once**: Open the Help page
+- **Double-click**: Open the Report page
+
+### On-board Button - NEXT (BOOT / GPIO 0)
+- **General**: Wakes up from screensaver and deep sleep
+- **1x click**: Display product page / Change page
+- **Hold for more than 5 seconds**: Start Config mode
+  - ⚠️ **Note**: Clicking again closes the Config page prematurely
+- **Special function**: Hold down the BOOT button, press the reset button once, and then release the BOOT button → Activates reception mode for firmware updates
+
+### Touch display (touch version only)
+- **General**: Wakes up from screensaver (not compatible with deep sleep)
+- **1x click/swipe**: Display product page / Change page
+
+### Touch button (Red circle next to the touch field)
+- **Click once**: Open the help page
+- **Double-click**: Open the report page
+- **Quadruple-click**: Open the Config page
+  - ⚠️ **Note**: A delayed click on the display deactivates the Config page prematurely
+
+### External LED-Button (if available)
+- **LED Indicator**: Active when device is ready (no initialization, error, or special mode active)
+- **General**: Wakes up from screensaver (not compatible with deep sleep)
+- **Press once**: Display product page / Change page
+- **Press and hold for at least 2 seconds**: Open the help page
+- **Press 3x quickly**: Open the report page
+- **Press briefly once, then hold for at least 3 seconds**: Activate Config mode
+  - ⚠️ **Note**: Clicking again closes the Config page prematurely
+
 ## Web Installer
 
 The ZapBox includes a browser-based Web Installer for easy firmware updates and configuration:
