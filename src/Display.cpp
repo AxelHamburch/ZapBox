@@ -700,7 +700,6 @@ void thankYouScreen()
 // Show QR for ZAP action - uses product label from backend if available
 void showQRScreen()
 {
-  extern String productLabels.label12;
   showProductQRScreen(productLabels.label12.length() > 0 ? productLabels.label12 : "READY 4 ZAP ACTION", 12);
 }
 
@@ -782,7 +781,6 @@ void showThresholdQRScreen()
 
 void showSpecialModeQRScreen()
 {
-  extern String productLabels.label12;
   showProductQRScreen(productLabels.label12.length() > 0 ? productLabels.label12 : "READY 4 SP ACTION", 12);
 }
 

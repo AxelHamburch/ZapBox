@@ -19,7 +19,7 @@ struct WifiConfig {
   String ssid = "";
   String wifiPassword = "";
   String switchStr = "";
-  const char *lightningPrefix = "lightning:";
+  static constexpr const char* lightningPrefix = "lightning:";
 };
 
 extern WifiConfig wifiConfig;
@@ -106,7 +106,7 @@ struct MultiChannelConfig {
   String mode = "off";        // "off", "duo", "quattro"
   String btcTickerMode = "off"; // "off", "always", "selecting"
   volatile bool btcTickerActive = false; // volatile for multi-threaded WebSocket access
-  int currentProduct = -1;    // -1 = selection screen, 1-4 = product number
+  volatile int currentProduct = -1;    // -1 = selection screen, 1-4 = product number (volatile for multi-context access)
 };
 
 extern MultiChannelConfig multiChannelConfig;

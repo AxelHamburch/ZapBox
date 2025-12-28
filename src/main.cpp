@@ -22,7 +22,6 @@
 TaskHandle_t Task1;
 
 String qrFormat = "bech32"; // "bech32" or "lud17"
-const char *lightningPrefix = "lightning:";
 
 // External LED button (PIN_LED_BUTTON_LED / PIN_LED_BUTTON_SW)
 bool readyLedState = false; // Track current LED state to avoid redundant writes
@@ -89,8 +88,8 @@ const unsigned long BTC_TICKER_TIMEOUT_DELAY = BTCTICKER_TIMEOUT; // Time to hid
 // 2 = Product 2 (Pin 13)
 // 3 = Product 3 (Pin 10)
 // 4 = Product 4 (Pin 11)
-// NOTE: multiChannelConfig.currentProduct is now in multiChannelConfig.multiChannelConfig.currentProduct (volatile)
-int maxProducts = 1; // Will be set based on multiChannelConfig.mode mode
+// NOTE: currentProduct is now in multiChannelConfig.currentProduct (volatile)
+int maxProducts = 1; // Will be set based on multiChannelConfig.mode
 
 StateManager deviceState;  // Global state machine instance
 
@@ -912,7 +911,7 @@ void readFiles()
   {
     Serial.println("Config file not found - using defaults");
     displayConfig.orientation = "h";
-    strcpy(lightning, "LIGHTNING:lnurl1dp68gurn8ghj7ctsdyhxkmmvwp5jucm0d9hkuegpr4r33");
+    strcpy(lightningConfig.lightning, "LIGHTNING:lnurl1dp68gurn8ghj7ctsdyhxkmmvwp5jucm0d9hkuegpr4r33");
     Serial.println("\n================================");
     Serial.println("        NORMAL MODE");
     Serial.println("================================\n");
