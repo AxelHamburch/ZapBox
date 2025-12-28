@@ -22,6 +22,10 @@ const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
 static unsigned long lastLabelFetchAttempt = 0;
 static const unsigned long LABEL_RETRY_BACKOFF = 30000; // 30 seconds between retries
 
+// Retry backoff for failed BTC fetches
+static unsigned long lastBtcFetchAttempt = 0;
+static const unsigned long BTC_RETRY_BACKOFF = 30000; // 30 seconds between retries
+
 // External function declarations from main.cpp
 extern void btctickerScreen();
 
@@ -63,8 +67,12 @@ void fetchCoinGeckoTask(void* parameter) {
     }
   } else {
     parallelBtcData.price = "Error";
+    Serial.println("[BTC] CoinGecko error: " + String(httpCode));
   }
   http.end();
+  
+  // Aggressive cleanup for SSL context
+  delay(100);
   
   parallelBtcData.priceReady = true;
   vTaskDelete(NULL);
@@ -84,8 +92,12 @@ void fetchMempoolTask(void* parameter) {
     parallelBtcData.blockHeight.trim();
   } else {
     parallelBtcData.blockHeight = "Error";
+    Serial.println("[BTC] Mempool error: " + String(httpCode));
   }
   http.end();
+  
+  // Aggressive cleanup for SSL context
+  delay(100);
   
   parallelBtcData.blockHeightReady = true;
   vTaskDelete(NULL);
@@ -194,6 +206,9 @@ void fetchBitcoinData()
   parallelBtcData.price = "Error";
   parallelBtcData.blockHeight = "Error";
   
+  // Track fetch attempt for backoff
+  lastBtcFetchAttempt = millis();
+  
   // Start CoinGecko task on Core 0 (lower priority)
   // Sequential execution: Start first task, wait for completion before starting second
   xTaskCreatePinnedToCore(
@@ -261,8 +276,13 @@ void updateBitcoinTicker()
 
   unsigned long currentTime = millis();
 
-  // Check if it's time for an update
+  // Check if it's time for an update and enforce backoff for failed attempts
   if (currentTime - bitcoinData.lastUpdate >= BTC_UPDATE_INTERVAL) {
+    // Enforce 30-second backoff between failed BTC fetch attempts
+    if ((currentTime - lastBtcFetchAttempt) < BTC_RETRY_BACKOFF) {
+      return; // Too soon - skip this attempt
+    }
+    
     Serial.println("[BTC] Update interval reached, fetching new data...");
     fetchBitcoinData();
 
