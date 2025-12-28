@@ -197,10 +197,11 @@ void fetchBitcoinData()
   parallelBtcData.blockHeight = "Error";
   
   // Start CoinGecko task on Core 0 (lower priority)
+  // Stack size increased to 12KB to handle HTTPS/SSL handshake and JSON parsing
   xTaskCreatePinnedToCore(
     fetchCoinGeckoTask,
     "CoinGecko",
-    4096,
+    12288,
     NULL,
     1,
     &coinGeckoTaskHandle,
@@ -208,10 +209,11 @@ void fetchBitcoinData()
   );
   
   // Start Mempool task on Core 0 (lower priority)
+  // Stack size increased to 12KB to handle HTTPS/SSL handshake
   xTaskCreatePinnedToCore(
     fetchMempoolTask,
     "Mempool",
-    4096,
+    12288,
     NULL,
     1,
     &mempoolTaskHandle,
