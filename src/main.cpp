@@ -19,6 +19,9 @@
 #include "Input.h"
 #include "Network.h"
 #include "UI.h"
+#include "Utils.h"
+#include "API.h"
+#include "Navigation.h"
 
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
@@ -53,7 +56,7 @@ byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures t
 bool needsQRRedraw = false; // Flag to trigger QR redraw after WiFi recovery
 bool gestureHandledThisTouch = false; // Track if gesture was already handled in current touch session
 unsigned long lastNavigationTime = 0; // Track time of last navigation for timeout-based reset
-const unsigned long TOUCH_DOUBLE_CLICK_MS = 1000; // 1 second window for second click
+unsigned long TOUCH_DOUBLE_CLICK_MS = 1000; // 1 second window for second click (non-const for extern linkage)
 const unsigned long TOUCH_LONG_PRESS_MS = 3000;  // 3 seconds for long press
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
@@ -94,238 +97,8 @@ WebSocketsClient webSocket;
 void reportMode();
 void configMode();
 void showHelp();
-void fetchSwitchLabels();
-void fetchBitcoinData();
-void updateBitcoinTicker();
-void updateSwitchLabels();
-void navigateToNextProduct();
-void updateReadyLed();
-bool isReadyForReceive();
-bool wakeFromPowerSavingMode();
 
 //////////////////HELPERS///////////////////
-
-// Helper function: Navigate to next product in Multi-Channel-Control mode
-void navigateToNextProduct() {
-  // Wake from power saving mode if active
-  if (wakeFromPowerSavingMode()) {
-    Serial.println("[NAV] Device woke up, not navigating");
-    return; // Don't navigate, just wake up
-  }
-  
-  Serial.println("[BUTTON] Navigate button pressed");
-  
-  if (multiChannelConfig.mode == "off") {
-    // Single mode behavior depends on multiChannelConfig.btcTickerMode
-    if (multiChannelConfig.btcTickerMode == "selecting") {
-      if (multiChannelConfig.btcTickerActive) {
-        // Already showing ticker - skip back to QR immediately
-        Serial.println("[NAV] Single mode SELECTING - Skipping from ticker to QR");
-        multiChannelConfig.btcTickerActive = false;
-        String lnurlStr = generateLNURL(12);
-        updateLightningQR(lnurlStr);
-        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-          showSpecialModeQRScreen();
-        } else {
-          showQRScreen();
-        }
-        productSelectionState.showTime = 0; // Reset timer
-      } else {
-        // Show Bitcoin ticker for 10 seconds
-        btctickerScreen();
-        multiChannelConfig.btcTickerActive = true;
-        productSelectionState.showTime = millis(); // Start 10-second timer
-        Serial.println("[NAV] Single mode with SELECTING - Showing Bitcoin ticker for 10 seconds");
-      }
-    } else {
-      Serial.println("[NAV] Single mode - no navigation available");
-    }
-    return; // Single mode, no multi-product navigation
-  }
-  
-  // Check if we're on product selection screen (multiChannelConfig.currentProduct == -1)
-  if (multiChannelConfig.currentProduct == -1) {
-    // Start from first product
-    multiChannelConfig.currentProduct = 1;
-  } else if (multiChannelConfig.btcTickerActive) {
-    // If ticker is active, go back to first product
-    multiChannelConfig.btcTickerActive = false;
-    multiChannelConfig.currentProduct = 1;
-    deviceState.transition(DeviceState::READY);
-    Serial.println("[NAV] Ticker active - returning to first product");
-  } else {
-    multiChannelConfig.currentProduct++;
-  }
-  
-  // Determine navigation behavior based on multiChannelConfig.btcTickerMode
-  if (multiChannelConfig.btcTickerMode == "selecting") {
-    // SELECTING mode: After last product, show BTC ticker (which will auto-return to product selection)
-    if (multiChannelConfig.mode == "duo" && multiChannelConfig.currentProduct > 2) {
-      multiChannelConfig.currentProduct = 0; // Reset for next navigation
-      btctickerScreen();
-      multiChannelConfig.btcTickerActive = true;
-      productSelectionState.showTime = millis(); // Start timer for auto-return
-      Serial.println("[NAV] SELECTING mode - Showing Bitcoin ticker after last product");
-      return;
-    } else if (multiChannelConfig.mode == "quattro" && multiChannelConfig.currentProduct > 4) {
-      multiChannelConfig.currentProduct = 0; // Reset for next navigation
-      btctickerScreen();
-      multiChannelConfig.btcTickerActive = true;
-      productSelectionState.showTime = millis(); // Start timer for auto-return
-      Serial.println("[NAV] SELECTING mode - Showing Bitcoin ticker after last product");
-      return;
-    }
-  } else {
-    // ALWAYS or OFF mode: Loop back to first product
-    if (multiChannelConfig.mode == "duo" && multiChannelConfig.currentProduct > 2) {
-      multiChannelConfig.currentProduct = 1; // Loop back to first product
-    } else if (multiChannelConfig.mode == "quattro" && multiChannelConfig.currentProduct > 4) {
-      multiChannelConfig.currentProduct = 1; // Loop back to first product
-    }
-  }
-  
-  Serial.printf("[NAV] Navigate to product: %d\n", multiChannelConfig.currentProduct);
-  
-  // IMPORTANT: Disable product selection screen FIRST to prevent concurrent screen updates
-  deviceState.transition(DeviceState::READY);
-  
-  // Small delay to ensure any ongoing display operation completes
-  vTaskDelay(pdMS_TO_TICKS(50));
-  
-  // Show product QR screen (multiChannelConfig.currentProduct should be 1-4 for duo/quattro)
-  if (multiChannelConfig.currentProduct >= 1) {
-    // Show product QR screen
-    multiChannelConfig.btcTickerActive = false; // Exit Bitcoin ticker when navigating to products
-    
-    // Capture multiChannelConfig.currentProduct value to prevent race conditions
-    int productNum = multiChannelConfig.currentProduct;
-    String label = "";
-    int pin = 0;
-    
-    switch(productNum) {
-      case 1: // Pin 12
-        label = (productLabels.label12.length() > 0) ? productLabels.label12 : "Pin 12";
-        pin = 12;
-        break;
-      case 2: // Pin 13
-        label = (productLabels.label13.length() > 0) ? productLabels.label13 : "Pin 13";
-        pin = 13;
-        break;
-      case 3: // Pin 10
-        label = (productLabels.label10.length() > 0) ? productLabels.label10 : "Pin 10";
-        pin = 10;
-        break;
-      case 4: // Pin 11
-        label = (productLabels.label11.length() > 0) ? productLabels.label11 : "Pin 11";
-        pin = 11;
-        break;
-      default: // Fallback to Pin 12 if invalid product number
-        Serial.printf("[NAV] WARNING: Invalid product number %d, defaulting to Pin 12\n", productNum);
-        label = (productLabels.label12.length() > 0) ? productLabels.label12 : "Pin 12";
-        pin = 12;
-        break;
-    }
-    
-    // Generate LNURL dynamically for this pin
-    String lnurlStr = generateLNURL(pin);
-    if (lnurlStr.length() > 0) {
-      updateLightningQR(lnurlStr);
-    }
-    
-    // Show product screen
-    showProductQRScreen(label, pin);
-    Serial.printf("[NAV] Showing product: %s (Pin %d)\n", label.c_str(), pin);
-    
-    // Reset product selection timer after every navigation
-    productSelectionState.showTime = millis();
-    Serial.println("[NAV] Product selection timer reset");
-  }
-}
-
-void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ratio) {
-  Serial.println("[SPECIAL] Executing special mode:");
-  Serial.printf("[SPECIAL] Pin: %d, Duration: %lu ms, Frequency: %.2f Hz, Ratio: %.2f\n", 
-                pin, duration_ms, freq, ratio);
-  
-  // Calculate timing
-  unsigned long period_ms = (unsigned long)(1000.0 / freq);
-  unsigned long onTime_ms = (unsigned long)(period_ms / (1.0 + 1.0/ratio));
-  unsigned long offTime_ms = period_ms - onTime_ms;
-  
-  Serial.printf("[SPECIAL] Period: %lu ms, ON: %lu ms, OFF: %lu ms\n", 
-                period_ms, onTime_ms, offTime_ms);
-  
-  unsigned long startTime = millis();
-  unsigned long elapsed = 0;
-  int cycleCount = 0;
-  
-  pinMode(pin, OUTPUT);
-  
-  // If Single mode (multiChannelConfig.mode == "off") and pin is 12, also prepare pin 13
-  bool parallelPin13 = (multiChannelConfig.mode == "off" && pin == 12);
-  if (parallelPin13) {
-    pinMode(13, OUTPUT);
-    Serial.println("[SPECIAL] Pin 13 will be controlled in parallel to Pin 12 (Single mode)");
-  }
-  
-  // Execute cycles until duration is reached
-  while (elapsed < duration_ms) {
-    // Check for config mode interrupt
-    if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
-      Serial.println("[SPECIAL] Interrupted by config mode");
-      digitalWrite(pin, LOW);
-      if (parallelPin13) {
-        digitalWrite(13, LOW);
-      }
-      break;
-    }
-    
-    cycleCount++;
-    
-    // PIN HIGH
-    digitalWrite(pin, HIGH);
-    if (parallelPin13) {
-      digitalWrite(13, HIGH);
-    }
-    Serial.printf("[SPECIAL] Cycle %d: Pin HIGH\n", cycleCount);
-    delay(onTime_ms);
-    
-    // PIN LOW
-    digitalWrite(pin, LOW);
-    if (parallelPin13) {
-      digitalWrite(13, LOW);
-    }
-    Serial.printf("[SPECIAL] Cycle %d: Pin LOW\n", cycleCount);
-    delay(offTime_ms);
-    
-    elapsed = millis() - startTime;
-  }
-  
-  // Ensure pin is LOW at the end
-  digitalWrite(pin, LOW);
-  if (parallelPin13) {
-    digitalWrite(13, LOW);
-  }
-  Serial.printf("[SPECIAL] Completed %d cycles in %lu ms\n", cycleCount, elapsed);
-}
-
-String getValue(String data, char separator, int index)
-{
-  int found = 0;
-  int strIndex[] = {0, -1};
-  int maxIndex = data.length() - 1;
-
-  for (int i = 0; i <= maxIndex && found <= index; i++)
-  {
-    if (data.charAt(i) == separator || i == maxIndex)
-    {
-      found++;
-      strIndex[0] = strIndex[1] + 1;
-      strIndex[1] = (i == maxIndex) ? i + 1 : i;
-    }
-  }
-  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
-}
 
 void readFiles()
 {
@@ -642,214 +415,73 @@ void readFiles()
   paramFile.close();
 }
 
-//////////////////WEBSOCKET///////////////////
+// ═══════════════════════════════════════════════════════════════════════════════════
+// MODE FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════════
 
-// Network functions moved to src/Network.cpp
-
-// Fetch switch labels from backend API
-void fetchSwitchLabels()
+void showHelp()
 {
-  if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
-    Serial.println("[LABELS] Cannot fetch labels - server or deviceId not configured");
-    return;
+  // Wake from power saving mode if active
+  if (wakeFromPowerSavingMode()) {
+    Serial.println("[HELP] Device woke up, not entering help mode");
+    return; // Don't trigger help mode, just wake up
   }
 
-  HTTPClient http;
-  String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/public/" + deviceId;
-  
-  Serial.println("[LABELS] Fetching switch configurations from: " + url);
-  http.begin(url);
-  http.setTimeout(5000); // 5 second timeout
-  
-  int httpCode = http.GET();
-  
-  if (httpCode == 200) {
-    String payload = http.getString();
-    Serial.println("[LABELS] Received response: " + payload);
-    
-    // Parse JSON response
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
-    
-    if (!error) {
-      // Extract currency from response
-      const char* currencyChar = doc["currency"];
-      Serial.print("[LABELS] DEBUG - currency field from API: ");
-      if (currencyChar != nullptr) {
-        Serial.println(String(currencyChar));
-        String oldCurrency = currency;
-        currency = String(currencyChar);
-        currency.toUpperCase(); // Ensure uppercase for display and API calls
-        Serial.println("[LABELS] Currency changed from '" + oldCurrency + "' to '" + currency + "'");
-      } else {
-        Serial.println("NULL - field not found in response");
-        // Keep currency from config (don't override with USD)
-        Serial.println("[LABELS] No currency in API response, keeping config value: " + currency);
-      }
-      
-      // Clear existing labels
-      productLabels.label12 = "";
-      productLabels.label13 = "";
-      productLabels.label10 = "";
-      productLabels.label11 = "";
-      
-      // Extract labels from switches array
-      JsonArray switches = doc["switches"];
-      for (JsonObject switchObj : switches) {
-        int pin = switchObj["pin"];
-        const char* labelChar = switchObj["label"];
-        String labelStr = (labelChar != nullptr) ? String(labelChar) : "";
-        
-        // Store label based on pin number
-        if (pin == 12) {
-          productLabels.label12 = labelStr;
-          Serial.println("[LABELS] Pin 12 label: " + productLabels.label12);
-        } else if (pin == 13) {
-          productLabels.label13 = labelStr;
-          Serial.println("[LABELS] Pin 13 label: " + productLabels.label13);
-        } else if (pin == 10) {
-          productLabels.label10 = labelStr;
-          Serial.println("[LABELS] Pin 10 label: " + productLabels.label10);
-        } else if (pin == 11) {
-          productLabels.label11 = labelStr;
-          Serial.println("[LABELS] Pin 11 label: " + productLabels.label11);
-        }
-      }
-      
-      Serial.println("[LABELS] Successfully fetched and cached all labels");
-      labelsLoadedSuccessfully = true; // Mark labels as successfully loaded
-      productLabels.lastUpdate = millis(); // Update timestamp
-      
-      // Always fetch Bitcoin data with the correct currency (not just when ticker is active)
-      // This ensures data is ready when ticker is activated
-      Serial.println("[LABELS] Currency received - fetching Bitcoin data with correct currency");
-      fetchBitcoinData();
-      
-      // If ticker is currently active, redraw screen to show new currency
-      if (multiChannelConfig.btcTickerActive) {
-        Serial.println("[LABELS] Ticker active - refreshing display");
-        btctickerScreen();
-      }
-    } else {
-      Serial.println("[LABELS] JSON parsing failed: " + String(error.c_str()));
+  Serial.println("[BUTTON] Help button pressed");
+  deviceState.transition(DeviceState::HELP_SCREEN); // Set flag to interrupt WiFi reconnect loop
+
+  // Disable product selection timer during help mode
+  productSelectionState.showTime = 0;
+
+  stepOneScreen();
+
+  // Check for button press during first screen
+  unsigned long screenStart = millis();
+  while (millis() - screenStart < 1000 && deviceState.isInState(DeviceState::HELP_SCREEN)) { // TEST: 1s (default: 3000ms)
+    vTaskDelay(pdMS_TO_TICKS(50));
+    if (!deviceState.isInState(DeviceState::HELP_SCREEN)) break; // Button pressed in handleTouchButton()
+  }
+  if (!deviceState.isInState(DeviceState::HELP_SCREEN)) return; // Exit Help early
+
+  stepTwoScreen();
+
+  // Check for button press during second screen
+  screenStart = millis();
+  while (millis() - screenStart < 1000 && deviceState.isInState(DeviceState::HELP_SCREEN)) { // TEST: 1s (default: 3000ms)
+    vTaskDelay(pdMS_TO_TICKS(50));
+    if (!deviceState.isInState(DeviceState::HELP_SCREEN)) break;
+  }
+  if (!deviceState.isInState(DeviceState::HELP_SCREEN)) return; // Exit Help early
+
+  stepThreeScreen();
+
+  // Check for button press during third screen
+  screenStart = millis();
+  while (millis() - screenStart < 1000 && deviceState.isInState(DeviceState::HELP_SCREEN)) { // TEST: 1s (default: 3000ms)
+    vTaskDelay(pdMS_TO_TICKS(50));
+    if (!deviceState.isInState(DeviceState::HELP_SCREEN)) break;
+  }
+
+  deviceState.transition(DeviceState::READY); // Clear flag
+
+  // Return to error screen if one was active, otherwise show QR screen
+  if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
+    // Check which error is active and show corresponding screen
+    if (WiFi.status() != WL_CONNECTED) {
+      wifiReconnectScreen();
+    } else if (networkStatus.waitingForPong && (millis() - networkStatus.lastPingTime > 10000)) {
+      internetReconnectScreen();
+    } else if (!webSocket.isConnected()) {
+      websocketReconnectScreen();
     }
   } else {
-    Serial.printf("[LABELS] HTTP request failed with code: %d\n", httpCode);
-  }
-  
-  http.end();
-}
-
-// Fetch Bitcoin data from CoinGecko and mempool.space
-void fetchBitcoinData()
-{
-  Serial.println("[BTC] Fetching Bitcoin data...");
-  HTTPClient http;
-
-  // Fetch BTC price from CoinGecko using configured currency
-  String currencyLower = currency;
-  currencyLower.toLowerCase(); // CoinGecko expects lowercase currency code
-  String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
-  
-  Serial.println("[BTC] Current currency variable: '" + currency + "'");
-  Serial.println("[BTC] Requesting price from CoinGecko with URL: " + apiUrl);
-  http.begin(apiUrl);
-  http.setTimeout(5000);
-
-  int httpCode = http.GET();
-  if (httpCode == 200) {
-    String payload = http.getString();
-    Serial.println("[BTC] CoinGecko response: " + payload);
-
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
-
-    if (!error && doc["bitcoin"].is<JsonObject>()) {
-      Serial.println("[BTC] Looking for price key: '" + currencyLower + "'");
-      float price = doc["bitcoin"][currencyLower];
-      bitcoinData.price = String((int)price); // Convert to integer string
-      Serial.println("[BTC] Price updated: " + bitcoinData.price + " " + currency);
-    } else {
-      Serial.println("[BTC] Failed to parse CoinGecko JSON");
-      bitcoinData.price = "Error";
-    }
-  } else {
-    Serial.printf("[BTC] CoinGecko request failed: %d\n", httpCode);
-    bitcoinData.price = "Error";
-  }
-  http.end();
-
-  delay(100); // Small delay between requests
-
-  // Fetch block height from mempool.space
-  Serial.println("[BTC] Requesting block height from mempool.space...");
-  http.begin("https://mempool.space/api/blocks/tip/height");
-  http.setTimeout(5000);
-
-  httpCode = http.GET();
-  if (httpCode == 200) {
-    bitcoinData.blockHigh = http.getString();
-    bitcoinData.blockHigh.trim();
-    Serial.println("[BTC] Block height updated: " + bitcoinData.blockHigh);
-  } else {
-    Serial.printf("[BTC] Mempool.space request failed: %d\n", httpCode);
-    bitcoinData.blockHigh = "Error";
-  }
-  http.end();
-
-  Serial.println("[BTC] Bitcoin data fetch completed");
-  bitcoinData.lastUpdate = millis();
-}
-
-// Update Bitcoin ticker display if needed
-void updateBitcoinTicker()
-{
-  // Only update if ticker is active and not in error/config/help modes
-  if (!multiChannelConfig.btcTickerActive || deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
-    return;
-  }
-
-  unsigned long currentTime = millis();
-
-  // Check if it's time for an update
-  if (currentTime - bitcoinData.lastUpdate >= BTC_UPDATE_INTERVAL) {
-    Serial.println("[BTC] Update interval reached, fetching new data...");
-    fetchBitcoinData();
-
-    // Refresh the display ONLY if we're STILL on the ticker screen
-    // Double-check multiChannelConfig.btcTickerActive immediately before drawing to prevent race conditions
-    if (multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
-      // Final check right before screen update to prevent concurrent drawing
-      if (multiChannelConfig.btcTickerActive) {
-        btctickerScreen();
-        Serial.println("[BTC] Screen refreshed with new data");
-      }
-    }
+    // No error active, show QR screen
+    redrawQRScreen();
+    // Reset product selection timer
+    productSelectionState.showTime = millis();
+    deviceState.transition(DeviceState::READY);
   }
 }
-
-// Update switch labels periodically
-void updateSwitchLabels()
-{
-  // Skip if in error/config/help modes
-  if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
-    return;
-  }
-
-  unsigned long currentTime = millis();
-
-  // Check if labels failed to load initially or if it's time for periodic update
-  if (!labelsLoadedSuccessfully || (currentTime - productLabels.lastUpdate >= LABEL_UPDATE_INTERVAL)) {
-    if (!labelsLoadedSuccessfully) {
-      Serial.println("[LABELS] Labels not loaded successfully, retrying...");
-    } else {
-      Serial.println("[LABELS] Periodic update interval reached, fetching labels...");
-    }
-    fetchSwitchLabels();
-  }
-}
-
-// Network connectivity checks moved to src/Network.cpp
 
 void configMode()
 {
@@ -957,323 +589,30 @@ void reportMode()
   deviceState.transition(DeviceState::READY); // Clear flag AFTER showing final screen
 }
 
-void handleTouchButton()
-{
-  // If in Help mode: Allow second click to switch to Report
-  if (deviceState.isInState(DeviceState::HELP_SCREEN)) {
-    // Check for new button press
-    if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
-      touchState.pressed = true;
-      touchState.pressStartTime = millis();
-      
-      // This is the second click - switch from Help to Report
-      Serial.println("[TOUCH] Second click during Help -> Switching to Report Mode");
-      deviceState.transition(DeviceState::REPORT_SCREEN); // Abort Help
-      touchState.clickCount = 0; // Reset
-      
-      // Check for Config mode (display touch)
-      if (touch.available()) {
-        uint16_t mainTouchX = touch.getX();
-        uint16_t mainTouchY = touch.getY();
-        bool isMainAreaTouch = false;
-        
-        // Touch area detection based on displayConfig.orientation
-        if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
-          isMainAreaTouch = (mainTouchY <= 305);
-        } else {
-          isMainAreaTouch = (mainTouchX <= 145);
-        }
-        
-        if (isMainAreaTouch) {
-          Serial.println("[TOUCH] + Display touch -> Config Mode");
-          configMode();
-          return;
-        }
-      }
-      
-      // No display touch -> Report Mode
-      reportMode();
-    }
-    else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchState.pressed) {
-      touchState.pressed = false;
-    }
-    return;
-  }
+// ═══════════════════════════════════════════════════════════════════════════════════
+// TASK - BUTTON HANDLER
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+// Task function that runs handleTouchButton in a loop
+void Task1code(void * pvParameters) {
+  Serial.print("[TASK1] Button handler task running on core ");
+  Serial.println(xPortGetCoreID());
   
-  // If in Report mode: Button press aborts
-  if (deviceState.isInState(DeviceState::REPORT_SCREEN)) {
-    if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
-      Serial.println("[TOUCH] Button press during Report - ABORTING");
-      deviceState.transition(DeviceState::READY);
-      touchState.pressed = true;
-    }
-    else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchState.pressed) {
-      touchState.pressed = false;
-    }
-    touchState.clickCount = 0;
-    return;
-  }
-  
-  // FIRST: Check if click sequence timeout has expired (ALWAYS check, not just on touch events)
-  if (touchState.clickCount > 0 && !touchState.pressed) {
-    unsigned long timeSinceLastTouch = millis() - touchState.lastTime;
-    
-    // For 1 click: Wait 1 second for potential second click
-    // If no second click after 1s → Start Help
-    if (touchState.clickCount == 1 && timeSinceLastTouch > 1000 && !deviceState.isInState(DeviceState::HELP_SCREEN)) {
-      Serial.println("[TOUCH] Timeout: 1 click, no second click -> Help");
-      showHelp();
-      touchState.clickCount = 0;
-    }
-    
-    // For 2 clicks: Wait 1 second for potential third click
-    // If no third click after 1s → Start Report
-    else if (touchState.clickCount == 2 && timeSinceLastTouch > 1000 && !deviceState.isInState(DeviceState::REPORT_SCREEN)) {
-      Serial.println("[TOUCH] Timeout: 2 clicks, no third click -> Report");
-      reportMode();
-      touchState.clickCount = 0;
-    }
-    
-    // For 3 clicks: Wait 1 second for potential fourth click
-    // If no fourth click after 1s → Reset (do nothing)
-    else if (touchState.clickCount == 3 && timeSinceLastTouch > 1000) {
-      Serial.println("[TOUCH] Timeout: 3 clicks, no fourth click -> Reset");
-      touchState.clickCount = 0;
-    }
-    
-    // If Help is running and more than 3s passed since last click: Reset
-    if (deviceState.isInState(DeviceState::HELP_SCREEN) && timeSinceLastTouch > 3000) {
-      touchState.clickCount = 0;
-    }
-  }
-  
-  // Config Mode Touch Exit: Any touch after 2s exits config mode
-  if (deviceState.isInState(DeviceState::CONFIG_MODE) && configModeStartTime > 0 && (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
-    if (digitalRead(PIN_TOUCH_INT) == LOW) {
-      Serial.println("[CONFIG] Touch detected - exiting config mode");
-      delay(100);
-      ESP.restart();
-    }
-  }
-  
-  // Check if touch interrupt is triggered (GPIO 16 LOW when touched)
-  if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
-    // Touch detected - read coordinates to check if it's the button area
-    uint16_t touchX = touch.getX();
-    uint16_t touchY = touch.getY();
-    
-    // Define touch button area based on HARDWARE position
-    // Touch coordinates are hardware-based (0-170 x 0-320), don't rotate with display!
-    // Physical button is ALWAYS at the same hardware location: high Y values (Y > 305)
-    // - Vertical (rotation=0): Button at BOTTOM of display → Y > 305
-    // - Horizontal (rotation=1): Button at RIGHT of display → STILL Y > 305 (not X!)
-    bool inButtonArea = (touchY > 305);
-    
-    // FIRST: Wake from powerConfig.screensaver if active (regardless of touch location)
-    if (deviceState.isInState(DeviceState::SCREENSAVER)) {
-      Serial.printf("[TOUCH] Display touched at X=%d, Y=%d during powerConfig.screensaver - WAKING UP\n", touchX, touchY);
-      deviceState.transition(DeviceState::READY);
-      deactivateScreensaver();
-      powerConfig.lastWakeUpTime = millis();
-      activityTracking.lastActivityTime = millis();
-      // Don't process button click, just wake up
-      return;
-    }
-    
-    // If not in button area, update activity timer but don't process as button click
-    if (!inButtonArea) {
-      activityTracking.lastActivityTime = millis();
-      return;
-    }
-    
-    Serial.printf("[TOUCH] Button area touched at X=%d, Y=%d (displayConfig.orientation=%s)\n", 
-                  touchX, touchY, displayConfig.orientation.c_str());
-    
-    // Touch button pressed
-    touchState.pressed = true;
-    touchState.pressStartTime = millis();
-    
-    // Increment click count if within double-click window
-    unsigned long timeSinceLastTouch = millis() - touchState.lastTime;
-    
-    if (timeSinceLastTouch < TOUCH_DOUBLE_CLICK_MS && timeSinceLastTouch > 100) {
-      // Within double-click window AND minimum 100ms since last touch (debounce)
-      touchState.clickCount++;
-      Serial.printf("[TOUCH] Click within window (%lu ms since last) - count now: %d\n", 
-                    timeSinceLastTouch, touchState.clickCount);
-    } else if (timeSinceLastTouch <= 100) {
-      // Too fast - likely bounce or accidental double-click, ignore
-      Serial.printf("[TOUCH] Too fast (%lu ms), ignoring (debounce)\n", timeSinceLastTouch);
-      return;
-    } else {
-      touchState.clickCount = 1; // Reset to 1 for new click sequence
-      Serial.printf("[TOUCH] New click sequence (last click was %lu ms ago)\n", timeSinceLastTouch);
-    }
-    touchState.lastTime = millis();
-    
-    Serial.printf("[TOUCH] Button click count: %d\n", touchState.clickCount);
-    
-    // Process clicks:
-    // - Click 1: Wait for timeout (1s) → Help
-    // - Click 2: Wait for timeout (1s) → Report (unless click 3 comes)
-    // - Click 3: Wait for timeout (1s) → Nothing (waiting for click 4)
-    // - Click 4: Immediate Config Mode
-    if (touchState.clickCount == 4) {
-      // Fourth click within timeout -> Config Mode (IMMEDIATE, no waiting)
-      Serial.println("[TOUCH] Fourth click -> Config Mode");
-      deviceState.transition(DeviceState::READY);  // Reset state before entering config
-      configMode();
-      touchState.clickCount = 0;
-    }
-    // For clicks 1, 2, and 3: Do nothing, let timeout handler decide
-  }
-  else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchState.pressed) {
-    // Touch released
-    touchState.pressed = false;
-    unsigned long pressDuration = millis() - touchState.pressStartTime;
-    
-    Serial.printf("[TOUCH] Button released after %lu ms\n", pressDuration);
+  for(;;) {
+    handleTouchButton();
+    vTaskDelay(pdMS_TO_TICKS(50)); // Check every 50ms
   }
 }
 
-// Input handlers moved to src/Input.cpp
+// ═══════════════════════════════════════════════════════════════════════════════════
+// SETUP - INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════════════════════
 
-void showHelp()
-{
-  // Wake from power saving mode if active
-  if (wakeFromPowerSavingMode()) {
-    Serial.println("[HELP] Device woke up, not entering help mode");
-    return; // Don't trigger help mode, just wake up
-  }
-  
-  Serial.println("[BUTTON] Help button pressed");
-  deviceState.transition(DeviceState::HELP_SCREEN); // Set flag to interrupt WiFi reconnect loop
-  
-  // Disable product selection timer during help mode
-  productSelectionState.showTime = 0;
-  
-  stepOneScreen();
-  
-  // Check for button press during first screen
-  unsigned long screenStart = millis();
-  while (millis() - screenStart < 1000 && deviceState.isInState(DeviceState::HELP_SCREEN)) { // TEST: 1s (default: 3000ms)
-    vTaskDelay(pdMS_TO_TICKS(50));
-    if (!deviceState.isInState(DeviceState::HELP_SCREEN)) break; // Button pressed in handleTouchButton()
-  }
-  if (!deviceState.isInState(DeviceState::HELP_SCREEN)) return; // Exit Help early
-  
-  stepTwoScreen();
-  
-  // Check for button press during second screen
-  screenStart = millis();
-  while (millis() - screenStart < 1000 && deviceState.isInState(DeviceState::HELP_SCREEN)) { // TEST: 1s (default: 3000ms)
-    vTaskDelay(pdMS_TO_TICKS(50));
-    if (!deviceState.isInState(DeviceState::HELP_SCREEN)) break;
-  }
-  if (!deviceState.isInState(DeviceState::HELP_SCREEN)) return; // Exit Help early
-  
-  stepThreeScreen();
-  
-  // Check for button press during third screen
-  screenStart = millis();
-  while (millis() - screenStart < 1000 && deviceState.isInState(DeviceState::HELP_SCREEN)) { // TEST: 1s (default: 3000ms)
-    vTaskDelay(pdMS_TO_TICKS(50));
-    if (!deviceState.isInState(DeviceState::HELP_SCREEN)) break;
-  }
-  
-  deviceState.transition(DeviceState::READY); // Clear flag
-  
-  // Return to error screen if one was active, otherwise show QR screen
-  if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
-    // Check which error is active and show corresponding screen
-    if (WiFi.status() != WL_CONNECTED) {
-      wifiReconnectScreen();
-    } else if (networkStatus.waitingForPong && (millis() - networkStatus.lastPingTime > 10000)) {
-      internetReconnectScreen();
-    } else if (!webSocket.isConnected()) {
-      websocketReconnectScreen();
-    }
-  } else {
-    // No error active, show QR screen
-    redrawQRScreen();
-    // Reset product selection timer
-    productSelectionState.showTime = millis();
-    deviceState.transition(DeviceState::READY);
-  }
-}
-
-void Task1code(void *pvParameters)
-{
-  for (;;)
-  {
-    // Monitor WiFi state and update device state machine
-    checkWiFiStatus();
-    
-    leftButton.tick();
-    rightButton.tick();
-
-    // Handle external LED-button (GPIO 44 input)
-    handleExternalButton();
-    checkExternalButtonHolds(); // Continuously check for hold actions
-    handleConfigExitButtons();
-    updateReadyLed();
-    
-    // Handle touch button if available
-    if (touchState.available) {
-      handleTouchButton();
-    }
-    
-    vTaskDelay(pdMS_TO_TICKS(5)); // 5ms delay - faster response for touch button
-  }
-}
-
-void setup()
-{
-  Serial.setRxBufferSize(2048); // Increased for long JSON with LNURL
-  Serial.begin(115200);
-
-  int timer = 0;
-
-  pinMode(PIN_POWER_ON, OUTPUT);
-  digitalWrite(PIN_POWER_ON, HIGH);
-
-  // External LED-button wiring: source 3.3V on LED pin when ready; input uses pull-up
-  pinMode(PIN_LED_BUTTON_LED, OUTPUT);
-  digitalWrite(PIN_LED_BUTTON_LED, LOW); // LED off until device is ready
-  pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
-
-  FFat.begin(FORMAT_ON_FAIL);
-  readFiles(); // get the saved details and store in global variables
-
-  Serial.println("\n[SETUP] readFiles() completed");
-  Serial.println("[SETUP] currency = " + currency);
-  Serial.println("[SETUP] multiChannelConfig.btcTickerMode = " + multiChannelConfig.btcTickerMode);
-
-  initDisplay();
-  startupScreen();
-
-  // Initialize touch controller (independent of WiFi)
-  touchState.available = touch.begin();
-  if (touchState.available) {
-    Serial.println("[TOUCH] ✓ Touch controller initialized successfully!");
-  } else {
-    Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
-  }
-
-  // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
-  leftButton.setPressMs(3000); // 3 seconds for config mode (documented as 5 sec for users)
-  leftButton.setDebounceMs(50); // 50ms debounce - fast response
-  leftButton.attachClick(navigateToNextProduct); // Single click = Navigate products (duo/quattro mode)
-  leftButton.attachLongPressStart(configMode); // Long press = Config mode
-  rightButton.setDebounceMs(50); // 50ms debounce - fast response
-  rightButton.setClickMs(400); // 400ms max for single click
-  rightButton.attachClick(showHelp); // Single click = Help
-  rightButton.attachDoubleClick(reportMode); // Double click = Report
-  rightButton.attachLongPressStart(showHelp); // Long press = Help (prevents missed clicks)
-
+void setup() {
+  // Create button handler task on core 0
   xTaskCreatePinnedToCore(
-      Task1code, /* Function to implement the task */
-      "Task1",   /* Name of the task */
+      Task1code, /* Task function. */
+      "Task1",   /* Name of task. */
       10000,     /* Stack size in words */
       NULL,      /* Task input parameter */
       1,         /* Priority of the task (increased from 0 to 1) */
