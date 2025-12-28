@@ -6,6 +6,7 @@
 #include <driver/rtc_io.h>
 #include "display.h"
 #include "PinConfig.h"
+#include "GlobalState.h"
 
 TFT_eSPI tft = TFT_eSPI();
 #define GFXFF 1
@@ -47,7 +48,9 @@ const unsigned char bitcoin_logo[] PROGMEM = {
 
 int x;
 int y;
-extern char lightning[];
+
+// External variables not in GlobalState
+extern String currency;
 
 // Helper function to draw scaled bitmap
 void drawScaledBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint8_t scale) {
@@ -60,14 +63,8 @@ void drawScaledBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, in
     }
   }
 }
-extern String orientation;
-extern String theme;
-extern String btcprice;
-extern String blockhigh;
-extern String currency;
-extern bool touchAvailable;
 
-// Theme colors - will be set based on theme selection
+// Theme colors - will be set based on displayConfig.theme selection
 uint16_t themeBackground = TFT_WHITE;
 uint16_t themeForeground = TFT_BLACK;
 
@@ -113,9 +110,9 @@ void setThemeColors()
   themeForeground = TFT_BLACK;
   themeBackground = TFT_WHITE;
   
-  // Lookup theme in table
+  // Lookup displayConfig.theme in table
   for (const auto& config : themeConfigs) {
-    if (theme == config.name) {
+    if (displayConfig.theme == config.name) {
       themeForeground = config.foreground;
       themeBackground = config.background;
       return;
@@ -127,22 +124,22 @@ void setThemeColors()
 void initDisplay()
 {
   tft.init();
-  setThemeColors(); // Set theme colors based on configuration
+  setThemeColors(); // Set displayConfig.theme colors based on configuration
   
-  // Screen orientation mapping:
+  // Screen displayConfig.orientation mapping:
   // h = horizontal (button right)
   // v = vertical (button bottom)
   // hi = horizontal inverse (button left)
   // vi = vertical inverse (button top)
-  if (orientation == "v"){
+  if (displayConfig.orientation == "v"){
     tft.setRotation(0);
     x = 85;
     y = 160;
-  } else if (orientation == "vi") {
+  } else if (displayConfig.orientation == "vi") {
     tft.setRotation(2);
     x = 85;
     y = 160;
-  } else if (orientation == "hi") {
+  } else if (displayConfig.orientation == "hi") {
     tft.setRotation(3);
     x = 160;
     y = 85;
@@ -161,7 +158,7 @@ void startupScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.setTextSize(2);
     tft.drawString("", x + 5, y - 95, GFXFF);
     tft.setTextSize(8);
@@ -197,7 +194,7 @@ void btctickerScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     // VERTICAL LAYOUT
     // Draw Bitcoin logo (64x64) moved up by 30 pixels more
     tft.drawBitmap(x - 32, y - 135, bitcoin_logo, 64, 64, themeForeground);
@@ -208,10 +205,10 @@ void btctickerScreen()
     
     // Price (larger) - moved down 5 pixels
     tft.setTextSize(3);
-    tft.drawString(btcprice, x + 5, y - 20, GFXFF);
+    tft.drawString(bitcoinData.price, x + 5, y - 20, GFXFF);
     
     // Calculate sats per currency unit
-    float priceFloat = btcprice.toFloat();
+    float priceFloat = bitcoinData.price.toFloat();
     String satsPerCurrency = "";
     if (priceFloat > 0) {
       long satsValue = (long)((1.0 / priceFloat) * 100000000.0);
@@ -234,24 +231,24 @@ void btctickerScreen()
     
     // Block number (larger, same size as price and sats) - moved down 5 pixels
     tft.setTextSize(3);
-    tft.drawString(blockhigh, x + 5, y + 110, GFXFF);
+    tft.drawString(bitcoinData.blockHigh, x + 5, y + 110, GFXFF);
     
     // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     
-    if (touchAvailable) {
-      // Touch version: HELP centered on bottom/top depending on orientation
+    if (touchState.available) {
+      // Touch version: HELP centered on bottom/top depending on displayConfig.orientation
       tft.setTextDatum(MC_DATUM);
-      if (orientation == "v") {
+      if (displayConfig.orientation == "v") {
         tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
       } else {
         tft.drawString("HELP", x + 2, 10, GFXFF); // Top for vi (button at top)
       }
     } else {
-      // Non-touch version: mirror labels for inverse orientation
+      // Non-touch version: mirror labels for inverse displayConfig.orientation
       tft.setTextDatum(ML_DATUM);
-      if (orientation == "v") {
+      if (displayConfig.orientation == "v") {
         tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
         tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side bottom
       } else {
@@ -263,17 +260,17 @@ void btctickerScreen()
   } else {
     // HORIZONTAL LAYOUT
     // Left third: Bitcoin logo (64x64) vertically centered - moved 10 pixels right
-    int logoX = (orientation == "hi") ? 25 : 20; // +5px for hi
+    int logoX = (displayConfig.orientation == "hi") ? 25 : 20; // +5px for hi
     int logoY = y - 32;
     
     // Draw Bitcoin logo at normal size
     tft.drawBitmap(logoX, logoY, bitcoin_logo, 64, 64, themeForeground);
     
     // Right side (2/3): Text content - moved 20 more pixels to the left
-    int textX = (orientation == "hi") ? x + 30 : x + 25; // +5px for hi
+    int textX = (displayConfig.orientation == "hi") ? x + 30 : x + 25; // +5px for hi
     
     // Calculate sats per currency unit
-    float priceFloat = btcprice.toFloat();
+    float priceFloat = bitcoinData.price.toFloat();
     String satsPerCurrency = "";
     if (priceFloat > 0) {
       long satsValue = (long)((1.0 / priceFloat) * 100000000.0);
@@ -285,7 +282,7 @@ void btctickerScreen()
     // Top: Currency/BTC with price - label size 2, value size 3
     tft.setTextSize(2);
     String topLabel = currency + "/BTC: ";
-    tft.drawString(topLabel + btcprice, textX, y - 40, GFXFF);
+    tft.drawString(topLabel + bitcoinData.price, textX, y - 40, GFXFF);
     
     // Middle: SAT per currency - label size 2, value size 3
     tft.setTextSize(2);
@@ -294,14 +291,14 @@ void btctickerScreen()
     
     // Bottom: Block height - label size 2, value size 3
     tft.setTextSize(2);
-    tft.drawString("Block: " + blockhigh, textX, y + 40, GFXFF);
+    tft.drawString("Block: " + bitcoinData.blockHigh, textX, y + 40, GFXFF);
     
     // Button labels - different layout for touch vs non-touch
     
-    if (touchAvailable) {
+    if (touchState.available) {
       // Touch version: HELP as vertical stacked letters on right/left side
       tft.setTextDatum(MC_DATUM);
-      if (orientation == "h") {
+      if (displayConfig.orientation == "h") {
         // Right side, top to bottom (button at right)
         tft.drawString("H", 311, y - 30, GFXFF);
         tft.drawString("E", 311, y - 10, GFXFF);
@@ -315,9 +312,9 @@ void btctickerScreen()
         tft.drawString("P", 11, y + 30, GFXFF);
       }
     } else {
-      // Non-touch version: mirror labels for inverse orientation
+      // Non-touch version: mirror labels for inverse displayConfig.orientation
       tft.setTextDatum(ML_DATUM);
-      if (orientation == "h") {
+      if (displayConfig.orientation == "h") {
         tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
         tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom right
       } else {
@@ -336,7 +333,7 @@ void initializationScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.setTextSize(2);
     tft.drawString("", x + 5, y - 95, GFXFF);
     tft.setTextSize(8);
@@ -368,7 +365,7 @@ void bootUpScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("BOOT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -397,7 +394,7 @@ void configModeScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("CONF", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -426,7 +423,7 @@ void errorReportScreen(uint8_t wifiCount, uint8_t internetCount, uint8_t serverC
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("REPORT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -457,7 +454,7 @@ void wifiReconnectScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -486,7 +483,7 @@ void internetReconnectScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -515,7 +512,7 @@ void serverReconnectScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -541,7 +538,7 @@ void websocketReconnectScreen()
   tft.setTextSize(4);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("FAULT", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -570,7 +567,7 @@ void stepOneScreen()
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("1", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -599,7 +596,7 @@ void stepTwoScreen()
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("2", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -628,7 +625,7 @@ void stepThreeScreen()
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("3", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -656,7 +653,7 @@ void actionTimeScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.setTextSize(10);
     tft.drawString("A", x + 5, y - 100, GFXFF);
     tft.drawString("C", x + 5, y - 45, GFXFF);
@@ -679,7 +676,7 @@ void thankYouScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
-  if (orientation == "v" || orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     tft.drawString("ty", x + 5, y - 70, GFXFF);
     tft.fillRect(15, 165, 140, 135, themeForeground);
     tft.setTextDatum(ML_DATUM);
@@ -703,8 +700,7 @@ void thankYouScreen()
 // Show QR for ZAP action - uses product label from backend if available
 void showQRScreen()
 {
-  extern String label12;
-  showProductQRScreen(label12.length() > 0 ? label12 : "READY 4 ZAP ACTION", 12);
+  showProductQRScreen(productLabels.label12.length() > 0 ? productLabels.label12 : "READY 4 ZAP ACTION", 12);
 }
 
 void drawQRCode()
@@ -714,18 +710,18 @@ void drawQRCode()
   int offsetY = 12;
   
   // Shift QR code 8 pixels right for horizontal inverse only
-  if (orientation == "hi") {
+  if (displayConfig.orientation == "hi") {
     offsetX = 20;
   }
   
   // Shift QR code 7 pixels down for vertical inverse only
-  if (orientation == "vi") {
+  if (displayConfig.orientation == "vi") {
     offsetY = 19;
   }
   
   QRCode qrcoded;
   uint8_t qrcodeData[qrcode_getBufferSize(20)];
-  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightning);
+  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightningConfig.lightning);
 
   for (uint8_t y = 0; y < qrcoded.size; y++)
   {
@@ -751,29 +747,29 @@ void showThresholdQRScreen()
   tft.setTextSize(3);
   tft.setTextColor(themeBackground);
 
-  if (orientation == "v" || orientation == "vi"){
-    int boxY = (orientation == "vi") ? 175 : 168;
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
+    int boxY = (displayConfig.orientation == "vi") ? 175 : 168;
     tft.fillRect(15, boxY, 140, 132, themeForeground);
     tft.drawString("READY", x - 55, y + 40, GFXFF);
     tft.drawString("4 TH", x - 55, y + 70, GFXFF);
     tft.drawString("ACTION", x - 55, y + 100, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
-    if (orientation == "v") {
+    if (displayConfig.orientation == "v") {
       tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
     } else {
       tft.drawString("HELP", 5, 10, GFXFF); // Left side top for vi
     }
   } else {
-    int boxX = (orientation == "hi") ? 173 : 168;
+    int boxX = (displayConfig.orientation == "hi") ? 173 : 168;
     tft.fillRect(boxX, 18, 140, 135, themeForeground);
-    int textOffset = (orientation == "hi") ? 25 : 20;
+    int textOffset = (displayConfig.orientation == "hi") ? 25 : 20;
     tft.drawString("READY", x + textOffset, y - 30, GFXFF);
     tft.drawString("4 TH", x + textOffset, y, GFXFF);
     tft.drawString("ACTION", x + textOffset, y + 30, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
-    if (orientation == "h") {
+    if (displayConfig.orientation == "h") {
       tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
     } else {
       tft.drawString("HELP", 5, 163, GFXFF); // Bottom left for hi
@@ -785,8 +781,7 @@ void showThresholdQRScreen()
 
 void showSpecialModeQRScreen()
 {
-  extern String label12;
-  showProductQRScreen(label12.length() > 0 ? label12 : "READY 4 SP ACTION", 12);
+  showProductQRScreen(productLabels.label12.length() > 0 ? productLabels.label12 : "READY 4 SP ACTION", 12);
 }
 
 // Multi-Channel-Control Product QR Screen - displays label text and QR code
@@ -849,8 +844,8 @@ void showProductQRScreen(String label, int pin)
   tft.setTextDatum(ML_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
-    int boxY = (orientation == "vi") ? 175 : 168;
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
+    int boxY = (displayConfig.orientation == "vi") ? 175 : 168;
     tft.fillRect(15, boxY, 140, 132, themeForeground);
     
     // Display up to 3 lines of text
@@ -873,18 +868,18 @@ void showProductQRScreen(String label, int pin)
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     
-    if (touchAvailable) {
+    if (touchState.available) {
       // Touch version: HELP on bottom for v, top for vi (where touch button is)
       tft.setTextDatum(MC_DATUM);
-      if (orientation == "v") {
+      if (displayConfig.orientation == "v") {
         tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
       } else {
         tft.drawString("HELP", x + 2, 10, GFXFF); // Top for vi (button at top)
       }
     } else {
-      // Non-touch version: mirror labels for inverse orientation
+      // Non-touch version: mirror labels for inverse displayConfig.orientation
       tft.setTextDatum(ML_DATUM);
-      if (orientation == "v") {
+      if (displayConfig.orientation == "v") {
         tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
         tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side bottom
       } else {
@@ -894,14 +889,14 @@ void showProductQRScreen(String label, int pin)
       }
     }
   } else {
-    int boxX = (orientation == "hi") ? 171 : 163;
+    int boxX = (displayConfig.orientation == "hi") ? 171 : 163;
     tft.fillRect(boxX, 18, 137, 135, themeForeground); // 2 pixels wider for better product text display
     
     // Display up to 3 lines of text
     tft.setTextSize(3);
     tft.setTextColor(themeBackground); // White text on black background
     int startY = y - 30; // Starting Y position
-    int textOffset = (orientation == "hi") ? 25 : 17;
+    int textOffset = (displayConfig.orientation == "hi") ? 25 : 17;
     if (wordCount == 1) {
       tft.drawString(words[0], x + textOffset, startY + 30, GFXFF);
     } else if (wordCount == 2) {
@@ -918,10 +913,10 @@ void showProductQRScreen(String label, int pin)
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
     
-    if (touchAvailable) {
+    if (touchState.available) {
       // Touch version: HELP as vertical stacked letters on right/left side
       tft.setTextDatum(MC_DATUM);
-      if (orientation == "h") {
+      if (displayConfig.orientation == "h") {
         // Right side, top to bottom (button at right)
         tft.drawString("H", 311, y - 30, GFXFF);
         tft.drawString("E", 311, y - 10, GFXFF);
@@ -935,9 +930,9 @@ void showProductQRScreen(String label, int pin)
         tft.drawString("P", 11, y + 30, GFXFF);
       }
     } else {
-      // Non-touch version: mirror labels for inverse orientation
+      // Non-touch version: mirror labels for inverse displayConfig.orientation
       tft.setTextDatum(ML_DATUM);
-      if (orientation == "h") {
+      if (displayConfig.orientation == "h") {
         tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
         tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom right
       } else {
@@ -956,8 +951,8 @@ void productSelectionScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (orientation == "v" || orientation == "vi"){
-    // Vertical orientation
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
+    // Vertical displayConfig.orientation
     tft.setTextSize(2);
     tft.drawString("SELECT", x, y - 40, GFXFF);
     tft.drawString("PRODUCT", x, y - 20, GFXFF);
@@ -973,18 +968,18 @@ void productSelectionScreen()
     // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
     
-    if (touchAvailable) {
+    if (touchState.available) {
       // Touch version: HELP on bottom for v, top for vi (where touch button is)
       tft.setTextDatum(MC_DATUM);
-      if (orientation == "v") {
+      if (displayConfig.orientation == "v") {
         tft.drawString("HELP", x + 2, 312, GFXFF); // Bottom (button at bottom)
       } else {
         tft.drawString("HELP", x + 2, 10, GFXFF); // Top for vi (button at top)
       }
     } else {
-      // Non-touch version: mirror labels for inverse orientation
+      // Non-touch version: mirror labels for inverse displayConfig.orientation
       tft.setTextDatum(ML_DATUM);
-      if (orientation == "v") {
+      if (displayConfig.orientation == "v") {
         tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
         tft.drawString("NEXT", 5, y + 150, GFXFF); // Left side bottom
       } else {
@@ -995,7 +990,7 @@ void productSelectionScreen()
     }
     
   } else {
-    // Horizontal orientation
+    // Horizontal displayConfig.orientation
     tft.setTextSize(3);
     tft.drawString("SELECT", x, y - 30, GFXFF);
     tft.drawString("PRODUCT", x, y, GFXFF);
@@ -1007,10 +1002,10 @@ void productSelectionScreen()
     // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);
     
-    if (touchAvailable) {
+    if (touchState.available) {
       // Touch version: HELP as vertical stacked letters on right/left side
       tft.setTextDatum(MC_DATUM);
-      if (orientation == "h") {
+      if (displayConfig.orientation == "h") {
         // Right side, top to bottom (button at right)
         tft.drawString("H", 311, y - 30, GFXFF);
         tft.drawString("E", 311, y - 10, GFXFF);
@@ -1024,9 +1019,9 @@ void productSelectionScreen()
         tft.drawString("P", 11, y + 30, GFXFF);
       }
     } else {
-      // Non-touch version: mirror labels for inverse orientation
+      // Non-touch version: mirror labels for inverse displayConfig.orientation
       tft.setTextDatum(ML_DATUM);
-      if (orientation == "h") {
+      if (displayConfig.orientation == "h") {
         tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
         tft.drawString("NEXT", x + 110, 163, GFXFF); // Bottom right
       } else {
@@ -1044,7 +1039,7 @@ static String screensaverMode = "off";
 
 void activateScreensaver(String mode)
 {
-  Serial.println("[SCREENSAVER] Activating screensaver mode: " + mode);
+  Serial.println("[SCREENSAVER] Activating powerConfig.screensaver mode: " + mode);
   screensaverIsActive = true;
   screensaverMode = mode;
 
@@ -1066,7 +1061,7 @@ void deactivateScreensaver()
     return;
   }
 
-  Serial.println("[SCREENSAVER] Deactivating screensaver mode: " + screensaverMode);
+  Serial.println("[SCREENSAVER] Deactivating powerConfig.screensaver mode: " + screensaverMode);
   
   if (screensaverMode == "backlight") {
     // Turn backlight back on
