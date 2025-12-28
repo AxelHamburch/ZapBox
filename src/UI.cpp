@@ -4,6 +4,7 @@
 #include "DeviceState.h"
 #include "Display.h"
 #include "Payment.h"
+#include "Log.h"
 #include <Arduino.h>
 #include <WiFi.h>
 
@@ -93,7 +94,7 @@ void updateReadyLed() {
   if (shouldBeOn != readyLedState) {
     digitalWrite(PIN_LED_BUTTON_LED, shouldBeOn ? HIGH : LOW); // Source 3.3V when ready
     readyLedState = shouldBeOn;
-    Serial.printf("[LED] Ready LED %s\n", shouldBeOn ? "ON" : "OFF");
+    LOG_INFO("LED", String("Ready LED ") + (shouldBeOn ? "ON" : "OFF"));
   }
 }
 
@@ -277,13 +278,12 @@ void handlePowerSavingChecks() {
     // Debug output every 10 seconds
     static unsigned long lastDebugOutput = 0;
     if (currentTime - lastDebugOutput > 10000) {
-      Serial.printf("[SCREENSAVER_CHECK] Elapsed: %lu ms / Timeout: %lu ms (%.1f%%)\n", 
-                    elapsedTime, powerConfig.activationTimeoutMs, (elapsedTime * 100.0 / powerConfig.activationTimeoutMs));
+      LOG_DEBUG("Screensaver", String("Elapsed: ") + String(elapsedTime) + " ms / Timeout: " + String(powerConfig.activationTimeoutMs) + " ms (" + String(elapsedTime * 100.0 / powerConfig.activationTimeoutMs, 1) + "%)");
       lastDebugOutput = currentTime;
     }
 
     if (elapsedTime >= powerConfig.activationTimeoutMs) {
-      Serial.println("[TIMEOUT] Screensaver timeout reached, activating powerConfig.screensaver");
+      LOG_INFO("Screensaver", "Timeout reached, activating screensaver");
       deviceState.transition(DeviceState::SCREENSAVER);
       activateScreensaver(powerConfig.screensaver);
       // Continue with payment loop - screensaver only turns off backlight
@@ -298,13 +298,12 @@ void handlePowerSavingChecks() {
     // Debug output every 10 seconds
     static unsigned long lastDebugOutputDeep = 0;
     if (currentTime - lastDebugOutputDeep > 10000) {
-      Serial.printf("[DEEP_SLEEP_CHECK] Elapsed: %lu ms / Timeout: %lu ms (%.1f%%)\n", 
-                    elapsedTime, powerConfig.activationTimeoutMs, (elapsedTime * 100.0 / powerConfig.activationTimeoutMs));
+      LOG_DEBUG("DeepSleep", String("Elapsed: ") + String(elapsedTime) + " ms / Timeout: " + String(powerConfig.activationTimeoutMs) + " ms (" + String(elapsedTime * 100.0 / powerConfig.activationTimeoutMs, 1) + "%)");
       lastDebugOutputDeep = currentTime;
     }
 
     if (elapsedTime >= powerConfig.activationTimeoutMs) {
-      Serial.println("[TIMEOUT] Deep sleep timeout reached, preparing for deep sleep");
+      LOG_INFO("DeepSleep", "Timeout reached, preparing for deep sleep");
       deviceState.transition(DeviceState::DEEP_SLEEP);
 
       // Flush serial output before sleep
