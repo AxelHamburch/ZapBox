@@ -5,6 +5,7 @@
 #include "DeviceState.h"
 #include "GlobalState.h"
 #include "Display.h"
+#include "Log.h"
 
 // Externals from main.cpp
 extern StateManager deviceState;
@@ -19,45 +20,45 @@ extern void fetchSwitchLabels();
 // WebSocket event handler
 void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
-  Serial.printf("[WS Event] Type: %d, ConfigMode: %d\n", type, (int)deviceState.isInState(DeviceState::CONFIG_MODE));
+  LOG_DEBUG("WebSocket", String("Event Type: ") + String(type) + String(" ConfigMode: ") + String((int)deviceState.isInState(DeviceState::CONFIG_MODE)));
   
   if (!deviceState.isInState(DeviceState::CONFIG_MODE))
   {
     switch (type)
     {
     case WStype_DISCONNECTED:
-      Serial.println("[WS] Disconnected!");
+      LOG_INFO("WebSocket", "Disconnected");
       break;
     case WStype_CONNECTED:
     {
-      Serial.printf("[WS] Connected to url: %s\n", payload);
+      LOG_INFO("WebSocket", String("Connected to: ") + String((char*)payload));
       webSocket.sendTXT("Connected");
       networkStatus.lastPongTime = millis(); // Reset pong timer on connect
       networkStatus.waitingForPong = false;
       networkStatus.confirmed.websocket = true; // Mark WebSocket as confirmed on first connect
-      Serial.println("[CONFIRMED] WebSocket connection confirmed!");
+      LOG_INFO("WebSocket", "Connection confirmed!");
       
       // Fetch switch labels from backend after successful connection
       fetchSwitchLabels();
     }
     break;
     case WStype_TEXT:
-      Serial.printf("[WS] Received text: %s\n", payload);
+      LOG_DEBUG("WebSocket", String("Received: ") + String((char*)payload));
       payloadStr = (char *)payload;
-      Serial.printf("[WS] PayloadStr set to: %s\n", payloadStr.c_str());
+      LOG_DEBUG("WebSocket", String("PayloadStr set to: ") + payloadStr);
       paymentStatus.paid = true;
-      Serial.println("[WS] 'paymentStatus.paid' flag set to TRUE");
+      LOG_INFO("WebSocket", "'paymentStatus.paid' flag set to TRUE");
       break;
     case WStype_PING:
-      Serial.println("[WS] Received Ping");
+      LOG_DEBUG("WebSocket", "Ping received");
       break;
     case WStype_PONG:
-      Serial.println("[WS] Received Pong - connection alive!");
+      LOG_DEBUG("WebSocket", "Pong received - connection alive");
       networkStatus.lastPongTime = millis();
       networkStatus.waitingForPong = false;
       break;
     case WStype_ERROR:
-      Serial.println("[WS] Error occurred!");
+      LOG_ERROR("WebSocket", "Error occurred");
       break;
     case WStype_FRAGMENT_TEXT_START:
     case WStype_FRAGMENT_BIN_START:
@@ -68,7 +69,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
   }
   else
   {
-    Serial.println("[WS] Event ignored - in config mode");
+    LOG_DEBUG("WebSocket", "Event ignored - in config mode");
   }
 }
 
@@ -78,14 +79,14 @@ bool checkInternetConnectivity()
   HTTPClient http;
   http.setTimeout(3000); // 3 second timeout
   
-  Serial.println("[HTTP] Testing Internet connection...");
+  LOG_INFO("Network", "Testing Internet connection...");
   http.begin("http://clients3.google.com/generate_204"); // Google's connectivity check
   
   int httpCode = http.GET();
   http.end();
   
   bool hasInternet = (httpCode == 204 || httpCode == 301 || httpCode == 302 || httpCode > 0);
-  Serial.printf("[HTTP] Internet check result: %s (HTTP code: %d)\n", hasInternet ? "OK" : "FAILED", httpCode);
+  LOG_INFO("Network", String("Internet check: ") + (hasInternet ? "OK" : "FAILED") + String(" (HTTP ") + String(httpCode) + String(")"));
   
   return hasInternet;
 }
@@ -94,15 +95,15 @@ bool checkInternetConnectivity()
 bool checkServerReachability()
 {
   WiFiClient client;
-  Serial.printf("[TCP] Testing server reachability: %s:443...\n", lnbitsServer.c_str());
+  LOG_INFO("Network", String("Testing server: ") + lnbitsServer + String(":443..."));
   
   bool serverReachable = client.connect(lnbitsServer.c_str(), 443, 2000); // 2 second timeout
   
   if (serverReachable) {
-    Serial.println("[TCP] Server is reachable (port 443 open)");
+    LOG_INFO("Network", "Server reachable (port 443 open)");
     client.stop();
   } else {
-    Serial.println("[TCP] Server is NOT reachable (port 443 closed/timeout)");
+    LOG_WARN("Network", "Server NOT reachable (port 443 closed/timeout)");
   }
   
   return serverReachable;
@@ -132,9 +133,9 @@ void checkAndReconnectWiFi()
   // Simplified version - just show error screen, don't block
   if (WiFi.status() != WL_CONNECTED && !deviceState.isInState(DeviceState::CONFIG_MODE))
   {
-    Serial.println("WiFi connection lost!");
+    LOG_WARN("Network", "WiFi connection lost");
     if (networkStatus.errors.wifi < 99) networkStatus.errors.wifi++;
-    Serial.printf("[ERROR] WiFi error count: %d\n", networkStatus.errors.wifi);
+    LOG_ERROR("Network", String("WiFi error count: ") + String(networkStatus.errors.wifi));
     
     if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
       // Only show error screen if not already showing one
@@ -153,14 +154,14 @@ void checkAndReconnectWiFi()
       WiFi.setAutoReconnect(true);
       WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
       WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
-      Serial.println("[RECOVERY] WiFi reconnection started (non-blocking)");
+      LOG_INFO("Network", "WiFi reconnection started (non-blocking)");
     }
     // If WiFi was confirmed before, auto-reconnect will handle it
   }
   else if (WiFi.status() == WL_CONNECTED && networkStatus.errors.wifi > 0 && deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && currentErrorType == 1)
   {
     // WiFi recovered while on error screen
-    Serial.println("[RECOVERY] WiFi recovered!");
+    LOG_INFO("Network", "WiFi recovered");
     networkStatus.confirmed.wifi = true;
     deviceState.transition(DeviceState::READY);
     currentErrorType = 0;
@@ -170,7 +171,7 @@ void checkAndReconnectWiFi()
     
     // Force BTC data refresh after WiFi recovery
     if (multiChannelConfig.btcTickerMode != "off") {
-      Serial.println("[RECOVERY] Forcing BTC data refresh after WiFi recovery");
+      LOG_INFO("Network", "Forcing BTC data refresh after WiFi recovery");
       bitcoinData.lastUpdate = 0; // Force immediate update
       fetchBitcoinData(); // Fetch data now
     }
