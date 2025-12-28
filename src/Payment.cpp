@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "GlobalState.h"
 #include "Payment.h"
+#include "Log.h"
 #include <vector>
 
 // Access configuration provided in main.cpp
@@ -97,28 +98,28 @@ static String encodeBech32(const String& data) {
 // Generate LNURL for a given pin
 String generateLNURL(int pin) {
   if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
-    Serial.println("[LNURL] Cannot generate - server or deviceId not configured");
+    LOG_WARN("LNURL", "Cannot generate - server or deviceId not configured");
     return "";
   }
   // Build URL: https://{server}/bitcoinswitch/api/v1/lnurl/{deviceId}?pin={pin}
   String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/lnurl/" + deviceId + "?pin=" + String(pin);
-  Serial.printf("[LNURL] Generated for pin %d: %s\n", pin, url.c_str());
+  LOG_DEBUG("LNURL", String("Generated for pin ") + String(pin) + String(": ") + url);
   if (qrFormat == "lud17") {
     // LUD17 format: replace https: with lnurlp:
     String result = url;
     result.replace("https:", "lnurlp:");
-    Serial.printf("[LNURL] LUD17 format: %s\n", result.c_str());
+    LOG_DEBUG("LNURL", String("LUD17 format: ") + result);
     return result;
   } else {
     // BECH32 format (default)
     // Encode the https URL with bech32 and prepend lightning:
     String encoded = encodeBech32(url);
     if (encoded.length() == 0) {
-      Serial.println("[LNURL] BECH32 encoding failed, falling back to URL format");
+      LOG_WARN("LNURL", "BECH32 encoding failed, falling back to URL format");
       return String(wifiConfig.lightningPrefix) + url;
     }
     String result = String(wifiConfig.lightningPrefix) + encoded;
-    Serial.printf("[LNURL] BECH32 format: %s\n", result.c_str());
+    LOG_DEBUG("LNURL", String("BECH32 format: ") + result);
     return result;
   }
 }
@@ -137,8 +138,7 @@ void updateLightningQR(const String& lnurlStr) {
     strncpy(lightningConfig.lightning, wifiConfig.lightningPrefix, sizeof(lightningConfig.lightning) - 1);
     strncat(lightningConfig.lightning, tmp.c_str(), sizeof(lightningConfig.lightning) - 1 - strlen(lightningConfig.lightning));
   }
-  Serial.print("[QR] Updated lightning QR: ");
-  Serial.println(lightningConfig.lightning);
+  LOG_DEBUG("QR", String("Updated lightning QR: ") + lightningConfig.lightning);
 }
 
 // Convenience wrapper: Generate LNURL and update QR for given pin
@@ -147,6 +147,6 @@ void ensureQrForPin(int pin) {
   if (lnurlStr.length() > 0) {
     updateLightningQR(lnurlStr);
   } else {
-    Serial.printf("[LNURL] Skipping QR update for pin %d (empty LNURL)\n", pin);
+    LOG_WARN("LNURL", String("Skipping QR update for pin ") + String(pin) + String(" (empty LNURL)"));
   }
 }
