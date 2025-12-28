@@ -18,6 +18,10 @@ extern bool labelsLoadedSuccessfully;
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
 
+// Retry backoff for failed label fetches
+static unsigned long lastLabelFetchAttempt = 0;
+static const unsigned long LABEL_RETRY_BACKOFF = 30000; // 30 seconds between retries
+
 // External function declarations from main.cpp
 extern void btctickerScreen();
 
@@ -96,6 +100,9 @@ void fetchSwitchLabels()
     Serial.println("[LABELS] Cannot fetch labels - server or deviceId not configured");
     return;
   }
+
+  // Update last attempt time to prevent rapid retries
+  lastLabelFetchAttempt = millis();
 
   HTTPClient http;
   String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/public/" + deviceId;
@@ -285,6 +292,12 @@ void updateSwitchLabels()
 
   // Check if labels failed to load initially or if it's time for periodic update
   if (!labelsLoadedSuccessfully || (currentTime - productLabels.lastUpdate >= LABEL_UPDATE_INTERVAL)) {
+    // Enforce backoff delay between retry attempts to prevent SSL memory exhaustion
+    if ((currentTime - lastLabelFetchAttempt) < LABEL_RETRY_BACKOFF) {
+      // Too soon - skip this attempt
+      return;
+    }
+    
     if (!labelsLoadedSuccessfully) {
       Serial.println("[LABELS] Labels not loaded successfully, retrying...");
     } else {
