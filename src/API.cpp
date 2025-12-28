@@ -18,90 +18,12 @@ extern bool labelsLoadedSuccessfully;
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
 
-// Retry backoff for failed label fetches
-static unsigned long lastLabelFetchAttempt = 0;
-static const unsigned long LABEL_RETRY_BACKOFF = 30000; // 30 seconds between retries
-
-// Retry backoff for failed BTC fetches
-static unsigned long lastBtcFetchAttempt = 0;
-static const unsigned long BTC_RETRY_BACKOFF = 30000; // 30 seconds between retries
+// Retry backoff for failed label & BTC fetches
+static unsigned long lastFetchAttempt = 0;
+static const unsigned long RETRY_BACKOFF = 30000; // 30 seconds between retries
 
 // External function declarations from main.cpp
 extern void btctickerScreen();
-
-// Task handles for parallel requests
-static TaskHandle_t coinGeckoTaskHandle = NULL;
-static TaskHandle_t mempoolTaskHandle = NULL;
-
-// Temporary storage for parallel BTC data fetch
-static struct {
-  String price;
-  String blockHeight;
-  bool priceReady = false;
-  bool blockHeightReady = false;
-} parallelBtcData;
-
-/**
- * Task: Fetch BTC price from CoinGecko (runs in parallel)
- */
-void fetchCoinGeckoTask(void* parameter) {
-  HTTPClient http;
-  String currencyLower = currency;
-  currencyLower.toLowerCase();
-  String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
-  
-  http.begin(apiUrl);
-  http.setTimeout(5000);
-  int httpCode = http.GET();
-  
-  if (httpCode == 200) {
-    String payload = http.getString();
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
-    
-    if (!error && doc["bitcoin"].is<JsonObject>()) {
-      float price = doc["bitcoin"][currencyLower];
-      parallelBtcData.price = String((int)price);
-    } else {
-      parallelBtcData.price = "Error";
-    }
-  } else {
-    parallelBtcData.price = "Error";
-    Serial.println("[BTC] CoinGecko error: " + String(httpCode));
-  }
-  http.end();
-  
-  // Aggressive cleanup for SSL context
-  delay(100);
-  
-  parallelBtcData.priceReady = true;
-  vTaskDelete(NULL);
-}
-
-/**
- * Task: Fetch block height from Mempool.space (runs in parallel)
- */
-void fetchMempoolTask(void* parameter) {
-  HTTPClient http;
-  http.begin("https://mempool.space/api/blocks/tip/height");
-  http.setTimeout(5000);
-  int httpCode = http.GET();
-  
-  if (httpCode == 200) {
-    parallelBtcData.blockHeight = http.getString();
-    parallelBtcData.blockHeight.trim();
-  } else {
-    parallelBtcData.blockHeight = "Error";
-    Serial.println("[BTC] Mempool error: " + String(httpCode));
-  }
-  http.end();
-  
-  // Aggressive cleanup for SSL context
-  delay(100);
-  
-  parallelBtcData.blockHeightReady = true;
-  vTaskDelete(NULL);
-}
 
 /**
  * Fetch switch labels and configuration from LNbits server.
@@ -114,7 +36,7 @@ void fetchSwitchLabels()
   }
 
   // Update last attempt time to prevent rapid retries
-  lastLabelFetchAttempt = millis();
+  lastFetchAttempt = millis();
 
   HTTPClient http;
   String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/public/" + deviceId;
@@ -194,72 +116,49 @@ void fetchSwitchLabels()
 }
 
 /**
- * Fetch Bitcoin price and block height from external APIs (sequential to avoid SSL memory conflicts).
+ * Fetch Bitcoin price and block height from external APIs (sequential).
  */
 void fetchBitcoinData()
 {
-  Serial.println("[BTC] Fetching Bitcoin data (sequential)...");
+  Serial.println("[BTC] Fetching Bitcoin data...");
   
-  // Reset parallel data flags
-  parallelBtcData.priceReady = false;
-  parallelBtcData.blockHeightReady = false;
-  parallelBtcData.price = "Error";
-  parallelBtcData.blockHeight = "Error";
+  // Update last fetch attempt time for backoff
+  lastFetchAttempt = millis();
   
-  // Track fetch attempt for backoff
-  lastBtcFetchAttempt = millis();
+  HTTPClient http;
+  String currencyLower = currency;
+  currencyLower.toLowerCase();
   
-  // Start CoinGecko task on Core 0 (lower priority)
-  // Sequential execution: Start first task, wait for completion before starting second
-  xTaskCreatePinnedToCore(
-    fetchCoinGeckoTask,
-    "CoinGecko",
-    12288,
-    NULL,
-    1,
-    &coinGeckoTaskHandle,
-    0
-  );
+  // Fetch BTC price from CoinGecko
+  bitcoinData.price = "Error";
+  String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
+  http.begin(apiUrl);
+  http.setTimeout(5000);
   
-  // Wait for CoinGecko task to complete with timeout (max 4 seconds)
-  unsigned long startTime = millis();
-  while ((millis() - startTime) < 4000) {
-    if (parallelBtcData.priceReady) {
-      break; // CoinGecko done
+  if (http.GET() == 200) {
+    JsonDocument doc;
+    if (!deserializeJson(doc, http.getString()) && doc["bitcoin"].is<JsonObject>()) {
+      float price = doc["bitcoin"][currencyLower];
+      bitcoinData.price = String((int)price);
     }
-    delay(100);
   }
+  http.end();
   
-  // Small delay to allow SSL context cleanup
-  delay(200);
+  delay(200); // SSL cleanup delay
   
-  // Start Mempool task on Core 0 (lower priority) - AFTER CoinGecko is done
-  xTaskCreatePinnedToCore(
-    fetchMempoolTask,
-    "Mempool",
-    12288,
-    NULL,
-    1,
-    &mempoolTaskHandle,
-    0
-  );
+  // Fetch block height from Mempool
+  bitcoinData.blockHigh = "Error";
+  http.begin("https://mempool.space/api/blocks/tip/height");
+  http.setTimeout(5000);
   
-  // Wait for Mempool task with timeout (max 4 seconds)
-  startTime = millis();
-  while ((millis() - startTime) < 4000) {
-    if (parallelBtcData.blockHeightReady) {
-      break; // Mempool done
-    }
-    delay(100);
+  if (http.GET() == 200) {
+    bitcoinData.blockHigh = http.getString();
+    bitcoinData.blockHigh.trim();
   }
-  
-  // Get results (use values from tasks, or "Error" if timeout)
-  bitcoinData.price = parallelBtcData.price;
-  bitcoinData.blockHigh = parallelBtcData.blockHeight;
+  http.end();
   
   Serial.println("[BTC] Price: " + bitcoinData.price + " " + currency);
   Serial.println("[BTC] Block height: " + bitcoinData.blockHigh);
-  Serial.println("[BTC] Bitcoin data fetch completed");
   
   bitcoinData.lastUpdate = millis();
 }
@@ -279,7 +178,7 @@ void updateBitcoinTicker()
   // Check if it's time for an update and enforce backoff for failed attempts
   if (currentTime - bitcoinData.lastUpdate >= BTC_UPDATE_INTERVAL) {
     // Enforce 30-second backoff between failed BTC fetch attempts
-    if ((currentTime - lastBtcFetchAttempt) < BTC_RETRY_BACKOFF) {
+    if ((currentTime - lastFetchAttempt) < RETRY_BACKOFF) {
       return; // Too soon - skip this attempt
     }
     
@@ -287,13 +186,9 @@ void updateBitcoinTicker()
     fetchBitcoinData();
 
     // Refresh the display ONLY if we're STILL on the ticker screen
-    // Double-check multiChannelConfig.btcTickerActive immediately before drawing to prevent race conditions
     if (multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
-      // Final check right before screen update to prevent concurrent drawing
-      if (multiChannelConfig.btcTickerActive) {
-        btctickerScreen();
-        Serial.println("[BTC] Screen refreshed with new data");
-      }
+      btctickerScreen();
+      Serial.println("[BTC] Screen refreshed with new data");
     }
   }
 }
@@ -313,9 +208,8 @@ void updateSwitchLabels()
   // Check if labels failed to load initially or if it's time for periodic update
   if (!labelsLoadedSuccessfully || (currentTime - productLabels.lastUpdate >= LABEL_UPDATE_INTERVAL)) {
     // Enforce backoff delay between retry attempts to prevent SSL memory exhaustion
-    if ((currentTime - lastLabelFetchAttempt) < LABEL_RETRY_BACKOFF) {
-      // Too soon - skip this attempt
-      return;
+    if ((currentTime - lastFetchAttempt) < RETRY_BACKOFF) {
+      return; // Too soon - skip this attempt
     }
     
     if (!labelsLoadedSuccessfully) {
