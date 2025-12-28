@@ -714,6 +714,7 @@ void setup()
   bool internetChecked = false;
   bool serverChecked = false;
   bool websocketStarted = false;
+  unsigned long wifiConnectTime = 0; // Track when WiFi first connected
   
   for (int i = 0; i < MAX_INIT_TIME; i++) {
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -727,11 +728,13 @@ void setup()
     // Step 1: Check WiFi (runs continuously until connected)
     if (!networkStatus.confirmed.wifi && WiFi.status() == WL_CONNECTED) {
       networkStatus.confirmed.wifi = true;
+      wifiConnectTime = millis(); // Record when WiFi connected
       Serial.println("[STARTUP] WiFi connected!");
     }
     
-    // Step 2: Check Internet (once WiFi is connected and not yet checked)
-    if (networkStatus.confirmed.wifi && !internetChecked) {
+    // Step 2: Check Internet (once WiFi is connected, DNS is configured, and not yet checked)
+    // Wait 2+ seconds after WiFi connect to allow DNS/DHCP/gateway to stabilize
+    if (networkStatus.confirmed.wifi && !internetChecked && (millis() - wifiConnectTime > 2000)) {
       Serial.println("[STARTUP] Checking Internet...");
       bool hasInternet = checkInternetConnectivity();
       internetChecked = true;

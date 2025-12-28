@@ -74,21 +74,40 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 }
 
 // HTTP-based Internet check (doesn't require WebSocket connection)
+// Tries multiple times to account for DNS/DHCP stabilization delays
 bool checkInternetConnectivity()
 {
   HTTPClient http;
-  http.setTimeout(3000); // 3 second timeout
+  http.setTimeout(3000); // 3 second timeout per attempt
   
   LOG_INFO("Network", "Testing Internet connection...");
-  http.begin("http://clients3.google.com/generate_204"); // Google's connectivity check
   
-  int httpCode = http.GET();
-  http.end();
+  // Try up to 3 times with small delays between attempts
+  // First attempt might fail if DNS isn't ready yet
+  const int maxAttempts = 3;
+  const int delayBetweenAttempts = 500; // 500ms between retries
   
-  bool hasInternet = (httpCode == 204 || httpCode == 301 || httpCode == 302 || httpCode > 0);
-  LOG_INFO("Network", String("Internet check: ") + (hasInternet ? "OK" : "FAILED") + String(" (HTTP ") + String(httpCode) + String(")"));
+  for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+    http.begin("http://clients3.google.com/generate_204"); // Google's connectivity check
+    int httpCode = http.GET();
+    http.end();
+    
+    bool hasInternet = (httpCode == 204 || httpCode == 301 || httpCode == 302 || httpCode > 0);
+    
+    if (hasInternet) {
+      LOG_INFO("Network", String("Internet check: OK (HTTP ") + String(httpCode) + String(") - attempt ") + String(attempt));
+      return true;
+    }
+    
+    // If not last attempt, wait before retrying
+    if (attempt < maxAttempts) {
+      delay(delayBetweenAttempts);
+    }
+  }
   
-  return hasInternet;
+  // All attempts failed
+  LOG_INFO("Network", String("Internet check: FAILED after ") + String(maxAttempts) + String(" attempts"));
+  return false;
 }
 
 // TCP-based Server reachability check (test if LNbits server port is open)
