@@ -15,6 +15,7 @@
 #include "TouchCST816S.h"
 #include "DeviceState.h"
 #include "GlobalState.h"
+#include "Payment.h"
 
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
@@ -99,7 +100,6 @@ void fetchSwitchLabels();
 void fetchBitcoinData();
 void updateBitcoinTicker();
 void updateSwitchLabels();
-void updateLightningQR(String lnurlStr);
 void navigateToNextProduct();
 void handleExternalButton();
 void handleExternalSingleClick();
@@ -107,156 +107,9 @@ void checkExternalButtonHolds();
 void handleConfigExitButtons();
 void updateReadyLed();
 bool isReadyForReceive();
-String generateLNURL(int pin);
-String encodeBech32(const String& data);
 bool wakeFromPowerSavingMode();
 
 //////////////////HELPERS///////////////////
-
-// Bech32 encoding helper - now defined in GlobalState.cpp, using extern from GlobalState.h
-
-uint32_t bech32Polymod(const std::vector<uint8_t>& values) {
-  uint32_t chk = 1;
-  for (size_t i = 0; i < values.size(); ++i) {
-    uint8_t top = chk >> 25;
-    chk = (chk & 0x1ffffff) << 5 ^ values[i];
-    if (top & 1) chk ^= 0x3b6a57b2;
-    if (top & 2) chk ^= 0x26508e6d;
-    if (top & 4) chk ^= 0x1ea119fa;
-    if (top & 8) chk ^= 0x3d4233dd;
-    if (top & 16) chk ^= 0x2a1462b3;
-  }
-  return chk;
-}
-
-std::vector<uint8_t> bech32HrpExpand(const String& hrp) {
-  std::vector<uint8_t> ret;
-  ret.reserve(hrp.length() * 2 + 1);
-  for (size_t i = 0; i < hrp.length(); ++i) {
-    ret.push_back(hrp[i] >> 5);
-  }
-  ret.push_back(0);
-  for (size_t i = 0; i < hrp.length(); ++i) {
-    ret.push_back(hrp[i] & 31);
-  }
-  return ret;
-}
-
-std::vector<uint8_t> convertBits(const uint8_t* data, size_t len, int frombits, int tobits, bool pad) {
-  std::vector<uint8_t> ret;
-  int acc = 0;
-  int bits = 0;
-  int maxv = (1 << tobits) - 1;
-  for (size_t i = 0; i < len; i++) {
-    int value = data[i];
-    acc = (acc << frombits) | value;
-    bits += frombits;
-    while (bits >= tobits) {
-      bits -= tobits;
-      ret.push_back((acc >> bits) & maxv);
-    }
-  }
-  if (pad) {
-    if (bits > 0) {
-      ret.push_back((acc << (tobits - bits)) & maxv);
-    }
-  } else if (bits >= frombits || ((acc << (tobits - bits)) & maxv)) {
-    return std::vector<uint8_t>();
-  }
-  return ret;
-}
-
-String encodeBech32(const String& data) {
-  String hrp = "lnurl";
-  
-  // Convert data to bytes (keep original case)
-  std::vector<uint8_t> dataBytes;
-  for (size_t i = 0; i < data.length(); i++) {
-    dataBytes.push_back((uint8_t)data[i]);
-  }
-  
-  // Convert from 8-bit to 5-bit
-  std::vector<uint8_t> data5bit = convertBits(dataBytes.data(), dataBytes.size(), 8, 5, true);
-  
-  if (data5bit.empty()) {
-    return "";
-  }
-  
-  // Calculate checksum
-  std::vector<uint8_t> combined = bech32HrpExpand(hrp);
-  combined.insert(combined.end(), data5bit.begin(), data5bit.end());
-  combined.insert(combined.end(), 6, 0);
-  
-  uint32_t polymod = bech32Polymod(combined) ^ 1;  // XOR with 1 for Bech32 (not Bech32m)
-  std::vector<uint8_t> checksum;
-  for (int i = 0; i < 6; ++i) {
-    checksum.push_back((polymod >> (5 * (5 - i))) & 31);
-  }
-  
-  // Build final string
-  String result = hrp + "1";
-  for (size_t i = 0; i < data5bit.size(); i++) {
-    result += BECH32_CHARSET[data5bit[i]];
-  }
-  for (size_t i = 0; i < checksum.size(); i++) {
-    result += BECH32_CHARSET[checksum[i]];
-  }
-  
-  // Convert to uppercase for LNURL standard
-  result.toUpperCase();
-  
-  return result;
-}
-
-// Helper function: Generate LNURL for a given pin
-String generateLNURL(int pin) {
-  if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
-    Serial.println("[LNURL] Cannot generate - server or deviceId not configured");
-    return "";
-  }
-  
-  // Build URL: https://{server}/bitcoinswitch/api/v1/lnurl/{deviceId}?pin={pin}
-  String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/lnurl/" + deviceId + "?pin=" + String(pin);
-  
-  Serial.printf("[LNURL] Generated for pin %d: %s\n", pin, url.c_str());
-  
-  if (qrFormat == "lud17") {
-    // LUD17 format: replace https: with lnurlp:
-    String result = url;
-    result.replace("https:", "lnurlp:");
-    Serial.printf("[LNURL] LUD17 format: %s\n", result.c_str());
-    return result;
-  } else {
-    // BECH32 format (default)
-    // Encode the https URL with bech32 and prepend lightning:
-    String encoded = encodeBech32(url);
-    if (encoded.length() == 0) {
-      Serial.println("[LNURL] BECH32 encoding failed, falling back to URL format");
-      return "lightning:" + url;
-    }
-    String result = "lightning:" + encoded;
-    Serial.printf("[LNURL] BECH32 format: %s\n", result.c_str());
-    return result;
-  }
-}
-
-// Helper function: Update lightning QR code with given LNURL
-void updateLightningQR(String lnurlStr) {
-  lnurlStr.trim();
-  
-  // Don't convert to uppercase - keep original case (important for LUD17)
-  if (lnurlStr.startsWith("lightning:") || lnurlStr.startsWith("LIGHTNING:")) {
-    // Already has prefix, use as-is
-    strcpy(lightningConfig.lightning, lnurlStr.c_str());
-  } else {
-    // No prefix, add it (lowercase for consistency)
-    strcpy(lightningConfig.lightning, "lightning:");
-    strcat(lightningConfig.lightning, lnurlStr.c_str());
-  }
-  
-  Serial.print("[QR] Updated lightning QR: ");
-  Serial.println(lightningConfig.lightning);
-}
 
 // Helper function: Navigate to next product in Multi-Channel-Control mode
 void navigateToNextProduct() {
@@ -2045,6 +1898,9 @@ void setup()
   // Setup complete - device state already set appropriately above
 }
 
+// Punkt 3: forward declaration for modularized payment handler
+void processPaymentEvent(String &payloadStr);
+
 void loop()
 {
   // Wait for setup to complete before running loop
@@ -3074,160 +2930,147 @@ void loop()
       
       lastWiFiCheck = millis();
     }
-    if (paymentStatus.paid)
-    {
-      Serial.println("[PAYMENT] Payment detected!");
-      Serial.printf("[PAYMENT] PayloadStr: %s\n", payloadStr.c_str());
-      
-      if (lightningConfig.thresholdKey.length() > 0) {
-        // === THRESHOLD MODE ===
-        Serial.println("[THRESHOLD] Processing payment in threshold mode...");
-        
-        // Parse JSON payload to get payment amount
-        JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, payloadStr);
-        
-        if (error) {
-          Serial.print("[THRESHOLD] JSON parse error: ");
-          Serial.println(error.c_str());
-          paymentStatus.paid = false;
-          return;
-        }
-        
-        // Extract payment amount from JSON
-        JsonObject payment = doc["payment"];
-        int payment_amount = payment["amount"]; // in mSats
-        int payment_sats = payment_amount / 1000; // Convert to sats
-        int threshold_sats = lightningConfig.thresholdAmount.toInt();
-        
-        Serial.printf("[THRESHOLD] Payment received: %d sats (%d mSats)\n", payment_sats, payment_amount);
-        Serial.printf("[THRESHOLD] Threshold: %d sats\n", threshold_sats);
-        
-        // Check if payment meets or exceeds threshold
-        if (payment_sats >= threshold_sats) {
-          Serial.println("[THRESHOLD] *** PAYMENT >= THRESHOLD! Triggering GPIO! ***");
-          Serial.printf("[THRESHOLD] Switching GPIO %d for %d ms\n", 
-                        lightningConfig.thresholdPin.toInt(), lightningConfig.thresholdTime.toInt());
-          
-          // Trigger GPIO pin
-          int pin = lightningConfig.thresholdPin.toInt();
-          int duration = lightningConfig.thresholdTime.toInt();
-          
-          // Check if special mode is enabled
-          if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-            Serial.println("[THRESHOLD] Using special mode: " + specialModeConfig.mode);
-            // Wake from powerConfig.screensaver if active
-            if (deviceState.isInState(DeviceState::SCREENSAVER)) {
-              deviceState.transition(DeviceState::READY);
-              deactivateScreensaver();
-            }
-            activityTracking.lastActivityTime = millis(); // Reset powerConfig.screensaver timer on payment start
-            
-            actionTimeScreen();
-            executeSpecialMode(pin, duration, specialModeConfig.frequency, specialModeConfig.dutyCycleRatio);
-          } else {
-            Serial.println("[THRESHOLD] Using standard mode");
-            // Wake from powerConfig.screensaver if active
-            if (deviceState.isInState(DeviceState::SCREENSAVER)) {
-              deviceState.transition(DeviceState::READY);
-              deactivateScreensaver();
-            }
-            activityTracking.lastActivityTime = millis(); // Reset powerConfig.screensaver timer on payment start
-            actionTimeScreen();
-            pinMode(pin, OUTPUT);
-            digitalWrite(pin, HIGH);
-            Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
-            
-            delay(duration);
-            
-            digitalWrite(pin, LOW);
-            Serial.printf("[RELAY] Pin %d set LOW\n", pin);
-          }
-          
-          thankYouScreen();
-          activityTracking.lastActivityTime = millis(); // Reset powerConfig.screensaver timer on payment
-          delay(2000);
-          
-          // Return to threshold QR screen
-          showThresholdQRScreen();
-          Serial.println("[THRESHOLD] Ready for next payment");
-          // Reset product selection timer
-          productSelectionState.showTime = millis();
-          deviceState.transition(DeviceState::READY);
-        } else {
-          Serial.printf("[THRESHOLD] Payment too small (%d < %d sats) - ignoring\n", 
-                        payment_sats, threshold_sats);
-        }
-        
-        paymentStatus.paid = false;
-        
-      } else {
-        // === NORMAL MODE ===
-        Serial.println("[NORMAL] Processing payment in normal mode...");
-        
-        int pin = getValue(payloadStr, '-', 0).toInt();
-        int duration = getValue(payloadStr, '-', 1).toInt();
-        
-        Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
-        
-        // Check if special mode is enabled
-        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-          Serial.println("[NORMAL] Using special mode: " + specialModeConfig.mode);
-          activityTracking.lastActivityTime = millis(); // Reset powerConfig.screensaver timer on payment start
-          if (deviceState.isInState(DeviceState::SCREENSAVER)) {
-            deactivateScreensaver();
-            deviceState.transition(DeviceState::READY);
-          }
-          actionTimeScreen();
-          executeSpecialMode(pin, duration, specialModeConfig.frequency, specialModeConfig.dutyCycleRatio);
-        } else {
-          Serial.println("[NORMAL] Using standard mode");
-          activityTracking.lastActivityTime = millis(); // Reset powerConfig.screensaver timer on payment start
-          if (deviceState.isInState(DeviceState::SCREENSAVER)) {
-            deactivateScreensaver();
-            deviceState.transition(DeviceState::READY);
-          }
-          actionTimeScreen();
-          pinMode(pin, OUTPUT);
-          digitalWrite(pin, HIGH);
-          Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
-          
-          // If Single mode (multiChannelConfig.mode == "off") and pin is 12, also control pin 13 in parallel
-          if (multiChannelConfig.mode == "off" && pin == 12) {
-            pinMode(13, OUTPUT);
-            digitalWrite(13, HIGH);
-            Serial.println("[RELAY] Pin 13 set HIGH (parallel to Pin 12 in Single mode)");
-          }
-          
-          delay(duration);
-          
-          digitalWrite(pin, LOW);
-          Serial.printf("[RELAY] Pin %d set LOW\n", pin);
-          
-          // Turn off pin 13 as well if it was activated
-          if (multiChannelConfig.mode == "off" && pin == 12) {
-            digitalWrite(13, LOW);
-            Serial.println("[RELAY] Pin 13 set LOW (parallel to Pin 12 in Single mode)");
-          }
-        }
-        
-        thankYouScreen();
-        activityTracking.lastActivityTime = millis(); // Reset powerConfig.screensaver timer on payment
-        if (deviceState.isInState(DeviceState::SCREENSAVER)) {
-          deactivateScreensaver();
-          deviceState.transition(DeviceState::READY);
-        }
-        delay(2000);
-        
-        // Return to appropriate QR screen
-        redrawQRScreen();
-        Serial.println("[NORMAL] Ready for next payment");
-        // Reset product selection timer
-        productSelectionState.showTime = millis();
-        
-        paymentStatus.paid = false;
-      }
+    if (paymentStatus.paid) {
+      processPaymentEvent(payloadStr);
     }
   }
   Serial.println("[LOOP] Exiting payment wait loop");
+}
+
+// --- Punkt 3: Modularized payment handling ---
+static void processThresholdPayment(const JsonDocument &doc)
+{
+  JsonVariantConst payment = doc["payment"];
+  int payment_amount = payment["amount"].as<int>(); // in mSats
+  int payment_sats = payment_amount / 1000; // Convert to sats
+  int threshold_sats = lightningConfig.thresholdAmount.toInt();
+
+  Serial.printf("[THRESHOLD] Payment received: %d sats (%d mSats)\n", payment_sats, payment_amount);
+  Serial.printf("[THRESHOLD] Threshold: %d sats\n", threshold_sats);
+
+  // Check if payment meets or exceeds threshold
+  if (payment_sats >= threshold_sats) {
+    Serial.println("[THRESHOLD] *** PAYMENT >= THRESHOLD! Triggering GPIO! ***");
+    Serial.printf("[THRESHOLD] Switching GPIO %d for %d ms\n",
+                  lightningConfig.thresholdPin.toInt(), lightningConfig.thresholdTime.toInt());
+
+    int pin = lightningConfig.thresholdPin.toInt();
+    int duration = lightningConfig.thresholdTime.toInt();
+
+    if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+      Serial.println("[THRESHOLD] Using special mode: " + specialModeConfig.mode);
+      if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+        deviceState.transition(DeviceState::READY);
+        deactivateScreensaver();
+      }
+      activityTracking.lastActivityTime = millis();
+      actionTimeScreen();
+      executeSpecialMode(pin, duration, specialModeConfig.frequency, specialModeConfig.dutyCycleRatio);
+    } else {
+      Serial.println("[THRESHOLD] Using standard mode");
+      if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+        deviceState.transition(DeviceState::READY);
+        deactivateScreensaver();
+      }
+      activityTracking.lastActivityTime = millis();
+      actionTimeScreen();
+      pinMode(pin, OUTPUT);
+      digitalWrite(pin, HIGH);
+      Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+      delay(duration);
+      digitalWrite(pin, LOW);
+      Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+    }
+
+    thankYouScreen();
+    activityTracking.lastActivityTime = millis();
+    delay(2000);
+    showThresholdQRScreen();
+    Serial.println("[THRESHOLD] Ready for next payment");
+    productSelectionState.showTime = millis();
+    deviceState.transition(DeviceState::READY);
+  } else {
+    Serial.printf("[THRESHOLD] Payment too small (%d < %d sats) - ignoring\n",
+                  payment_sats, threshold_sats);
+  }
+}
+
+static void processNormalPayment(int pin, int duration)
+{
+  Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
+
+  if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+    Serial.println("[NORMAL] Using special mode: " + specialModeConfig.mode);
+    activityTracking.lastActivityTime = millis();
+    if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+      deactivateScreensaver();
+      deviceState.transition(DeviceState::READY);
+    }
+    actionTimeScreen();
+    executeSpecialMode(pin, duration, specialModeConfig.frequency, specialModeConfig.dutyCycleRatio);
+  } else {
+    Serial.println("[NORMAL] Using standard mode");
+    activityTracking.lastActivityTime = millis();
+    if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+      deactivateScreensaver();
+      deviceState.transition(DeviceState::READY);
+    }
+    actionTimeScreen();
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, HIGH);
+    Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+
+    if (multiChannelConfig.mode == "off" && pin == 12) {
+      pinMode(13, OUTPUT);
+      digitalWrite(13, HIGH);
+      Serial.println("[RELAY] Pin 13 set HIGH (parallel to Pin 12 in Single mode)");
+    }
+
+    delay(duration);
+
+    digitalWrite(pin, LOW);
+    Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+
+    if (multiChannelConfig.mode == "off" && pin == 12) {
+      digitalWrite(13, LOW);
+      Serial.println("[RELAY] Pin 13 set LOW (parallel to Pin 12 in Single mode)");
+    }
+  }
+
+  thankYouScreen();
+  activityTracking.lastActivityTime = millis();
+  if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+    deactivateScreensaver();
+    deviceState.transition(DeviceState::READY);
+  }
+  delay(2000);
+  redrawQRScreen();
+  Serial.println("[NORMAL] Ready for next payment");
+  productSelectionState.showTime = millis();
+}
+
+void processPaymentEvent(String &payloadStr)
+{
+  Serial.println("[PAYMENT] Payment detected!");
+  Serial.printf("[PAYMENT] PayloadStr: %s\n", payloadStr.c_str());
+
+  if (lightningConfig.thresholdKey.length() > 0) {
+    Serial.println("[THRESHOLD] Processing payment in threshold mode...");
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payloadStr);
+    if (error) {
+      Serial.print("[THRESHOLD] JSON parse error: ");
+      Serial.println(error.c_str());
+      paymentStatus.paid = false;
+      return;
+    }
+    processThresholdPayment(doc);
+    paymentStatus.paid = false;
+  } else {
+    Serial.println("[NORMAL] Processing payment in normal mode...");
+    int pin = getValue(payloadStr, '-', 0).toInt();
+    int duration = getValue(payloadStr, '-', 1).toInt();
+    processNormalPayment(pin, duration);
+    paymentStatus.paid = false;
+  }
 }
