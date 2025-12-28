@@ -721,7 +721,7 @@ void drawQRCode()
   
   QRCode qrcoded;
   uint8_t qrcodeData[qrcode_getBufferSize(20)];
-  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightning);
+  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightningConfig.lightning);
 
   for (uint8_t y = 0; y < qrcoded.size; y++)
   {

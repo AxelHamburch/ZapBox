@@ -60,11 +60,6 @@ const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
 const unsigned long GRACE_PERIOD_MS = 1000;  // 1 second grace period after wake-up (reduced from 5s for better UX)
 
-const unsigned long EXTERNAL_DEBOUNCE_MS = 50;
-const unsigned long EXTERNAL_TRIPLE_WINDOW_MS = 2000;
-const unsigned long EXTERNAL_HELP_HOLD_MS = 2000;
-const unsigned long EXTERNAL_CONFIG_HOLD_MS = 3000;
-
 // Product timeout: configurable via platformio.ini build flag PRODUCT_TIMEOUT
 // Default 10 seconds for testing, use 60 seconds for production
 // Used when: QR/Product shown → timeout → back to Ticker/ProductSelection
