@@ -18,8 +18,78 @@ extern bool labelsLoadedSuccessfully;
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
 
+// Retry backoff for failed label fetches
+static unsigned long lastLabelFetchAttempt = 0;
+static const unsigned long LABEL_RETRY_BACKOFF = 30000; // 30 seconds between retries
+
 // External function declarations from main.cpp
 extern void btctickerScreen();
+
+// Task handles for parallel requests
+static TaskHandle_t coinGeckoTaskHandle = NULL;
+static TaskHandle_t mempoolTaskHandle = NULL;
+
+// Temporary storage for parallel BTC data fetch
+static struct {
+  String price;
+  String blockHeight;
+  bool priceReady = false;
+  bool blockHeightReady = false;
+} parallelBtcData;
+
+/**
+ * Task: Fetch BTC price from CoinGecko (runs in parallel)
+ */
+void fetchCoinGeckoTask(void* parameter) {
+  HTTPClient http;
+  String currencyLower = currency;
+  currencyLower.toLowerCase();
+  String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
+  
+  http.begin(apiUrl);
+  http.setTimeout(5000);
+  int httpCode = http.GET();
+  
+  if (httpCode == 200) {
+    String payload = http.getString();
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    
+    if (!error && doc["bitcoin"].is<JsonObject>()) {
+      float price = doc["bitcoin"][currencyLower];
+      parallelBtcData.price = String((int)price);
+    } else {
+      parallelBtcData.price = "Error";
+    }
+  } else {
+    parallelBtcData.price = "Error";
+  }
+  http.end();
+  
+  parallelBtcData.priceReady = true;
+  vTaskDelete(NULL);
+}
+
+/**
+ * Task: Fetch block height from Mempool.space (runs in parallel)
+ */
+void fetchMempoolTask(void* parameter) {
+  HTTPClient http;
+  http.begin("https://mempool.space/api/blocks/tip/height");
+  http.setTimeout(5000);
+  int httpCode = http.GET();
+  
+  if (httpCode == 200) {
+    parallelBtcData.blockHeight = http.getString();
+    parallelBtcData.blockHeight.trim();
+  } else {
+    parallelBtcData.blockHeight = "Error";
+  }
+  http.end();
+  
+  parallelBtcData.blockHeightReady = true;
+  vTaskDelete(NULL);
+}
 
 /**
  * Fetch switch labels and configuration from LNbits server.
@@ -30,6 +100,9 @@ void fetchSwitchLabels()
     Serial.println("[LABELS] Cannot fetch labels - server or deviceId not configured");
     return;
   }
+
+  // Update last attempt time to prevent rapid retries
+  lastLabelFetchAttempt = millis();
 
   HTTPClient http;
   String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/public/" + deviceId;
@@ -65,10 +138,9 @@ void fetchSwitchLabels()
       }
       
       // Clear existing labels
-      productLabels.label12 = "";
-      productLabels.label13 = "";
-      productLabels.label10 = "";
-      productLabels.label11 = "";
+      for (int i = 0; i < 4; i++) {
+        productLabels.labels[i] = "";
+      }
       
       // Extract labels from switches array
       JsonArray switches = doc["switches"];
@@ -77,19 +149,11 @@ void fetchSwitchLabels()
         const char* labelChar = switchObj["label"];
         String labelStr = (labelChar != nullptr) ? String(labelChar) : "";
         
-        // Store label based on pin number
-        if (pin == 12) {
-          productLabels.label12 = labelStr;
-          Serial.println("[LABELS] Pin 12 label: " + productLabels.label12);
-        } else if (pin == 13) {
-          productLabels.label13 = labelStr;
-          Serial.println("[LABELS] Pin 13 label: " + productLabels.label13);
-        } else if (pin == 10) {
-          productLabels.label10 = labelStr;
-          Serial.println("[LABELS] Pin 10 label: " + productLabels.label10);
-        } else if (pin == 11) {
-          productLabels.label11 = labelStr;
-          Serial.println("[LABELS] Pin 11 label: " + productLabels.label11);
+        // Store label based on pin number using array index
+        int pinIndex = getPinIndex(pin);
+        if (pinIndex >= 0 && pinIndex < 4) {
+          productLabels.labels[pinIndex] = labelStr;
+          Serial.println("[LABELS] Pin " + String(pin) + " label: " + labelStr);
         }
       }
       
@@ -118,65 +182,70 @@ void fetchSwitchLabels()
 }
 
 /**
- * Fetch Bitcoin price and block height from external APIs.
+ * Fetch Bitcoin price and block height from external APIs (sequential to avoid SSL memory conflicts).
  */
 void fetchBitcoinData()
 {
-  Serial.println("[BTC] Fetching Bitcoin data...");
-  HTTPClient http;
-
-  // Fetch BTC price from CoinGecko using configured currency
-  String currencyLower = currency;
-  currencyLower.toLowerCase(); // CoinGecko expects lowercase currency code
-  String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
+  Serial.println("[BTC] Fetching Bitcoin data (sequential)...");
   
-  Serial.println("[BTC] Current currency variable: '" + currency + "'");
-  Serial.println("[BTC] Requesting price from CoinGecko with URL: " + apiUrl);
-  http.begin(apiUrl);
-  http.setTimeout(5000);
-
-  int httpCode = http.GET();
-  if (httpCode == 200) {
-    String payload = http.getString();
-    Serial.println("[BTC] CoinGecko response: " + payload);
-
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
-
-    if (!error && doc["bitcoin"].is<JsonObject>()) {
-      Serial.println("[BTC] Looking for price key: '" + currencyLower + "'");
-      float price = doc["bitcoin"][currencyLower];
-      bitcoinData.price = String((int)price); // Convert to integer string
-      Serial.println("[BTC] Price updated: " + bitcoinData.price + " " + currency);
-    } else {
-      Serial.println("[BTC] Failed to parse CoinGecko JSON");
-      bitcoinData.price = "Error";
+  // Reset parallel data flags
+  parallelBtcData.priceReady = false;
+  parallelBtcData.blockHeightReady = false;
+  parallelBtcData.price = "Error";
+  parallelBtcData.blockHeight = "Error";
+  
+  // Start CoinGecko task on Core 0 (lower priority)
+  // Sequential execution: Start first task, wait for completion before starting second
+  xTaskCreatePinnedToCore(
+    fetchCoinGeckoTask,
+    "CoinGecko",
+    12288,
+    NULL,
+    1,
+    &coinGeckoTaskHandle,
+    0
+  );
+  
+  // Wait for CoinGecko task to complete with timeout (max 4 seconds)
+  unsigned long startTime = millis();
+  while ((millis() - startTime) < 4000) {
+    if (parallelBtcData.priceReady) {
+      break; // CoinGecko done
     }
-  } else {
-    Serial.printf("[BTC] CoinGecko request failed: %d\n", httpCode);
-    bitcoinData.price = "Error";
+    delay(100);
   }
-  http.end();
-
-  delay(100); // Small delay between requests
-
-  // Fetch block height from mempool.space
-  Serial.println("[BTC] Requesting block height from mempool.space...");
-  http.begin("https://mempool.space/api/blocks/tip/height");
-  http.setTimeout(5000);
-
-  httpCode = http.GET();
-  if (httpCode == 200) {
-    bitcoinData.blockHigh = http.getString();
-    bitcoinData.blockHigh.trim();
-    Serial.println("[BTC] Block height updated: " + bitcoinData.blockHigh);
-  } else {
-    Serial.printf("[BTC] Mempool.space request failed: %d\n", httpCode);
-    bitcoinData.blockHigh = "Error";
+  
+  // Small delay to allow SSL context cleanup
+  delay(200);
+  
+  // Start Mempool task on Core 0 (lower priority) - AFTER CoinGecko is done
+  xTaskCreatePinnedToCore(
+    fetchMempoolTask,
+    "Mempool",
+    12288,
+    NULL,
+    1,
+    &mempoolTaskHandle,
+    0
+  );
+  
+  // Wait for Mempool task with timeout (max 4 seconds)
+  startTime = millis();
+  while ((millis() - startTime) < 4000) {
+    if (parallelBtcData.blockHeightReady) {
+      break; // Mempool done
+    }
+    delay(100);
   }
-  http.end();
-
+  
+  // Get results (use values from tasks, or "Error" if timeout)
+  bitcoinData.price = parallelBtcData.price;
+  bitcoinData.blockHigh = parallelBtcData.blockHeight;
+  
+  Serial.println("[BTC] Price: " + bitcoinData.price + " " + currency);
+  Serial.println("[BTC] Block height: " + bitcoinData.blockHigh);
   Serial.println("[BTC] Bitcoin data fetch completed");
+  
   bitcoinData.lastUpdate = millis();
 }
 
@@ -223,6 +292,12 @@ void updateSwitchLabels()
 
   // Check if labels failed to load initially or if it's time for periodic update
   if (!labelsLoadedSuccessfully || (currentTime - productLabels.lastUpdate >= LABEL_UPDATE_INTERVAL)) {
+    // Enforce backoff delay between retry attempts to prevent SSL memory exhaustion
+    if ((currentTime - lastLabelFetchAttempt) < LABEL_RETRY_BACKOFF) {
+      // Too soon - skip this attempt
+      return;
+    }
+    
     if (!labelsLoadedSuccessfully) {
       Serial.println("[LABELS] Labels not loaded successfully, retrying...");
     } else {

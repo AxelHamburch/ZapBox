@@ -129,14 +129,26 @@ extern BitcoinData bitcoinData;
 // ============================================================================
 
 struct ProductLabels {
-  String label12 = "";  // Label for pin 12 / product 1
-  String label13 = "";  // Label for pin 13 / product 2
-  String label10 = "";  // Label for pin 10 / product 3
-  String label11 = "";  // Label for pin 11 / product 4
+  // Labels stored in array: index 0=pin10, 1=pin11, 2=pin12, 3=pin13
+  // Use getLabelForPin(pin) and setLabelForPin(pin, label) for access
+  String labels[4] = {"", "", "", ""};
   unsigned long lastUpdate = 0;
 };
 
 extern ProductLabels productLabels;
+
+// Helper function to convert GPIO pin to array index
+// Pin 10 -> index 0, Pin 11 -> index 1, Pin 12 -> index 2, Pin 13 -> index 3
+// Returns -1 if pin is invalid
+inline int getPinIndex(int pin) {
+  switch (pin) {
+    case 10: return 0;
+    case 11: return 1;
+    case 12: return 2;
+    case 13: return 3;
+    default: return -1;
+  }
+}
 
 // ============================================================================
 // NETWORK ERROR TRACKING & STATUS

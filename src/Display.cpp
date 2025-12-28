@@ -75,14 +75,19 @@ uint16_t themeForeground = TFT_BLACK;
 // Light: TFT_LIGHTGREY, TFT_NAVY, TFT_BROWN
 // Custom RGB565: 0xRRRR (5 bits red, 6 bits green, 5 bits blue)
 
-// Theme configuration struct for cleaner lookup
+// Theme configuration struct for efficient color lookup
+// Each theme defines foreground (text/elements) and background colors
+// Lookup is O(n) but n=16 is negligible; can easily be extended
 struct ThemeConfig {
   const char* name;
   uint16_t foreground;
   uint16_t background;
 };
 
-// Theme lookup table - much cleaner than long if-else chain
+// Theme lookup table - 16 color combinations
+// Organized by: name (foreground-background)
+// Colors come from TFT_eSPI standard palette (e.g., TFT_BLACK, TFT_WHITE, TFT_DARKGREEN)
+// Lookup is performed via linear search in setThemeColors() - very fast for 16 items
 const ThemeConfig themeConfigs[] = {
   {"black-white", TFT_BLACK, TFT_WHITE},
   {"white-black", TFT_WHITE, TFT_BLACK},
@@ -106,11 +111,13 @@ const ThemeConfig themeConfigs[] = {
 
 void setThemeColors()
 {
-  // Default fallback
+  // Default fallback (used if theme name not found in table)
   themeForeground = TFT_BLACK;
   themeBackground = TFT_WHITE;
   
-  // Lookup displayConfig.theme in table
+  // Linear search through theme lookup table
+  // O(n) complexity with n=16 is negligible and much cleaner than if-else chains
+  // Can be easily extended with new themes by adding entries to themeConfigs[]
   for (const auto& config : themeConfigs) {
     if (displayConfig.theme == config.name) {
       themeForeground = config.foreground;
@@ -700,7 +707,9 @@ void thankYouScreen()
 // Show QR for ZAP action - uses product label from backend if available
 void showQRScreen()
 {
-  showProductQRScreen(productLabels.label12.length() > 0 ? productLabels.label12 : "READY 4 ZAP ACTION", 12);
+  int pinIndex = getPinIndex(12);
+  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : "READY 4 ZAP ACTION";
+  showProductQRScreen(label, 12);
 }
 
 void drawQRCode()
@@ -781,7 +790,9 @@ void showThresholdQRScreen()
 
 void showSpecialModeQRScreen()
 {
-  showProductQRScreen(productLabels.label12.length() > 0 ? productLabels.label12 : "READY 4 SP ACTION", 12);
+  int pinIndex = getPinIndex(12);
+  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : "READY 4 SP ACTION";
+  showProductQRScreen(label, 12);
 }
 
 // Multi-Channel-Control Product QR Screen - displays label text and QR code

@@ -22,6 +22,7 @@
 #include "Utils.h"
 #include "API.h"
 #include "Navigation.h"
+#include "Log.h"
 
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
@@ -111,12 +112,12 @@ void readFiles()
     const JsonObject maRoot0 = doc[0];
     const char *maRoot0Char = maRoot0["value"];
     wifiConfig.ssid = maRoot0Char;
-    Serial.println("SSID: " + wifiConfig.ssid);
+    LOG_DEBUG("Config", "SSID: " + wifiConfig.ssid);
 
     const JsonObject maRoot1 = doc[1];
     const char *maRoot1Char = maRoot1["value"];
     wifiConfig.wifiPassword = maRoot1Char;
-    Serial.println("Wifi pass: " + wifiConfig.wifiPassword);
+    LOG_DEBUG("Config", "WiFi pass: " + wifiConfig.wifiPassword);
 
     const JsonObject maRoot2 = doc[2];
     const char *maRoot2Char = maRoot2["value"];
@@ -124,18 +125,18 @@ void readFiles()
     
     // Parse WebSocket URL (works with both ws:// and wss://)
     int protocolIndex = wifiConfig.switchStr.indexOf("://");
-    Serial.printf("DEBUG: switchStr='%s', protocolIndex=%d\n", wifiConfig.switchStr.c_str(), protocolIndex);
+    LOG_DEBUG("Config", String("switchStr='") + wifiConfig.switchStr + String("', protocolIndex=") + String(protocolIndex));
     
     if (protocolIndex == -1) {
-      Serial.println("Invalid switchStr: " + wifiConfig.switchStr);
+      LOG_ERROR("Config", "Invalid switchStr: " + wifiConfig.switchStr);
       lnbitsServer = "";
       deviceId = "";
     } else {
       int domainIndex = wifiConfig.switchStr.indexOf("/", protocolIndex + 3);
-      Serial.printf("DEBUG: domainIndex=%d\n", domainIndex);
+      LOG_DEBUG("Config", String("domainIndex=") + String(domainIndex));
       
       if (domainIndex == -1) {
-        Serial.println("Invalid switchStr: " + wifiConfig.switchStr);
+        LOG_ERROR("Config", "Invalid switchStr: " + wifiConfig.switchStr);
         lnbitsServer = "";
         deviceId = "";
       } else {
@@ -143,13 +144,13 @@ void readFiles()
         lnbitsServer = wifiConfig.switchStr.substring(protocolIndex + 3, domainIndex);
         deviceId = wifiConfig.switchStr.substring(wifiConfig.switchStr.length() - uidLength);
         
-        Serial.printf("DEBUG: Extracted server from index %d to %d\n", protocolIndex + 3, domainIndex);
+        LOG_DEBUG("Config", String("Extracted server from index ") + String(protocolIndex + 3) + String(" to ") + String(domainIndex));
       }
     }
 
-    Serial.println("Socket: " + wifiConfig.switchStr);
-    Serial.println("LNbits server: " + lnbitsServer);
-    Serial.println("Switch device ID: " + deviceId);
+    LOG_INFO("Config", "Socket: " + wifiConfig.switchStr);
+    LOG_INFO("Config", "LNbits server: " + lnbitsServer);
+    LOG_INFO("Config", "Switch device ID: " + deviceId);
 
     const JsonObject maRoot3 = doc[3];
     const char *maRoot3Char = maRoot3["value"];
@@ -158,7 +159,7 @@ void readFiles()
     if (qrFormat.length() == 0) {
       qrFormat = "bech32"; // Default
     }
-    Serial.println("QR Format: " + qrFormat);
+    LOG_INFO("Config", "QR Format: " + qrFormat);
 
     // Screen displayConfig.orientation configuration (maRoot4)
     // Available options:
@@ -169,14 +170,14 @@ void readFiles()
     const JsonObject maRoot4 = doc[4];
     const char *maRoot4Char = maRoot4["value"];
     displayConfig.orientation = maRoot4Char;
-    Serial.println("Screen displayConfig.orientation: " + displayConfig.orientation);
+    LOG_INFO("Config", "Screen orientation: " + displayConfig.orientation);
 
     const JsonObject maRoot5 = doc[5];
     if (!maRoot5.isNull()) {
       const char *maRoot5Char = maRoot5["value"];
       displayConfig.theme = maRoot5Char;
     }
-    Serial.println("Theme: " + displayConfig.theme);
+    LOG_INFO("Config", "Theme: " + displayConfig.theme);
 
     // Read threshold configuration (optional)
     const JsonObject maRoot6 = doc[6];
@@ -285,9 +286,9 @@ void readFiles()
       } else if (lettersOnly == "off") {
         multiChannelConfig.btcTickerMode = "off";
       } // else keep original (unknown value)
-      Serial.println("[CONFIG] BTC-Ticker mode normalized: " + multiChannelConfig.btcTickerMode);
+      LOG_INFO("Config", "BTC-Ticker mode normalized: " + multiChannelConfig.btcTickerMode);
     } else {
-      Serial.println("[CONFIG] Index 18 (multiChannelConfig.btcTickerMode) not found in config - using default: " + multiChannelConfig.btcTickerMode);
+      LOG_WARN("Config", "Index 18 (btcTickerMode) not found in config - using default: " + multiChannelConfig.btcTickerMode);
     }
 
     // Read currency configuration (index 19)
@@ -295,15 +296,15 @@ void readFiles()
     if (!maRoot19.isNull()) {
       const char *maRoot19Char = maRoot19["value"];
       currency = String(maRoot19Char);
-      Serial.println("[CONFIG] Read currency from config (before processing): " + currency);
+      LOG_DEBUG("Config", "Read currency from config (before processing): " + currency);
       currency.toUpperCase(); // Ensure uppercase
       if (currency.length() == 0 || currency.length() > 3) {
-        Serial.println("[CONFIG] Invalid currency length, using default USD");
+        LOG_WARN("Config", "Invalid currency length, using default USD");
         currency = "USD"; // Default fallback
       }
-      Serial.println("[CONFIG] Final currency value: " + currency);
+      LOG_INFO("Config", "Final currency value: " + currency);
     } else {
-      Serial.println("[CONFIG] Index 19 (currency) not found in config - using default: " + currency);
+      LOG_DEBUG("Config", "Index 19 (currency) not found in config - using default: " + currency);
     }
     // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 
@@ -311,54 +312,38 @@ void readFiles()
     if (specialModeConfig.mode == "blink") {
       specialModeConfig.frequency = 1.0;
       specialModeConfig.dutyCycleRatio = 1.0;
-      Serial.println("[CONFIG] Applied 'blink' preset: 1 Hz, 1:1");
+      LOG_INFO("Config", "Applied 'blink' preset: 1 Hz, 1:1");
     } else if (specialModeConfig.mode == "pulse") {
       specialModeConfig.frequency = 2.0;
       specialModeConfig.dutyCycleRatio = 0.25; // 1:4 = 0.25
-      Serial.println("[CONFIG] Applied 'pulse' preset: 2 Hz, 1:4");
+      LOG_INFO("Config", "Applied 'pulse' preset: 2 Hz, 1:4");
     } else if (specialModeConfig.mode == "fast-blink") {
       specialModeConfig.frequency = 5.0;
       specialModeConfig.dutyCycleRatio = 1.0;
-      Serial.println("[CONFIG] Applied 'fast-blink' preset: 5 Hz, 1:1");
+      LOG_INFO("Config", "Applied 'fast-blink' preset: 5 Hz, 1:1");
     }
     
-    Serial.println("Special Mode: " + specialModeConfig.mode);
-    Serial.print("Frequency: ");
-    Serial.print(specialModeConfig.frequency);
-    Serial.println(" Hz");
-    Serial.print("Duty Cycle Ratio: ");
-    Serial.println(specialModeConfig.dutyCycleRatio);
+    LOG_INFO("Config", "Special Mode: " + specialModeConfig.mode);
+    LOG_INFO("Config", String("Frequency: ") + String(specialModeConfig.frequency) + String(" Hz"));
+    LOG_INFO("Config", String("Duty Cycle Ratio: ") + String(specialModeConfig.dutyCycleRatio));
 
     // Display Multi-Channel-Control configuration
-    Serial.print("Multi-Channel-Control Mode: ");
-    if (multiChannelConfig.mode == "off") {
-      Serial.println("Single (Pin 12 only)");
-      // Respect installer setting for btcTickerMode in single mode (off/selecting/always)
-    } else if (multiChannelConfig.mode == "duo") {
-      Serial.println("Duo (Pins 12, 13) - LNURLs auto-generated");
-    } else if (multiChannelConfig.mode == "quattro") {
-      Serial.println("Quattro (Pins 12, 13, 10, 11) - LNURLs auto-generated");
-    }
+    LOG_INFO("Config", String("Multi-Channel-Control Mode: ") + (multiChannelConfig.mode == "off" ? "Single (Pin 12 only)" : (multiChannelConfig.mode == "duo" ? "Duo (Pins 12, 13)" : "Quattro (Pins 12, 13, 10, 11)")));
 
     // Display BTC-Ticker configuration
-    Serial.println("\n================================");
-    Serial.println("   BTC-TICKER CONFIGURATION");
-    Serial.println("================================");
-    Serial.print("BTC-Ticker Mode: ");
-    Serial.println(multiChannelConfig.btcTickerMode);
-    Serial.print("Currency: ");
-    Serial.println(currency);
-    Serial.println("================================\n");
+    LOG_INFO("Config", "=== BTC-TICKER CONFIGURATION ===");
+    LOG_INFO("Config", "BTC-Ticker Mode: " + multiChannelConfig.btcTickerMode);
+    LOG_INFO("Config", "Currency: " + currency);
+    LOG_INFO("Config", "===================================");
 
     // Display mode based on threshold configuration
-    Serial.println("\n================================");
+    LOG_INFO("Config", "=== MODE CONFIGURATION ===");
     if (lightningConfig.thresholdKey.length() > 0) {
-      Serial.println("       THRESHOLD MODE");
-      Serial.println("================================");
-      Serial.println("Threshold Key: " + lightningConfig.thresholdKey);
-      Serial.println("Threshold Amount: " + lightningConfig.thresholdAmount + " sats");
-      Serial.println("GPIO Pin: " + lightningConfig.thresholdPin);
-      Serial.println("Control Time: " + lightningConfig.thresholdTime + " ms");
+      LOG_INFO("Config", "THRESHOLD MODE");
+      LOG_INFO("Config", "Threshold Key: " + lightningConfig.thresholdKey);
+      LOG_INFO("Config", "Threshold Amount: " + lightningConfig.thresholdAmount + " sats");
+      LOG_INFO("Config", "GPIO Pin: " + lightningConfig.thresholdPin);
+      LOG_INFO("Config", "Control Time: " + lightningConfig.thresholdTime + " ms");
       
       // Process threshold LNURL (add lightning: prefix if not present)
       if (lightningConfig.thresholdLnurl.length() > 0) {
@@ -383,53 +368,48 @@ void readFiles()
         Serial.println(lightningConfig.lightning);
       }
     } else {
-      Serial.println("        NORMAL MODE");
-      Serial.println("================================");
+      LOG_INFO("Config", "NORMAL MODE");
     }
 
     // Display powerConfig.screensaver and deep sleep configuration
-    Serial.println("\n================================");
-    Serial.println("   POWER SAVING CONFIGURATION");
-    Serial.println("================================");
-    Serial.println("Screensaver: " + powerConfig.screensaver);
-    Serial.println("Deep Sleep: " + powerConfig.deepSleep);
-    Serial.println("Activation Time: " + powerConfig.activationTime + " minutes");
+    LOG_INFO("Config", "=== POWER SAVING CONFIGURATION ===");
+    LOG_INFO("Config", "Screensaver: " + powerConfig.screensaver);
+    LOG_INFO("Config", "Deep Sleep: " + powerConfig.deepSleep);
+    LOG_INFO("Config", "Activation Time: " + powerConfig.activationTime + " minutes");
     
     // Convert activation time from minutes to milliseconds
     int activationTimeMinutes = String(powerConfig.activationTime).toInt();
     powerConfig.activationTimeoutMs = activationTimeMinutes * 60 * 1000UL;
-    Serial.println("Activation Timeout: " + String(powerConfig.activationTimeoutMs) + " ms");
+    LOG_INFO("Config", "Activation Timeout: " + String(powerConfig.activationTimeoutMs) + " ms");
     
     // Determine and display active power saving mode
     if (powerConfig.screensaver != "off" && powerConfig.deepSleep == "off") {
-      Serial.println("\n⚡ POWER SAVING MODE: SCREENSAVER");
-      Serial.println("   Display backlight will turn off after " + powerConfig.activationTime + " minutes");
-      Serial.println("   Press BOOT or IO14 button to wake up");
+      LOG_INFO("Config", "⚡ POWER SAVING MODE: SCREENSAVER");
+      LOG_INFO("Config", "   Display backlight will turn off after " + powerConfig.activationTime + " minutes");
+      LOG_INFO("Config", "   Press BOOT or IO14 button to wake up");
     } else if (powerConfig.deepSleep != "off" && powerConfig.screensaver == "off") {
-      Serial.println("\n⚡ POWER SAVING MODE: DEEP SLEEP (" + powerConfig.deepSleep + ")");
-      Serial.println("   Device will enter " + powerConfig.deepSleep + " sleep after " + powerConfig.activationTime + " minutes");
-      Serial.println("   Press BOOT or IO14 button to wake up");
-      Serial.println("Deep Sleep enabled - configuring GPIO wake-up sources");
+      LOG_INFO("Config", "⚡ POWER SAVING MODE: DEEP SLEEP (" + powerConfig.deepSleep + ")");
+      LOG_INFO("Config", "   Device will enter " + powerConfig.deepSleep + " sleep after " + powerConfig.activationTime + " minutes");
+      LOG_INFO("Config", "   Press BOOT or IO14 button to wake up");
+      LOG_INFO("Config", "Deep Sleep enabled - configuring GPIO wake-up sources");
       // Wake-up sources will be configured in setupDeepSleepWakeup() when sleep is triggered
     } else {
-      Serial.println("\n⚡ POWER SAVING MODE: DISABLED");
-      Serial.println("   Device will stay active continuously");
+      LOG_INFO("Config", "⚡ POWER SAVING MODE: DISABLED");
+      LOG_INFO("Config", "   Device will stay active continuously");
     }
     
     // Initialize last activity time
     activityTracking.lastActivityTime = millis();
-    Serial.println("Last Activity Time initialized: " + String(activityTracking.lastActivityTime) + " ms");
+    LOG_DEBUG("Config", "Last Activity Time initialized: " + String(activityTracking.lastActivityTime) + " ms");
     
-    Serial.println("================================\n");
+    LOG_INFO("Config", "===================================");
   }
   else
   {
     Serial.println("Config file not found - using defaults");
     displayConfig.orientation = "h";
     strcpy(lightningConfig.lightning, "LIGHTNING:lnurl1dp68gurn8ghj7ctsdyhxkmmvwp5jucm0d9hkuegpr4r33");
-    Serial.println("\n================================");
-    Serial.println("        NORMAL MODE");
-    Serial.println("================================\n");
+    LOG_INFO("Config", "=== NORMAL MODE ===");
   }
   paramFile.close();
 }
@@ -442,11 +422,11 @@ void showHelp()
 {
   // Wake from power saving mode if active
   if (wakeFromPowerSavingMode()) {
-    Serial.println("[HELP] Device woke up, not entering help mode");
+    LOG_DEBUG("Help", "Device woke up, not entering help mode");
     return; // Don't trigger help mode, just wake up
   }
 
-  Serial.println("[BUTTON] Help button pressed");
+  LOG_INFO("Help", "Help button pressed");
   deviceState.transition(DeviceState::HELP_SCREEN); // Set flag to interrupt WiFi reconnect loop
 
   // Disable product selection timer during help mode
@@ -511,7 +491,7 @@ void configMode()
   delay(100); // Give serial time to stabilize
   
   // Verify serial is actually working
-  Serial.println("[SERIAL_TEST] Testing serial connection...");
+  LOG_INFO("Config", "Testing serial connection...");
   Serial.flush();
   delay(50);
   
@@ -524,12 +504,12 @@ void configMode()
   extern void* touchControllerPtr;
   touchControllerPtr = (void*)&touch;
   
-  Serial.println("Config mode screen displayed, entering serial config...");
-  Serial.println("Touch screen anywhere to exit config mode.");
+  LOG_INFO("Config", "Config mode screen displayed, entering serial config...");
+  LOG_INFO("Config", "Touch screen anywhere to exit config mode.");
   Serial.flush();
   
   bool hasExistingData = (wifiConfig.ssid.length() > 0);
-  Serial.printf("Has existing data: %s\n", hasExistingData ? "YES" : "NO");
+  LOG_INFO("Config", String("Has existing data: ") + (hasExistingData ? "YES" : "NO"));
   Serial.flush();
   
   configOverSerialPort(wifiConfig.ssid, wifiConfig.wifiPassword, hasExistingData);
@@ -539,13 +519,13 @@ void reportMode()
 {
   // Wake from power saving mode if active
   if (wakeFromPowerSavingMode()) {
-    Serial.println("[REPORT] Device woke up, not entering report mode");
+    LOG_DEBUG("Report", "Device woke up, not entering report mode");
     return; // Don't trigger report mode, just wake up
   }
   
   // Ignore if we just entered config mode (prevents triggering on button release)
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
-    Serial.println("[REPORT] Ignored - in config mode");
+    LOG_DEBUG("Report", "Ignored - in config mode");
     return;
   }
   
@@ -734,6 +714,7 @@ void setup()
   bool internetChecked = false;
   bool serverChecked = false;
   bool websocketStarted = false;
+  unsigned long wifiConnectTime = 0; // Track when WiFi first connected
   
   for (int i = 0; i < MAX_INIT_TIME; i++) {
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -747,11 +728,13 @@ void setup()
     // Step 1: Check WiFi (runs continuously until connected)
     if (!networkStatus.confirmed.wifi && WiFi.status() == WL_CONNECTED) {
       networkStatus.confirmed.wifi = true;
+      wifiConnectTime = millis(); // Record when WiFi connected
       Serial.println("[STARTUP] WiFi connected!");
     }
     
-    // Step 2: Check Internet (once WiFi is connected and not yet checked)
-    if (networkStatus.confirmed.wifi && !internetChecked) {
+    // Step 2: Check Internet (once WiFi is connected, DNS is configured, and not yet checked)
+    // Wait 2+ seconds after WiFi connect to allow DNS/DHCP/gateway to stabilize
+    if (networkStatus.confirmed.wifi && !internetChecked && (millis() - wifiConnectTime > 2000)) {
       Serial.println("[STARTUP] Checking Internet...");
       bool hasInternet = checkInternetConnectivity();
       internetChecked = true;
