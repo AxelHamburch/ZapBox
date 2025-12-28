@@ -184,11 +184,11 @@ void fetchSwitchLabels()
 }
 
 /**
- * Fetch Bitcoin price and block height from external APIs (in parallel for speed).
+ * Fetch Bitcoin price and block height from external APIs (sequential to avoid SSL memory conflicts).
  */
 void fetchBitcoinData()
 {
-  Serial.println("[BTC] Fetching Bitcoin data (parallel)...");
+  Serial.println("[BTC] Fetching Bitcoin data (sequential)...");
   
   // Reset parallel data flags
   parallelBtcData.priceReady = false;
@@ -197,7 +197,7 @@ void fetchBitcoinData()
   parallelBtcData.blockHeight = "Error";
   
   // Start CoinGecko task on Core 0 (lower priority)
-  // Stack size increased to 12KB to handle HTTPS/SSL handshake and JSON parsing
+  // Sequential execution: Start first task, wait for completion before starting second
   xTaskCreatePinnedToCore(
     fetchCoinGeckoTask,
     "CoinGecko",
@@ -208,8 +208,19 @@ void fetchBitcoinData()
     0
   );
   
-  // Start Mempool task on Core 0 (lower priority)
-  // Stack size increased to 12KB to handle HTTPS/SSL handshake
+  // Wait for CoinGecko task to complete with timeout (max 4 seconds)
+  unsigned long startTime = millis();
+  while ((millis() - startTime) < 4000) {
+    if (parallelBtcData.priceReady) {
+      break; // CoinGecko done
+    }
+    delay(100);
+  }
+  
+  // Small delay to allow SSL context cleanup
+  delay(200);
+  
+  // Start Mempool task on Core 0 (lower priority) - AFTER CoinGecko is done
   xTaskCreatePinnedToCore(
     fetchMempoolTask,
     "Mempool",
@@ -220,16 +231,16 @@ void fetchBitcoinData()
     0
   );
   
-  // Wait for both tasks with timeout (max 6 seconds)
-  unsigned long startTime = millis();
-  while ((millis() - startTime) < 6000) {
-    if (parallelBtcData.priceReady && parallelBtcData.blockHeightReady) {
-      break; // Both ready
+  // Wait for Mempool task with timeout (max 4 seconds)
+  startTime = millis();
+  while ((millis() - startTime) < 4000) {
+    if (parallelBtcData.blockHeightReady) {
+      break; // Mempool done
     }
     delay(100);
   }
   
-  // Get results (use values from parallel tasks, or "Error" if timeout)
+  // Get results (use values from tasks, or "Error" if timeout)
   bitcoinData.price = parallelBtcData.price;
   bitcoinData.blockHigh = parallelBtcData.blockHeight;
   
