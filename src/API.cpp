@@ -131,10 +131,9 @@ void fetchSwitchLabels()
       }
       
       // Clear existing labels
-      productLabels.label12 = "";
-      productLabels.label13 = "";
-      productLabels.label10 = "";
-      productLabels.label11 = "";
+      for (int i = 0; i < 4; i++) {
+        productLabels.labels[i] = "";
+      }
       
       // Extract labels from switches array
       JsonArray switches = doc["switches"];
@@ -143,19 +142,11 @@ void fetchSwitchLabels()
         const char* labelChar = switchObj["label"];
         String labelStr = (labelChar != nullptr) ? String(labelChar) : "";
         
-        // Store label based on pin number
-        if (pin == 12) {
-          productLabels.label12 = labelStr;
-          Serial.println("[LABELS] Pin 12 label: " + productLabels.label12);
-        } else if (pin == 13) {
-          productLabels.label13 = labelStr;
-          Serial.println("[LABELS] Pin 13 label: " + productLabels.label13);
-        } else if (pin == 10) {
-          productLabels.label10 = labelStr;
-          Serial.println("[LABELS] Pin 10 label: " + productLabels.label10);
-        } else if (pin == 11) {
-          productLabels.label11 = labelStr;
-          Serial.println("[LABELS] Pin 11 label: " + productLabels.label11);
+        // Store label based on pin number using array index
+        int pinIndex = getPinIndex(pin);
+        if (pinIndex >= 0 && pinIndex < 4) {
+          productLabels.labels[pinIndex] = labelStr;
+          Serial.println("[LABELS] Pin " + String(pin) + " label: " + labelStr);
         }
       }
       

@@ -707,7 +707,9 @@ void thankYouScreen()
 // Show QR for ZAP action - uses product label from backend if available
 void showQRScreen()
 {
-  showProductQRScreen(productLabels.label12.length() > 0 ? productLabels.label12 : "READY 4 ZAP ACTION", 12);
+  int pinIndex = getPinIndex(12);
+  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : "READY 4 ZAP ACTION";
+  showProductQRScreen(label, 12);
 }
 
 void drawQRCode()
@@ -788,7 +790,9 @@ void showThresholdQRScreen()
 
 void showSpecialModeQRScreen()
 {
-  showProductQRScreen(productLabels.label12.length() > 0 ? productLabels.label12 : "READY 4 SP ACTION", 12);
+  int pinIndex = getPinIndex(12);
+  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : "READY 4 SP ACTION";
+  showProductQRScreen(label, 12);
 }
 
 // Multi-Channel-Control Product QR Screen - displays label text and QR code

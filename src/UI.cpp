@@ -147,23 +147,21 @@ void redrawQRScreen() {
       String label = "";
       int displayPin = 0;
 
+      // Map product number (1-4) to pin (12, 13, 10, 11)
       switch (multiChannelConfig.currentProduct) {
-        case 1:
-          label = (productLabels.label12.length() > 0) ? productLabels.label12 : "Pin 12";
-          displayPin = 12;
-          break;
-        case 2:
-          label = (productLabels.label13.length() > 0) ? productLabels.label13 : "Pin 13";
-          displayPin = 13;
-          break;
-        case 3:
-          label = (productLabels.label10.length() > 0) ? productLabels.label10 : "Pin 10";
-          displayPin = 10;
-          break;
-        case 4:
-          label = (productLabels.label11.length() > 0) ? productLabels.label11 : "Pin 11";
-          displayPin = 11;
-          break;
+        case 1: displayPin = 12; break;
+        case 2: displayPin = 13; break;
+        case 3: displayPin = 10; break;
+        case 4: displayPin = 11; break;
+        default: displayPin = 12; break;
+      }
+
+      // Get label from array, or use fallback
+      int pinIndex = getPinIndex(displayPin);
+      if (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) {
+        label = productLabels.labels[pinIndex];
+      } else {
+        label = "Pin " + String(displayPin);
       }
 
       ensureQrForPin(displayPin);

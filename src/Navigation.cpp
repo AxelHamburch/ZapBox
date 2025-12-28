@@ -136,28 +136,24 @@ void navigateToNextProduct() {
     String label = "";
     int pin = 0;
     
+    // Map product number (1-4) to pin (12, 13, 10, 11)
     switch(productNum) {
-      case 1: // Pin 12
-        label = (productLabels.label12.length() > 0) ? productLabels.label12 : "Pin 12";
-        pin = 12;
-        break;
-      case 2: // Pin 13
-        label = (productLabels.label13.length() > 0) ? productLabels.label13 : "Pin 13";
-        pin = 13;
-        break;
-      case 3: // Pin 10
-        label = (productLabels.label10.length() > 0) ? productLabels.label10 : "Pin 10";
-        pin = 10;
-        break;
-      case 4: // Pin 11
-        label = (productLabels.label11.length() > 0) ? productLabels.label11 : "Pin 11";
-        pin = 11;
-        break;
-      default: // Fallback to Pin 12 if invalid product number
+      case 1: pin = 12; break;
+      case 2: pin = 13; break;
+      case 3: pin = 10; break;
+      case 4: pin = 11; break;
+      default:
         LOG_WARN("Navigation", String("Invalid product number ") + String(productNum) + String(", defaulting to Pin 12"));
-        label = (productLabels.label12.length() > 0) ? productLabels.label12 : "Pin 12";
         pin = 12;
         break;
+    }
+    
+    // Get label from array, or use fallback
+    int pinIndex = getPinIndex(pin);
+    if (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) {
+      label = productLabels.labels[pinIndex];
+    } else {
+      label = "Pin " + String(pin);
     }
     
     // Generate LNURL dynamically and update QR for this pin
