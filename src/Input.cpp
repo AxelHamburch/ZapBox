@@ -11,7 +11,6 @@ extern void reportMode();
 extern void configMode();
 extern void showHelp();
 extern unsigned long configModeStartTime;
-extern const unsigned long CONFIG_EXIT_GUARD_MS;
 extern StateManager deviceState;
 
 void handleExternalSingleClick() {
@@ -131,7 +130,7 @@ void checkExternalButtonHolds() {
 }
 
 void handleConfigExitButtons() {
-  if (!deviceState.isInState(DeviceState::CONFIG_MODE) || configModeStartTime == 0 || (millis() - configModeStartTime) < CONFIG_EXIT_GUARD_MS) {
+  if (!deviceState.isInState(DeviceState::CONFIG_MODE) || configModeStartTime == 0 || (millis() - configModeStartTime) < ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
     return;
   }
 

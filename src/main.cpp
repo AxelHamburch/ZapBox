@@ -28,11 +28,6 @@ String qrFormat = "bech32"; // "bech32" or "lud17"
 // External LED button (PIN_LED_BUTTON_LED / PIN_LED_BUTTON_SW)
 bool readyLedState = false; // Track current LED state to avoid redundant writes
 bool initializationActive = true; // Startup/initialization phase flag for LED control
-const unsigned long EXTERNAL_DEBOUNCE_MS = 50;
-const unsigned long EXTERNAL_TRIPLE_WINDOW_MS = 2000;
-const unsigned long EXTERNAL_HELP_HOLD_MS = 2000;
-const unsigned long EXTERNAL_CONFIG_HOLD_MS = 3000;
-const unsigned long CONFIG_EXIT_GUARD_MS = 2000; // Minimum time before button/touch can exit config
 
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
@@ -1331,7 +1326,7 @@ void handleTouchButton()
   }
   
   // Config Mode Touch Exit: Any touch after 2s exits config mode
-  if (deviceState.isInState(DeviceState::CONFIG_MODE) && configModeStartTime > 0 && (millis() - configModeStartTime) >= CONFIG_EXIT_GUARD_MS) {
+  if (deviceState.isInState(DeviceState::CONFIG_MODE) && configModeStartTime > 0 && (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
     if (digitalRead(PIN_TOUCH_INT) == LOW) {
       Serial.println("[CONFIG] Touch detected - exiting config mode");
       delay(100);
