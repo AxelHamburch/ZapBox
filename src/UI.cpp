@@ -28,7 +28,7 @@ extern void showSpecialModeQRScreen();
 extern void deactivateScreensaver();
 
 // Configuration constant (1 second grace period after wake-up)
-extern const unsigned long GRACE_PERIOD_MS;
+const unsigned long GRACE_PERIOD_MS = 1000;
 
 /**
  * Wakes the device from power saving mode (screensaver or deep sleep).
