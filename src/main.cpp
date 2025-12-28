@@ -17,11 +17,6 @@
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
 
-// Optional: External LED button wiring (GPIO 43/44). Disable via build flag -DENABLE_EXTERNAL_LED_BUTTON=0
-#ifndef ENABLE_EXTERNAL_LED_BUTTON
-#define ENABLE_EXTERNAL_LED_BUTTON 1
-#endif
-
 TaskHandle_t Task1;
 
 String ssid = "";
@@ -44,7 +39,6 @@ String deepSleep = "off";
 String activationTime = "5";
 
 // External LED button (PIN_LED_BUTTON_LED / PIN_LED_BUTTON_SW)
-const bool externalButtonEnabled = (ENABLE_EXTERNAL_LED_BUTTON != 0);
 bool readyLedState = false; // Track current LED state to avoid redundant writes
 bool initializationActive = true; // Startup/initialization phase flag for LED control
 bool externalButtonPressed = false;
@@ -518,7 +512,6 @@ bool wakeFromPowerSavingMode() {
   }
 
   void updateReadyLed() {
-    if (!externalButtonEnabled) return;
     bool shouldBeOn = isReadyForReceive();
     if (shouldBeOn != readyLedState) {
       digitalWrite(PIN_LED_BUTTON_LED, shouldBeOn ? HIGH : LOW); // Source 3.3V when ready
@@ -1646,7 +1639,6 @@ void handleExternalSingleClick() {
 }
 
 void handleExternalButton() {
-  if (!externalButtonEnabled) return;
   static int lastStableState = HIGH;
   static int lastRawState = HIGH;
   static unsigned long lastDebugPrint = 0;
@@ -1742,7 +1734,6 @@ void handleExternalButton() {
 
 // Separate function to check hold actions - called continuously
 void checkExternalButtonHolds() {
-  if (!externalButtonEnabled) return;
   if (!externalButtonPressed || externalButtonHoldActionFired) {
     return;
   }
@@ -1771,7 +1762,6 @@ void checkExternalButtonHolds() {
 }
 
 void handleConfigExitButtons() {
-  if (!externalButtonEnabled && !inConfigMode) return;
   if (!inConfigMode || configModeStartTime == 0 || (millis() - configModeStartTime) < CONFIG_EXIT_GUARD_MS) {
     return;
   }
@@ -1870,12 +1860,10 @@ void Task1code(void *pvParameters)
     rightButton.tick();
 
     // Handle external LED-button (GPIO 44 input)
-    if (externalButtonEnabled) {
-      handleExternalButton();
-      checkExternalButtonHolds(); // Continuously check for hold actions
-      handleConfigExitButtons();
-      updateReadyLed();
-    }
+    handleExternalButton();
+    checkExternalButtonHolds(); // Continuously check for hold actions
+    handleConfigExitButtons();
+    updateReadyLed();
     
     // Handle touch button if available
     if (touchAvailable) {
@@ -1897,11 +1885,9 @@ void setup()
   digitalWrite(PIN_POWER_ON, HIGH);
 
   // External LED-button wiring: source 3.3V on LED pin when ready; input uses pull-up
-  if (externalButtonEnabled) {
-    pinMode(PIN_LED_BUTTON_LED, OUTPUT);
-    digitalWrite(PIN_LED_BUTTON_LED, LOW); // LED off until device is ready
-    pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
-  }
+  pinMode(PIN_LED_BUTTON_LED, OUTPUT);
+  digitalWrite(PIN_LED_BUTTON_LED, LOW); // LED off until device is ready
+  pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
 
   FFat.begin(FORMAT_ON_FAIL);
   readFiles(); // get the saved details and store in global variables

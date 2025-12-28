@@ -129,7 +129,6 @@ Button Terminal 2      →                    →    GND
 - Works in all operation modes (Single, Duo, Quattro)
 - Compatible with screensaver wake-up (not with deep sleep)
 - Reuses existing navigation/report/help functions from physical buttons
-- Disable when not wired: add build flag `-DENABLE_EXTERNAL_LED_BUTTON=0` in `platformio.ini` (skips GPIO 43/44 init and handling)
 
 **Note:** GPIOs 43 and 44 are not RTC-capable and cannot be used for deep sleep wake-up.
 
