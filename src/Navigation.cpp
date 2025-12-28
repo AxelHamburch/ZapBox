@@ -56,8 +56,7 @@ void navigateToNextProduct() {
         // Already showing ticker - skip back to QR immediately
         Serial.println("[NAV] Single mode SELECTING - Skipping from ticker to QR");
         multiChannelConfig.btcTickerActive = false;
-        String lnurlStr = generateLNURL(12);
-        updateLightningQR(lnurlStr);
+        ensureQrForPin(12);
         if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
           showSpecialModeQRScreen();
         } else {
@@ -160,11 +159,8 @@ void navigateToNextProduct() {
         break;
     }
     
-    // Generate LNURL dynamically for this pin
-    String lnurlStr = generateLNURL(pin);
-    if (lnurlStr.length() > 0) {
-      updateLightningQR(lnurlStr);
-    }
+    // Generate LNURL dynamically and update QR for this pin
+    ensureQrForPin(pin);
     
     // Show product screen
     showProductQRScreen(label, pin);

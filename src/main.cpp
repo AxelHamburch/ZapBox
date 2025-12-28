@@ -907,8 +907,7 @@ void setup()
     } else {
       Serial.println("[STARTUP] Single mode (SELECTING/OFF) - showing QR screen");
       // Show normal or special QR for single mode
-      String lnurlStr = generateLNURL(12);
-      updateLightningQR(lnurlStr);
+      ensureQrForPin(12);
       if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
         showSpecialModeQRScreen();
       } else {
@@ -1273,8 +1272,7 @@ void loop()
                 // Already showing ticker - skip back to QR
                 Serial.println("Skip from ticker to QR (Single mode)");
                 multiChannelConfig.btcTickerActive = false;
-                String lnurlStr = generateLNURL(12);
-                updateLightningQR(lnurlStr);
+                ensureQrForPin(12);
                 if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
                   showSpecialModeQRScreen();
                 } else {
@@ -1295,8 +1293,7 @@ void loop()
                 // Showing ticker - switch to QR on touch
                 Serial.println("Touch detected - switching from ticker to QR (ALWAYS mode)");
                 multiChannelConfig.btcTickerActive = false;
-                String lnurlStr = generateLNURL(12);
-                updateLightningQR(lnurlStr);
+                ensureQrForPin(12);
                 if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
                   showSpecialModeQRScreen();
                 } else {
@@ -1448,8 +1445,7 @@ void loop()
             Serial.println("[SCREEN] Hiding Bitcoin ticker after ticker timeout (SELECTING mode - Single)");
             multiChannelConfig.btcTickerActive = false;
             // Show normal QR screen
-            String lnurlStr = generateLNURL(12);
-            updateLightningQR(lnurlStr);
+            ensureQrForPin(12);
             if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
               showSpecialModeQRScreen();
             } else {

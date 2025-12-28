@@ -165,8 +165,7 @@ void redrawQRScreen() {
           break;
       }
 
-      String lnurlStr = generateLNURL(displayPin);
-      updateLightningQR(lnurlStr);
+      ensureQrForPin(displayPin);
       showProductQRScreen(label, displayPin);
       multiChannelConfig.btcTickerActive = false;
       Serial.printf("[DISPLAY] Product %d QR screen displayed\n", multiChannelConfig.currentProduct);
@@ -178,8 +177,7 @@ void redrawQRScreen() {
   // Single mode (1-channel)
   if (specialModeConfig.mode != "standard") {
     // SPECIAL MODE: ensure LNURL for pin 12 is up-to-date, then show special QR
-    String lnurlStr = generateLNURL(12);
-    updateLightningQR(lnurlStr);
+    ensureQrForPin(12);
     showSpecialModeQRScreen();
     multiChannelConfig.btcTickerActive = false;
     Serial.println("[DISPLAY] Special mode QR screen displayed (single mode)");
@@ -203,8 +201,7 @@ void redrawQRScreen() {
     deviceState.transition(DeviceState::READY);
     return;
   } else {
-    String lnurlStr = generateLNURL(12);
-    updateLightningQR(lnurlStr);
+    ensureQrForPin(12);
     showQRScreen();
     Serial.println("[DISPLAY] QR screen displayed (single mode)");
     deviceState.transition(DeviceState::READY);
@@ -232,8 +229,7 @@ void showInitialScreenAfterConnections() {
       productSelectionState.showTime = millis();
     } else {
       // SELECTING or OFF: show normal/special QR
-      String lnurlStr = generateLNURL(12);
-      updateLightningQR(lnurlStr);
+      ensureQrForPin(12);
       if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
         showSpecialModeQRScreen();
       } else {
