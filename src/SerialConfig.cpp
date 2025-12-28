@@ -4,10 +4,44 @@
 #include "FFat.h"
 #include "SerialConfig.h"
 #include "TouchCST816S.h"
+#include "DeviceState.h"
+#include "GlobalState.h"
+#include "PinConfig.h"
 
 // Global reference to touch controller (set from main.cpp)
 void* touchControllerPtr = nullptr;
 extern unsigned long configModeStartTime;
+extern StateManager deviceState;
+
+// Check if NEXT or HELP button is pressed to exit config mode
+static bool checkButtonExit() {
+    // Only check after guard period
+    if (configModeStartTime == 0 || (millis() - configModeStartTime) < ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
+        return false;
+    }
+    
+    // Check NEXT button (PIN_BUTTON_1)
+    static int prevNextState = HIGH;
+    int nextState = digitalRead(PIN_BUTTON_1);
+    if (prevNextState == HIGH && nextState == LOW) { // Negative edge (button pressed)
+        Serial.println("[CONFIG] NEXT button pressed - exiting config mode");
+        prevNextState = nextState;
+        return true;
+    }
+    prevNextState = nextState;
+    
+    // Check HELP button (PIN_BUTTON_2)
+    static int prevHelpState = HIGH;
+    int helpState = digitalRead(PIN_BUTTON_2);
+    if (prevHelpState == HIGH && helpState == LOW) { // Negative edge (button pressed)
+        Serial.println("[CONFIG] HELP button pressed - exiting config mode");
+        prevHelpState = helpState;
+        return true;
+    }
+    prevHelpState = helpState;
+    
+    return false;
+}
 
 void configOverSerialPort(String wifiSSID, String wifiPass, bool hasExistingData)
 {
@@ -44,6 +78,14 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
     while (true)
     {
         yield(); // Feed the watchdog timer
+        
+        // Check for button exit (NEXT or HELP pressed)
+        if (checkButtonExit()) {
+            Serial.println("[CONFIG_MODE_EXIT]");
+            Serial.flush();
+            delay(500);
+            ESP.restart();
+        }
         
         // Check for touch exit (any touch after 2s in config mode)
         if (touchControllerPtr != nullptr && configModeStartTime > 0 && (millis() - configModeStartTime) > 0)

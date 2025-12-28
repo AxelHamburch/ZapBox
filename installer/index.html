@@ -94,13 +94,18 @@
 
         <h2 id="prepare-connection">2- Prepare connection</h2>
 
-        <p>Flash the ESP32 with "Erase device" and then wait 10 seconds until the "CONF / SERIAL CONFIG MODE" window appears.</p>
-
-        <p>Alternatively, press the BOOT button (not HELP) for 5 seconds until the window appears.</p>
+        <p>Flash the ESP32 with “Erase device.” After the start screen is displayed, the ZapBox will automatically enter “CONF / SERIAL CONFIG MODE”.</p>
 
         <p>→ The ZapBox is now ready to receive configuration data.</p>
 
-        <p><i><strong>Note:</strong> If data is already available and you start the connection with the Boot button, the connection will remain active for 3 minutes (180 seconds) before being automatically disconnected to release the QR code again. Data communication extends the channel open time by another 3 minutes.</i></p>
+        <p>If parameters have already been stored and need to be changed, you can also open CONF mode retrospectively:</p>
+        <ul>
+            <li>With the NEXT button: press and hold for 5 seconds.</li>
+            <li>With the HELP touch button: Tap at least 5 times very quickly in succession.</li>
+            <li>With the external LED button: Press once briefly and then hold for at least 5 seconds.</li>
+        </ul>
+
+        <p><i><strong>Note:</strong> If data is already available and you start the connection manually, the connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. You can terminate the connection prematurely by pressing the NEXT button, touching the display, or pressing the external button. </i></p>
 
         <hr>
 

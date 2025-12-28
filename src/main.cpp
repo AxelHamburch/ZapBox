@@ -658,7 +658,7 @@ void setup()
   // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
   leftButton.setPressMs(3000); // 3 seconds for config mode (documented as 5 sec for users)
   leftButton.setDebounceMs(50); // 50ms debounce - fast response
-  leftButton.attachClick(navigateToNextProduct); // Single click = Navigate products (duo/quattro mode)
+  leftButton.attachClick(onNextButtonClick); // Single click = Navigate products OR exit config mode
   leftButton.attachLongPressStart(configMode); // Long press = Config mode
   rightButton.setDebounceMs(50); // 50ms debounce - fast response
   rightButton.setClickMs(400); // 400ms max for single click
@@ -682,12 +682,15 @@ void setup()
   WiFi.setSleep(false); // Disable WiFi power saving for stable connection
   WiFi.setAutoReconnect(true); // Enable auto-reconnect
   WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+  // Track if WiFi was intentionally skipped due to missing/invalid SSID
+  bool ssidMissingOrInvalid = false;
   // Guard: only start WiFi if SSID is present and valid length (<= 32)
   if (wifiConfig.ssid.length() > 0 && wifiConfig.ssid.length() <= 32) {
     WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
     Serial.println("[STARTUP] WiFi connection started in background (Power Save: OFF)");
   } else {
     Serial.println("[STARTUP] Skipping WiFi.begin(): SSID missing or invalid length");
+    ssidMissingOrInvalid = true;
   }
 
   // Show startup screen for 5 seconds
@@ -700,6 +703,13 @@ void setup()
     }
   }
   Serial.println("[STARTUP] Startup screen completed, switching to initialization screen");
+
+  // If WiFi was intentionally skipped (no SSID configured), enter Config mode immediately
+  if (ssidMissingOrInvalid) {
+    Serial.println("[STARTUP] No SSID configured - entering CONFIG mode");
+    configMode();
+    return;
+  }
 
   // Switch to initialization screen
   initializationScreen();

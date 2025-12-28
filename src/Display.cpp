@@ -202,17 +202,19 @@ void btctickerScreen()
   tft.setTextColor(themeForeground);
 
   if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
+    // Slight vertical offset for inverse orientation to lower logo and data
+    int yOffset = (displayConfig.orientation == "vi") ? 10 : 0;
     // VERTICAL LAYOUT
     // Draw Bitcoin logo (64x64) moved up by 30 pixels more
-    tft.drawBitmap(x - 32, y - 135, bitcoin_logo, 64, 64, themeForeground);
+    tft.drawBitmap(x - 32, y - 135 + yOffset, bitcoin_logo, 64, 64, themeForeground);
     
     // First line: Currency/BTC (closer to logo) - moved down 5 pixels
     tft.setTextSize(2);
-    tft.drawString(currency + "/BTC", x + 5, y - 50, GFXFF);
+    tft.drawString(currency + "/BTC", x + 5, y - 50 + yOffset, GFXFF);
     
     // Price (larger) - moved down 5 pixels
     tft.setTextSize(3);
-    tft.drawString(bitcoinData.price, x + 5, y - 20, GFXFF);
+    tft.drawString(bitcoinData.price, x + 5, y - 20 + yOffset, GFXFF);
     
     // Calculate sats per currency unit
     float priceFloat = bitcoinData.price.toFloat();
@@ -226,19 +228,19 @@ void btctickerScreen()
     
     // New line: sats/Currency - moved down 5 pixels
     tft.setTextSize(2);
-    tft.drawString("SAT/" + currency, x + 5, y + 15, GFXFF);
+    tft.drawString("SAT/" + currency, x + 5, y + 15 + yOffset, GFXFF);
     
     // Sats value (larger) - moved down 5 pixels
     tft.setTextSize(3);
-    tft.drawString(satsPerCurrency, x + 5, y + 45, GFXFF);
+    tft.drawString(satsPerCurrency, x + 5, y + 45 + yOffset, GFXFF);
     
     // Block info at bottom (same spacing as above) - moved down 5 pixels
     tft.setTextSize(2);
-    tft.drawString("Block", x + 5, y + 80, GFXFF);
+    tft.drawString("Block", x + 5, y + 80 + yOffset, GFXFF);
     
     // Block number (larger, same size as price and sats) - moved down 5 pixels
     tft.setTextSize(3);
-    tft.drawString(bitcoinData.blockHigh, x + 5, y + 110, GFXFF);
+    tft.drawString(bitcoinData.blockHigh, x + 5, y + 110 + yOffset, GFXFF);
     
     // Button labels - different layout for touch vs non-touch
     tft.setTextSize(2);

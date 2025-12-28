@@ -131,27 +131,45 @@ void checkExternalButtonHolds() {
 }
 
 void handleConfigExitButtons() {
+  // Only check external button here - NEXT button is handled via OneButton callback
   if (!deviceState.isInState(DeviceState::CONFIG_MODE) || configModeStartTime == 0 || (millis() - configModeStartTime) < ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
     return;
   }
 
-  static int prevNextState = HIGH;
   static int prevExtState = HIGH;
-
-  int nextState = digitalRead(PIN_BUTTON_1);
   int extState = digitalRead(PIN_LED_BUTTON_SW);
 
   // Positive flank (release) exits config
-  if (prevNextState == LOW && nextState == HIGH) {
-    LOG_INFO("Button", "NEXT button release -> exit config mode");
-    ESP.restart();
-  }
-
   if (prevExtState == LOW && extState == HIGH) {
     LOG_INFO("Button", "External button release -> exit config mode");
     ESP.restart();
   }
 
-  prevNextState = nextState;
   prevExtState = extState;
+}
+
+// Callback for NEXT button click in config mode (registered in setup)
+void onNextButtonConfigExit() {
+  // Only trigger if in config mode and guard period elapsed
+  if (deviceState.isInState(DeviceState::CONFIG_MODE) && 
+      configModeStartTime > 0 && 
+      (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
+    LOG_INFO("Button", "NEXT button pressed -> exit config mode");
+    ESP.restart();
+  }
+}
+
+// Wrapper for NEXT button click - handles both navigation and config exit
+void onNextButtonClick() {
+  // Check if in config mode first (higher priority)
+  if (deviceState.isInState(DeviceState::CONFIG_MODE) && 
+      configModeStartTime > 0 && 
+      (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
+    LOG_INFO("Button", "NEXT button pressed -> exit config mode");
+    ESP.restart();
+    return;
+  }
+  
+  // Otherwise handle normal navigation
+  navigateToNextProduct();
 }
