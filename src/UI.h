@@ -15,4 +15,10 @@ void updateReadyLed();
 // Redraw appropriate QR screen based on current mode/product
 void redrawQRScreen();
 
+// Decide and show initial screen after all connections are confirmed
+void showInitialScreenAfterConnections();
+
+// Handle screensaver and deep sleep checks inside the payment loop
+void handlePowerSavingChecks();
+
 #endif // UI_H

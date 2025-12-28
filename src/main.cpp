@@ -1021,64 +1021,9 @@ void loop()
     deviceState.transition(DeviceState::READY);
   }
   else if (firstLoop && allConnectionsConfirmed && !deviceState.isInState(DeviceState::REPORT_SCREEN) && !(powerConfig.lastWakeUpTime > 0 && (millis() - powerConfig.lastWakeUpTime) < GRACE_PERIOD_MS)) {
-    Serial.println("[SCREEN] All connections confirmed - Showing QR code screen (READY FOR ACTION)");
-    if (lightningConfig.thresholdKey.length() > 0) {
-      showThresholdQRScreen(); // THRESHOLD MODE (Multi-Channel-Control not compatible)
-    } else if (multiChannelConfig.mode == "off") {
-      // SINGLE MODE - Decide initial screen by btcTickerMode
-      if (multiChannelConfig.btcTickerMode == "always") {
-        Serial.println("[FIRSTLOOP] Single-mode (ALWAYS) start: BTC ticker");
-        btctickerScreen();
-        multiChannelConfig.btcTickerActive = true;
-        productSelectionState.showTime = millis();
-        Serial.println("[BTC] Single mode - Starting with Bitcoin ticker screen");
-      } else {
-        Serial.println("[FIRSTLOOP] Single-mode (SELECTING/OFF) start: QR screen");
-        String lnurlStr = generateLNURL(12);
-        updateLightningQR(lnurlStr);
-        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-          showSpecialModeQRScreen();
-        } else {
-          showQRScreen();
-        }
-        multiChannelConfig.btcTickerActive = false;
-        productSelectionState.showTime = 0;
-      }
-      deviceState.transition(DeviceState::READY);
-      currentErrorType = 0;
-    } else if (multiChannelConfig.mode != "off") {
-      // MULTI-CHANNEL-CONTROL MODE - Behavior depends on multiChannelConfig.btcTickerMode
-      if (multiChannelConfig.btcTickerMode == "off") {
-        // OFF: Show product selection screen for Duo/Quattro (no ticker)
-        multiChannelConfig.currentProduct = -1; // Special value to indicate product selection screen
-        productSelectionScreen();
-        deviceState.transition(DeviceState::PRODUCT_SELECTION);
-        multiChannelConfig.btcTickerActive = false;
-        productSelectionState.showTime = millis();
-        Serial.println("[BTC] BTC-Ticker OFF - Starting with product selection screen");
-      } else if (multiChannelConfig.btcTickerMode == "always") {
-        // ALWAYS: Show Bitcoin ticker (current behavior)
-        multiChannelConfig.currentProduct = 0;
-        btctickerScreen();
-        multiChannelConfig.btcTickerActive = true;
-        deviceState.transition(DeviceState::READY);
-        productSelectionState.showTime = millis();
-        Serial.println("[BTC] BTC-Ticker ALWAYS - Starting with Bitcoin ticker screen");
-      } else if (multiChannelConfig.btcTickerMode == "selecting") {
-        // SELECTING: Show product selection screen for Duo/Quattro
-        multiChannelConfig.currentProduct = -1; // Special value to indicate product selection screen
-        productSelectionScreen();
-        deviceState.transition(DeviceState::PRODUCT_SELECTION);
-        multiChannelConfig.btcTickerActive = false;
-        productSelectionState.showTime = millis();
-        Serial.println("[BTC] BTC-Ticker SELECTING - Starting with product selection screen");
-      }
-    } else if (specialModeConfig.mode != "standard") {
-      // Generate LNURL for pin 12 before showing special mode QR
-      String lnurlStr = generateLNURL(12);
-      updateLightningQR(lnurlStr);
-      showSpecialModeQRScreen(); // SPECIAL MODE
-    }
+    Serial.println("[SCREEN] All connections confirmed - selecting initial screen");
+    showInitialScreenAfterConnections();
+    currentErrorType = 0;
     // Clear error screen flag once QR is shown
     deviceState.transition(DeviceState::READY);
     currentErrorType = 0;
@@ -1543,116 +1488,8 @@ void loop()
       }
     }
     
-    // Check for powerConfig.screensaver/deep sleep timeout activation (inside payment loop)
-    if (!deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && powerConfig.screensaver != "off" && powerConfig.deepSleep == "off") {
-      unsigned long currentTime = millis();
-      unsigned long elapsedTime = currentTime - activityTracking.lastActivityTime;
-      
-      // Debug output every 10 seconds
-      static unsigned long lastDebugOutput = 0;
-      if (currentTime - lastDebugOutput > 10000) {
-        Serial.printf("[SCREENSAVER_CHECK] Elapsed: %lu ms / Timeout: %lu ms (%.1f%%)\n", 
-                      elapsedTime, powerConfig.activationTimeoutMs, (elapsedTime * 100.0 / powerConfig.activationTimeoutMs));
-        lastDebugOutput = currentTime;
-      }
-      
-      if (elapsedTime >= powerConfig.activationTimeoutMs) {
-        Serial.println("[TIMEOUT] Screensaver timeout reached, activating powerConfig.screensaver");
-        deviceState.transition(DeviceState::SCREENSAVER);
-        activateScreensaver(powerConfig.screensaver);
-        // Continue with payment loop - powerConfig.screensaver only turns off backlight
-      }
-    }
-    
-    if (!deviceState.isInState(DeviceState::DEEP_SLEEP) && powerConfig.deepSleep != "off" && powerConfig.screensaver == "off") {
-      unsigned long currentTime = millis();
-      unsigned long elapsedTime = currentTime - activityTracking.lastActivityTime;
-      
-      // Debug output every 10 seconds
-      static unsigned long lastDebugOutputDeep = 0;
-      if (currentTime - lastDebugOutputDeep > 10000) {
-        Serial.printf("[DEEP_SLEEP_CHECK] Elapsed: %lu ms / Timeout: %lu ms (%.1f%%)\n", 
-                      elapsedTime, powerConfig.activationTimeoutMs, (elapsedTime * 100.0 / powerConfig.activationTimeoutMs));
-        lastDebugOutputDeep = currentTime;
-      }
-      
-      if (elapsedTime >= powerConfig.activationTimeoutMs) {
-        Serial.println("[TIMEOUT] Deep sleep timeout reached, preparing for deep sleep");
-        deviceState.transition(DeviceState::DEEP_SLEEP);
-        
-        // Flush serial output before sleep
-        Serial.flush();
-        
-        // Prepare display for sleep
-        prepareDeepSleep();
-        
-        // Give more time for display operations to complete
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        
-        // Final serial flush
-        Serial.println("[DEEP_SLEEP] Entering sleep mode now...");
-        Serial.flush();
-        
-        // Enter deep sleep (will not return in freeze mode)
-        setupDeepSleepWakeup(powerConfig.deepSleep);
-        
-        // Execution continues here after wake-up from light sleep
-        // (Deep sleep/freeze mode will restart the device instead)
-        
-        // CRITICAL: Light sleep disconnects USB-Serial hardware
-        // We need to reinitialize USB-CDC to make Serial work again
-        Serial.println("[WAKE_UP] Device woke from light sleep");
-        
-        // Reinitialize USB-CDC peripheral after light sleep
-        Serial.end();
-        delay(100);
-        Serial.setRxBufferSize(2048); // Same as in setup()
-        Serial.begin(115200);
-        delay(200); // Give USB-CDC time to enumerate
-        
-        Serial.println("[WAKE_UP] USB-Serial reinitialized after light sleep");
-        Serial.flush();
-        
-        // Show boot-up screen first
-        bootUpScreen();
-        Serial.println("[WAKE_UP] Boot screen displayed");
-        
-        // Turn backlight back on
-        pinMode(PIN_LCD_BL, OUTPUT);
-        digitalWrite(PIN_LCD_BL, HIGH);
-        Serial.println("[WAKE_UP] Backlight restored");
-        
-        // Check WiFi connection status
-        Serial.println("[WAKE_UP] Checking WiFi connection...");
-        int wifiCheckCount = 0;
-        while (WiFi.status() != WL_CONNECTED && wifiCheckCount < 30) {
-          delay(100);
-          wifiCheckCount++;
-          if (wifiCheckCount % 10 == 0) {
-            Serial.printf("[WAKE_UP] Waiting for WiFi... (%d/30)\n", wifiCheckCount);
-          }
-        }
-        
-        if (WiFi.status() == WL_CONNECTED) {
-          Serial.println("[WAKE_UP] WiFi connected");
-        } else {
-          Serial.println("[WAKE_UP] WiFi not connected after wake-up, will retry in loop");
-          // WiFi reconnection will be handled by checkAndReconnectWiFi() in main loop
-        }
-        
-        // Reset activity time and clear sleep flag
-        activityTracking.lastActivityTime = millis();
-        powerConfig.lastWakeUpTime = millis();
-        deviceState.transition(DeviceState::READY);
-        
-        // Small delay before redrawing screen
-        delay(500);
-        
-        // Redraw the appropriate QR screen
-        redrawQRScreen();
-        Serial.println("[WAKE_UP] Ready for payments");
-      }
-    }
+    // Power saving checks (screensaver/deep sleep)
+    handlePowerSavingChecks();
     
     webSocket.loop();
     loopCount++;
