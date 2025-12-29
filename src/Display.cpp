@@ -98,6 +98,7 @@ const ThemeConfig themeConfigs[] = {
   {"orange-brown", TFT_ORANGE, TFT_BROWN},
   {"black-yellow", TFT_BLACK, TFT_YELLOW},
   {"black-btcorange", TFT_BLACK, 0xFCC0},
+  {"btcorange-black", 0xFCC0, TFT_BLACK},
   {"yellow-black", TFT_YELLOW, TFT_BLACK},
   {"zapbox", 0xD600, TFT_BLACK},
   {"maroon-magenta", TFT_MAROON, TFT_MAGENTA},
@@ -120,7 +121,7 @@ inline void safeFillScreen(uint16_t color)
   tft.fillScreen(color);
   // ZAPBOX theme: No delay to prevent display controller corruption
   // Other themes: Small delay for stability
-  if (displayConfig.theme != "zapbox") {
+  if (displayConfig.theme != "zapbox" && displayConfig.theme != "btcorange-black") {
     delay(5);
   }
 }
@@ -211,7 +212,7 @@ void btctickerScreen()
   // ZAPBOX theme color inversion fix: Reset display controller with double-clear
   // This prevents horizontal stripes and color corruption when transitioning from inverted product screen
   // The display controller needs time to stabilize between complete color inversions
-  if (displayConfig.theme == "zapbox") {
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);  // First clear to black
     delay(10);                   // Wait for display controller to settle
     tft.fillScreen(TFT_BLACK);  // Second clear to ensure controller reset
@@ -859,6 +860,9 @@ void showProductQRScreen(String label, int pin)
   if (displayConfig.theme == "zapbox") {
     fg = TFT_BLACK;
     bg = 0xD600;
+  } else if (displayConfig.theme == "btcorange-black") {
+    fg = TFT_BLACK;
+    bg = 0xFCC0;
   }
 
   // Replace currency symbols with text abbreviations for better compatibility
@@ -912,7 +916,7 @@ void showProductQRScreen(String label, int pin)
   // ZAPBOX theme color inversion fix: Reset display controller with double-clear
   // This prevents horizontal stripes and color corruption when transitioning from ticker screen
   // The display controller needs time to stabilize between complete color inversions
-  if (displayConfig.theme == "zapbox") {
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);  // First clear to black
     delay(10);                   // Wait for display controller to settle
     tft.fillScreen(TFT_BLACK);  // Second clear to ensure controller reset
@@ -922,7 +926,7 @@ void showProductQRScreen(String label, int pin)
   safeFillScreen(bg);
   
   // Draw QR code immediately after screen clear, before anything else
-  if (displayConfig.theme == "zapbox") {
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     drawQRCodeWithColors(fg, bg);
   } else {
     drawQRCode();
