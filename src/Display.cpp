@@ -111,6 +111,14 @@ const ThemeConfig themeConfigs[] = {
   {"black-lightgrey", TFT_BLACK, TFT_LIGHTGREY}
 };
 
+// Safe fillScreen wrapper to stabilize TFT refresh after heavy screen changes
+// Adds a tiny delay to prevent controller glitches that can cause stripes/black screens
+inline void safeFillScreen(uint16_t color)
+{
+  tft.fillScreen(color);
+  delay(10);
+}
+
 void setThemeColors()
 {
   // Default fallback (used if theme name not found in table)
@@ -660,7 +668,7 @@ void stepThreeScreen()
 // Switched ON screen
 void actionTimeScreen()
 {
-  tft.fillScreen(themeBackground);
+  safeFillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
@@ -685,7 +693,7 @@ void actionTimeScreen()
 // Thank you
 void thankYouScreen()
 {
-  tft.fillScreen(themeBackground);
+  safeFillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
   tft.setTextColor(themeForeground);
@@ -782,7 +790,7 @@ void drawQRCodeWithColors(uint16_t fg, uint16_t bg)
 void showThresholdQRScreen()
 {
   tft.setTextDatum(ML_DATUM);
-  tft.fillScreen(themeBackground);
+  safeFillScreen(themeBackground);
   tft.setTextSize(3);
   tft.setTextColor(themeBackground);
 
@@ -885,7 +893,7 @@ void showProductQRScreen(String label, int pin)
   }
 
   // Now do all display operations - COMPLETE refresh like help screens
-  tft.fillScreen(bg);
+  safeFillScreen(bg);
   
   // Draw QR code immediately after screen clear, before anything else
   if (displayConfig.theme == "zapbox") {
@@ -998,7 +1006,7 @@ void showProductQRScreen(String label, int pin)
 // Product Selection Screen - shown after 5 seconds of QR screen
 void productSelectionScreen()
 {
-  tft.fillScreen(themeBackground);
+  safeFillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
