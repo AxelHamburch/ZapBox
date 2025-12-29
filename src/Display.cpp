@@ -97,6 +97,7 @@ const ThemeConfig themeConfigs[] = {
   {"grey-blue", TFT_LIGHTGREY, TFT_BLUE},
   {"orange-brown", TFT_ORANGE, TFT_BROWN},
   {"black-yellow", TFT_BLACK, TFT_YELLOW},
+  {"black-btcorange", TFT_BLACK, 0xFCC0},
   {"yellow-black", TFT_YELLOW, TFT_BLACK},
   {"zapbox", 0xD600, TFT_BLACK},
   {"maroon-magenta", TFT_MAROON, TFT_MAGENTA},

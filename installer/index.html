@@ -173,7 +173,8 @@
                 <div>
                     <label for="theme">Display color options</label>
                     <select name="theme" id="theme">
-                        <option value="black-white" selected>BLACK & WHITE (default)</option>
+                        <option value="zapbox" selected>ZAPBOX (Yellow & Black, inverted QR-Code, default)</option>
+                        <option value="black-white">BLACK & WHITE</option>
                         <option value="white-black">WHITE & BLACK</option>
                         <option value="yellow-black">YELLOW & BLACK</option>
                         <option value="black-red">BLACK & RED</option>
@@ -187,12 +188,11 @@
                         <option value="orange-brown">ORANGE & BROWN</option>
                         <option value="black-orange">BLACK & ORANGE</option>
                         <option value="brown-orange">BROWN & ORANGE</option>
-                        <option value="black-yellow">BLACK & YELLOW</option>
+                        <option value="black-btcorange">BLACK & BTC ORANGE</option>
                         <option value="maroon-magenta">MAROON & MAGENTA</option>
                         <option value="darkcyan-cyan">DARKCYAN & CYAN</option>
                         <option value="darkgrey-lightgrey">DARK GREY & LIGHT GREY</option>
                         <option value="black-lightgrey">BLACK & LIGHT GREY</option>
-                        <option value="zapbox">ZAPBOX (Yellow & Black, inverted Product QR)</option>
                     </select>
                 </div>
                 <div>
@@ -471,7 +471,7 @@
             },
             {
                 "name": "theme",
-                "value": "black-white"
+                "value": "zapbox"
             },
             {
                 "name": "thresholdKey",
@@ -828,7 +828,7 @@
                 config[2].value = configData[2].value; // socket
                 config[3].value = configData[3]?.value || "bech32"; // qrFormat
                 config[4].value = configData[4].value; // orientation
-                config[5].value = configData[5]?.value || "black-white"; // theme
+                config[5].value = configData[5]?.value || "zapbox"; // theme
                 config[6].value = configData[6]?.value || ""; // thresholdKey
                 config[7].value = configData[7]?.value || ""; // thresholdAmount
                 config[8].value = configData[8]?.value || ""; // thresholdPin

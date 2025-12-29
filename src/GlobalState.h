@@ -30,7 +30,7 @@ extern WifiConfig wifiConfig;
 
 struct DisplayConfig {
   String orientation = "h";  // "h" for horizontal, "v" for vertical
-  String theme = "black-white";
+  String theme = "zapbox";
 };
 
 extern DisplayConfig displayConfig;
