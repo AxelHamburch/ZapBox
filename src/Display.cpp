@@ -202,7 +202,7 @@ void startupScreen()
 // Bitcoin Ticker Screen
 void btctickerScreen()
 {
-  tft.fillScreen(themeBackground);
+  safeFillScreen(themeBackground);
   
   // Explicitly clear QR code area to prevent ghosting when switching screens
   // QR code is typically drawn at (12, 12) with size ~72x72 pixels

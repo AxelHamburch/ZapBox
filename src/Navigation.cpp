@@ -52,7 +52,25 @@ void navigateToNextProduct() {
   
   if (multiChannelConfig.mode == "off") {
     // Single mode behavior depends on multiChannelConfig.btcTickerMode
-    if (multiChannelConfig.btcTickerMode == "selecting") {
+    if (multiChannelConfig.btcTickerMode == "always") {
+      // Toggle between ticker and product QR when always mode is on
+      if (multiChannelConfig.btcTickerActive) {
+        LOG_INFO("Navigation", "Single mode ALWAYS - Switching from ticker to QR");
+        multiChannelConfig.btcTickerActive = false;
+        ensureQrForPin(12);
+        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+          showSpecialModeQRScreen();
+        } else {
+          showQRScreen();
+        }
+        productSelectionState.showTime = 0; // Reset timer
+      } else {
+        LOG_INFO("Navigation", "Single mode ALWAYS - Switching from QR to ticker");
+        btctickerScreen();
+        multiChannelConfig.btcTickerActive = true;
+        productSelectionState.showTime = millis();
+      }
+    } else if (multiChannelConfig.btcTickerMode == "selecting") {
       if (multiChannelConfig.btcTickerActive) {
         // Already showing ticker - skip back to QR immediately
         LOG_INFO("Navigation", "Single mode SELECTING - Skipping from ticker to QR");
