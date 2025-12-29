@@ -1295,19 +1295,22 @@ void loop()
                 productSelectionState.showTime = millis(); // Start timeout to return to ticker
               }
               // If on QR, touch does nothing (automatic return to ticker via timeout)
+              // IMPORTANT: Do NOT reset the timer here - let it expire naturally to return to ticker
             }
             // Multi-Channel-Control Mode: Navigate to next product
             else if (multiChannelConfig.mode != "off" && lightningConfig.thresholdKey.length() == 0) {
               multiChannelConfig.btcTickerActive = false; // Exit ticker on navigation
               Serial.println("Navigate to next product");
               navigateToNextProduct();
+              // Reset timer for product navigation
+              productSelectionState.showTime = millis();
             } else {
               // Normal/Special/Threshold Mode: Return to QR screen
               Serial.println("Returning to QR screen");
               redrawQRScreen();
+              // Reset timer for normal mode
+              productSelectionState.showTime = millis();
             }
-            // Reset timer
-            productSelectionState.showTime = millis();
           }
         }
         // Handle touch on product QR screen (Multi-Channel-Control mode only)
@@ -1406,6 +1409,7 @@ void loop()
             Serial.println("[SCREEN] Showing Bitcoin ticker screen after timeout (ALWAYS mode - Duo/Quattro)");
             btctickerScreen();
             multiChannelConfig.btcTickerActive = true;
+            productSelectionState.showTime = 0; // Reset timer - ticker has no timeout in ALWAYS mode
           }
         } else {
           // ALWAYS mode Single: Return to ticker after PRODUCT_TIMEOUT on QR

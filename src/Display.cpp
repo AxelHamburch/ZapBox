@@ -112,11 +112,16 @@ const ThemeConfig themeConfigs[] = {
 };
 
 // Safe fillScreen wrapper to stabilize TFT refresh after heavy screen changes
-// Adds a tiny delay to prevent controller glitches that can cause stripes/black screens
+// Adds a small delay to prevent controller glitches that can cause stripes/black screens
+// ZAPBOX theme uses direct fillScreen without delay to avoid display corruption
 inline void safeFillScreen(uint16_t color)
 {
   tft.fillScreen(color);
-  delay(10);
+  // ZAPBOX theme: No delay to prevent display controller corruption
+  // Other themes: Small delay for stability
+  if (displayConfig.theme != "zapbox") {
+    delay(5);
+  }
 }
 
 void setThemeColors()
@@ -202,6 +207,16 @@ void startupScreen()
 // Bitcoin Ticker Screen
 void btctickerScreen()
 {
+  // ZAPBOX theme color inversion fix: Reset display controller with double-clear
+  // This prevents horizontal stripes and color corruption when transitioning from inverted product screen
+  // The display controller needs time to stabilize between complete color inversions
+  if (displayConfig.theme == "zapbox") {
+    tft.fillScreen(TFT_BLACK);  // First clear to black
+    delay(10);                   // Wait for display controller to settle
+    tft.fillScreen(TFT_BLACK);  // Second clear to ensure controller reset
+    delay(5);                    // Additional settling time
+  }
+  
   safeFillScreen(themeBackground);
   
   // Explicitly clear QR code area to prevent ghosting when switching screens
@@ -893,6 +908,16 @@ void showProductQRScreen(String label, int pin)
   }
 
   // Now do all display operations - COMPLETE refresh like help screens
+  // ZAPBOX theme color inversion fix: Reset display controller with double-clear
+  // This prevents horizontal stripes and color corruption when transitioning from ticker screen
+  // The display controller needs time to stabilize between complete color inversions
+  if (displayConfig.theme == "zapbox") {
+    tft.fillScreen(TFT_BLACK);  // First clear to black
+    delay(10);                   // Wait for display controller to settle
+    tft.fillScreen(TFT_BLACK);  // Second clear to ensure controller reset
+    delay(5);                    // Additional settling time
+  }
+  
   safeFillScreen(bg);
   
   // Draw QR code immediately after screen clear, before anything else

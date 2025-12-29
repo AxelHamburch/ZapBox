@@ -63,12 +63,12 @@ void navigateToNextProduct() {
         } else {
           showQRScreen();
         }
-        productSelectionState.showTime = 0; // Reset timer
+        productSelectionState.showTime = millis(); // Start timer for auto-return to ticker
       } else {
         LOG_INFO("Navigation", "Single mode ALWAYS - Switching from QR to ticker");
         btctickerScreen();
         multiChannelConfig.btcTickerActive = true;
-        productSelectionState.showTime = millis();
+        productSelectionState.showTime = 0; // Reset timer (ticker has no timeout)
       }
     } else if (multiChannelConfig.btcTickerMode == "selecting") {
       if (multiChannelConfig.btcTickerActive) {
