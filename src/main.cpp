@@ -1293,9 +1293,10 @@ void loop()
                   showQRScreen();
                 }
                 productSelectionState.showTime = millis(); // Start timeout to return to ticker
+              } else {
+                // Already on QR: refresh timeout so interaction keeps QR visible
+                productSelectionState.showTime = millis();
               }
-              // If on QR, touch does nothing (automatic return to ticker via timeout)
-              // IMPORTANT: Do NOT reset the timer here - let it expire naturally to return to ticker
             }
             // Multi-Channel-Control Mode: Navigate to next product
             else if (multiChannelConfig.mode != "off" && lightningConfig.thresholdKey.length() == 0) {
@@ -1821,6 +1822,9 @@ static void processThresholdPayment(const JsonDocument &doc)
     Serial.printf("[THRESHOLD] Switching GPIO %d for %d ms\n",
                   lightningConfig.thresholdPin.toInt(), lightningConfig.thresholdTime.toInt());
 
+    // Pause product timeout while ACTION TIME is active
+    productSelectionState.showTime = 0;
+
     int pin = lightningConfig.thresholdPin.toInt();
     int duration = lightningConfig.thresholdTime.toInt();
 
@@ -1852,9 +1856,10 @@ static void processThresholdPayment(const JsonDocument &doc)
     thankYouScreen();
     activityTracking.lastActivityTime = millis();
     delay(2000);
+    // Reset timer AFTER thank you screen so full PRODUCT_TIMEOUT runs from now
+    productSelectionState.showTime = millis();
     showThresholdQRScreen();
     Serial.println("[THRESHOLD] Ready for next payment");
-    productSelectionState.showTime = millis();
     deviceState.transition(DeviceState::READY);
   } else {
     Serial.printf("[THRESHOLD] Payment too small (%d < %d sats) - ignoring\n",
@@ -1865,6 +1870,9 @@ static void processThresholdPayment(const JsonDocument &doc)
 static void processNormalPayment(int pin, int duration)
 {
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
+
+  // Pause product timeout while ACTION TIME is active
+  productSelectionState.showTime = 0;
 
   if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
     Serial.println("[NORMAL] Using special mode: " + specialModeConfig.mode);
@@ -1911,9 +1919,17 @@ static void processNormalPayment(int pin, int duration)
     deviceState.transition(DeviceState::READY);
   }
   delay(2000);
-  redrawQRScreen();
-  Serial.println("[NORMAL] Ready for next payment");
+  // Reset timer AFTER thank you screen so full PRODUCT_TIMEOUT runs from now
   productSelectionState.showTime = millis();
+  // Force QR display (not ticker) after payment in ALWAYS mode
+  multiChannelConfig.btcTickerActive = false;
+  ensureQrForPin(12);
+  if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+    showSpecialModeQRScreen();
+  } else {
+    showQRScreen();
+  }
+  Serial.println("[NORMAL] Ready for next payment");
 }
 
 void processPaymentEvent(String &payloadStr)

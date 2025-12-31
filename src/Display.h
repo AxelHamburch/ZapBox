@@ -3,6 +3,7 @@
 void initDisplay();
 void startupScreen();
 void btctickerScreen();
+void updateBtctickerValues(); // Partial update - only values, no full redraw
 void initializationScreen();
 void bootUpScreen();
 void configModeScreen();

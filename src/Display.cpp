@@ -362,6 +362,75 @@ void btctickerScreen()
   }
 }
 
+// Partial update of BTC ticker values - reduces flicker during auto-updates
+// Only updates the dynamic values (price, sats, block) without redrawing the entire screen
+void updateBtctickerValues()
+{
+  // Only update text areas, don't redraw logo or buttons
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
+    int yOffset = (displayConfig.orientation == "vi") ? 10 : 0;
+    
+    // Calculate sats per currency
+    float priceFloat = bitcoinData.price.toFloat();
+    String satsPerCurrency = "";
+    if (priceFloat > 0) {
+      long satsValue = (long)((1.0 / priceFloat) * 100000000.0);
+      satsPerCurrency = String(satsValue);
+    } else {
+      satsPerCurrency = "0";
+    }
+    
+    // Clear and redraw price area
+    tft.fillRect(0, y - 35 + yOffset, 170, 30, themeBackground);
+    tft.setTextSize(3);
+    tft.drawString(bitcoinData.price, x + 5, y - 20 + yOffset, GFXFF);
+    
+    // Clear and redraw sats area
+    tft.fillRect(0, y + 30 + yOffset, 170, 30, themeBackground);
+    tft.setTextSize(3);
+    tft.drawString(satsPerCurrency, x + 5, y + 45 + yOffset, GFXFF);
+    
+    // Clear and redraw block area
+    tft.fillRect(0, y + 95 + yOffset, 170, 30, themeBackground);
+    tft.setTextSize(3);
+    tft.drawString(bitcoinData.blockHigh, x + 5, y + 110 + yOffset, GFXFF);
+    
+  } else {
+    // HORIZONTAL LAYOUT
+    int textX = (displayConfig.orientation == "hi") ? x + 30 : x + 25;
+    
+    // Calculate sats per currency
+    float priceFloat = bitcoinData.price.toFloat();
+    String satsPerCurrency = "";
+    if (priceFloat > 0) {
+      long satsValue = (long)((1.0 / priceFloat) * 100000000.0);
+      satsPerCurrency = String(satsValue);
+    } else {
+      satsPerCurrency = "0";
+    }
+    
+    // Clear and redraw price line
+    tft.fillRect(textX - 10, y - 55, 200, 30, themeBackground);
+    tft.setTextSize(2);
+    String topLabel = currency + "/BTC: ";
+    tft.drawString(topLabel + bitcoinData.price, textX, y - 40, GFXFF);
+    
+    // Clear and redraw sats line
+    tft.fillRect(textX - 10, y - 15, 200, 30, themeBackground);
+    tft.setTextSize(2);
+    String midLabel = "SAT/" + currency + ": ";
+    tft.drawString(midLabel + satsPerCurrency, textX, y, GFXFF);
+    
+    // Clear and redraw block line
+    tft.fillRect(textX - 10, y + 25, 200, 30, themeBackground);
+    tft.setTextSize(2);
+    tft.drawString("Block: " + bitcoinData.blockHigh, textX, y + 40, GFXFF);
+  }
+}
+
 // Initialization Screen (shown during connection setup)
 void initializationScreen()
 {
@@ -685,6 +754,13 @@ void stepThreeScreen()
 // Switched ON screen
 void actionTimeScreen()
 {
+  // ZAPBOX theme color inversion fix: Reset display controller with double-clear
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
+    tft.fillScreen(TFT_BLACK);
+    delay(10);
+    tft.fillScreen(TFT_BLACK);
+    delay(5);
+  }
   safeFillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
@@ -918,9 +994,11 @@ void showProductQRScreen(String label, int pin)
   // The display controller needs time to stabilize between complete color inversions
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);  // First clear to black
-    delay(10);                   // Wait for display controller to settle
+    delay(20);                   // Wait for display controller to settle (increased from 10ms)
     tft.fillScreen(TFT_BLACK);  // Second clear to ensure controller reset
-    delay(5);                    // Additional settling time
+    delay(10);                   // Additional settling time (increased from 5ms)
+    tft.fillScreen(TFT_BLACK);  // Third clear for extra stability
+    delay(5);                    // Final settling
   }
   
   safeFillScreen(bg);

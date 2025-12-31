@@ -24,6 +24,7 @@ static const unsigned long RETRY_BACKOFF = 30000; // 30 seconds between retries
 
 // External function declarations from main.cpp
 extern void btctickerScreen();
+extern void updateBtctickerValues(); // Partial update function
 
 /**
  * Fetch switch labels and configuration from LNbits server.
@@ -186,9 +187,10 @@ void updateBitcoinTicker()
     fetchBitcoinData();
 
     // Refresh the display ONLY if we're STILL on the ticker screen
+    // Use partial update to reduce flicker (only updates values, not full redraw)
     if (multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
-      btctickerScreen();
-      Serial.println("[BTC] Screen refreshed with new data");
+      updateBtctickerValues(); // Partial update instead of btctickerScreen()
+      Serial.println("[BTC] Values updated (partial refresh - reduced flicker)");
     }
   }
 }
