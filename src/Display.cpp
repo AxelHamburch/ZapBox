@@ -989,16 +989,15 @@ void showProductQRScreen(String label, int pin)
   }
 
   // Now do all display operations - COMPLETE refresh like help screens
-  // ZAPBOX theme color inversion fix: Reset display controller with double-clear
-  // This prevents horizontal stripes and color corruption when transitioning from ticker screen
+  // ZAPBOX theme color inversion fix: Clear with target color and allow settling
+  // This prevents horizontal stripes and black screen corruption when transitioning from ticker
   // The display controller needs time to stabilize between complete color inversions
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
-    tft.fillScreen(TFT_BLACK);  // First clear to black
-    delay(20);                   // Wait for display controller to settle (increased from 10ms)
-    tft.fillScreen(TFT_BLACK);  // Second clear to ensure controller reset
-    delay(10);                   // Additional settling time (increased from 5ms)
-    tft.fillScreen(TFT_BLACK);  // Third clear for extra stability
-    delay(5);                    // Final settling
+    // Clear directly with target background color (no intermediate BLACK)
+    tft.fillScreen(bg);
+    delay(30);  // Longer settling time for color inversion
+    tft.fillScreen(bg);  // Second clear with same color for stability
+    delay(15);  // Additional settling
   }
   
   safeFillScreen(bg);
