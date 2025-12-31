@@ -16,11 +16,13 @@ extern bool labelsLoadedSuccessfully;
 
 // External constants from main.cpp
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes
+const unsigned long BTC_ERROR_RETRY_INTERVAL = 60000; // 1 minute retry for errors
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
 
 // Retry backoff for failed label & BTC fetches
 static unsigned long lastFetchAttempt = 0;
 static const unsigned long RETRY_BACKOFF = 30000; // 30 seconds between retries
+static bool btcDataHasError = false; // Track if last BTC fetch had errors
 
 // External function declarations from main.cpp
 extern void btctickerScreen();
@@ -161,6 +163,12 @@ void fetchBitcoinData()
   Serial.println("[BTC] Price: " + bitcoinData.price + " " + currency);
   Serial.println("[BTC] Block height: " + bitcoinData.blockHigh);
   
+  // Check if any data failed to load
+  btcDataHasError = (bitcoinData.price == "Error" || bitcoinData.blockHigh == "Error");
+  if (btcDataHasError) {
+    Serial.println("[BTC] ERROR detected - will retry in 1 minute instead of 5 minutes");
+  }
+  
   bitcoinData.lastUpdate = millis();
 }
 
@@ -176,8 +184,11 @@ void updateBitcoinTicker()
 
   unsigned long currentTime = millis();
 
+  // Use shorter interval if last fetch had errors, otherwise use normal interval
+  unsigned long updateInterval = btcDataHasError ? BTC_ERROR_RETRY_INTERVAL : BTC_UPDATE_INTERVAL;
+
   // Check if it's time for an update and enforce backoff for failed attempts
-  if (currentTime - bitcoinData.lastUpdate >= BTC_UPDATE_INTERVAL) {
+  if (currentTime - bitcoinData.lastUpdate >= updateInterval) {
     // Enforce 30-second backoff between failed BTC fetch attempts
     if ((currentTime - lastFetchAttempt) < RETRY_BACKOFF) {
       return; // Too soon - skip this attempt

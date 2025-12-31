@@ -99,6 +99,7 @@ void navigateToNextProduct() {
   if (multiChannelConfig.currentProduct == -1) {
     // Start from first product
     multiChannelConfig.currentProduct = 1;
+    productSelectionState.showTime = millis(); // Reset timer immediately to prevent race condition
   } else if (multiChannelConfig.btcTickerActive) {
     // If ticker is active, go back to first product
     multiChannelConfig.btcTickerActive = false;
