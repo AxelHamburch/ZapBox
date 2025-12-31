@@ -1,79 +1,38 @@
-# Firmware Release Process
+# Firmware Release Process (Copilot Workflow)
 
-This guide describes how to create and publish a new firmware version for the ZapBox.
+This is an automated workflow guide for GitHub Copilot to create firmware releases.
 
 ## Version Numbering
 
-ZapBox uses Bitcoin block height as version numbers to create a timestamp reference and celebrate the Bitcoin network.
-
-**Format:** `vBLOCKHEIGHT[-suffix]`
-- Example: `v927292` (block height 927292)
-- With suffix: `v927292-pre` (pre-release), `v927292-beta`, etc.
+Use Bitcoin block height as version number: `vBLOCKHEIGHT`
 
 **Get current block height:**
-- Visit: https://mempool.space/api/blocks/tip/height
-- Or check: https://mempool.space/ (displayed on homepage)
+```powershell
+Invoke-WebRequest -Uri "https://mempool.space/api/blocks/tip/height" -UseBasicParsing | Select-Object -ExpandProperty Content
+```
 
-## Step-by-Step Release Process
+## Automated Release Steps
 
-### 1. Update Version in `platformio.ini`
+### 1. Update Version in platformio.ini
 
-Open `platformio.ini` and update the `VERSION` flag:
-
+Update the VERSION flag:
 ```ini
-build_flags = 
-    -DVERSION=\"v927292\"
+-DVERSION=\"v930331\"
 ```
 
-Replace `927292` with the current block height from mempool.space.
+### 2. Create Firmware Directory
 
-### 2. Compile Firmware
-
-Build the firmware to generate binary files:
-
-```bash
-# Using PlatformIO CLI
-pio run
-
-# Or use VS Code: PlatformIO: Build (Ctrl+Alt+B)
+```powershell
+mkdir installer/firmware/v930331
 ```
 
-This creates binary files in `.pio/build/lilygo-t-display-s3/`:
-- `bootloader.bin`
-- `partitions.bin`
-- `firmware.bin`
+### 3. Create manifest.json
 
-### 3. Create Firmware Directory
-
-Create a new folder under `installer/firmware/` with the version number:
-
-```bash
-mkdir installer/firmware/v927292
-```
-
-### 4. Copy Binary Files
-
-Copy the three binary files from `.pio/build/lilygo-t-display-s3/` to the new firmware folder:
-
-```bash
-cp .pio/build/lilygo-t-display-s3/bootloader.bin installer/firmware/v927292/
-cp .pio/build/lilygo-t-display-s3/partitions.bin installer/firmware/v927292/
-cp .pio/build/lilygo-t-display-s3/firmware.bin installer/firmware/v927292/
-```
-
-**Important paths in `.pio/`:**
-- Bootloader: `.pio/build/lilygo-t-display-s3/bootloader.bin`
-- Partitions: `.pio/build/lilygo-t-display-s3/partitions.bin`
-- Firmware: `.pio/build/lilygo-t-display-s3/firmware.bin`
-
-### 5. Create `manifest.json`
-
-Create `installer/firmware/v927292/manifest.json` with the following structure:
-
+Create `installer/firmware/v930331/manifest.json`:
 ```json
 {
   "name": "ZapBox",
-  "version": "v927292",
+  "version": "v930331",
   "new_install_prompt_erase": true,
   "builds": [
     {
@@ -88,139 +47,92 @@ Create `installer/firmware/v927292/manifest.json` with the following structure:
 }
 ```
 
-**Important:** Update the `version` field with your new version number.
+### 4. Update Web Installer (installer/index.html)
 
-### 6. Update Web Installer (`installer/index.html`)
-
-Add the new version to the firmware selector dropdown:
-
+**Line ~59** - Add new version option at top:
 ```html
-<select id="firmware-version">
-    <!-- Add new version at the top with (Latest) -->
-    <option value="./firmware/v927292/manifest.json">v927292 (Latest - Your feature description)</option>
-    
-    <!-- Remove (Latest) from previous version -->
-    <option value="./firmware/v926800/manifest.json">v926800 (Add options for color and special mode)</option>
-    
-    <!-- Keep older versions as-is -->
-    <option value="./firmware/v926705/manifest.json">v926705 (Add Threshold Mode)</option>
-    ...
-</select>
+<option value="./firmware/v930331/manifest.json">v930331 (Latest - Short description)</option>
 ```
+Remove "(Latest)" from previous version.
 
-**Also update the flash button manifest:**
-
+**Line ~76** - Update flash button manifest:
 ```html
-<esp-web-install-button id="flash-button" manifest="./firmware/v927292/manifest.json">
+<esp-web-install-button id="flash-button" manifest="./firmware/v930331/manifest.json">
 ```
 
-### 7. Version Description
+### 5. Compile Firmware
 
-**If unclear what to write as version description:**
-- Check recent commits: `git log --oneline -10`
-- Review TODO.md for completed features
-- Review recent conversation/chat history
-- **ASK THE USER** for a short description (preferred!)
-
-**Examples of good descriptions:**
-- "Add screensaver and deep sleep power saving"
-- "Fix WiFi reconnection issues"
-- "Add threshold mode with wallet monitoring"
-- "Improve error handling and diagnostics"
-
-### 8. Verify Installation Structure
-
-Final structure should look like this:
-
-```
-installer/firmware/
-├── v926531/
-│   ├── bootloader.bin
-│   ├── firmware.bin
-│   ├── manifest.json
-│   └── partitions.bin
-├── v926561/
-│   └── ...
-├── v927292/          ← NEW VERSION
-│   ├── bootloader.bin
-│   ├── firmware.bin
-│   ├── manifest.json
-│   └── partitions.bin
+```powershell
+C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run
 ```
 
-### 9. Test the Installation
+### 6. Copy Binary Files
 
-1. Open `installer/index.html` in a web browser (Chrome/Edge)
-2. Verify new version appears in dropdown
-3. Verify "Latest" tag is on new version only
-4. Test flash process with a device
-5. Verify device boots and shows correct version
+```powershell
+Copy-Item -Path ".pio\build\lilygo-t-display-s3\bootloader.bin" -Destination "installer\firmware\v930331\bootloader.bin"
+Copy-Item -Path ".pio\build\lilygo-t-display-s3\partitions.bin" -Destination "installer\firmware\v930331\partitions.bin"
+Copy-Item -Path ".pio\build\lilygo-t-display-s3\firmware.bin" -Destination "installer\firmware\v930331\firmware.bin"
+```
 
-### 10. Commit and Push
+### 7. Generate Release Description
+
+Use `git log` to get commits since last release:
+```powershell
+git log --oneline v930053..HEAD
+```
+
+Create a **SHORT and CONCISE** summary of all changes/commits since last firmware release:
+- Group by type: Visual, Bug Fixes, Features, Technical
+- 1-2 lines per change maximum
+- Focus on user-visible improvements
+- Include technical details only if relevant
+
+**Format:**
+```
+## Changes Since v930053
+
+### Visual Improvements
+- Changed zapbox theme to gold color (0xFEA0)
+
+### Bug Fixes  
+- Fixed NEXT button race condition in Duo/Quattro modes
+- Improved Bitcoin data retry (1min on error vs 5min)
+```
+
+### 8. Git Commit
 
 ```bash
-git add platformio.ini
-git add installer/firmware/v927292/
-git add installer/index.html
-git commit -m "Release v927292: <feature description>"
-git push
+git add platformio.ini installer/firmware/v930331/ installer/index.html
+git commit -m "Release v930331: <short description>"
 ```
 
-## Quick Reference
+### 9. Inform User
 
-| Step | Command/File | Description |
-|------|-------------|-------------|
-| 1 | `platformio.ini` | Update `-DVERSION` |
-| 2 | `pio run` | Compile firmware |
-| 3 | `mkdir installer/firmware/vXXXXXX` | Create version folder |
-| 4 | Copy from `.pio/build/lilygo-t-display-s3/` | Copy 3 binary files |
-| 5 | `installer/firmware/vXXXXXX/manifest.json` | Create manifest |
-| 6 | `installer/index.html` | Update version selector |
-| 7 | Ask user if needed | Get version description |
-| 8 | Test | Flash and verify |
+Tell user:
+- Release v930331 prepared
+- Show brief changelog
+- Next steps: Test → Tag → Push → GitHub Release
+
+## Quick Checklist
+
+- [ ] Get block height
+- [ ] Update platformio.ini
+- [ ] Create firmware directory
+- [ ] Create manifest.json
+- [ ] Update installer/index.html (2 locations)
+- [ ] Compile firmware
+- [ ] Copy 3 binary files
+- [ ] Generate release description from git log
+- [ ] Git commit
+- [ ] Inform user
 
 ## Binary File Locations
 
-After running `pio run`, find binaries at:
-
+After `pio run`:
 ```
 .pio/build/lilygo-t-display-s3/
-├── bootloader.bin    (offset: 0)
-├── partitions.bin    (offset: 32768 / 0x8000)
-└── firmware.bin      (offset: 65536 / 0x10000)
+├── bootloader.bin
+├── partitions.bin
+└── firmware.bin
 ```
 
-These offsets are specified in the `manifest.json` file.
-
-## Troubleshooting
-
-**Build fails:**
-- Check `platformio.ini` syntax
-- Verify all dependencies installed
-- Try clean build: `pio run --target clean`
-
-**Binary files missing:**
-- Run `pio run` first
-- Check `.pio/build/lilygo-t-display-s3/` directory
-- Verify partition table: `partitions_16mb.csv`
-
-**Web installer doesn't show new version:**
-- Clear browser cache
-- Check `manifest.json` path in HTML
-- Verify JSON syntax (use jsonlint.com)
-
-**Flash fails:**
-- Verify all 3 binary files present
-- Check offsets match manifest
-- Try "Erase device" first
-
-## Version History Format
-
-When updating `index.html`, maintain this format:
-
-```html
-<option value="./firmware/vXXXXXX/manifest.json">vXXXXXX (Latest - Short description)</option>
-<option value="./firmware/vYYYYYY/manifest.json">vYYYYYY (Feature description without Latest)</option>
-```
-
-Keep descriptions concise (~50-80 characters) and focus on the main feature/fix.
