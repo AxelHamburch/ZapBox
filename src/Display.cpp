@@ -100,7 +100,7 @@ const ThemeConfig themeConfigs[] = {
   {"black-btcorange", TFT_BLACK, 0xFCC0},
   {"btcorange-black", 0xFCC0, TFT_BLACK},
   {"yellow-black", TFT_YELLOW, TFT_BLACK},
-  {"zapbox", 0xD600, TFT_BLACK},
+  {"zapbox", 0xFEA0, TFT_BLACK},
   {"maroon-magenta", TFT_MAROON, TFT_MAGENTA},
   {"black-red", TFT_BLACK, TFT_RED},
   {"brown-orange", TFT_BROWN, TFT_ORANGE},
@@ -209,14 +209,15 @@ void startupScreen()
 // Bitcoin Ticker Screen
 void btctickerScreen()
 {
-  // ZAPBOX theme color inversion fix: Reset display controller with double-clear
-  // This prevents horizontal stripes and color corruption when transitioning from inverted product screen
-  // The display controller needs time to stabilize between complete color inversions
+  // ZAPBOX/BTCORANGE theme color inversion fix
+  // Problem: Inverted QR has YELLOW/ORANGE background, ticker has BLACK background
+  // Need careful transition for color inversion (YELLOW/ORANGE -> BLACK)
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
-    tft.fillScreen(TFT_BLACK);  // First clear to black
-    delay(10);                   // Wait for display controller to settle
-    tft.fillScreen(TFT_BLACK);  // Second clear to ensure controller reset
-    delay(5);                    // Additional settling time
+    // Transition from inverted QR (yellow/orange) to ticker (black)
+    tft.fillScreen(themeBackground);  // Clear to black
+    delay(30);
+    tft.fillScreen(themeBackground);  // Second clear for stability
+    delay(20);
   }
   
   safeFillScreen(themeBackground);
@@ -935,7 +936,7 @@ void showProductQRScreen(String label, int pin)
   uint16_t bg = themeBackground;
   if (displayConfig.theme == "zapbox") {
     fg = TFT_BLACK;
-    bg = 0xD600;
+    bg = 0xFEA0;
   } else if (displayConfig.theme == "btcorange-black") {
     fg = TFT_BLACK;
     bg = 0xFCC0;
@@ -989,15 +990,21 @@ void showProductQRScreen(String label, int pin)
   }
 
   // Now do all display operations - COMPLETE refresh like help screens
-  // ZAPBOX theme color inversion fix: Clear with target color and allow settling
-  // This prevents horizontal stripes and black screen corruption when transitioning from ticker
-  // The display controller needs time to stabilize between complete color inversions
+  // ZAPBOX/BTCORANGE theme color inversion fix
+  // Problem: Ticker has BLACK background, inverted QR has YELLOW/ORANGE background
+  // Display controller needs careful transition sequence for this complete color inversion
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
-    // Clear directly with target background color (no intermediate BLACK)
+    // Step 1: Clear to BLACK (ensures clean starting point from ticker)
+    tft.fillScreen(TFT_BLACK);
+    delay(20);
+    
+    // Step 2: Transition to target background color (yellow or orange)
     tft.fillScreen(bg);
-    delay(30);  // Longer settling time for color inversion
-    tft.fillScreen(bg);  // Second clear with same color for stability
-    delay(15);  // Additional settling
+    delay(30);
+    
+    // Step 3: Confirm with second fill of target color
+    tft.fillScreen(bg);
+    delay(20);
   }
   
   safeFillScreen(bg);
