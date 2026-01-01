@@ -3,6 +3,7 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+.vscode/sftp.json
 for-later.md
 *.backup
 _codeql_detected_source_root
