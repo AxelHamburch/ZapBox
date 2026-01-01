@@ -233,14 +233,14 @@ Configuration is done via the [Web Installer](installer/index.html) with browser
 - LNURL for payments
 - Display orientation (horizontal/vertical)
 - **Display Theme**: Choose from 16 color combinations including:
-  - BLACK & WHITE, WHITE & BLACK
+  - BLACK & WHITE, BLACK & DARKCYAN
   - BLACK & RED, BLACK & OLIVE
   - WHITE & NAVY, WHITE & DARKCYAN
   - GREEN & RED, RED & GREEN
   - GREY & BLUE, ORANGE & BROWN, ORANGE & BLACK
   - BROWN & ORANGE, BROWN & YELLOW
   - MAROON & MAGENTA, DARKCYAN & CYAN
-  - DARK GREY & LIGHT GREY
+  - BLACK & DARK GREY
   - BLACK & LIGHT GREY
 
 ### Advanced Features

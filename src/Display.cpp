@@ -90,7 +90,7 @@ struct ThemeConfig {
 // Lookup is performed via linear search in setThemeColors() - very fast for 16 items
 const ThemeConfig themeConfigs[] = {
   {"black-white", TFT_BLACK, TFT_WHITE},
-  {"white-black", TFT_WHITE, TFT_BLACK},
+  {"black-darkcyan", TFT_BLACK, TFT_DARKCYAN},
   {"darkgreen-green", TFT_DARKGREEN, TFT_GREEN},
   {"darkgreen-lightgrey", TFT_DARKGREEN, TFT_LIGHTGREY},
   {"red-green", TFT_RED, TFT_GREEN},
@@ -99,7 +99,6 @@ const ThemeConfig themeConfigs[] = {
   {"black-yellow", TFT_BLACK, TFT_YELLOW},
   {"black-btcorange", TFT_BLACK, 0xFCC0},
   {"btcorange-black", 0xFCC0, TFT_BLACK},
-  {"yellow-black", TFT_YELLOW, TFT_BLACK},
   {"zapbox", 0xFEA0, TFT_BLACK},
   {"maroon-magenta", TFT_MAROON, TFT_MAGENTA},
   {"black-red", TFT_BLACK, TFT_RED},
@@ -109,7 +108,7 @@ const ThemeConfig themeConfigs[] = {
   {"white-navy", TFT_WHITE, TFT_NAVY},
   {"darkcyan-cyan", TFT_DARKCYAN, TFT_CYAN},
   {"black-olive", TFT_BLACK, TFT_OLIVE},
-  {"darkgrey-lightgrey", TFT_DARKGREY, TFT_LIGHTGREY},
+  {"black-darkgrey", TFT_BLACK, TFT_DARKGREY},
   {"black-lightgrey", TFT_BLACK, TFT_LIGHTGREY}
 };
 
