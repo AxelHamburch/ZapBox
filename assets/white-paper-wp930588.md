@@ -2,7 +2,7 @@
 
 **Bitcoin Lightning Network-gesteuerte IoT-Gerätesteuerung**
 
-Version 1.0 | Januar 2026
+Version wp930588 | Januar 2026
 
 ---
 
