@@ -253,16 +253,16 @@
             
             <div class="input-wrapper">
                 <div>
-                    <label for="multiControl">Multi-Channel-Control Mode</label>
+                    <label for="multiControl">Multi-Channel Mode</label>
                     <select name="multiControl" id="multiControl">
-                        <option value="off" selected>Single (1 channel - default)</option>
-                        <option value="duo">Duo (2 channels)</option>
-                        <option value="quattro">Quattro (4 channels)</option>
+                        <option value="off" selected>Single (1 channel - default - pin 12)</option>
+                        <option value="duo">Duo (2 channels - pin 12, 13)</option>
+                        <option value="quattro">Quattro (4 channels - pin 12, 13, 10, 11)</option>
                     </select>
                 </div>
             </div>
             
-            <p style="margin-top: 20px; color: #888;"><i><strong>Multi-Channel-Control:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use touch gestures (swipe ←→) or the button (if available) to navigate between products.</i></p>
+            <p style="margin-top: 20px; color: #888;"><i><strong>Multi-Channel-Control:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use NEXT button, touch gestures (swipe ←→) or external button (if available) to navigate between products.</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Features:</strong> Automatic LNURL generation (Bech32/LUD17) • Backend product labels • Touch navigation • Currency symbol conversion (€→EUR, $→USD, etc.)</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> Not compatible with the Threshold feature. Please disable it.</i></p>
         </div>
