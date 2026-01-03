@@ -32,6 +32,13 @@
 </head>
 
 <body>
+    <!-- Image Popup Modal -->
+    <div id="help-image-modal" class="modal" onclick="closeHelpModal()">
+        <div class="modal-content">
+            <img src="./assets/Help-DeviceString.webp" alt="Help - Device String" onclick="closeHelpModal()">
+        </div>
+    </div>
+
     <div class="wrapper">
 
         <noscript>
@@ -142,6 +149,7 @@
             <div>
                 <label for="socket">Device settings string</label>
                 <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
+                <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
             </div>
             <div>
                 <label for="orientation">Screen orientation</label>
@@ -1150,6 +1158,19 @@
         currency.addEventListener("input", (event) => {
             config[19].value = event.target.value.toUpperCase();
             event.target.value = event.target.value.toUpperCase(); // Show uppercase in input
+        });
+
+        // Help modal functionality
+        const helpLink = document.getElementById('help-device-string-link');
+        const helpModal = document.getElementById('help-image-modal');
+        
+        function closeHelpModal() {
+            helpModal.style.display = 'none';
+        }
+        
+        helpLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            helpModal.style.display = 'flex';
         });
 
     </script>
