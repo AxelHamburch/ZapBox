@@ -465,6 +465,7 @@ Electrical design and housing variants, see table.
 | b926837 | compact | Prototyp, uses e926834 |
 | b928260 | compact | Prototyp 2, uses e928304 |
 | b928555 | compact | Sample device, uses e928556 |
+| b930595 | compact | Optimization, separate label |
 
 ### Electrical layout / circuit diagram (Inkscape)
 
