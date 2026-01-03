@@ -12,7 +12,8 @@ The comprehensive technical documentation is now available in both **German** an
 
 **⛓️ Blockchain Timestamp:**
 
-The SHA-256 hash of the **English White Paper PDF** ([`white-paper-wp930750-en.pdf`](assets/white-paper/white-paper-wp930750-en.pdf)) has been anchored in the Bitcoin blockchain as OP_RETURN. ✅
+The SHA-256 hash of the **English White Paper PDF** ([`white-paper-wp930750-en.pdf`](assets/white-paper/white-paper-wp930750-en.pdf)) has been anchored in the Bitcoin blockchain using an OP_RETURN transaction.
+Hash: a4553324cf00419331063cdfb83fd9649cd5a82c91b65c4a746a5e14f3acb739 ✅
 
 Block **930758** from https://opreturnbot.com/
 
