@@ -111,7 +111,10 @@ The PN532 chip initializes automatically on power-up.
 
 ### Electrical Layout
 
-See the complete wiring diagram: [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
+See the complete wiring diagram:
+
+- [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
+- [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
 
 ### External LED Button (Optional)
 
@@ -487,18 +490,20 @@ Electrical design and housing variants, see table.
 
 | Version | Type | Comment |
 |---------|------|---------|
-| b926837 | compact | Prototyp, uses e926834 |
-| b928260 | compact | Prototyp 2, uses e928304 |
-| b928555 | compact | Sample device, uses e928556 |
-| b930595 | compact | Optimization, separate label |
+| b926837 | Compact | Prototyp, uses e926834 |
+| b928260 | Compact | Prototyp 2, uses e928304 |
+| b928555 | Compact | Sample device, uses e928556 |
+| b930595 | Compact | Optimization, separate label |
+| b931760 | Duo |  First Duo with two front panels, 90 and 35 degrees  |
 
 ### Electrical layout / circuit diagram (Inkscape)
 
 | Version | Type | Comment |
 |---------|------|---------|
-| e926834 | compact | Prototype |
-| e928304 | compact | Prototype 2 |
-| e928556 | compact | Sample device |
+| e926834 | Compact | Prototype |
+| e928304 | Compact | Prototype 2 |
+| e928556 | Compact | Sample device |
+| e931557 | Duo | First Duo |
 
 ## Support
 
