@@ -291,6 +291,17 @@ void readFiles()
       LOG_WARN("Config", "Index 18 (btcTickerMode) not found in config - using default: " + multiChannelConfig.btcTickerMode);
     }
 
+    // Read external LED button configuration (index 20)
+    const JsonObject maRoot20 = doc[20];
+    if (!maRoot20.isNull()) {
+      const char *maRoot20Char = maRoot20["value"];
+      String buttonSetting = String(maRoot20Char);
+      buttonSetting.toLowerCase();
+      buttonSetting.trim();
+      externalButtonState.enabled = (buttonSetting == "yes");
+      LOG_INFO("Config", String("External LED button: ") + (externalButtonState.enabled ? "ENABLED" : "DISABLED"));
+    }
+
     // Read currency configuration (index 19)
     const JsonObject maRoot19 = doc[19];
     if (!maRoot19.isNull()) {

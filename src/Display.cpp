@@ -281,8 +281,8 @@ void btctickerScreen()
       } else {
         tft.drawString("HELP", x + 2, 10, GFXFF); // Top for vi (button at top)
       }
-    } else {
-      // Non-touch version: mirror labels for inverse displayConfig.orientation
+    } else if (!externalButtonState.enabled) {
+      // Non-touch version: mirror labels for inverse displayConfig.orientation (only if external button is NOT enabled)
       tft.setTextDatum(ML_DATUM);
       if (displayConfig.orientation == "v") {
         tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
@@ -347,8 +347,8 @@ void btctickerScreen()
         tft.drawString("L", 11, y + 10, GFXFF);
         tft.drawString("P", 11, y + 30, GFXFF);
       }
-    } else {
-      // Non-touch version: mirror labels for inverse displayConfig.orientation
+    } else if (!externalButtonState.enabled) {
+      // Non-touch version: mirror labels for inverse displayConfig.orientation (only if external button is NOT enabled)
       tft.setTextDatum(ML_DATUM);
       if (displayConfig.orientation == "h") {
         tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
@@ -895,10 +895,13 @@ void showThresholdQRScreen()
     tft.drawString("ACTION", x - 55, y + 100, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
-    if (displayConfig.orientation == "v") {
-      tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
-    } else {
-      tft.drawString("HELP", 5, 10, GFXFF); // Left side top for vi
+    if (!touchState.available && !externalButtonState.enabled) {
+      // Only show HELP if not touch and external button not enabled
+      if (displayConfig.orientation == "v") {
+        tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
+      } else {
+        tft.drawString("HELP", 5, 10, GFXFF); // Left side top for vi
+      }
     }
   } else {
     int boxX = (displayConfig.orientation == "hi") ? 173 : 168;
@@ -909,10 +912,13 @@ void showThresholdQRScreen()
     tft.drawString("ACTION", x + textOffset, y + 30, GFXFF);
     tft.setTextSize(2);
     tft.setTextColor(themeForeground);
-    if (displayConfig.orientation == "h") {
-      tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
-    } else {
-      tft.drawString("HELP", 5, 163, GFXFF); // Bottom left for hi
+    if (!touchState.available && !externalButtonState.enabled) {
+      // Only show HELP if not touch and external button not enabled
+      if (displayConfig.orientation == "h") {
+        tft.drawString("HELP", x + 110, 9, GFXFF); // Top right
+      } else {
+        tft.drawString("HELP", 5, 163, GFXFF); // Bottom left for hi
+      }
     }
   }
 
@@ -1050,8 +1056,8 @@ void showProductQRScreen(String label, int pin)
       } else {
         tft.drawString("HELP", x + 2, 10, GFXFF);
       }
-    } else {
-      // Non-touch version: mirror labels for inverse displayConfig.orientation
+    } else if (!externalButtonState.enabled) {
+      // Non-touch version: mirror labels for inverse displayConfig.orientation (only if external button is NOT enabled)
       tft.setTextDatum(ML_DATUM);
       if (displayConfig.orientation == "v") {
         tft.drawString("HELP", x + 35, y + 150, GFXFF);
@@ -1102,8 +1108,8 @@ void showProductQRScreen(String label, int pin)
         tft.drawString("L", 11, y + 10, GFXFF);
         tft.drawString("P", 11, y + 30, GFXFF);
       }
-    } else {
-      // Non-touch version: mirror labels for inverse displayConfig.orientation
+    } else if (!externalButtonState.enabled) {
+      // Non-touch version: mirror labels for inverse displayConfig.orientation (only if external button is NOT enabled)
       tft.setTextDatum(ML_DATUM);
       if (displayConfig.orientation == "h") {
         tft.drawString("HELP", x + 110, 9, GFXFF);
@@ -1148,8 +1154,8 @@ void productSelectionScreen()
       } else {
         tft.drawString("HELP", x + 2, 10, GFXFF); // Top for vi (button at top)
       }
-    } else {
-      // Non-touch version: mirror labels for inverse displayConfig.orientation
+    } else if (!externalButtonState.enabled) {
+      // Non-touch version: mirror labels for inverse displayConfig.orientation (only if external button is NOT enabled)
       tft.setTextDatum(ML_DATUM);
       if (displayConfig.orientation == "v") {
         tft.drawString("HELP", x + 35, y + 150, GFXFF); // Right side bottom
@@ -1190,8 +1196,8 @@ void productSelectionScreen()
         tft.drawString("L", 11, y + 10, GFXFF);
         tft.drawString("P", 11, y + 30, GFXFF);
       }
-    } else {
-      // Non-touch version: mirror labels for inverse displayConfig.orientation
+    } else if (!externalButtonState.enabled) {
+      // Non-touch version: mirror labels for inverse displayConfig.orientation (only if external button is NOT enabled)
       tft.setTextDatum(ML_DATUM);
       if (displayConfig.orientation == "h") {
         tft.drawString("HELP", x + 110, 9, GFXFF); // Top right

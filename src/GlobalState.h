@@ -75,6 +75,7 @@ struct ExternalButtonState {
   unsigned long sequenceStart = 0;
   unsigned long pressStartTime = 0;
   unsigned long lastChange = 0;
+  bool enabled = false; // Whether external button is enabled (replaces onboard buttons)
 };
 
 struct ExternalButtonConfig {

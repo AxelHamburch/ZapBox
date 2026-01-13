@@ -68,6 +68,15 @@ void handleExternalButton() {
     unsigned long pressDuration = now - externalButtonState.pressStartTime;
     LOG_DEBUG("Button", String("Press duration: ") + String(pressDuration) + String(" ms"));
 
+    // Check if in config mode and guard period elapsed - allow exit via button release
+    if (deviceState.isInState(DeviceState::CONFIG_MODE) && 
+        configModeStartTime > 0 && 
+        (now - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
+      LOG_INFO("Button", "External button release -> exit config mode");
+      ESP.restart();
+      return; // Don't process other click logic after restart trigger
+    }
+
     // If a hold action already fired, reset state
     if (externalButtonState.holdActionFired) {
       externalButtonState.holdActionFired = false;
@@ -131,21 +140,9 @@ void checkExternalButtonHolds() {
 }
 
 void handleConfigExitButtons() {
-  // Only check external button here - NEXT button is handled via OneButton callback
-  if (!deviceState.isInState(DeviceState::CONFIG_MODE) || configModeStartTime == 0 || (millis() - configModeStartTime) < ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
-    return;
-  }
-
-  static int prevExtState = HIGH;
-  int extState = digitalRead(PIN_LED_BUTTON_SW);
-
-  // Positive flank (release) exits config
-  if (prevExtState == LOW && extState == HIGH) {
-    LOG_INFO("Button", "External button release -> exit config mode");
-    ESP.restart();
-  }
-
-  prevExtState = extState;
+  // External button config exit is now handled directly in handleExternalButton()
+  // NEXT button exit is handled via OneButton callback (onNextButtonClick)
+  // This function is kept for compatibility but no longer performs external button checks
 }
 
 // Callback for NEXT button click in config mode (registered in setup)

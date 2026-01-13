@@ -215,7 +215,27 @@
                 </div>
             </div>
             
-            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> QR code format is used to generate the QR code. Recommended bech32.</i></p>
+            <p style="margin-top: 5px; margin-bottom: 5px; color: #888;"><i><strong>Note:</strong> QR code format is used to generate the QR code. Recommended bech32.</i></p>
+            
+            <div class="input-wrapper">
+                <div>
+                    <label for="externalButton">Separate LED button</label>
+                    <select name="externalButton" id="externalButton">
+                        <option value="no" selected>No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Default: No - Use external LED button instead of onboard buttons</p>
+                </div>
+            </div>
+            
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> Pressing the LED button deactivates the HELP and NEXT buttons.</i></p>
+            <p style="margin-top: 10px; color: #888; margin-left: 20px;">
+                <i>Press the LED button:<br>
+                &nbsp;&nbsp;• once => Change display / product<br>
+                &nbsp;&nbsp;• once and hold => Help page<br>
+                &nbsp;&nbsp;• several times => Report page<br>
+                &nbsp;&nbsp;• once briefly and then hold at least 5 seconds => CONF page</i>
+            </p>
         </div>
         
         <!-- Section Separator -->
@@ -418,6 +438,7 @@
         const qrFormat = document.getElementById('qrFormat');
         const orientation = document.getElementById('orientation');
         const theme = document.getElementById('theme');
+        const externalButton = document.getElementById('externalButton');
         const specialMode = document.getElementById('specialMode');
         const frequency = document.getElementById('frequency');
         const dutyCycleRatio = document.getElementById('dutyCycleRatio');
@@ -539,6 +560,10 @@
             {
                 "name": "currency",
                 "value": "USD"
+            },
+            {
+                "name": "externalButton",
+                "value": "no"
             }
         ]
 
@@ -876,6 +901,12 @@
                 multiControl.value = config[17].value;
                 btcTicker.value = config[18].value;
                 currency.value = config[19].value;
+                // Index 20: External button (may not exist in older configs)
+                if (config[20] && config[20].value) {
+                    externalButton.value = config[20].value;
+                } else {
+                    externalButton.value = 'no'; // Default for older configs
+                }
                 
                 // Show/hide custom fields based on loaded special mode
                 if (specialMode.value === 'custom') {
@@ -958,6 +989,12 @@
             config[17].value = multiControl.value;
             config[18].value = btcTicker.value;
             config[19].value = currency.value.toUpperCase() || "USD"; // Convert to uppercase
+            
+            // Ensure config[20] exists for external button
+            if (!config[20]) {
+                config[20] = { key: "externalButton", value: "no" };
+            }
+            config[20].value = externalButton.value; // Index 20 for external button
             
             // Validate required fields
             const ssidValue = config[0].value.trim();

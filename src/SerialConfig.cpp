@@ -13,7 +13,7 @@ void* touchControllerPtr = nullptr;
 extern unsigned long configModeStartTime;
 extern StateManager deviceState;
 
-// Check if NEXT or HELP button is pressed to exit config mode
+// Check if NEXT, HELP, or EXTERNAL button is pressed to exit config mode
 static bool checkButtonExit() {
     // Only check after guard period
     if (configModeStartTime == 0 || (millis() - configModeStartTime) < ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
@@ -39,6 +39,16 @@ static bool checkButtonExit() {
         return true;
     }
     prevHelpState = helpState;
+    
+    // Check EXTERNAL button (PIN_LED_BUTTON_SW)
+    static int prevExtState = HIGH;
+    int extState = digitalRead(PIN_LED_BUTTON_SW);
+    if (prevExtState == HIGH && extState == LOW) { // Negative edge (button pressed)
+        Serial.println("[CONFIG] EXTERNAL button pressed - exiting config mode");
+        prevExtState = extState;
+        return true;
+    }
+    prevExtState = extState;
     
     return false;
 }
