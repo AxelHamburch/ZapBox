@@ -129,6 +129,18 @@
 				"$platformio"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Build with external button config exit fix",
+			"type": "shell",
+			"command": "platformio run",
+			"group": "build"
+		},
+		{
+			"label": "Build config exit fix",
+			"type": "shell",
+			"command": "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe run",
+			"group": "build"
 		}
 	]
 }
