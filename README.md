@@ -495,6 +495,7 @@ Electrical design and housing variants, see table.
 | b928555 | Compact | Sample device, uses e928556 |
 | b930595 | Compact | Optimization, separate label |
 | b931760 | Duo |  First Duo with two front panels, 90 and 35 degrees  |
+| b932506 | Compact |  Add adapter system, 90-degree front, change USB-C position  |
 
 ### Electrical layout / circuit diagram (Inkscape)
 
