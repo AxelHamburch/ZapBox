@@ -497,7 +497,7 @@ Electrical design and housing variants, see table.
 | b930595 | Compact | Optimization, separate label |
 | b931760 | Duo |  First Duo with two front panels, 90 and 35 degrees  |
 | b932506 | Compact |  Add adapter system, 90-degree front, change USB-C position  |
-| b932595 | Duo&Quattro |  First Quattro and update Duo, 90 and 35 degrees front |
+| b932595 | Duo & Quattro |  First Quattro and update Duo, 90 and 35 degrees front |
 
 ### Electrical layout / circuit diagram (Inkscape)
 
