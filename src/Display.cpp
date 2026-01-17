@@ -94,7 +94,7 @@ const ThemeConfig themeConfigs[] = {
   {"darkgreen-green", TFT_DARKGREEN, TFT_GREEN},
   {"darkgreen-lightgrey", TFT_DARKGREEN, TFT_LIGHTGREY},
   {"red-green", TFT_RED, TFT_GREEN},
-  {"grey-blue", TFT_LIGHTGREY, TFT_BLUE},
+  {"black-blue", TFT_BLACK, TFT_BLUE},
   {"orange-brown", TFT_ORANGE, TFT_BROWN},
   {"black-yellow", TFT_BLACK, TFT_YELLOW},
   {"black-btcorange", TFT_BLACK, 0xFCC0},
