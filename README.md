@@ -115,6 +115,7 @@ See the complete wiring diagram:
 
 - [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
 - [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
+- [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
 
 ### External LED Button (Optional)
 
@@ -496,6 +497,7 @@ Electrical design and housing variants, see table.
 | b930595 | Compact | Optimization, separate label |
 | b931760 | Duo |  First Duo with two front panels, 90 and 35 degrees  |
 | b932506 | Compact |  Add adapter system, 90-degree front, change USB-C position  |
+| b932595 | Duo&Quattro |  First Quattro and update Duo, 90 and 35 degrees front |
 
 ### Electrical layout / circuit diagram (Inkscape)
 
@@ -505,6 +507,8 @@ Electrical design and housing variants, see table.
 | e928304 | Compact | Prototype 2 |
 | e928556 | Compact | Sample device |
 | e931557 | Duo | First Duo |
+| e932547 | Quattro | First Quattro |
+| e932714 | Duo | Duo update |
 
 ## Support
 
