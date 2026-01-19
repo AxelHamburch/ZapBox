@@ -15,40 +15,61 @@ extern StateManager deviceState;
 
 // Check if NEXT, HELP, or EXTERNAL button is pressed to exit config mode
 static bool checkButtonExit() {
+    // Static variables to track previous button states
+    static int prevNextState = HIGH;
+    static int prevHelpState = HIGH;
+    static int prevExtState = HIGH;
+    static bool initialized = false;
+    
+    // Initialize button states on first call (during guard period)
+    // This prevents triggering exit if buttons are already pressed when config mode starts
+    if (!initialized) {
+        prevNextState = digitalRead(PIN_BUTTON_1);
+        prevHelpState = digitalRead(PIN_BUTTON_2);
+        #ifdef PIN_LED_BUTTON_SW
+        prevExtState = digitalRead(PIN_LED_BUTTON_SW);
+        #else
+        prevExtState = HIGH; // Not available on this board
+        #endif
+        initialized = true;
+    }
+    
     // Only check after guard period
     if (configModeStartTime == 0 || (millis() - configModeStartTime) < ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
         return false;
     }
     
     // Check NEXT button (PIN_BUTTON_1)
-    static int prevNextState = HIGH;
     int nextState = digitalRead(PIN_BUTTON_1);
     if (prevNextState == HIGH && nextState == LOW) { // Negative edge (button pressed)
         Serial.println("[CONFIG] NEXT button pressed - exiting config mode");
         prevNextState = nextState;
+        initialized = false; // Reset for next config mode session
         return true;
     }
     prevNextState = nextState;
     
     // Check HELP button (PIN_BUTTON_2)
-    static int prevHelpState = HIGH;
     int helpState = digitalRead(PIN_BUTTON_2);
     if (prevHelpState == HIGH && helpState == LOW) { // Negative edge (button pressed)
         Serial.println("[CONFIG] HELP button pressed - exiting config mode");
         prevHelpState = helpState;
+        initialized = false; // Reset for next config mode session
         return true;
     }
     prevHelpState = helpState;
     
-    // Check EXTERNAL button (PIN_LED_BUTTON_SW)
-    static int prevExtState = HIGH;
+    // Check EXTERNAL button (PIN_LED_BUTTON_SW) - only if available
+    #ifdef PIN_LED_BUTTON_SW
     int extState = digitalRead(PIN_LED_BUTTON_SW);
     if (prevExtState == HIGH && extState == LOW) { // Negative edge (button pressed)
         Serial.println("[CONFIG] EXTERNAL button pressed - exiting config mode");
         prevExtState = extState;
+        initialized = false; // Reset for next config mode session
         return true;
     }
     prevExtState = extState;
+    #endif
     
     return false;
 }

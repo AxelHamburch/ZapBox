@@ -29,15 +29,6 @@
 #define GESTURE_LONG_PRESS 0x0C
 
 class TouchCST816S {
-private:
-    TwoWire *_wire;
-    int _sda;
-    int _scl;
-    int _rst;
-    int _irq;
-    uint8_t _addr;
-    bool _initialized;
-
 public:
     TouchCST816S(TwoWire &wire, int sda, int scl, int rst, int irq);
     bool begin();
@@ -53,4 +44,9 @@ private:
     uint8_t readByte(uint8_t reg);
     void writeByte(uint8_t reg, uint8_t value);
     bool probeAddress(uint8_t addr);
+    
+    TwoWire* _wire;
+    int _sda, _scl, _rst, _irq;
+    uint8_t _addr;
+    bool _initialized;
 };

@@ -31,22 +31,30 @@ opreturnbot.com was faster, poststr.com cheaper. ;) See it on [nostr](https://nj
 
 The Lightning ZapBox is a compact device that controls a USB output via Bitcoin Lightning payment. Various 5V devices can be operated on the USB output, such as LED lamps, fans, or other USB-powered devices. It features multiple operation modes, customizable display themes, and advanced relay control patterns.
 
+**Supported Hardware:**
+- **LilyGo T-Display-S3**: Full-featured version with integrated display (Touch and Non-Touch variants)
+- **ESP32 Dev Module**: Headless version for embedded applications (no display, status LED only)
+
 ## How it Works
 
-1. **QR Code Display**: The integrated display of the T-Display-S3 shows a QR code with the LNURL for scanning
+1. **QR Code Display**: The integrated display of the T-Display-S3 shows a QR code with the LNURL for scanning *(T-Display-S3 only)*
 2. **Lightning Payment**: After scanning and paying the invoice, the payment is sent to the LNbits server
 3. **WebSocket Trigger**: The LNbits server sends a signal via WebSocket to the ESP32 microcontroller
 4. **Relay Switching**: The ESP32 activates the relay, which turns on the USB output for a specified period (with optional special modes like blinking, pulsing, or strobing)
-5. **Confirmation**: The display shows that the payment has been received and the relay has been switched
+5. **Confirmation**: The display shows that the payment has been received and the relay has been switched *(T-Display-S3 only)*
 
 ## Hardware
 
-- **LilyGo T-Display-S3**: ESP32-S3 microcontroller with integrated 170x320 LCD display
+### LilyGo T-Display-S3 (Full Version)
+
+- **Microcontroller**: ESP32-S3 with integrated 170x320 LCD display
   - Available in two versions: **Touch** (with CST816S touch controller) and **Non-Touch**
   - Software automatically detects touch capability at startup
+- **Display**: 170x320 pixel ST7789 TFT (8-bit parallel interface)
+- **Memory**: 16MB Flash, 8MB PSRAM
 - **Relay Module**: Switches the USB output
 - **USB Output Socket**: Provides 5V for connected devices
-- **Two Physical Buttons** (Non-Touch version): For navigation and access to features
+- **Two Physical Buttons**: For navigation and access to features
 - **Touch Display** (Touch version): Virtual touch button for Help/Report/Config modes
 - **3-Position Switch**:
   - **Position 0**: Everything off
@@ -55,6 +63,16 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
 - **PN532 NFC Reader** (Optional): For contactless NFC card/tag reading
   - Connected via I2C (shared bus with Touch controller)
   - Enables NFC-based payment triggers and card identification
+
+### ESP32 Dev Module (Headless Version)
+
+- **Microcontroller**: ESP32 (classic) without display
+- **Memory**: 4MB Flash, 512KB SRAM
+- **Operation**: Fully functional headless mode - all core features work via serial configuration
+- **Status LED**: GPIO 21 indicates device ready state
+- **Use Cases**: Embedded installations, wall-mounted relay control, hidden installations
+- **Configuration**: Serial terminal for WiFi, LNbits, and device settings
+- **Advantages**: Lower cost, smaller footprint, lower power consumption
 
 ### Pin Configuration
 
@@ -119,7 +137,9 @@ See the complete wiring diagram:
 
 ### External LED Button (Optional)
 
-**Optional Feature:** Connect an external illuminated push button for enhanced user interaction and status indication.
+**Optional Feature:** Connect an external illuminated push button (T-Display-S3) or status LED (ESP32 Dev) for enhanced user interaction and status indication.
+
+#### T-Display-S3 Configuration
 
 **GPIO Assignment:**
 | GPIO | Function | Direction | Configuration |
@@ -142,10 +162,6 @@ Button Terminal 2      →                    →    GND
 - **GND (Common)**: Shared ground for LED and button
 - **Input (GPIO 44)**: Button switches GPIO 44 to GND when pressed
 
-**LED Behavior:**
-- **ON**: Device is ready to receive payments (no initialization, errors, or special modes active)
-- **OFF**: During startup, initialization, error states, Config/Help/Report modes, or deep sleep
-
 **Button Functions:**
 - **Single Press**: Wake from screensaver / Navigate to next product or QR screen
 - **Hold ≥2 seconds**: Open Help page (3 screens with instructions)
@@ -160,6 +176,30 @@ Button Terminal 2      →                    →    GND
 - Reuses existing navigation/report/help functions from physical buttons
 
 **Note:** GPIOs 43 and 44 are not RTC-capable and cannot be used for deep sleep wake-up.
+
+#### ESP32 Dev Module Configuration
+
+**GPIO Assignment:**
+| GPIO | Function | Direction | Configuration |
+|------|----------|-----------|---------------|
+| 21 | LED Control | Output | Sources 3.3V when device is ready |
+
+**Wiring:**
+```
+Status LED             →    ESP32 Dev       →    GND
+─────────────────────────────────────────────────────
+LED Anode (+)          →    GPIO 21         
+LED Cathode (-)        →    Resistor (220Ω) →    GND
+```
+
+**Features:**
+- Status LED only (no button functionality on ESP32 Dev)
+- GPIO 21 is RTC-capable and can be used for other purposes if LED is not needed
+- Same LED behavior as T-Display-S3 version
+
+**LED Behavior (Both Versions):**
+- **ON**: Device is ready to receive payments (not in initialization, error, Config/Help/Report modes, or deep sleep)
+- **OFF**: During startup, initialization, error states, Config/Help/Report modes, or deep sleep
 
 
 ## Operation

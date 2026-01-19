@@ -23,6 +23,10 @@ void handleExternalSingleClick() {
 }
 
 void handleExternalButton() {
+  #ifndef PIN_LED_BUTTON_SW
+  // ESP32 Dev doesn't have external button - skip handling
+  return;
+  #else
   static int lastStableState = HIGH;
   static int lastRawState = HIGH;
   unsigned long now = millis();
@@ -108,6 +112,7 @@ void handleExternalButton() {
 
   // CRITICAL: Update lastStableState at the end so next call can detect changes
   lastStableState = state;
+  #endif // PIN_LED_BUTTON_SW
 }
 
 // Separate function to check hold actions - called continuously

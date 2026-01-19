@@ -1,10 +1,12 @@
+#ifdef ENABLE_DISPLAY
+
 #include <qrcode.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
 #include <driver/rtc_io.h>
-#include "display.h"
+#include "Display.h"
 #include "PinConfig.h"
 #include "GlobalState.h"
 
@@ -1394,3 +1396,6 @@ bool isDeepSleepActive()
 {
   return deepSleepIsActive;
 }
+
+#endif // ENABLE_DISPLAY
+

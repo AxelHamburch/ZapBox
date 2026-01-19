@@ -36,7 +36,11 @@
 
 // Touch controller (CST816S/CST328)
 #define PIN_TOUCH_INT 16       // Touch interrupt
-#define PIN_TOUCH_RES 21       // Touch reset
+#if ENABLE_DISPLAY
+  #define PIN_TOUCH_RES 21     // Touch reset (T-Display-S3)
+#else
+  #define PIN_TOUCH_RES -1     // Touch reset disabled for ESP32 Dev (GPIO 21 used for LED)
+#endif
 
 // NFC Reader (PN532) - Optional
 #define PIN_NFC_IRQ 1          // NFC interrupt (card detection)
@@ -47,9 +51,16 @@
 // PIN 10 - Relay channel 3
 // PIN 11 - Relay channel 4
 
-// LED Button (Optional)
-#define PIN_LED_BUTTON_LED 43  // LED an externem LED-Button (3.3V treiben)
-#define PIN_LED_BUTTON_SW 44   // Tastereingang vom LED-Button (gegen GND)
+// LED Button (Optional) - Different pins for different boards
+#if ENABLE_DISPLAY
+  // LilyGo T-Display-S3: External LED button with switch
+  #define PIN_LED_BUTTON_LED 43  // LED an externem LED-Button (3.3V treiben)
+  #define PIN_LED_BUTTON_SW 44   // Tastereingang vom LED-Button (gegen GND)
+#else
+  // ESP32 Dev Module: Only LED (no button)
+  #define PIN_LED_BUTTON_LED 21  // LED output (switch functionality not needed)
+  // PIN_LED_BUTTON_SW not defined for ESP32 Dev
+#endif
 
 // Free GPIO pins (RTC-capable): 3
 // Note: GPIO 1, 2, 10, 11 are assigned to NFC/Relay but can be repurposed

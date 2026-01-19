@@ -49,6 +49,7 @@
 
         <h1 style="margin-bottom: 5px; display: inline-block;">ZAPBOX⚡️WEB INSTALLER</h1>
         <p style="display: inline-block; margin: 0 0 0 10px; vertical-align: baseline;"><i>(Use with LILYGO T-Display-S3)</i></p>
+        <p style="margin: 5px 0 0 0; color: #666;"><i>📦 Now also supports <strong>ZapBox Headless (ESP32 Dev Module)</strong> - firmware available at the <a href="#headless" style="color: #007acc;">bottom of this page</a></i></p>
         <div style="margin-bottom: 30px;"></div>
 
         <h2 id="flash">1- Flash firmware</h2>
@@ -423,6 +424,55 @@
         </a>
         
         <p style="text-align: center; margin-top: 10px;"><i>Source: <a href="https://lilygo.cc/products/t-display-s3?variant=42589373268149" target="_blank" rel="noopener noreferrer">lilygo.cc</a></i></p>
+
+        <hr>
+
+        <h2 id="headless">ZapBox Headless (ESP32 Dev Module)</h2>
+
+        <p><strong>For standard ESP32 Dev Module without display</strong> - Fully functional headless mode with serial configuration.</p>
+
+        <ul>
+            <li>Connect your ESP32 Dev Module to the USB port</li>
+            <li>Select the headless firmware version (marked with "h") from the drop-down menu</li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Flash Headless</span> - select the connection and follow screen instructions</li>
+            <li>After flashing, continue with <a href="#prepare-connection">step 2</a> to configure via serial connection</li>
+        </ul>
+
+        <!-- ##### Headless Version selector and flash button ##### -->
+
+        <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
+            <select id="firmware-version-headless" style="padding: 10px; font-size: 16px; border-radius: 4px;">
+                <option value="./firmware/v932987h/manifest.json">v932987h (Latest - ESP32 Dev Headless)</option>
+            </select>
+            
+            <esp-web-install-button id="flash-button-headless" manifest="./firmware/v932987h/manifest.json">
+                <button slot="activate">🔥 Flash Headless</button>
+                <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
+                <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
+            </esp-web-install-button>
+        </div>
+
+        <p><i><strong>Note:</strong> Headless version has no display support. Configuration is done via serial terminal only. Status LED on GPIO 21 indicates device ready state.</i></p>
+        
+        <h3>Entering CONF Mode:</h3>
+        <ul>
+            <li><strong>First flash or after "Erase device":</strong> Device automatically enters CONF mode after startup</li>
+            <li><strong>To change configuration later:</strong> Press and hold the BOOT button on the ESP32 board for 5 seconds</li>
+            <li><strong>Monitor status:</strong> Watch the LOGS & CONSOLE terminal window (at <a href="#load-config" style="color: #007acc;">step 3</a>) to see when CONF mode is active - look for "✓ Config mode active" and the <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">📖 Read Config</span> and <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Write Config</span> buttons will be activated</li>
+        </ul>
+        
+        <p><i><strong>Tip:</strong> Keep the serial connection (<a href="#load-config" style="color: #007acc;">step 3</a>) open before pressing BOOT button to see the CONF mode activation in real-time.</i></p>
+        
+        <script>
+            // Update manifest when headless version is changed
+            document.getElementById('firmware-version-headless').addEventListener('change', function(e) {
+                const flashButton = document.getElementById('flash-button-headless');
+                flashButton.setAttribute('manifest', e.target.value);
+                console.log('Headless manifest changed to:', e.target.value);
+            });
+        </script>
+
+        <hr>
 
         <footer>
             <p>Built on the shoulders of giants by <a href="https://njump.to/npub1yynthqj2zv663t0v8jtmtnwm34ak2fwe6zys043weqlnxgyuw7qqnk23ds" target="_blank" rel="noopener noreferrer">@axelhamburch</a> | <a href="https://github.com/AxelHamburch/ZapBox" target="_blank" rel="noopener noreferrer">Github repo</a></p>

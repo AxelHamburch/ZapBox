@@ -12,7 +12,11 @@
 #include "PinConfig.h"
 #include "Display.h"
 #include "SerialConfig.h"
+
+#ifdef ENABLE_DISPLAY
 #include "TouchCST816S.h"
+#endif
+
 #include "DeviceState.h"
 #include "GlobalState.h"
 #include "Payment.h"
@@ -39,8 +43,10 @@ bool initializationActive = true; // Startup/initialization phase flag for LED c
 OneButton leftButton(PIN_BUTTON_1, true);
 OneButton rightButton(PIN_BUTTON_2, true);
 
-// Touch controller
+#ifdef ENABLE_DISPLAY
+// Touch controller (only for T-Display-S3)
 TouchCST816S touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_TOUCH_RES, PIN_TOUCH_INT);
+#endif
 
 // Variables that remain here (not migrated to GlobalState)
 String currency = "USD"; // Currency from config, default USD
@@ -646,7 +652,9 @@ void setup()
   // External LED-button wiring: source 3.3V on LED pin when ready; input uses pull-up
   pinMode(PIN_LED_BUTTON_LED, OUTPUT);
   digitalWrite(PIN_LED_BUTTON_LED, LOW); // LED off until device is ready
+  #ifdef PIN_LED_BUTTON_SW
   pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
+  #endif
 
   FFat.begin(FORMAT_ON_FAIL);
   readFiles(); // get the saved details and store in global variables
@@ -1105,11 +1113,20 @@ void loop()
       
       // Check for actual touch event
       // Note: Minimal debouncing for main area, button has its own 20ms debounce
+#ifdef ENABLE_DISPLAY
       if (touch.available() && (millis() - lastTouchEvent > 10)) {
         uint8_t gesture = touch.getGesture();
         uint16_t x = touch.getX();
         uint16_t y = touch.getY();
         bool isTouched = touch.isPressed();
+#else
+      // Headless mode - no touch events
+      if (false) {
+        uint8_t gesture = 0;
+        uint16_t x = 0;
+        uint16_t y = 0;
+        bool isTouched = false;
+#endif
         
         // FIRST: Check if touch is in button area
         // Touch coordinates are hardware-based (0-170 x 0-320), don't rotate with display!
