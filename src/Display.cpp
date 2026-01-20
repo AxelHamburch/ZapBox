@@ -70,6 +70,20 @@ void drawScaledBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, in
 uint16_t themeBackground = TFT_WHITE;
 uint16_t themeForeground = TFT_BLACK;
 
+// Helper function to ensure correct rotation is set
+// Call this at the start of any screen drawing function to prevent rotation bugs
+inline void ensureCorrectRotation() {
+  if (displayConfig.orientation == "v"){
+    tft.setRotation(0);
+  } else if (displayConfig.orientation == "vi") {
+    tft.setRotation(2);
+  } else if (displayConfig.orientation == "hi") {
+    tft.setRotation(3);
+  } else {
+    tft.setRotation(1); // Default: h (horizontal)
+  }
+}
+
 // Available TFT_eSPI standard colors:
 // Basic: TFT_BLACK, TFT_WHITE, TFT_RED, TFT_GREEN, TFT_BLUE
 // Extended: TFT_CYAN, TFT_MAGENTA, TFT_YELLOW, TFT_ORANGE, TFT_PINK, TFT_GREENYELLOW
@@ -938,6 +952,10 @@ void showSpecialModeQRScreen()
 // Label can contain 1-3 words separated by spaces
 void showProductQRScreen(String label, int pin)
 {
+  // CRITICAL: Set rotation FIRST, before any drawing operations
+  // This is especially important for themes with color inversion
+  ensureCorrectRotation();
+  
   // Select colors; invert for "zapbox" theme only on product QR screens
   uint16_t fg = themeForeground;
   uint16_t bg = themeBackground;
@@ -1000,17 +1018,21 @@ void showProductQRScreen(String label, int pin)
   // ZAPBOX/BTCORANGE theme color inversion fix
   // Problem: Ticker has BLACK background, inverted QR has YELLOW/ORANGE background
   // Display controller needs careful transition sequence for this complete color inversion
+  // IMPORTANT: Must reset rotation after each fillScreen() to prevent rotation bugs
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     // Step 1: Clear to BLACK (ensures clean starting point from ticker)
     tft.fillScreen(TFT_BLACK);
+    ensureCorrectRotation();
     delay(20);
     
     // Step 2: Transition to target background color (yellow or orange)
     tft.fillScreen(bg);
+    ensureCorrectRotation();
     delay(30);
     
     // Step 3: Confirm with second fill of target color
     tft.fillScreen(bg);
+    ensureCorrectRotation();
     delay(20);
   }
   
@@ -1022,6 +1044,9 @@ void showProductQRScreen(String label, int pin)
   } else {
     drawQRCode();
   }
+  
+  // CRITICAL: Reset rotation after QR drawing - the many fillRect() calls can affect rotation
+  ensureCorrectRotation();
   
   tft.setTextDatum(ML_DATUM);
   tft.setTextColor(fg);

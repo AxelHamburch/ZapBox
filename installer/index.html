@@ -48,8 +48,7 @@
         </noscript>
 
         <h1 style="margin-bottom: 5px; display: inline-block;">ZAPBOX⚡️WEB INSTALLER</h1>
-        <p style="display: inline-block; margin: 0 0 0 10px; vertical-align: baseline;"><i>(Use with LILYGO T-Display-S3)</i></p>
-        <p style="margin: 5px 0 0 0; color: #666;"><i>📦 Now also supports <strong>ZapBox Headless (ESP32 Dev Module)</strong> - firmware available at the <a href="#headless" style="color: #007acc;">bottom of this page</a></i></p>
+        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with LILYGO T-Display-S3 (or with standard ESP32 Dev Module as "headless" version)</i></p>
         <div style="margin-bottom: 30px;"></div>
 
         <h2 id="flash">1- Flash firmware</h2>
@@ -62,7 +61,9 @@
 
         <!-- ##### Version selector and flash button ##### -->
 
-        <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
+        <h3 style="margin-bottom: 5px; margin-top: 20px;">ZapBox T-Display-S3 - standard</h3>
+
+        <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
                 <option value="./firmware/v930750/manifest.json">v930750 (Latest - White Paper 📄 Release)</option>
                 <option value="./firmware/v930331/manifest.json">v930331 (Gold theme, navigation fix, BTC retry logic)</option>
@@ -90,7 +91,23 @@
             </esp-web-install-button>
         </div>
 
-        <p><i><strong>Note:</strong> The configuration data can be deleted using "Erase device." Otherwise, it will be retained even with the new firmware. You can use LOGS & CONSOLE for debugging. To do this, press the RESET DEVICE button.</i></p>
+        <h3 style="margin-bottom: 5px; margin-top: 30px;">ZapBox Headless - without display</h3>
+
+        <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+            <select id="firmware-version-headless" style="padding: 10px; font-size: 16px; border-radius: 4px;">
+                <option value="./firmware/v932987h/manifest.json">v932987h (Latest - ESP32 Dev Headless)</option>
+            </select>
+            
+            <esp-web-install-button id="flash-button-headless" manifest="./firmware/v932987h/manifest.json">
+                <button slot="activate">🔥 Flash Headless</button>
+                <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
+                <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
+            </esp-web-install-button>
+        </div>
+
+        <p><i><strong>Note on the headless version:</strong> The headless version does not support display. The terminal window can be used for status monitoring and error analysis. An LED connected to GPIO 21 can be used as a status LED. It indicates "Ready": Connected and no errors.</i></p>
+
+        <p><i><strong>Note:</strong> The configuration data can be deleted using "Erase device." Otherwise, it will be retained even with the new firmware. You can use LOGS & CONSOLE for debugging.</i></p>
         
         <script>
             // Update manifest when version is changed
@@ -98,6 +115,13 @@
                 const flashButton = document.getElementById('flash-button');
                 flashButton.setAttribute('manifest', e.target.value);
                 console.log('Manifest changed to:', e.target.value);
+            });
+            
+            // Update manifest when headless version is changed
+            document.getElementById('firmware-version-headless').addEventListener('change', function(e) {
+                const flashButton = document.getElementById('flash-button-headless');
+                flashButton.setAttribute('manifest', e.target.value);
+                console.log('Headless manifest changed to:', e.target.value);
             });
         </script>
 
@@ -111,9 +135,9 @@
 
         <p>If parameters have already been stored and need to be changed, you can also open CONF mode retrospectively:</p>
         <ul>
-            <li>With the NEXT button: press and hold for 5 seconds.</li>
-            <li>With the HELP touch button: Tap at least 5 times very quickly in succession.</li>
-            <li>With the external LED button: Press once briefly and then hold for at least 5 seconds.</li>
+            <li>Press and hold NEXT or BOOT button for 5 seconds.</li>
+            <li>Press the LED button once briefly and then hold it down for at least 5 seconds.</li>
+            <li>On a touchscreen, touch the HELP button at least 5 times in quick succession.</li>
         </ul>
 
         <p><i><strong>Note:</strong> If data is already available and you start the connection manually, the connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. You can terminate the connection prematurely by pressing the NEXT button, touching the display, or pressing the external button. </i></p>
@@ -152,15 +176,6 @@
                 <label for="socket">Device settings string</label>
                 <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
                 <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
-            </div>
-            <div>
-                <label for="orientation">Screen orientation</label>
-                <select name="orientation" id="orientation">
-                    <option value="h" selected>Horizontal (default)</option>
-                    <option value="v">Vertical</option>
-                    <option value="hi">Horizontal (inverse)</option>
-                    <option value="vi">Vertical (inverse)</option>
-                </select>
             </div>
         </div>
 
@@ -208,6 +223,15 @@
                     </select>
                 </div>
                 <div>
+                    <label for="orientation">Screen orientation</label>
+                    <select name="orientation" id="orientation">
+                        <option value="h" selected>Horizontal (default)</option>
+                        <option value="v">Vertical</option>
+                        <option value="hi">Horizontal (inverse)</option>
+                        <option value="vi">Vertical (inverse)</option>
+                    </select>
+                </div>
+                <div>
                     <label for="qrFormat">QR-Code Format</label>
                     <select name="qrFormat" id="qrFormat">
                         <option value="bech32" selected>LNURL in bech32 format (default)</option>
@@ -220,7 +244,7 @@
             
             <div class="input-wrapper">
                 <div>
-                    <label for="externalButton">Separate LED button</label>
+                    <label for="externalButton">LED button</label>
                     <select name="externalButton" id="externalButton">
                         <option value="no" selected>No (default)</option>
                         <option value="yes">Yes</option>
@@ -386,6 +410,75 @@
             <p style="margin-top: 10px; color: #888;"><i><strong>Use Cases:</strong> Energy saving (screensaver ~80-90% and deep sleep up to ~99%), reducing device heat, extending display lifespan in always-on scenarios.</i></p>
         </div>
 
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+        <!-- Error Detection Section -->
+        <div style="margin-top: 30px;">
+            <h2 id="error-detection">Error Detection & Report</h2>
+
+            <p>The ZapBox features a hierarchical error detection system with automatic diagnostics. Errors are displayed on screen with abbreviations:</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+                <tr style="background-color: #f0f0f0;">
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Priority</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Error Type</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Abbreviation</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">1 (Highest)</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WIFI</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NW</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">WiFi network not connected<br>→ Wifi data correct?<br>→ WiFi signal too weak?</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="border: 1px solid #ddd; padding: 8px;">2</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO INTERNET</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NI</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">Internet connectivity lost<br>→ Internet accessible</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">3</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO SERVER</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NS</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">LNbits server unreachable<br>→ Server down or "Device settings string" correct?</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="border: 1px solid #ddd; padding: 8px;">4 (Lowest)</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WEBSOCKET</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NWS</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">WebSocket protocol/handshake failure<br>→ Bitcoin Switch parameter correct?</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p><i><strong>Note:</strong> Higher priority errors override lower priority error displays. For example, if WiFi is down, all other checks are skipped and only "NO WIFI" is shown.</i></p>
+
+        <h3>Error Report Page</h3>
+
+        <p>All errors with their occurrence counts (0-99) are logged on the Report page. To access the Report page:</p>
+
+        <ul>
+            <li><strong>Press HELP button twice</strong> in quick succession</li>
+            <li><strong>Press LED button four times</strong> (if external LED button is available)</li>
+        </ul>
+
+        <p><i><strong>Note:</strong> The headless version (ESP32 Dev Module without display) does not have access to the Report page. Use the serial terminal to monitor errors.</i></p>
+
+        <h3>Common Wallet Error</h3>
+
+        <p>If a wallet scanning the QR code shows an error message <strong>"bitcoinswitch ... is disabled"</strong>, this indicates either:</p>
+        <ul>
+            <li>The Bitcoin Switch was actively disabled in LNbits, or</li>
+            <li>The handshake between the wallet and ZapBox failed</li>
+        </ul>
+        <p><i><strong>Solution:</strong> Check Bitcoin Switch status in LNbits or restart the ZapBox to re-establish the WebSocket connection.</i></p>
+        </div>
+
         <hr>
 
         <h2 id="troubleshoot">Troubleshoot</h2>
@@ -425,52 +518,7 @@
         
         <p style="text-align: center; margin-top: 10px;"><i>Source: <a href="https://lilygo.cc/products/t-display-s3?variant=42589373268149" target="_blank" rel="noopener noreferrer">lilygo.cc</a></i></p>
 
-        <hr>
 
-        <h2 id="headless">ZapBox Headless (ESP32 Dev Module)</h2>
-
-        <p><strong>For standard ESP32 Dev Module without display</strong> - Fully functional headless mode with serial configuration.</p>
-
-        <ul>
-            <li>Connect your ESP32 Dev Module to the USB port</li>
-            <li>Select the headless firmware version (marked with "h") from the drop-down menu</li>
-            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Flash Headless</span> - select the connection and follow screen instructions</li>
-            <li>After flashing, continue with <a href="#prepare-connection">step 2</a> to configure via serial connection</li>
-        </ul>
-
-        <!-- ##### Headless Version selector and flash button ##### -->
-
-        <div class="buttons" style="display: flex; gap: 10px; align-items: center;">
-            <select id="firmware-version-headless" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v932987h/manifest.json">v932987h (Latest - ESP32 Dev Headless)</option>
-            </select>
-            
-            <esp-web-install-button id="flash-button-headless" manifest="./firmware/v932987h/manifest.json">
-                <button slot="activate">🔥 Flash Headless</button>
-                <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
-                <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
-            </esp-web-install-button>
-        </div>
-
-        <p><i><strong>Note:</strong> Headless version has no display support. Configuration is done via serial terminal only. Status LED on GPIO 21 indicates device ready state.</i></p>
-        
-        <h3>Entering CONF Mode:</h3>
-        <ul>
-            <li><strong>First flash or after "Erase device":</strong> Device automatically enters CONF mode after startup</li>
-            <li><strong>To change configuration later:</strong> Press and hold the BOOT button on the ESP32 board for 5 seconds</li>
-            <li><strong>Monitor status:</strong> Watch the LOGS & CONSOLE terminal window (at <a href="#load-config" style="color: #007acc;">step 3</a>) to see when CONF mode is active - look for "✓ Config mode active" and the <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">📖 Read Config</span> and <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Write Config</span> buttons will be activated</li>
-        </ul>
-        
-        <p><i><strong>Tip:</strong> Keep the serial connection (<a href="#load-config" style="color: #007acc;">step 3</a>) open before pressing BOOT button to see the CONF mode activation in real-time.</i></p>
-        
-        <script>
-            // Update manifest when headless version is changed
-            document.getElementById('firmware-version-headless').addEventListener('change', function(e) {
-                const flashButton = document.getElementById('flash-button-headless');
-                flashButton.setAttribute('manifest', e.target.value);
-                console.log('Headless manifest changed to:', e.target.value);
-            });
-        </script>
 
         <hr>
 

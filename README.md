@@ -266,10 +266,10 @@ The ZapBox features a hierarchical error detection system with automatic diagnos
 
 | Priority | Error Type | Abbreviation | Detection Method | Description |
 |----------|-----------|--------------|------------------|-------------|
-| 1 (Highest) | **NO WIFI** | NW | WiFi connection status | WiFi network not connected |
-| 2 | **NO INTERNET** | NI | HTTP check to Google | Internet connectivity lost |
-| 3 | **NO SERVER** | NS | TCP port 443 check | LNbits server unreachable |
-| 4 (Lowest) | **NO WEBSOCKET** | NWS | WebSocket connection status | WebSocket protocol/handshake failure |
+| 1 (Highest) | **NO WIFI** | NW | WiFi connection status | WiFi network not connected<br>-> Wifi data correct?<br>-> WiFi signal too weak? |
+| 2 | **NO INTERNET** | NI | HTTP check to Google | Internet connectivity lost<br>-> Internet accessible? |
+| 3 | **NO SERVER** | NS | TCP port 443 check | LNbits server unreachable<br>-> Server down or "Device settings string" correct? |
+| 4 (Lowest) | **NO WEBSOCKET** | NWS | WebSocket connection status | WebSocket protocol/handshake failure<br>-> Bitcoin Switch parameter correct? |
 
 **Error Detection Logic:**
 - Each error level is only checked if all higher priority levels are OK
@@ -289,7 +289,13 @@ The ZapBox features a hierarchical error detection system with automatic diagnos
 - Prevents brief "Ready for Action" flash when higher-priority errors persist
 - Automatically returns to correct error screen based on current system state
 
-**Report Mode**: Press BOOT button to display error counters (0-99) for all four error types with their occurrence counts.
+**Report Mode**: 
+- **Press HELP button twice** in quick succession to display error counters (0-99) for all four error types with their occurrence counts
+- **Press LED button four times** in quick succession (if external LED button is available)
+
+**Common Wallet Error**: If a wallet scanning the QR code shows an error message "bitcoinswitch ... is disabled", this indicates either:
+- The Bitcoin Switch was actively disabled in LNbits, or
+- The handshake between the wallet and ZapBox failed
 
 ## Features
 
