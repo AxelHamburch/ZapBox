@@ -546,7 +546,6 @@ Electrical design and housing variants, see table.
 | b932595 | Duo & Quattro |  First Quattro and update Duo, 90 and 35 degrees front |
 | b932788 | Illuminated Sign |  First mini ZapBox LED sign for demonstration and testing purposes |
 
-
 ### Electrical layout / circuit diagram (Inkscape)
 
 | Version | Type | Comment |
