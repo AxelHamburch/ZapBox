@@ -202,14 +202,52 @@ struct ProductSelectionState {
 extern ProductSelectionState productSelectionState;
 
 // ============================================================================
-// PAYMENT STATUS
+// PAYMENT QUEUE
 // ============================================================================
 
-struct PaymentStatus {
-  bool paid = false;  // Whether a payment has been received
+#include <queue>
+
+struct PaymentQueueItem {
+  String payload;           // Payment payload (e.g., "12-5000" or JSON)
+  unsigned long timestamp;  // When this payment was received
 };
 
-extern PaymentStatus paymentStatus;
+struct PaymentQueue {
+  std::queue<PaymentQueueItem> queue;  // Queue of pending payments
+  bool processing = false;              // Flag to indicate payment is being processed
+  
+  // Add a payment to the queue
+  void enqueue(const String& payload) {
+    PaymentQueueItem item;
+    item.payload = payload;
+    item.timestamp = millis();
+    queue.push(item);
+    Serial.printf("[QUEUE] Payment enqueued. Queue size: %d\n", queue.size());
+  }
+  
+  // Get next payment from queue (returns empty string if queue is empty)
+  String dequeue() {
+    if (queue.empty()) {
+      return "";
+    }
+    PaymentQueueItem item = queue.front();
+    queue.pop();
+    Serial.printf("[QUEUE] Payment dequeued. Queue size: %d\n", queue.size());
+    return item.payload;
+  }
+  
+  // Check if queue has pending payments
+  bool hasPending() const {
+    return !queue.empty();
+  }
+  
+  // Get current queue size
+  size_t size() const {
+    return queue.size();
+  }
+};
+
+extern PaymentQueue paymentQueue;
 
 // ============================================================================
 // ACTIVITY TRACKING FOR SCREENSAVER

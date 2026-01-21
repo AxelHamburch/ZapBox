@@ -43,8 +43,8 @@ TouchState touchState;
 // Product Selection & Timeout Tracking
 ProductSelectionState productSelectionState;
 
-// Payment Status
-PaymentStatus paymentStatus;
+// Payment Queue
+PaymentQueue paymentQueue;
 
 // Activity Tracking for Screensaver
 ActivityTracking activityTracking;

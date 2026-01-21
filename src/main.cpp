@@ -1054,7 +1054,7 @@ void loop()
   // Don't reset onErrorScreen/currentErrorType - they should persist across loop iterations
   
   Serial.println("[LOOP] Entering payment wait loop...");
-  Serial.printf("[LOOP] Initial paymentStatus.paid state: %d\n", paymentStatus.paid);
+  Serial.printf("[LOOP] Initial queue size: %d\n", paymentQueue.size());
   Serial.printf("[LOOP] Error state: onErrorScreen=%d, currentErrorType=%d\n", deviceState.isInState(DeviceState::ERROR_RECOVERABLE), currentErrorType);
   
   // Initialize ping/pong tracking
@@ -1065,7 +1065,7 @@ void loop()
   static unsigned long loopIterations = 0;
   static unsigned long lastLoopDebugPrint = 0;
   
-  while (paymentStatus.paid == false)
+  while (true) // Continuous loop - will process payments from queue
   {
     loopIterations++;
     
@@ -1525,8 +1525,8 @@ void loop()
     // Log status every 200000 loops (roughly every 10-20 minutes)
     if (loopCount % 200000 == 0)
     {
-      Serial.printf("[LOOP] Still waiting... WiFi: %d, WS Connected: %d, paymentStatus.paid: %d\n", 
-                    WiFi.status() == WL_CONNECTED, webSocket.isConnected(), paymentStatus.paid);
+      Serial.printf("[LOOP] Still waiting... WiFi: %d, WS Connected: %d, Queue size: %d\n", 
+                    WiFi.status() == WL_CONNECTED, webSocket.isConnected(), paymentQueue.size());
     }
     
     // Check Internet connectivity every 30 seconds (independent of WebSocket)
@@ -1826,9 +1826,22 @@ void loop()
       
       lastWiFiCheck = millis();
     }
-    if (paymentStatus.paid) {
-      processPaymentEvent(payloadStr);
+    
+    // Process payments from queue
+    if (paymentQueue.hasPending() && !paymentQueue.processing) {
+      paymentQueue.processing = true;
+      String payloadStr = paymentQueue.dequeue();
+      if (payloadStr.length() > 0) {
+        Serial.printf("[QUEUE] Processing payment from queue. Remaining: %d\n", paymentQueue.size());
+        processPaymentEvent(payloadStr);
+      }
+      paymentQueue.processing = false;
     }
+    
+    // CRITICAL: Yield to other tasks to prevent tight loop
+    // Without this, the loop runs thousands of times per second,
+    // blocking WebSocket processing and causing connection loss
+    vTaskDelay(pdMS_TO_TICKS(10)); // 10ms delay between loop iterations
   }
   Serial.println("[LOOP] Exiting payment wait loop");
 }
@@ -1852,6 +1865,9 @@ static void processThresholdPayment(const JsonDocument &doc)
 
     // Pause product timeout while ACTION TIME is active
     productSelectionState.showTime = 0;
+    
+    // CRITICAL: Keep WebSocket alive during processing
+    webSocket.loop();
 
     int pin = lightningConfig.thresholdPin.toInt();
     int duration = lightningConfig.thresholdTime.toInt();
@@ -1876,14 +1892,28 @@ static void processThresholdPayment(const JsonDocument &doc)
       pinMode(pin, OUTPUT);
       digitalWrite(pin, HIGH);
       Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
-      delay(duration);
+      
+      // CRITICAL: Non-blocking delay that keeps WebSocket alive
+      unsigned long startTime = millis();
+      while (millis() - startTime < duration) {
+        webSocket.loop(); // Keep WebSocket connection alive
+        vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
+      }
+      
       digitalWrite(pin, LOW);
       Serial.printf("[RELAY] Pin %d set LOW\n", pin);
     }
 
     thankYouScreen();
     activityTracking.lastActivityTime = millis();
-    delay(2000);
+    
+    // CRITICAL: Non-blocking delay that keeps WebSocket alive
+    unsigned long startTime = millis();
+    while (millis() - startTime < 2000) {
+      webSocket.loop(); // Keep WebSocket connection alive
+      vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
+    }
+    
     // Reset timer AFTER thank you screen so full PRODUCT_TIMEOUT runs from now
     productSelectionState.showTime = millis();
     showThresholdQRScreen();
@@ -1929,7 +1959,12 @@ static void processNormalPayment(int pin, int duration)
       Serial.println("[RELAY] Pin 13 set HIGH (parallel to Pin 12 in Single mode)");
     }
 
-    delay(duration);
+    // CRITICAL: Non-blocking delay that keeps WebSocket alive
+    unsigned long startTime = millis();
+    while (millis() - startTime < duration) {
+      webSocket.loop(); // Keep WebSocket connection alive
+      vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
+    }
 
     digitalWrite(pin, LOW);
     Serial.printf("[RELAY] Pin %d set LOW\n", pin);
@@ -1946,7 +1981,14 @@ static void processNormalPayment(int pin, int duration)
     deactivateScreensaver();
     deviceState.transition(DeviceState::READY);
   }
-  delay(2000);
+  
+  // CRITICAL: Non-blocking delay that keeps WebSocket alive
+  unsigned long startTime = millis();
+  while (millis() - startTime < 2000) {
+    webSocket.loop(); // Keep WebSocket connection alive
+    vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
+  }
+  
   // Reset timer AFTER thank you screen so full PRODUCT_TIMEOUT runs from now
   productSelectionState.showTime = millis();
   // Force QR display (not ticker) after payment in ALWAYS mode
@@ -1972,16 +2014,13 @@ void processPaymentEvent(String &payloadStr)
     if (error) {
       Serial.print("[THRESHOLD] JSON parse error: ");
       Serial.println(error.c_str());
-      paymentStatus.paid = false;
       return;
     }
     processThresholdPayment(doc);
-    paymentStatus.paid = false;
   } else {
     Serial.println("[NORMAL] Processing payment in normal mode...");
     int pin = getValue(payloadStr, '-', 0).toInt();
     int duration = getValue(payloadStr, '-', 1).toInt();
     processNormalPayment(pin, duration);
-    paymentStatus.paid = false;
   }
 }

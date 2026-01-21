@@ -1,10 +1,12 @@
 #include "Utils.h"
 #include "GlobalState.h"
 #include "DeviceState.h"
+#include <WebSocketsClient.h>
 
 // External references to main.cpp
 extern StateManager deviceState;
 extern MultiChannelConfig multiChannelConfig;
+extern WebSocketsClient webSocket;
 
 /**
  * Extract a value from a delimited string by index.
@@ -77,7 +79,13 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
       digitalWrite(13, HIGH);
     }
     Serial.printf("[SPECIAL] Cycle %d: Pin HIGH\n", cycleCount);
-    delay(onTime_ms);
+    
+    // CRITICAL: Non-blocking delay that keeps WebSocket alive
+    unsigned long delayStart = millis();
+    while (millis() - delayStart < onTime_ms) {
+      webSocket.loop(); // Keep WebSocket connection alive
+      vTaskDelay(pdMS_TO_TICKS(1)); // Yield to other tasks
+    }
     
     // PIN LOW
     digitalWrite(pin, LOW);
@@ -85,7 +93,13 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
       digitalWrite(13, LOW);
     }
     Serial.printf("[SPECIAL] Cycle %d: Pin LOW\n", cycleCount);
-    delay(offTime_ms);
+    
+    // CRITICAL: Non-blocking delay that keeps WebSocket alive
+    delayStart = millis();
+    while (millis() - delayStart < offTime_ms) {
+      webSocket.loop(); // Keep WebSocket connection alive
+      vTaskDelay(pdMS_TO_TICKS(1)); // Yield to other tasks
+    }
     
     elapsed = millis() - startTime;
   }
