@@ -476,7 +476,7 @@ The ZapBox includes a browser-based Web Installer for easy firmware updates and 
 3. **Serial Console**: Debug and monitor device in real-time
 4. **Automatic Config Mode Detection**: Press BOOT button for 5 seconds to enter config mode
 
-Access the installer: [https://ereignishorizont.xyz/ZapBox/](https://ereignishorizont.xyz/ZapBox/)
+Access the installer: [https://installer.zapbox.space/](https://installer.zapbox.space/)
 
 ## PlatformIO Project
 
