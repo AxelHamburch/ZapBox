@@ -896,10 +896,14 @@ void setup()
   // Initialize product navigation
   multiChannelConfig.currentProduct = 0; // Start at selection screen
 
+#if ENABLE_BITCOIN_DATA
   // Fetch initial Bitcoin data after setup is complete
   Serial.println("[BTC] Fetching initial Bitcoin data...");
   fetchBitcoinData();
   Serial.println("[BTC] Initial fetch complete");
+#else
+  Serial.println("[BTC] Bitcoin data fetching disabled (headless mode)");
+#endif
   
   // Single mode: show BTC ticker immediately after setup (no product selection exists)
   Serial.printf("[DEBUG_SETUP] mode=%s, tickerMode=%s, special=%s, thresholdKeyLen=%d, errorState=%d\n",
@@ -1516,8 +1520,10 @@ void loop()
     webSocket.loop();
     loopCount++;
 
+#if ENABLE_BITCOIN_DATA
     // Update Bitcoin ticker (checks interval internally, non-blocking)
     updateBitcoinTicker();
+#endif
     
     // Update switch labels periodically (checks interval internally, non-blocking)
     updateSwitchLabels();

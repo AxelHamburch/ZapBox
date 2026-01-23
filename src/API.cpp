@@ -15,18 +15,21 @@ extern String currency;
 extern bool labelsLoadedSuccessfully;
 
 // External constants from main.cpp
-const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes
-const unsigned long BTC_ERROR_RETRY_INTERVAL = 60000; // 1 minute retry for errors
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
 
-// Retry backoff for failed label & BTC fetches
+// Retry backoff for failed label fetches
 static unsigned long lastFetchAttempt = 0;
 static const unsigned long RETRY_BACKOFF = 30000; // 30 seconds between retries
+
+#if ENABLE_BITCOIN_DATA
+const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes
+const unsigned long BTC_ERROR_RETRY_INTERVAL = 60000; // 1 minute retry for errors
 static bool btcDataHasError = false; // Track if last BTC fetch had errors
 
 // External function declarations from main.cpp
 extern void btctickerScreen();
 extern void updateBtctickerValues(); // Partial update function
+#endif
 
 /**
  * Fetch switch labels and configuration from LNbits server.
@@ -98,6 +101,7 @@ void fetchSwitchLabels()
       labelsLoadedSuccessfully = true; // Mark labels as successfully loaded
       productLabels.lastUpdate = millis(); // Update timestamp
       
+#if ENABLE_BITCOIN_DATA
       // Always fetch Bitcoin data with the correct currency (not just when ticker is active)
       // This ensures data is ready when ticker is activated
       Serial.println("[LABELS] Currency received - fetching Bitcoin data with correct currency");
@@ -108,6 +112,7 @@ void fetchSwitchLabels()
         Serial.println("[LABELS] Ticker active - refreshing display");
         btctickerScreen();
       }
+#endif
     } else {
       Serial.println("[LABELS] JSON parsing failed: " + String(error.c_str()));
     }
@@ -118,6 +123,7 @@ void fetchSwitchLabels()
   http.end();
 }
 
+#if ENABLE_BITCOIN_DATA
 /**
  * Fetch Bitcoin price and block height from external APIs (sequential).
  */
@@ -205,6 +211,7 @@ void updateBitcoinTicker()
     }
   }
 }
+#endif // ENABLE_BITCOIN_DATA
 
 /**
  * Periodically update switch labels from server.

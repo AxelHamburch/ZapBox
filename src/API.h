@@ -19,6 +19,7 @@
  */
 void fetchSwitchLabels();
 
+#if ENABLE_BITCOIN_DATA
 /**
  * Fetch Bitcoin price and block height from external APIs.
  * - Price from CoinGecko (uses configured currency)
@@ -33,6 +34,7 @@ void fetchBitcoinData();
  * Calls fetchBitcoinData() and refreshes display.
  */
 void updateBitcoinTicker();
+#endif // ENABLE_BITCOIN_DATA
 
 /**
  * Periodically update switch labels from server.

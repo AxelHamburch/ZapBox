@@ -14,7 +14,9 @@ extern String payloadStr;
 extern WebSocketsClient webSocket;
 extern byte currentErrorType;
 extern bool needsQRRedraw;
+#if ENABLE_BITCOIN_DATA
 extern void fetchBitcoinData();
+#endif
 extern void fetchSwitchLabels();
 
 // WebSocket event handler
@@ -190,11 +192,13 @@ void checkAndReconnectWiFi()
     activityTracking.lastActivityTime = millis();
     productSelectionState.showTime = millis();
     
+#if ENABLE_BITCOIN_DATA
     // Force BTC data refresh after WiFi recovery
     if (multiChannelConfig.btcTickerMode != "off") {
       LOG_INFO("Network", "Forcing BTC data refresh after WiFi recovery");
       bitcoinData.lastUpdate = 0; // Force immediate update
       fetchBitcoinData(); // Fetch data now
     }
+#endif
   }
 }
