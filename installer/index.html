@@ -473,12 +473,17 @@
 
         <h3>Common Wallet Error</h3>
 
-        <p>If a wallet scanning the QR code shows an error message <strong>"bitcoinswitch ... is disabled"</strong>, this indicates either:</p>
+        <p>If a wallet scanning the QR code shows an error message, here's what it means:</p>
+        
+        <p><strong>"bitcoinswitch ... is disabled"</strong> →  The Bitcoin Switch was actively disabled in LNbits.</p>
         <ul>
-            <li>The Bitcoin Switch was actively disabled in LNbits, or</li>
-            <li>The handshake between the wallet and ZapBox failed</li>
+            <li><i><strong>Solution:</strong> Go to LNbits and re-enable the Bitcoin Switch extension for this device.</i></li>
         </ul>
-        <p><i><strong>Solution:</strong> Check Bitcoin Switch status in LNbits or restart the ZapBox to re-establish the WebSocket connection.</i></p>
+
+        <p><strong>"No active bitcoinswitch connections"</strong> → The handshake between the wallet and ZapBox failed.</p>
+        <ul>
+            <li><i><strong>Solution:</strong> The WebSocket connection between ZapBox and LNbits server is not established. Restart the ZapBox to re-establish the connection.</i></li>
+        </ul>
         </div>
 
         <hr>
