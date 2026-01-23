@@ -441,7 +441,7 @@
                     <td style="border: 1px solid #ddd; padding: 8px;">2</td>
                     <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO INTERNET</strong></td>
                     <td style="border: 1px solid #ddd; padding: 8px;">NI</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">Internet connectivity lost<br>→ Internet accessible</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">Internet connectivity lost<br>→ Internet accessible?</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 8px;">3</td>
@@ -453,7 +453,7 @@
                     <td style="border: 1px solid #ddd; padding: 8px;">4 (Lowest)</td>
                     <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WEBSOCKET</strong></td>
                     <td style="border: 1px solid #ddd; padding: 8px;">NWS</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">WebSocket protocol/handshake failure<br>→ Bitcoin Switch parameter correct?</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">WebSocket protocol/handshake failure<br>→ Bitcoin Switch parameter correct?<br>→ "Device settings string" correct?</td>
                 </tr>
             </tbody>
         </table>
@@ -483,6 +483,11 @@
         <p><strong>"No active bitcoinswitch connections"</strong> → The handshake between the wallet and ZapBox failed.</p>
         <ul>
             <li><i><strong>Solution:</strong> The WebSocket connection between ZapBox and LNbits server is not established. Restart the ZapBox to re-establish the connection.</i></li>
+        </ul>
+
+        <p><strong>Relay does not switch, but payment was successful</strong> → Wrong GPIO pin configured in LNbits.</p>
+        <ul>
+            <li><i><strong>Solution:</strong> Check in LNbits that the correct pin is configured (12, 13, 10, or 11 depending on your hardware setup).</i></li>
         </ul>
         </div>
 
