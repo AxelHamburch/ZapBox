@@ -115,6 +115,7 @@ const ThemeConfig themeConfigs[] = {
   {"black-yellow", TFT_BLACK, TFT_YELLOW},
   {"black-btcorange", TFT_BLACK, 0xFCC0},
   {"btcorange-black", 0xFCC0, TFT_BLACK},
+  {"darkgrey-btcorange", TFT_DARKGREY, 0xFCC0},
   {"zapbox", 0xFEA0, TFT_BLACK},
   {"maroon-magenta", TFT_MAROON, TFT_MAGENTA},
   {"black-red", TFT_BLACK, TFT_RED},
@@ -224,14 +225,20 @@ void startupScreen()
 // Bitcoin Ticker Screen
 void btctickerScreen()
 {
+  // CRITICAL: Set rotation FIRST, before any drawing operations
+  // This is especially important when switching from QR screens
+  ensureCorrectRotation();
+  
   // ZAPBOX/BTCORANGE theme color inversion fix
   // Problem: Inverted QR has YELLOW/ORANGE background, ticker has BLACK background
   // Need careful transition for color inversion (YELLOW/ORANGE -> BLACK)
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     // Transition from inverted QR (yellow/orange) to ticker (black)
     tft.fillScreen(themeBackground);  // Clear to black
+    ensureCorrectRotation();
     delay(30);
     tft.fillScreen(themeBackground);  // Second clear for stability
+    ensureCorrectRotation();
     delay(20);
   }
   
