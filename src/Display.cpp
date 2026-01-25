@@ -1044,6 +1044,8 @@ void showProductQRScreen(String label, int pin)
   }
   
   safeFillScreen(bg);
+  // CRITICAL: Reset rotation after safeFillScreen to prevent rotation bugs
+  ensureCorrectRotation();
   
   // Draw QR code immediately after screen clear, before anything else
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
@@ -1061,6 +1063,8 @@ void showProductQRScreen(String label, int pin)
   if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
     int boxY = (displayConfig.orientation == "vi") ? 175 : 168;
     tft.fillRect(15, boxY, 140, 132, fg);
+    // CRITICAL: Reset rotation after large fillRect operation
+    ensureCorrectRotation();
     
     // Display up to 3 lines of text
     tft.setTextSize(3);
@@ -1104,6 +1108,8 @@ void showProductQRScreen(String label, int pin)
   } else {
     int boxX = (displayConfig.orientation == "hi") ? 171 : 163;
     tft.fillRect(boxX, 18, 137, 135, fg);
+    // CRITICAL: Reset rotation after large fillRect operation
+    ensureCorrectRotation();
     
     // Display up to 3 lines of text
     tft.setTextSize(3);
