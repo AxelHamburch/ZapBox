@@ -106,9 +106,27 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
     unsigned long lastActivity = millis(); // Track last serial activity
     const unsigned long inactivityTimeout = 180000; // 180 seconds
 
+#if !ENABLE_DISPLAY
+    // LED blink state for config mode (headless version only)
+    unsigned long lastConfigBlinkTime = millis();
+    bool configBlinkState = false;
+#endif
+
     while (true)
     {
         yield(); // Feed the watchdog timer
+        
+#if !ENABLE_DISPLAY
+        // Blink LEDs for config mode indication (headless version only)
+        if (millis() - lastConfigBlinkTime > 1000) { // Blink every 1 second (1Hz)
+            configBlinkState = !configBlinkState;
+            digitalWrite(PIN_LED_BUTTON_LED, configBlinkState ? HIGH : LOW);
+            #ifdef PIN_ONBOARD_LED
+            digitalWrite(PIN_ONBOARD_LED, configBlinkState ? HIGH : LOW);
+            #endif
+            lastConfigBlinkTime = millis();
+        }
+#endif
         
         // Check for button exit (NEXT or HELP pressed)
         if (checkButtonExit()) {

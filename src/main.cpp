@@ -963,6 +963,16 @@ void loop()
     updateReadyLed();
   }
   
+  // Show ready message when LED turns on (only once)
+  static bool readyMessageShown = false;
+  if (!readyMessageShown && isReadyForReceive()) {
+    Serial.println("");
+    Serial.println("======================");
+    Serial.println("   ZapBox ready! 🎉");
+    Serial.println("======================");
+    readyMessageShown = true;
+  }
+  
   // Display power saving status on first loop iteration
   static bool firstLoopStatusShown = false;
   if (!firstLoopStatusShown) {
@@ -1007,7 +1017,7 @@ void loop()
   // Screensaver and deep sleep checks are now inside the payment wait loop
   // to ensure they execute during payment waiting
   
-  // If in config mode, do nothing - config mode is handled by button interrupt
+  // If in config mode, do nothing - config is handled by SerialConfig
   if (deviceState.isInState(DeviceState::CONFIG_MODE))
   {
     vTaskDelay(pdMS_TO_TICKS(100));
