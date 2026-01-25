@@ -93,6 +93,9 @@ void updateReadyLed() {
   bool shouldBeOn = isReadyForReceive();
   if (shouldBeOn != readyLedState) {
     digitalWrite(PIN_LED_BUTTON_LED, shouldBeOn ? HIGH : LOW); // Source 3.3V when ready
+    #ifdef PIN_ONBOARD_LED
+    digitalWrite(PIN_ONBOARD_LED, shouldBeOn ? HIGH : LOW); // Also control onboard LED (ESP32 Dev)
+    #endif
     readyLedState = shouldBeOn;
     LOG_INFO("LED", String("Ready LED ") + (shouldBeOn ? "ON" : "OFF"));
   }

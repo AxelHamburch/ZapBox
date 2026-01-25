@@ -59,6 +59,7 @@
 #else
   // ESP32 Dev Module: Only LED (no button)
   #define PIN_LED_BUTTON_LED 21  // LED output (switch functionality not needed)
+  #define PIN_ONBOARD_LED 2      // Onboard LED (additional status LED for ESP32 Dev)
   // PIN_LED_BUTTON_SW not defined for ESP32 Dev
 #endif
 

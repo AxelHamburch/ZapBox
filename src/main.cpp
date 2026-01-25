@@ -652,6 +652,10 @@ void setup()
   // External LED-button wiring: source 3.3V on LED pin when ready; input uses pull-up
   pinMode(PIN_LED_BUTTON_LED, OUTPUT);
   digitalWrite(PIN_LED_BUTTON_LED, LOW); // LED off until device is ready
+  #ifdef PIN_ONBOARD_LED
+  pinMode(PIN_ONBOARD_LED, OUTPUT);
+  digitalWrite(PIN_ONBOARD_LED, LOW); // Onboard LED off until device is ready
+  #endif
   #ifdef PIN_LED_BUTTON_SW
   pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
   #endif
