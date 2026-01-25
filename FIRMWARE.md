@@ -49,15 +49,26 @@ Create `installer/firmware/v930331/manifest.json`:
 
 ### 4. Update Web Installer (installer/index.html)
 
-**Line ~59** - Add new version option at top:
+**For standard version - Line ~59** - Add new version option at top:
 ```html
 <option value="./firmware/v930331/manifest.json">v930331 (Latest - Short description)</option>
 ```
 Remove "(Latest)" from previous version.
 
-**Line ~76** - Update flash button manifest:
+**For standard version - Line ~76** - Update flash button manifest:
 ```html
 <esp-web-install-button id="flash-button" manifest="./firmware/v930331/manifest.json">
+```
+
+**For headless version - Line ~100** - Add new version option at top:
+```html
+<option value="./firmware/v930331h/manifest.json">v930331h (Latest - Short description)</option>
+```
+Remove "(Latest)" from previous headless version.
+
+**For headless version - Line ~103** - Update flash button manifest:
+```html
+<esp-web-install-button id="flash-button-headless" manifest="./firmware/v930331h/manifest.json">
 ```
 
 ### 5. Compile Firmware
@@ -68,10 +79,20 @@ C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run
 
 ### 6. Copy Binary Files
 
+**Standard version (lilygo-t-display-s3):**
 ```powershell
 Copy-Item -Path ".pio\build\lilygo-t-display-s3\bootloader.bin" -Destination "installer\firmware\v930331\bootloader.bin"
 Copy-Item -Path ".pio\build\lilygo-t-display-s3\partitions.bin" -Destination "installer\firmware\v930331\partitions.bin"
 Copy-Item -Path ".pio\build\lilygo-t-display-s3\firmware.bin" -Destination "installer\firmware\v930331\firmware.bin"
+```
+
+**Headless version (esp32dev) - use 'h' suffix:**
+```powershell
+# Change default_envs to esp32dev in platformio.ini
+# Then compile and copy:
+Copy-Item -Path ".pio\build\esp32dev\bootloader.bin" -Destination "installer\firmware\v930331h\bootloader.bin"
+Copy-Item -Path ".pio\build\esp32dev\partitions.bin" -Destination "installer\firmware\v930331h\partitions.bin"
+Copy-Item -Path ".pio\build\esp32dev\firmware.bin" -Destination "installer\firmware\v930331h\firmware.bin"
 ```
 
 ### 7. Generate Release Description
@@ -130,7 +151,14 @@ Tell user:
 
 After `pio run`:
 ```
+# Standard version (lilygo-t-display-s3):
 .pio/build/lilygo-t-display-s3/
+├── bootloader.bin
+├── partitions.bin
+└── firmware.bin
+
+# Headless version (esp32dev):
+.pio/build/esp32dev/
 ├── bootloader.bin
 ├── partitions.bin
 └── firmware.bin
