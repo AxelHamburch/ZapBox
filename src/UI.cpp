@@ -88,8 +88,30 @@ bool isReadyForReceive() {
 /**
  * Updates the ready LED based on device state.
  * Only updates LED if state has changed to avoid redundant writes.
+ * For headless version: Fast blink during initialization, slow blink in config mode, solid when ready.
  */
 void updateReadyLed() {
+#if !ENABLE_DISPLAY
+  // Headless version: Add fast blink during initialization
+  static unsigned long lastInitBlinkTime = 0;
+  static bool initBlinkState = false;
+  
+  // Fast blink during INITIALIZING or CONNECTING_WIFI (5Hz = 200ms period)
+  if (deviceState.isInState(DeviceState::INITIALIZING) || 
+      deviceState.isInState(DeviceState::CONNECTING_WIFI)) {
+    if (millis() - lastInitBlinkTime > 200) { // Blink every 200ms (5Hz)
+      initBlinkState = !initBlinkState;
+      digitalWrite(PIN_LED_BUTTON_LED, initBlinkState ? HIGH : LOW);
+      #ifdef PIN_ONBOARD_LED
+      digitalWrite(PIN_ONBOARD_LED, initBlinkState ? HIGH : LOW);
+      #endif
+      lastInitBlinkTime = millis();
+    }
+    return; // Exit early during initialization blink
+  }
+#endif
+
+  // Normal LED behavior for all versions
   bool shouldBeOn = isReadyForReceive();
   if (shouldBeOn != readyLedState) {
     digitalWrite(PIN_LED_BUTTON_LED, shouldBeOn ? HIGH : LOW); // Source 3.3V when ready

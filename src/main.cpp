@@ -947,15 +947,15 @@ void processPaymentEvent(String &payloadStr);
 
 void loop()
 {
+  // Update ready LED state regularly (including during INITIALIZING for fast blink)
+  updateReadyLed();
+  
   // Wait for setup to complete before running loop
   if (deviceState.getState() == DeviceState::INITIALIZING)
   {
     vTaskDelay(pdMS_TO_TICKS(100));
     return;
   }
-
-  // Update ready LED state regularly
-  updateReadyLed();
 
   // Once loop is running, we are past init screens
   if (initializationActive && !firstLoop) {
