@@ -69,7 +69,7 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
 - **Microcontroller**: ESP32 (classic) without display
 - **Memory**: 4MB Flash, 512KB SRAM
 - **Operation**: Fully functional headless mode - all core features work via serial configuration
-- **Status LED**: GPIO 21 indicates device ready state
+- **Status LED**: GPIO 21 with three distinct blink patterns (fast blink during startup, slow blink in config mode, solid when ready)
 - **Use Cases**: Embedded installations, wall-mounted relay control, hidden installations
 - **Configuration**: Serial terminal for WiFi, LNbits, and device settings
 - **Advantages**: Lower cost, smaller footprint, lower power consumption
@@ -196,9 +196,15 @@ LED Cathode (-)        →    Resistor (220Ω) →    GND
 **Features:**
 - Status LED only (no button functionality on ESP32 Dev)
 - GPIO 21 is RTC-capable and can be used for other purposes if LED is not needed
-- Same LED behavior as T-Display-S3 version
+- Three distinct LED patterns for clear status indication
 
-**LED Behavior (Both Versions):**
+**LED Behavior (ESP32 Dev Headless):**
+- **Fast Blink (5Hz, 200ms)**: During startup and initialization (INITIALIZING, CONNECTING_WIFI states)
+- **Slow Blink (1Hz, 1000ms)**: Config mode active - device waiting for configuration
+- **Solid ON**: Device is ready to receive payments
+- **OFF**: Error states, Help/Report modes, or deep sleep
+
+**LED Behavior (T-Display-S3 with Display):**
 - **ON**: Device is ready to receive payments (not in initialization, error, Config/Help/Report modes, or deep sleep)
 - **OFF**: During startup, initialization, error states, Config/Help/Report modes, or deep sleep
 
