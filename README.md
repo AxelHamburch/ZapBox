@@ -134,6 +134,7 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
 - [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
 - [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
+- [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
 
 ### External LED Button (Optional)
 
@@ -545,6 +546,7 @@ Electrical design and housing variants, see table.
 | b932506 | Compact |  Add adapter system, 90-degree front, change USB-C position  |
 | b932595 | Duo & Quattro |  First Quattro and update Duo, 90 and 35 degrees front |
 | b932788 | Illuminated Sign |  First mini ZapBox LED sign for demonstration and testing purposes |
+| b935750 | Headless |  First Headless - ZapBox without display |
 
 ### Electrical layout / circuit diagram (Inkscape)
 
@@ -556,6 +558,7 @@ Electrical design and housing variants, see table.
 | e931557 | Duo | First Duo |
 | e932547 | Quattro | First Quattro |
 | e932714 | Duo | Duo update |
+| e935776 | Headless | First Headless |
 
 ## Support
 
