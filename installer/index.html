@@ -525,6 +525,7 @@
         <p><strong>Important note for CP2102 communication chip:</strong> After connecting to the Web Installer, the ESP32 must be completely disconnected from power once for it to start properly again. This phenomenon does not occur with the CH340C communication chip, but it is recommended to do this for all headless chip types.</p>
         
         <p><strong>Affected:</strong> Standard ESP32 boards with CP2102 USB-to-Serial chip</p>
+        <p><strong>Symptom:</strong> LED blinks in a repeating pattern: 3× very fast (boot indicator), then 5 seconds fast blinking, then repeats. This indicates a reset loop.</p>
         <p><strong>Workaround:</strong> After using the Web Installer (connect/disconnect), unplug the USB cable and reconnect it to reset the device properly.</p>
         <p><strong>Not affected:</strong> ESP32 boards with CH340C/CH340G chips work without issues.</p>
         </div>
