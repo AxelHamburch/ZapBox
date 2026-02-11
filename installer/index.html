@@ -519,6 +519,14 @@
         </a>
         
         <p style="text-align: center; margin-top: 10px;"><i>Source: <a href="https://lilygo.cc/products/t-display-s3?variant=42589373268149" target="_blank" rel="noopener noreferrer">lilygo.cc</a></i></p>
+
+        <h3 id="headless">Headless Version (Standard ESP32):</h3>
+        
+        <p><strong>Important note for CP2102 communication chip:</strong> After connecting to the Web Installer, the ESP32 must be completely disconnected from power once for it to start properly again. This phenomenon does not occur with the CH340C communication chip, but it is recommended to do this for all headless chip types.</p>
+        
+        <p><strong>Affected:</strong> Standard ESP32 boards with CP2102 USB-to-Serial chip</p>
+        <p><strong>Workaround:</strong> After using the Web Installer (connect/disconnect), unplug the USB cable and reconnect it to reset the device properly.</p>
+        <p><strong>Not affected:</strong> ESP32 boards with CH340C/CH340G chips work without issues.</p>
         </div>
 
 
@@ -685,6 +693,7 @@
         let lastDataReceivedTime = 0; // Track when we last received data
         let connectionMonitorInterval = null; // Connection health monitor
         let inactivityWarningShown = false; // Flag to show warning only once
+        let waitingForManualConfigMode = false; // Flag to indicate we're waiting for user to enter config mode
 
         function onSerialConnectionOpened(eventSender) {
             console.log("onSerialConnectionOpened", eventSender);
@@ -693,6 +702,7 @@
             configModeVerified = false;
             lastDataReceivedTime = Date.now(); // Initialize timestamp
             inactivityWarningShown = false; // Reset warning flag
+            waitingForManualConfigMode = false;
             
             // Connection health monitor removed - caused too many false positives
             // User can see in the log whether device is responding or not
@@ -707,32 +717,29 @@
             
             const checkMsg = document.createElement('span');
             checkMsg.style.color = '#888';
-            checkMsg.textContent = 'Checking for config mode...\n';
+            checkMsg.textContent = 'Connecting...\n';
             consoleDebug.appendChild(checkMsg);
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
             
-            // Wait 500ms first to see if normal program output comes
-            // If nothing comes, then send /hello
+            // Show popup to inform user what to do
+            // Delay by 2 seconds to avoid being too abrupt
+            setTimeout(() => {
+                alert("\nThe connection has been established.✅\nTo receive or send data, please set the ZapBox to CONFIG MODE.⚙️");
+                waitingForManualConfigMode = true;
+            }, 2000); // 2 seconds delay
+            
+            // Wait longer before sending /hello to give device time to boot if it reset
+            // 3 seconds should be enough for ESP32 to boot
             helloSendTimeout = setTimeout(() => {
                 if (configModeVerified === false) {
-                    // No normal program output detected, send /hello
+                    console.log("Sending /hello to check for config mode...");
                     serial.writeLine("/hello");
                 }
-            }, 500);
-            
-            // Set timeout for config mode verification (3 seconds total)
-            configModeCheckTimeout = setTimeout(() => {
-                if (!configModeVerified) {
-                    console.log("Config mode verification timeout - no ASCII art response");
-                    const timeoutMsg = document.createElement('span');
-                    timeoutMsg.style.color = '#ff4444';
-                    timeoutMsg.textContent = '⚠️ Timeout - Device not in config mode\n';
-                    consoleDebug.appendChild(timeoutMsg);
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
-                    alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 5 seconds, or\n- Flashing fresh firmware with empty config");
-                    serial.close();
-                }
             }, 3000);
+            
+            // NO TIMEOUT - Keep connection open and wait for user to manually enter config mode
+            // This prevents the endless reset loop
+            configModeCheckTimeout = null;
         }
 
         function onSerialConnectionClosed(eventSender) {
@@ -762,6 +769,7 @@
             configModeVerified = false;
             serialBuffer = "";
             justRestarted = false; // Reset the restart flag on disconnect
+            waitingForManualConfigMode = false; // Reset waiting flag
             
             document.getElementById("connect-button").disabled = false;
             document.getElementById("read-config-button").disabled = true;
@@ -786,36 +794,90 @@
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
 
             // Check if we receive normal program output - this means NOT in config mode
+            // Be specific to avoid false positives from config mode logs
             const hasNormalProgramOutput = newData.includes("[LOOP]") || 
                                           newData.includes("[WS]") ||
+                                          newData.includes("[INFO][Config] Socket:") ||
+                                          newData.includes("[INFO][Config] LNbits server:") ||
+                                          newData.includes("[SETUP] readFiles()") ||
+                                          newData.includes("[STARTUP] WiFi connection") ||
                                           newData.includes("Still waiting") ||
                                           newData.includes("[CHECK]");
             
-            // Only show alert if NOT just restarted (allow viewing logs after restart)
-            if (hasNormalProgramOutput && configModeVerified !== true && !justRestarted) {
-                console.log("Normal program detected - NOT in config mode");
+            // Detect WiFi reconnect during config mode (causes auto-restart)
+            if (newData.includes("--- WiFi reconnected! Restarting... ---")) {
+                const wifiMsg = document.createElement('span');
+                wifiMsg.style.color = '#ffaa00';
+                wifiMsg.textContent = '⚠️ WiFi reconnected - device will restart automatically\n';
+                consoleDebug.appendChild(wifiMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 
-                // Cancel the /hello send timeout if still running
+                configModeVerified = false; // Reset flag since device is restarting
+                justRestarted = true; // Mark that restart happened
+            }
+            
+            // Detect boot sequence (device restarted - this is NORMAL when connecting to serial port)
+            if (!justRestarted && (newData.includes("rst:0x1 (POWERON_RESET)") || newData.includes("ets Jul 29 2019"))) {
+                const bootMsg = document.createElement('span');
+                bootMsg.style.color = '#ffaa00';
+                bootMsg.style.fontWeight = 'bold';
+                bootMsg.textContent = '\n⚠️ DEVICE RESET DETECTED\n';
+                consoleDebug.appendChild(bootMsg);
+                
+                const infoMsg = document.createElement('span');
+                infoMsg.style.color = '#00aaff';
+                infoMsg.style.fontWeight = 'bold';
+                infoMsg.textContent = 'ℹ️ This is normal when connecting to the serial port.\n';
+                consoleDebug.appendChild(infoMsg);
+                
+                const actionMsg = document.createElement('span');
+                actionMsg.style.color = '#00ff00';
+                actionMsg.style.fontWeight = 'bold';
+                actionMsg.textContent = '→ Please HOLD the BOOT button for 5 seconds to enter config mode.\n\n';
+                consoleDebug.appendChild(actionMsg);
+                
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                
+                justRestarted = true;
+                configModeVerified = false;
+                waitingForManualConfigMode = true;
+                
+                // Clear the /hello timeout since device just booted
                 if (helloSendTimeout) {
                     clearTimeout(helloSendTimeout);
                     helloSendTimeout = null;
                 }
                 
-                // Clear the main timeout if still running
-                if (configModeCheckTimeout) {
-                    clearTimeout(configModeCheckTimeout);
-                    configModeCheckTimeout = null;
-                }
+                // Set new timeout to send /hello after device has booted
+                helloSendTimeout = setTimeout(() => {
+                    if (!configModeVerified) {
+                        serial.writeLine("/hello");
+                    }
+                }, 6000); // Wait 6 seconds after boot
+            }
+            
+            // Device is running normally - show gentle reminder (NO CLOSE)
+            if (hasNormalProgramOutput && configModeVerified !== true && !justRestarted && !waitingForManualConfigMode) {
+                console.log("Normal program detected - waiting for user to enter config mode");
                 
-                const errorMsg = document.createElement('span');
-                errorMsg.style.color = '#ff4444';
-                errorMsg.textContent = '⚠️ Normal program running - not in config mode\n';
-                consoleDebug.appendChild(errorMsg);
+                waitingForManualConfigMode = true;
+                
+                const reminderMsg = document.createElement('span');
+                reminderMsg.style.color = '#ffaa00';
+                reminderMsg.style.fontWeight = 'bold';
+                reminderMsg.textContent = '\n⚠️ Device is running in normal mode.\n';
+                consoleDebug.appendChild(reminderMsg);
+                
+                const actionMsg = document.createElement('span');
+                actionMsg.style.color = '#00ff00';
+                actionMsg.style.fontWeight = 'bold';
+                actionMsg.textContent = '→ Please HOLD the BOOT button for 5 seconds to enter config mode.\n\n';
+                consoleDebug.appendChild(actionMsg);
+                
                 consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 
-                alert("⚠️ No serial config mode active\n\nPlease enter config mode by:\n- Holding BOOT button for 2-3 seconds, or\n- Flashing fresh firmware with empty config");
-                serial.close();
-                return; // Exit early
+                // DO NOT CLOSE - keep connection open and wait for user action
+                return;
             }
             
             // Check for explicit config mode status markers from ESP32
@@ -844,6 +906,7 @@
                 console.log("Config mode ENTERED - ESP32 in config mode!");
                 configModeVerified = true;
                 justRestarted = false; // Clear restart flag since we're now in config mode
+                waitingForManualConfigMode = false; // Clear waiting flag
                 
                 // Clear the timeouts
                 if (helloSendTimeout) {
@@ -859,7 +922,8 @@
                 setTimeout(() => {
                     const successMsg = document.createElement('span');
                     successMsg.style.color = '#00ff00';
-                    successMsg.textContent = '\n✓ Config mode active\n';
+                    successMsg.style.fontWeight = 'bold';
+                    successMsg.textContent = '\n✅ CONFIG MODE ACTIVE - Ready to configure!\n\n';
                     consoleDebug.appendChild(successMsg);
                     consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 }, 300);
@@ -1038,7 +1102,11 @@
 
             if (navigator.serial) {
                 if (!serial.isOpen()) {
-                    await serial.connectAndOpen(portFilters = null, serialOptions = { baudRate: 115200 })
+                    // Use flowControl: 'none' to prevent automatic DTR/RTS manipulation
+                    await serial.connectAndOpen(portFilters = null, serialOptions = { 
+                        baudRate: 115200,
+                        flowControl: 'none'
+                    })
                 } else {
                     console.log("The serial connection appears already open");
                 }
@@ -1218,13 +1286,11 @@
             consoleDebug.appendChild(restartMsg);
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
             
-            // Send restart command
-            serial.writeLine("/config-restart");
+            // DO NOT send any commands - just close the connection cleanly
+            // Sending commands (especially restart) can trigger unwanted resets
+            console.log("Closing connection without sending any commands");
             
-            // Wait a moment for command to be sent
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Close serial connection before device restarts
+            // Close serial connection immediately without sending anything
             if (serial.isOpen()) {
                 await serial.close();
                 consoleDebug.innerHTML += '<b>Connection closed.</b><br>';

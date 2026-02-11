@@ -3,6 +3,7 @@
 #include "DeviceState.h"
 #include "GlobalState.h"
 #include "Input.h"
+#include "SerialConfig.h"
 #include "Log.h"
 
 // Externals from main.cpp

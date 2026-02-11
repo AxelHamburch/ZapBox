@@ -159,9 +159,13 @@ void readFiles()
     LOG_INFO("Config", "Switch device ID: " + deviceId);
 
     const JsonObject maRoot3 = doc[3];
-    const char *maRoot3Char = maRoot3["value"];
-    qrFormat = String(maRoot3Char);
-    qrFormat.trim();
+    if (!maRoot3.isNull()) {
+      const char *maRoot3Char = maRoot3["value"];
+      if (maRoot3Char != nullptr) {
+        qrFormat = String(maRoot3Char);
+        qrFormat.trim();
+      }
+    }
     if (qrFormat.length() == 0) {
       qrFormat = "bech32"; // Default
     }
@@ -174,14 +178,23 @@ void readFiles()
     // "hi" = horizontal inverse (button left)
     // "vi" = vertical inverse (button top)
     const JsonObject maRoot4 = doc[4];
-    const char *maRoot4Char = maRoot4["value"];
-    displayConfig.orientation = maRoot4Char;
+    if (!maRoot4.isNull()) {
+      const char *maRoot4Char = maRoot4["value"];
+      if (maRoot4Char != nullptr) {
+        displayConfig.orientation = maRoot4Char;
+      }
+    }
+    if (displayConfig.orientation.length() == 0) {
+      displayConfig.orientation = "h"; // Default
+    }
     LOG_INFO("Config", "Screen orientation: " + displayConfig.orientation);
 
     const JsonObject maRoot5 = doc[5];
     if (!maRoot5.isNull()) {
       const char *maRoot5Char = maRoot5["value"];
-      displayConfig.theme = maRoot5Char;
+      if (maRoot5Char != nullptr) {
+        displayConfig.theme = maRoot5Char;
+      }
     }
     LOG_INFO("Config", "Theme: " + displayConfig.theme);
 
@@ -189,110 +202,136 @@ void readFiles()
     const JsonObject maRoot6 = doc[6];
     if (!maRoot6.isNull()) {
       const char *maRoot6Char = maRoot6["value"];
-      lightningConfig.thresholdKey = maRoot6Char;
+      if (maRoot6Char != nullptr) {
+        lightningConfig.thresholdKey = maRoot6Char;
+      }
     }
 
     const JsonObject maRoot7 = doc[7];
     if (!maRoot7.isNull()) {
       const char *maRoot7Char = maRoot7["value"];
-      lightningConfig.thresholdAmount = maRoot7Char;
+      if (maRoot7Char != nullptr) {
+        lightningConfig.thresholdAmount = maRoot7Char;
+      }
     }
 
     const JsonObject maRoot8 = doc[8];
     if (!maRoot8.isNull()) {
       const char *maRoot8Char = maRoot8["value"];
-      lightningConfig.thresholdPin = maRoot8Char;
+      if (maRoot8Char != nullptr) {
+        lightningConfig.thresholdPin = maRoot8Char;
+      }
     }
 
     const JsonObject maRoot9 = doc[9];
     if (!maRoot9.isNull()) {
       const char *maRoot9Char = maRoot9["value"];
-      lightningConfig.thresholdTime = maRoot9Char;
+      if (maRoot9Char != nullptr) {
+        lightningConfig.thresholdTime = maRoot9Char;
+      }
     }
 
     const JsonObject maRoot10 = doc[10];
     if (!maRoot10.isNull()) {
       const char *maRoot10Char = maRoot10["value"];
-      lightningConfig.thresholdLnurl = maRoot10Char;
+      if (maRoot10Char != nullptr) {
+        lightningConfig.thresholdLnurl = maRoot10Char;
+      }
     }
 
     // Read special mode configuration (Index 11-13)
     const JsonObject maRoot11 = doc[11];
     if (!maRoot11.isNull()) {
       const char *maRoot11Char = maRoot11["value"];
-      specialModeConfig.mode = maRoot11Char;
+      if (maRoot11Char != nullptr) {
+        specialModeConfig.mode = maRoot11Char;
+      }
     }
 
     const JsonObject maRoot12 = doc[12];
     if (!maRoot12.isNull()) {
       const char *maRoot12Char = maRoot12["value"];
-      specialModeConfig.frequency = String(maRoot12Char).toFloat();
-      if (specialModeConfig.frequency < 0.1) specialModeConfig.frequency = 0.1;  // Min 0.1 Hz
-      if (specialModeConfig.frequency > 10.0) specialModeConfig.frequency = 10.0; // Max 10 Hz
+      if (maRoot12Char != nullptr) {
+        specialModeConfig.frequency = String(maRoot12Char).toFloat();
+        if (specialModeConfig.frequency < 0.1) specialModeConfig.frequency = 0.1;
+        if (specialModeConfig.frequency > 10.0) specialModeConfig.frequency = 10.0;
+      }
     }
 
     const JsonObject maRoot13 = doc[13];
     if (!maRoot13.isNull()) {
       const char *maRoot13Char = maRoot13["value"];
-      specialModeConfig.dutyCycleRatio = String(maRoot13Char).toFloat();
-      if (specialModeConfig.dutyCycleRatio < 0.1) specialModeConfig.dutyCycleRatio = 0.1;   // Min 1:10
-      if (specialModeConfig.dutyCycleRatio > 10.0) specialModeConfig.dutyCycleRatio = 10.0; // Max 10:1
+      if (maRoot13Char != nullptr) {
+        specialModeConfig.dutyCycleRatio = String(maRoot13Char).toFloat();
+        if (specialModeConfig.dutyCycleRatio < 0.1) specialModeConfig.dutyCycleRatio = 0.1;
+        if (specialModeConfig.dutyCycleRatio > 10.0) specialModeConfig.dutyCycleRatio = 10.0;
+      }
     }
 
     // Read powerConfig.screensaver and deep sleep configuration (optional, indices 14-16)
     const JsonObject maRoot14 = doc[14];
     if (!maRoot14.isNull()) {
       const char *maRoot14Char = maRoot14["value"];
-      powerConfig.screensaver = maRoot14Char;
+      if (maRoot14Char != nullptr) {
+        powerConfig.screensaver = maRoot14Char;
+      }
     }
 
     const JsonObject maRoot15 = doc[15];
     if (!maRoot15.isNull()) {
       const char *maRoot15Char = maRoot15["value"];
-      powerConfig.deepSleep = maRoot15Char;
+      if (maRoot15Char != nullptr) {
+        powerConfig.deepSleep = maRoot15Char;
+      }
     }
 
     const JsonObject maRoot16 = doc[16];
     if (!maRoot16.isNull()) {
       const char *maRoot16Char = maRoot16["value"];
-      powerConfig.activationTime = maRoot16Char;
-      // Validate activation time (1-120 minutes)
-      int actTime = String(powerConfig.activationTime).toInt();
-      if (actTime < 1) powerConfig.activationTime = "1";
-      if (actTime > 120) powerConfig.activationTime = "120";
+      if (maRoot16Char != nullptr) {
+        powerConfig.activationTime = maRoot16Char;
+        // Validate activation time (1-120 minutes)
+        int actTime = String(powerConfig.activationTime).toInt();
+        if (actTime < 1) powerConfig.activationTime = "1";
+        if (actTime > 120) powerConfig.activationTime = "120";
+      }
     }
 
     // Read multi-channel-control configuration (index 17)
     const JsonObject maRoot17 = doc[17];
     if (!maRoot17.isNull()) {
       const char *maRoot17Char = maRoot17["value"];
-      multiChannelConfig.mode = maRoot17Char;
+      if (maRoot17Char != nullptr) {
+        multiChannelConfig.mode = maRoot17Char;
+      }
     }
 
     // Read BTC-Ticker configuration (index 18)
     const JsonObject maRoot18 = doc[18];
     if (!maRoot18.isNull()) {
       const char *maRoot18Char = maRoot18["value"];
-      multiChannelConfig.btcTickerMode = maRoot18Char;
-      // Normalize human-friendly values from installer
-      String modeNorm = multiChannelConfig.btcTickerMode;
-      modeNorm.trim();
-      modeNorm.toLowerCase();
-      // Strip all non-letter characters to be robust against UI formatting
-      String lettersOnly = "";
-      for (size_t i = 0; i < modeNorm.length(); ++i) {
-        char c = modeNorm.charAt(i);
-        if ((c >= 'a' && c <= 'z')) lettersOnly += c;
+      if (maRoot18Char != nullptr) {
+        multiChannelConfig.btcTickerMode = maRoot18Char;
+        // Normalize human-friendly values from installer
+        String modeNorm = multiChannelConfig.btcTickerMode;
+        modeNorm.trim();
+        modeNorm.toLowerCase();
+        // Strip all non-letter characters to be robust against UI formatting
+        String lettersOnly = "";
+        for (size_t i = 0; i < modeNorm.length(); ++i) {
+          char c = modeNorm.charAt(i);
+          if ((c >= 'a' && c <= 'z')) lettersOnly += c;
+        }
+        // Map variants to canonical values
+        if (lettersOnly.indexOf("always") != -1) {
+          multiChannelConfig.btcTickerMode = "always";
+        } else if (lettersOnly.indexOf("selecting") != -1 || lettersOnly.indexOf("select") != -1) {
+          multiChannelConfig.btcTickerMode = "selecting";
+        } else if (lettersOnly == "off") {
+          multiChannelConfig.btcTickerMode = "off";
+        }
+        LOG_INFO("Config", "BTC-Ticker mode normalized: " + multiChannelConfig.btcTickerMode);
       }
-      // Map variants to canonical values
-      if (lettersOnly.indexOf("always") != -1) {
-        multiChannelConfig.btcTickerMode = "always";
-      } else if (lettersOnly.indexOf("selecting") != -1 || lettersOnly.indexOf("select") != -1) {
-        multiChannelConfig.btcTickerMode = "selecting";
-      } else if (lettersOnly == "off") {
-        multiChannelConfig.btcTickerMode = "off";
-      } // else keep original (unknown value)
-      LOG_INFO("Config", "BTC-Ticker mode normalized: " + multiChannelConfig.btcTickerMode);
     } else {
       LOG_WARN("Config", "Index 18 (btcTickerMode) not found in config - using default: " + multiChannelConfig.btcTickerMode);
     }
@@ -301,10 +340,12 @@ void readFiles()
     const JsonObject maRoot20 = doc[20];
     if (!maRoot20.isNull()) {
       const char *maRoot20Char = maRoot20["value"];
-      String buttonSetting = String(maRoot20Char);
-      buttonSetting.toLowerCase();
-      buttonSetting.trim();
-      externalButtonState.enabled = (buttonSetting == "yes");
+      if (maRoot20Char != nullptr) {
+        String buttonSetting = String(maRoot20Char);
+        buttonSetting.toLowerCase();
+        buttonSetting.trim();
+        externalButtonState.enabled = (buttonSetting == "yes");
+      }
       LOG_INFO("Config", String("External LED button: ") + (externalButtonState.enabled ? "ENABLED" : "DISABLED"));
     }
 
@@ -312,14 +353,16 @@ void readFiles()
     const JsonObject maRoot19 = doc[19];
     if (!maRoot19.isNull()) {
       const char *maRoot19Char = maRoot19["value"];
-      currency = String(maRoot19Char);
-      LOG_DEBUG("Config", "Read currency from config (before processing): " + currency);
-      currency.toUpperCase(); // Ensure uppercase
-      if (currency.length() == 0 || currency.length() > 3) {
-        LOG_WARN("Config", "Invalid currency length, using default USD");
-        currency = "USD"; // Default fallback
+      if (maRoot19Char != nullptr) {
+        currency = String(maRoot19Char);
+        LOG_DEBUG("Config", "Read currency from config (before processing): " + currency);
+        currency.toUpperCase();
+        if (currency.length() == 0 || currency.length() > 3) {
+          LOG_WARN("Config", "Invalid currency length, using default USD");
+          currency = "USD";
+        }
+        LOG_INFO("Config", "Final currency value: " + currency);
       }
-      LOG_INFO("Config", "Final currency value: " + currency);
     } else {
       LOG_DEBUG("Config", "Index 19 (currency) not found in config - using default: " + currency);
     }
@@ -659,6 +702,20 @@ void setup()
   #ifdef PIN_LED_BUTTON_SW
   pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
   #endif
+
+  // Boot indicator: Blink LEDs 3 times quickly to show device is starting
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    #ifdef PIN_ONBOARD_LED
+    digitalWrite(PIN_ONBOARD_LED, HIGH);
+    #endif
+    delay(100); // 100ms on
+    digitalWrite(PIN_LED_BUTTON_LED, LOW);
+    #ifdef PIN_ONBOARD_LED
+    digitalWrite(PIN_ONBOARD_LED, LOW);
+    #endif
+    delay(100); // 100ms off
+  }
 
   FFat.begin(FORMAT_ON_FAIL);
   readFiles(); // get the saved details and store in global variables

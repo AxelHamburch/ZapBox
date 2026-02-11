@@ -6,6 +6,7 @@
 #include "Payment.h"
 #include "UI.h"
 #include "TouchCST816S.h"
+#include "SerialConfig.h"
 #include <Arduino.h>
 #include "Log.h"
 

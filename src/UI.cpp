@@ -92,7 +92,7 @@ bool isReadyForReceive() {
  */
 void updateReadyLed() {
 #if !ENABLE_DISPLAY
-  // Headless version: Add fast blink during initialization
+  // Headless version: Fast blink during initialization to show progress
   static unsigned long lastInitBlinkTime = 0;
   static bool initBlinkState = false;
   
