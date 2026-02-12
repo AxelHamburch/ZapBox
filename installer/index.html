@@ -310,11 +310,19 @@
                         <option value="quattro">Quattro (4 channels - pin 12, 13, 10, 11)</option>
                     </select>
                 </div>
+                <div>
+                    <label for="lightBarrier">Vending machine with light barrier</label>
+                    <select name="lightBarrier" id="lightBarrier">
+                        <option value="no" selected>No - default</option>
+                        <option value="yes">Yes - Stop the action</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN light barrier on GPIO 2 (T-Display-S3 only)</p>
+                </div>
             </div>
             
             <p style="margin-top: 20px; color: #888;"><i><strong>Multi-Channel-Control:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use NEXT button, touch gestures (swipe ←→) or external button (if available) to navigate between products.</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Features:</strong> Automatic LNURL generation (Bech32/LUD17) • Backend product labels • Touch navigation • Currency symbol conversion (€→EUR, $→USD, etc.)</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> Not compatible with the Threshold feature. Please disable it.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note on Multi-Channel Mode:</strong> Not compatible with the Threshold feature. Please disable it.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note on selecting "Vending machine with light barrier":</strong> A trigger from the light barrier stops the action after 2 seconds at the earliest.</i></p>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
@@ -561,6 +569,7 @@
         const deepSleep = document.getElementById('deepSleep');
         const activationTime = document.getElementById('activationTime');
         const multiControl = document.getElementById('multiControl');
+        const lightBarrier = document.getElementById('lightBarrier');
         const btcTicker = document.getElementById('btcTicker');
         const currency = document.getElementById('currency');
         
@@ -664,6 +673,10 @@
             {
                 "name": "btcTicker",
                 "value": "selecting"
+            },
+            {
+                "name": "lightBarrier",
+                "value": "no"
             },
             {
                 "name": "currency",
@@ -1042,7 +1055,8 @@
                 config[16].value = configData[16]?.value || "5"; // activationTime
                 config[17].value = configData[17]?.value || "off"; // multiControl
                 config[18].value = configData[18]?.value || "always"; // btcTicker
-                config[19].value = configData[19]?.value || "USD"; // currency
+                config[19].value = configData[19]?.value || "no"; // lightBarrier
+                config[20].value = configData[20]?.value || "USD"; // currency
 
                 // Fill form fields
                 ssid.value = config[0].value;
@@ -1064,10 +1078,11 @@
                 activationTime.value = config[16].value;
                 multiControl.value = config[17].value;
                 btcTicker.value = config[18].value;
-                currency.value = config[19].value;
-                // Index 20: External button (may not exist in older configs)
-                if (config[20] && config[20].value) {
-                    externalButton.value = config[20].value;
+                lightBarrier.value = config[19].value;
+                currency.value = config[20].value;
+                // Index 21: External button (may not exist in older configs)
+                if (config[21] && config[21].value) {
+                    externalButton.value = config[21].value;
                 } else {
                     externalButton.value = 'no'; // Default for older configs
                 }
@@ -1156,13 +1171,14 @@
             config[16].value = activationTime.value || "5";
             config[17].value = multiControl.value;
             config[18].value = btcTicker.value;
-            config[19].value = currency.value.toUpperCase() || "USD"; // Convert to uppercase
+            config[19].value = lightBarrier.value;
+            config[20].value = currency.value.toUpperCase() || "USD"; // Convert to uppercase
             
-            // Ensure config[20] exists for external button
-            if (!config[20]) {
-                config[20] = { key: "externalButton", value: "no" };
+            // Ensure config[21] exists for external button
+            if (!config[21]) {
+                config[21] = { key: "externalButton", value: "no" };
             }
-            config[20].value = externalButton.value; // Index 20 for external button
+            config[21].value = externalButton.value; // Index 21 for external button
             
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -1359,8 +1375,12 @@
             config[18].value = event.target.value;
         });
 
+        lightBarrier.addEventListener("change", (event) => {
+            config[19].value = event.target.value;
+        });
+
         currency.addEventListener("input", (event) => {
-            config[19].value = event.target.value.toUpperCase();
+            config[20].value = event.target.value.toUpperCase();
             event.target.value = event.target.value.toUpperCase(); // Show uppercase in input
         });
 

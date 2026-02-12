@@ -30,6 +30,11 @@
 #define PIN_BUTTON_2 14        // HELP button (right)
 #define PIN_BAT_VOLT 4         // Battery voltage ADC
 
+// Vending machine light barrier (T-Display-S3 only)
+#if ENABLE_DISPLAY
+  #define PIN_LIGHT_BARRIER 2  // NPN light barrier input (INPUT_PULLUP, active LOW)
+#endif
+
 // I2C Bus (shared: Touch + NFC)
 #define PIN_IIC_SCL 17         // I2C clock
 #define PIN_IIC_SDA 18         // I2C data

@@ -28,6 +28,9 @@ SpecialModeConfig specialModeConfig;
 // Multi-Channel Control & BTC Ticker
 MultiChannelConfig multiChannelConfig;
 
+// Vending Machine Light Barrier
+LightBarrierConfig lightBarrierConfig;
+
 // Bitcoin Data & Ticker
 BitcoinData bitcoinData;
 

@@ -1,12 +1,38 @@
 #include "Utils.h"
 #include "GlobalState.h"
 #include "DeviceState.h"
+#include "PinConfig.h"
 #include <WebSocketsClient.h>
 
 // External references to main.cpp
 extern StateManager deviceState;
 extern MultiChannelConfig multiChannelConfig;
 extern WebSocketsClient webSocket;
+
+// Helper function: Check if light barrier should stop the action
+// Returns true if light barrier is active AND minimum action time has passed
+inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
+  #ifdef PIN_LIGHT_BARRIER
+  if (!lightBarrierConfig.enabled) {
+    return false; // Light barrier disabled
+  }
+  
+  // Check if minimum action time has passed (2 seconds)
+  unsigned long elapsed = millis() - actionStartTime;
+  if (elapsed < lightBarrierConfig.minActionTime) {
+    return false; // Too early to stop
+  }
+  
+  // Check if light barrier is triggered (NPN active = LOW)
+  bool lightBarrierActive = (digitalRead(PIN_LIGHT_BARRIER) == LOW);
+  if (lightBarrierActive) {
+    Serial.printf("[LIGHT BARRIER] Triggered in special mode after %lu ms - stopping action!\n", elapsed);
+    return true;
+  }
+  #endif
+  
+  return false;
+}
 
 /**
  * Extract a value from a delimited string by index.
@@ -83,6 +109,15 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
     unsigned long delayStart = millis();
     while (millis() - delayStart < onTime_ms) {
+      // Check light barrier during special mode
+      if (shouldStopForLightBarrier(startTime)) {
+        Serial.println("[SPECIAL] Light barrier stopped action early");
+        digitalWrite(pin, LOW);
+        if (parallelPin13) {
+          digitalWrite(13, LOW);
+        }
+        return; // Exit special mode immediately
+      }
       webSocket.loop(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(1)); // Yield to other tasks
     }
@@ -97,6 +132,11 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
     delayStart = millis();
     while (millis() - delayStart < offTime_ms) {
+      // Check light barrier during OFF phase too
+      if (shouldStopForLightBarrier(startTime)) {
+        Serial.println("[SPECIAL] Light barrier stopped action early (during OFF)");
+        return; // Exit special mode immediately
+      }
       webSocket.loop(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(1)); // Yield to other tasks
     }

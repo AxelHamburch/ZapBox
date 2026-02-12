@@ -114,6 +114,18 @@ struct MultiChannelConfig {
 extern MultiChannelConfig multiChannelConfig;
 
 // ============================================================================
+// VENDING MACHINE LIGHT BARRIER (GPIO 2)
+// ============================================================================
+
+struct LightBarrierConfig {
+  String mode = "no";  // "no" (disabled), "yes" (stop action on trigger)
+  bool enabled = false; // Parsed boolean for easy checking
+  unsigned long minActionTime = 2000; // Minimum 2 seconds before light barrier can stop action
+};
+
+extern LightBarrierConfig lightBarrierConfig;
+
+// ============================================================================
 // BITCOIN DATA & TICKER
 // ============================================================================
 

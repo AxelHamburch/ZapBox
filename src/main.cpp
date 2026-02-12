@@ -336,25 +336,26 @@ void readFiles()
       LOG_WARN("Config", "Index 18 (btcTickerMode) not found in config - using default: " + multiChannelConfig.btcTickerMode);
     }
 
-    // Read external LED button configuration (index 20)
-    const JsonObject maRoot20 = doc[20];
-    if (!maRoot20.isNull()) {
-      const char *maRoot20Char = maRoot20["value"];
-      if (maRoot20Char != nullptr) {
-        String buttonSetting = String(maRoot20Char);
-        buttonSetting.toLowerCase();
-        buttonSetting.trim();
-        externalButtonState.enabled = (buttonSetting == "yes");
-      }
-      LOG_INFO("Config", String("External LED button: ") + (externalButtonState.enabled ? "ENABLED" : "DISABLED"));
-    }
-
-    // Read currency configuration (index 19)
+    // Read light barrier configuration (index 19)
     const JsonObject maRoot19 = doc[19];
     if (!maRoot19.isNull()) {
       const char *maRoot19Char = maRoot19["value"];
       if (maRoot19Char != nullptr) {
-        currency = String(maRoot19Char);
+        String lightBarrierSetting = String(maRoot19Char);
+        lightBarrierSetting.toLowerCase();
+        lightBarrierSetting.trim();
+        lightBarrierConfig.mode = lightBarrierSetting;
+        lightBarrierConfig.enabled = (lightBarrierSetting == "yes");
+      }
+      LOG_INFO("Config", String("Light barrier: ") + (lightBarrierConfig.enabled ? "ENABLED" : "DISABLED"));
+    }
+
+    // Read currency configuration (index 20)
+    const JsonObject maRoot20 = doc[20];
+    if (!maRoot20.isNull()) {
+      const char *maRoot20Char = maRoot20["value"];
+      if (maRoot20Char != nullptr) {
+        currency = String(maRoot20Char);
         LOG_DEBUG("Config", "Read currency from config (before processing): " + currency);
         currency.toUpperCase();
         if (currency.length() == 0 || currency.length() > 3) {
@@ -364,7 +365,20 @@ void readFiles()
         LOG_INFO("Config", "Final currency value: " + currency);
       }
     } else {
-      LOG_DEBUG("Config", "Index 19 (currency) not found in config - using default: " + currency);
+      LOG_DEBUG("Config", "Index 20 (currency) not found in config - using default: " + currency);
+    }
+
+    // Read external LED button configuration (index 21)
+    const JsonObject maRoot21 = doc[21];
+    if (!maRoot21.isNull()) {
+      const char *maRoot21Char = maRoot21["value"];
+      if (maRoot21Char != nullptr) {
+        String buttonSetting = String(maRoot21Char);
+        buttonSetting.toLowerCase();
+        buttonSetting.trim();
+        externalButtonState.enabled = (buttonSetting == "yes");
+      }
+      LOG_INFO("Config", String("External LED button: ") + (externalButtonState.enabled ? "ENABLED" : "DISABLED"));
     }
     // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 
@@ -701,6 +715,14 @@ void setup()
   #endif
   #ifdef PIN_LED_BUTTON_SW
   pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
+  #endif
+  
+  // Vending machine light barrier (NPN on GPIO 2)
+  #ifdef PIN_LIGHT_BARRIER
+  if (lightBarrierConfig.enabled) {
+    pinMode(PIN_LIGHT_BARRIER, INPUT_PULLUP);  // NPN light barrier with pull-up
+    Serial.println("[LIGHT BARRIER] GPIO 2 initialized (NPN sensor, active LOW)");
+  }
   #endif
 
   // Boot indicator: Blink LEDs 3 times quickly to show device is starting
@@ -1924,6 +1946,32 @@ void loop()
 }
 
 // --- Punkt 3: Modularized payment handling ---
+
+// Helper function: Check if light barrier should stop the action
+// Returns true if light barrier is active AND minimum action time has passed
+inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
+  #ifdef PIN_LIGHT_BARRIER
+  if (!lightBarrierConfig.enabled) {
+    return false; // Light barrier disabled
+  }
+  
+  // Check if minimum action time has passed (2 seconds)
+  unsigned long elapsed = millis() - actionStartTime;
+  if (elapsed < lightBarrierConfig.minActionTime) {
+    return false; // Too early to stop
+  }
+  
+  // Check if light barrier is triggered (NPN active = LOW)
+  bool lightBarrierActive = (digitalRead(PIN_LIGHT_BARRIER) == LOW);
+  if (lightBarrierActive) {
+    Serial.printf("[LIGHT BARRIER] Triggered after %lu ms - stopping action!\n", elapsed);
+    return true;
+  }
+  #endif
+  
+  return false;
+}
+
 static void processThresholdPayment(const JsonDocument &doc)
 {
   JsonVariantConst payment = doc["payment"];
@@ -1973,6 +2021,11 @@ static void processThresholdPayment(const JsonDocument &doc)
       // CRITICAL: Non-blocking delay that keeps WebSocket alive
       unsigned long startTime = millis();
       while (millis() - startTime < duration) {
+        // Check light barrier (stop early if triggered after minimum time)
+        if (shouldStopForLightBarrier(startTime)) {
+          Serial.println("[THRESHOLD] Light barrier stopped action early");
+          break;
+        }
         webSocket.loop(); // Keep WebSocket connection alive
         vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
       }
@@ -2039,6 +2092,11 @@ static void processNormalPayment(int pin, int duration)
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
     unsigned long startTime = millis();
     while (millis() - startTime < duration) {
+      // Check light barrier (stop early if triggered after minimum time)
+      if (shouldStopForLightBarrier(startTime)) {
+        Serial.println("[NORMAL] Light barrier stopped action early");
+        break;
+      }
       webSocket.loop(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
     }
