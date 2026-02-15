@@ -1049,6 +1049,15 @@ void loop()
     vTaskDelay(pdMS_TO_TICKS(100));
     return;
   }
+  
+  // CRITICAL: Block loop() while config mode is active (runs on separate thread/core)
+  // Without this check, loop() continues writing to config.json while serial config reads/writes it
+  // This causes race condition and JSON corruption like: {"name":"qrFormat","vathresholdAmount","value":""}
+  if (deviceState.getState() == DeviceState::CONFIG_MODE)
+  {
+    vTaskDelay(pdMS_TO_TICKS(100));
+    return;
+  }
 
   // Once loop is running, we are past init screens
   if (initializationActive && !firstLoop) {

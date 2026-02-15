@@ -1,0 +1,13 @@
+Fix CRITICAL: CONFIG_MODE race condition causing JSON corruption
+
+Problem:
+- Task1code (Core 0) handles buttons and calls configMode()
+- executeConfig() blocks only Core 0 with while(true) loop
+- loop() (Core 1) continues running and can write config.json
+- Simultaneous writes from both cores corrupt config.json
+- Result: Malformed JSON like {"name":"qrFormat","vathresholdAmount","value":""}
+
+Solution:
+- Added CONFIG_MODE check in loop() to return early (like INITIALIZING)
+- Prevents Core 1 from running while Core 0 is in config mode
+- Eliminates race condition and JSON corruption
