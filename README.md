@@ -2,6 +2,47 @@
 
 Bitcoin Lightning-controlled USB power switch for LilyGo T-Display-S3
 
+## Table of Contents
+
+- [📄 White Paper](#-white-paper)
+- [What is the ZapBox?](#what-is-the-zapbox)
+- [How it Works](#how-it-works)
+- [Hardware](#hardware)
+  - [LilyGo T-Display-S3 (Full Version)](#lilygo-t-display-s3-full-version)
+  - [ESP32 Dev Module (Headless Version)](#esp32-dev-module-headless-version)
+  - [Pin Configuration](#pin-configuration)
+  - [NFC Reader Setup (Optional)](#nfc-reader-setup-optional)
+  - [Electrical Layout](#electrical-layout)
+  - [External LED Button (Optional)](#external-led-button-optional)
+  - [Headless Version: LED Status Diagnostics](#headless-version-led-status-diagnostics)
+- [Operation](#operation)
+  - [On-board Button - Reset](#on-board-button---reset)
+  - [On-board Button - HELP (GPIO 14)](#on-board-button---help-gpio-14)
+  - [On-board Button - NEXT (BOOT / GPIO 0)](#on-board-button---next-boot--gpio-0)
+  - [Touch display (touch version only)](#touch-display-touch-version-only)
+  - [Touch button (Red circle next to the touch field)](#touch-button-red-circle-next-to-the-touch-field)
+  - [External LED-Button (if available)](#external-led-button-if-available)
+  - [Startup & Initialization Sequence](#startup--initialization-sequence)
+  - [Error Detection & Priority System](#error-detection--priority-system)
+- [Features](#features)
+  - [Basic Configuration](#basic-configuration)
+  - [Advanced Features](#advanced-features)
+    - [Multi-Channel-Control Mode (Touch Variant)](#multi-channel-control-mode-touch-variant)
+    - [BTC-Ticker with Currency Display](#btc-ticker-with-currency-display)
+    - [Special Modes](#special-modes)
+    - [Threshold Mode](#threshold-mode)
+    - [Screensaver & Deep Sleep Function](#screensaver--deep-sleep-function)
+- [Web Installer](#web-installer)
+- [PlatformIO Project](#platformio-project)
+  - [Required Libraries](#required-libraries)
+  - [Project Structure](#project-structure)
+- [Compatibility](#compatibility)
+- [Acknowledgement](#acknowledgement)
+- [Versioning](#versioning)
+  - [Housing / 3D modeling (FreeCAD)](#housing--3d-modeling-freecad)
+  - [Electrical layout / circuit diagram (Inkscape)](#electrical-layout--circuit-diagram-inkscape)
+- [Support](#support)
+
 ## 📄 White Paper
 
 **Official ZapBox White Paper** - Version **wp930750** (January 3, 2026)
@@ -69,7 +110,7 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
 - **Microcontroller**: ESP32 (classic) without display
 - **Memory**: 4MB Flash, 512KB SRAM
 - **Operation**: Fully functional headless mode - all core features work via serial configuration
-- **Status LED**: GPIO 21 with three distinct blink patterns (fast blink during startup, slow blink in config mode, solid when ready)
+- **Status LED**: GPIO 21 with distinct blink patterns (3 fast boot blinks, fast blink during startup, slow blink in config mode, solid when ready, error blink patterns 1-4 for network issues)
 - **Use Cases**: Embedded installations, wall-mounted relay control, hidden installations
 - **Configuration**: Serial terminal for WiFi, LNbits, and device settings
 - **Advantages**: Lower cost, smaller footprint, lower power consumption
@@ -196,17 +237,83 @@ LED Cathode (-)        →    Resistor (220Ω) →    GND
 **Features:**
 - Status LED only (no button functionality on ESP32 Dev)
 - GPIO 21 is RTC-capable and can be used for other purposes if LED is not needed
-- Three distinct LED patterns for clear status indication
+- Distinct LED patterns for clear status and error indication
 
 **LED Behavior (ESP32 Dev Headless):**
+- **3x Very Fast Blink on Boot**: Three quick flashes immediately after power-on to indicate device start
 - **Fast Blink (5Hz, 200ms)**: During startup and initialization (INITIALIZING, CONNECTING_WIFI states)
 - **Slow Blink (1Hz, 1000ms)**: Config mode active - device waiting for configuration
 - **Solid ON**: Device is ready to receive payments
-- **OFF**: Error states, Help/Report modes, or deep sleep
+- **Error Blink Patterns** (with 2 second pause between sequences):
+  - **1 Blink** (500ms on, 500ms off): NO WIFI - WiFi connection lost or not established
+  - **2 Blinks** (300ms on/off each): NO INTERNET - WiFi connected but no internet access
+  - **3 Blinks** (250ms on/off each): NO SERVER - Internet OK but LNbits server unreachable
+  - **4 Blinks** (200ms on/off each): NO WEBSOCKET - Server OK but WebSocket connection failed
+- **OFF**: Help/Report modes, or deep sleep
 
 **LED Behavior (T-Display-S3 with Display):**
 - **ON**: Device is ready to receive payments (not in initialization, error, Config/Help/Report modes, or deep sleep)
 - **OFF**: During startup, initialization, error states, Config/Help/Report modes, or deep sleep
+
+### Headless Version: LED Status Diagnostics
+
+The headless version (ESP32 Dev) uses the status LED to provide comprehensive visual feedback without a display. This allows for quick system diagnostics by counting LED blinks.
+
+#### Network Error Detection Priority
+
+Error patterns are displayed in priority order - the LED shows the **first unconfirmed network status**:
+1. **WiFi** → 2. **Internet** → 3. **Server** → 4. **WebSocket**
+
+For example: If WiFi is disconnected, the LED will show 1 blink (WiFi error) even if other services are also unavailable. Once WiFi is restored, the LED will show the next error in the chain (if any).
+
+#### LED Pattern Reference Table
+
+| Pattern | Timing | Status | Description |
+|---------|--------|--------|-------------|
+| **3 Fast Blinks** | 3x rapid flash on boot | **BOOT** | Device powered on, starting initialization |
+| **Fast Continuous** | 200ms on/off (5Hz) | **INITIALIZING** | System startup, WiFi connecting |
+| **Slow Continuous** | 1000ms on/off (1Hz) | **CONFIG MODE** | Configuration interface active, waiting for settings |
+| **Solid ON** | Continuous light | **READY** | All systems operational, ready for payments |
+| **1 Blink + Pause** | 500ms on/off, 2s pause | **NO WIFI** | WiFi connection lost or failed to connect |
+| **2 Blinks + Pause** | 300ms on/off/on/off, 2s pause | **NO INTERNET** | WiFi connected, but no internet gateway access |
+| **3 Blinks + Pause** | 250ms each, 2s pause | **NO SERVER** | Internet connected, LNbits server unreachable |
+| **4 Blinks + Pause** | 200ms each, 2s pause | **NO WEBSOCKET** | Server reachable, WebSocket connection failed |
+| **OFF** | No light | **INACTIVE** | Deep sleep, Help/Report modes, or system halted |
+
+#### Troubleshooting with LED Patterns
+
+**1 Blink (NO WIFI)**
+- Check WiFi credentials in configuration
+- Verify WiFi router is powered on and in range
+- Check for MAC address filtering on router
+- Confirm correct WiFi password
+
+**2 Blinks (NO INTERNET)**
+- WiFi credentials are correct, but router has no internet
+- Check router's internet connection (modem/ISP)
+- Verify router's WAN port is connected
+- May occur during ISP outages
+
+**3 Blinks (NO SERVER)**
+- Internet is working, but LNbits server is down or unreachable
+- Check LNbits server URL in configuration
+- Verify LNbits server is running
+- Check firewall rules (port 443/HTTPS)
+- Confirm DNS resolution of server hostname
+
+**4 Blinks (NO WEBSOCKET)**
+- Server is reachable, but WebSocket connection or data validation failed
+- **Most common cause:** Bitcoinswitch instance was deleted on LNbits server (HTTP 404)
+  - Check if the configured device ID still exists in LNbits
+  - Verify the switch configuration in LNbits admin panel
+  - If instance was deleted, create a new one and update device configuration
+- May occur briefly during LNbits service restart
+- Check LNbits WebSocket configuration
+- Verify API key/credentials are valid
+- Should auto-recover when server completes startup or after creating new instance
+
+**Recovery Behavior**
+After network issues are resolved, the LED automatically transitions back to **Solid ON** (READY state). If the LED remains in an error state after confirmed repairs, perform a device reset by pressing the onboard reset button.
 
 
 ## Operation
@@ -275,8 +382,8 @@ The ZapBox features a hierarchical error detection system with automatic diagnos
 |----------|-----------|--------------|------------------|-------------|
 | 1 (Highest) | **NO WIFI** | NW | WiFi connection status | WiFi network not connected<br>-> Wifi data correct?<br>-> WiFi signal too weak? |
 | 2 | **NO INTERNET** | NI | HTTP check to Google | Internet connectivity lost<br>-> Internet accessible? |
-| 3 | **NO SERVER** | NS | TCP port 443 check | LNbits server unreachable<br>-> Server down or "Device settings string" correct? |
-| 4 (Lowest) | **NO WEBSOCKET** | NWS | WebSocket connection status | WebSocket protocol/handshake failure<br>-> Bitcoin Switch parameter correct? |
+| 3 | **NO SERVER** | NS | TCP port 443 check | LNbits server unreachable<br>-> Server hardware down? |
+| 4 (Lowest) | **NO WEBSOCKET** | NWS | WebSocket connection status | WebSocket protocol/handshake failure<br>-> LNbits down or Bitcoin Switch parameter correct? |
 
 **Error Detection Logic:**
 - Each error level is only checked if all higher priority levels are OK

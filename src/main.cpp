@@ -51,6 +51,7 @@ TouchCST816S touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_TOUCH_RES, PIN_TOUCH_INT)
 // Variables that remain here (not migrated to GlobalState)
 String currency = "USD"; // Currency from config, default USD
 bool labelsLoadedSuccessfully = false; // Track if labels were successfully fetched
+bool labelsValidationAttempted = false; // Track if label fetch was attempted (regardless of success)
 String payloadStr;
 String lnbitsServer;
 String deviceId;
@@ -887,25 +888,38 @@ void setup()
     }
     
     // Step 5: Process WebSocket events and check connection
-    if (websocketStarted && !networkStatus.confirmed.websocket) {
-      webSocket.loop(); // Process events
-      if (webSocket.isConnected()) {
-        networkStatus.confirmed.websocket = true;
-        Serial.println("[STARTUP] WebSocket connected!");
+    if (websocketStarted && !labelsValidationAttempted) {
+      webSocket.loop(); // Process events (this triggers WebSocket event handler and fetchSwitchLabels)
+      
+      // Only log once when WebSocket connects (not every loop iteration)
+      static bool wsConnectLogged = false;
+      if (webSocket.isConnected() && !wsConnectLogged) {
+        Serial.println("[STARTUP] WebSocket TCP connected, waiting for config validation...");
+        wsConnectLogged = true;
       }
     }
     
-    // Check if all connections are ready
-    if (networkStatus.confirmed.wifi && networkStatus.confirmed.internet && networkStatus.confirmed.server && networkStatus.confirmed.websocket) {
+    // Check if validation is complete and successful
+    if (networkStatus.confirmed.wifi && networkStatus.confirmed.internet && 
+        networkStatus.confirmed.server && networkStatus.confirmed.websocket && 
+        labelsLoadedSuccessfully && labelsValidationAttempted) {
       allConnectionsReady = true;
       Serial.printf("[STARTUP] All connections ready after %.1f seconds!\n", (i + 1) * 0.1);
       break; // Exit startup screen early
     }
     
+    // Check if validation is complete but failed (404 error)
+    if (labelsValidationAttempted && !labelsLoadedSuccessfully) {
+      Serial.println("[STARTUP] Config validation failed - device ID invalid or deleted");
+      break; // Exit startup screen to show error
+    }
+    
     // Progress indicator every 5 seconds
     if ((i + 1) % 50 == 0) {
-      Serial.printf("[STARTUP] Progress: %.1fs - WiFi:%d Internet:%d Server:%d WS:%d\n", 
-                    (i + 1) * 0.1, networkStatus.confirmed.wifi, networkStatus.confirmed.internet, networkStatus.confirmed.server, networkStatus.confirmed.websocket);
+      Serial.printf("[STARTUP] Progress: %.1fs - WiFi:%d Internet:%d Server:%d WS:%d Validated:%d Success:%d\n", 
+                    (i + 1) * 0.1, networkStatus.confirmed.wifi, networkStatus.confirmed.internet, 
+                    networkStatus.confirmed.server, networkStatus.confirmed.websocket, 
+                    labelsValidationAttempted, labelsLoadedSuccessfully);
     }
   }
   
@@ -1612,6 +1626,9 @@ void loop()
     
     webSocket.loop();
     loopCount++;
+    
+    // Update LED status regularly to reflect current network state
+    updateReadyLed();
 
 #if ENABLE_BITCOIN_DATA
     // Update Bitcoin ticker (checks interval internally, non-blocking)
@@ -1888,7 +1905,9 @@ void loop()
       }
       
       // Auto-recovery: All connections restored - set confirmation flags
-      if (wifiOk && serverOk && websocketOk)
+      // IMPORTANT: Check labelsLoadedSuccessfully to ensure device config is valid
+      // A 404 from fetchSwitchLabels() means the instance was deleted on the server
+      if (wifiOk && serverOk && websocketOk && labelsLoadedSuccessfully)
       {
         // Set all confirmation flags (so QR screen can be shown)
         if (!networkStatus.confirmed.wifi) {
@@ -1920,6 +1939,12 @@ void loop()
           productSelectionState.showTime = millis();
           deviceState.transition(DeviceState::READY);
         }
+        return;
+      }
+      // If WebSocket is connected but labels failed to load (404), keep WebSocket unconfirmed
+      else if (wifiOk && serverOk && websocketOk && !labelsLoadedSuccessfully) {
+        Serial.println("[AUTO-RECOVERY] WebSocket connected but device config invalid (404) - keeping WebSocket unconfirmed");
+        // Don't override the websocket = false that was set by fetchSwitchLabels()
         return;
       }
       

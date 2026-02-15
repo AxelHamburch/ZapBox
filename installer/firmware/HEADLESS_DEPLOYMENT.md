@@ -65,3 +65,26 @@ Die Datei `manifest-headless.json` ist bereits im Verzeichnis vorhanden und refe
 - **ESP32**: Offset `4096` (0x1000)
 
 Das manifest-headless.json ist bereits entsprechend konfiguriert.
+
+### Status LED Blinkmuster (Headless Version)
+
+Die Headless Version nutzt die Status-LED auf GPIO 21 (und GPIO 2 als zusätzliche LED) für visuelle Statusrückmeldungen:
+
+#### Normale Betriebszustände
+- **3x sehr schnell blinken**: Bootvorgang (unmittelbar nach Power-On)
+- **Schnelles Blinken (5Hz, 200ms)**: Initialisierung und WiFi-Verbindungsaufbau
+- **Langsames Blinken (1Hz, 1000ms)**: Konfigurationsmodus aktiv
+- **Dauerlicht**: Gerät ist betriebsbereit (READY) und kann Zahlungen empfangen
+- **Aus**: Tiefschlaf, Help/Report-Modi
+
+#### Fehlerzustands-Blinkmuster
+Bei Netzwerkfehlern zeigt die LED spezifische Blinkmuster mit **2 Sekunden Pause** zwischen den Sequenzen:
+
+| Fehler | Blinkmuster | Bedeutung |
+|--------|-------------|-----------|
+| **1 Blink** | 1x Blinken (500ms an, 500ms aus) | NO WIFI - WiFi-Verbindung verloren/nicht hergestellt |
+| **2 Blinks** | 2x Blinken (je 300ms an/aus) | NO INTERNET - WiFi OK, aber kein Internet-Zugang |
+| **3 Blinks** | 3x Blinken (je 250ms an/aus) | NO SERVER - Internet OK, aber LNbits-Server nicht erreichbar |
+| **4 Blinks** | 4x Blinken (je 200ms an/aus) | NO WEBSOCKET - Server OK, aber WebSocket-Verbindung fehlgeschlagen |
+
+**Fehlererkennung Priorität:** Die LED zeigt immer den ersten nicht bestätigten Netzwerkstatus in der Reihenfolge: WiFi → Internet → Server → WebSocket.

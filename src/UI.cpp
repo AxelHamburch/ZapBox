@@ -19,6 +19,7 @@ extern MultiChannelConfig multiChannelConfig;
 extern SpecialModeConfig specialModeConfig;
 extern ProductLabels productLabels;
 extern bool needsQRRedraw;
+extern NetworkStatus networkStatus;
 
 // External function declarations from main.cpp
 extern void showQRScreen();
@@ -89,6 +90,7 @@ bool isReadyForReceive() {
  * Updates the ready LED based on device state.
  * Only updates LED if state has changed to avoid redundant writes.
  * For headless version: Fast blink during initialization, slow blink in config mode, solid when ready.
+ * Error states (headless): 1-4 blinks indicating specific network errors.
  */
 void updateReadyLed() {
 #if !ENABLE_DISPLAY
@@ -108,6 +110,101 @@ void updateReadyLed() {
       lastInitBlinkTime = millis();
     }
     return; // Exit early during initialization blink
+  }
+  
+  // Error state blink patterns (headless only)
+  // Check for network errors and show specific blink patterns:
+  // - NO WIFI: 1 blink (1000ms on, 2000ms pause)
+  // - NO INTERNET: 2 blinks (500ms on/off, 2000ms pause)
+  // - NO SERVER: 3 blinks (300ms on/off, 2000ms pause)
+  // - NO WEBSOCKET: 4 blinks (250ms on/off, 2000ms pause)
+  static unsigned long lastErrorBlinkTime = 0;
+  static int errorBlinkPhase = 0;
+  static bool errorBlinkState = false;
+  static bool wasInErrorState = false; // Track if we were in error state
+  
+  // Determine which error state we're in (priority order)
+  int errorBlinkCount = 0;
+  int blinkDuration = 0;
+  int pauseDuration = 2000; // 2 seconds pause between sequences
+  
+  if (!networkStatus.confirmed.wifi) {
+    errorBlinkCount = 1;
+    blinkDuration = 500; // 500ms per blink (on or off)
+  } else if (!networkStatus.confirmed.internet) {
+    errorBlinkCount = 2;
+    blinkDuration = 300; // 300ms per blink (on or off)
+  } else if (!networkStatus.confirmed.server) {
+    errorBlinkCount = 3;
+    blinkDuration = 250; // 250ms per blink (on or off)
+  } else if (!networkStatus.confirmed.websocket) {
+    errorBlinkCount = 4;
+    blinkDuration = 200; // 200ms per blink (on or off)
+  }
+  
+  // If we have an error state, show the blink pattern
+  if (errorBlinkCount > 0) {
+    // Debug log only on first detection of error
+    static int lastErrorBlinkCount = 0;
+    if (errorBlinkCount != lastErrorBlinkCount) {
+      LOG_INFO("LED", String("Error detected - showing ") + String(errorBlinkCount) + String(" blink pattern (WiFi:") + 
+               String(networkStatus.confirmed.wifi) + String(" Internet:") + String(networkStatus.confirmed.internet) + 
+               String(" Server:") + String(networkStatus.confirmed.server) + String(" WebSocket:") + 
+               String(networkStatus.confirmed.websocket) + String(")"));
+      lastErrorBlinkCount = errorBlinkCount;
+    }
+    
+    wasInErrorState = true; // Remember we had an error
+    unsigned long currentTime = millis();
+    
+    // Calculate total sequence time: (blinks * 2 * duration) + pause
+    // Each blink has an ON and OFF phase
+    int totalBlinkTime = errorBlinkCount * 2 * blinkDuration;
+    int totalSequenceTime = totalBlinkTime + pauseDuration;
+    
+    // Calculate position in sequence
+    unsigned long sequencePosition = currentTime % totalSequenceTime;
+    
+    // Determine if we're in blink phase or pause phase
+    if (sequencePosition < totalBlinkTime) {
+      // We're in the blink phase
+      int blinkPosition = sequencePosition / blinkDuration;
+      bool shouldBeOn = (blinkPosition % 2 == 0); // Even positions = ON, odd = OFF
+      
+      if (shouldBeOn != errorBlinkState || errorBlinkPhase != blinkPosition) {
+        errorBlinkState = shouldBeOn;
+        errorBlinkPhase = blinkPosition;
+        digitalWrite(PIN_LED_BUTTON_LED, shouldBeOn ? HIGH : LOW);
+        #ifdef PIN_ONBOARD_LED
+        digitalWrite(PIN_ONBOARD_LED, shouldBeOn ? HIGH : LOW);
+        #endif
+      }
+    } else {
+      // We're in the pause phase - LED should be OFF
+      if (errorBlinkState) {
+        errorBlinkState = false;
+        errorBlinkPhase = -1;
+        digitalWrite(PIN_LED_BUTTON_LED, LOW);
+        #ifdef PIN_ONBOARD_LED
+        digitalWrite(PIN_ONBOARD_LED, LOW);
+        #endif
+      }
+    }
+    return; // Exit early during error blink
+  }
+  
+  // If we just recovered from error state, force LED update
+  if (wasInErrorState) {
+    wasInErrorState = false;
+    readyLedState = !isReadyForReceive(); // Force state mismatch to trigger update
+    LOG_INFO("LED", "Recovered from error state, forcing LED update");
+  } else {
+    // Clear error blink count when no longer in error state
+    static int lastErrorBlinkCount = 0;
+    if (lastErrorBlinkCount != 0) {
+      LOG_INFO("LED", "All network connections restored - switching to READY LED");
+      lastErrorBlinkCount = 0;
+    }
   }
 #endif
 

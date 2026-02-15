@@ -37,8 +37,11 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       webSocket.sendTXT("Connected");
       networkStatus.lastPongTime = millis(); // Reset pong timer on connect
       networkStatus.waitingForPong = false;
-      networkStatus.confirmed.websocket = true; // Mark WebSocket as confirmed on first connect
-      LOG_INFO("WebSocket", "Connection confirmed!");
+      // Don't set networkStatus.confirmed.websocket = true here!
+      // Let fetchSwitchLabels() validate the device config first
+      // If labels load successfully (HTTP 200), it will set websocket = true
+      // If instance doesn't exist (HTTP 404), it will set websocket = false
+      LOG_INFO("WebSocket", "TCP connection established, fetching device config...");
       
       // Fetch switch labels from backend after successful connection
       fetchSwitchLabels();

@@ -9,10 +9,12 @@ extern StateManager deviceState;
 extern MultiChannelConfig multiChannelConfig;
 extern ProductLabels productLabels;
 extern BitcoinData bitcoinData;
+extern NetworkStatus networkStatus;
 extern String lnbitsServer;
 extern String deviceId;
 extern String currency;
 extern bool labelsLoadedSuccessfully;
+extern bool labelsValidationAttempted;
 
 // External constants from main.cpp
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
@@ -99,7 +101,13 @@ void fetchSwitchLabels()
       
       Serial.println("[LABELS] Successfully fetched and cached all labels");
       labelsLoadedSuccessfully = true; // Mark labels as successfully loaded
+      labelsValidationAttempted = true; // Mark validation as completed
       productLabels.lastUpdate = millis(); // Update timestamp
+      
+      // WebSocket connection is valid - device config exists on server
+      // This is the ONLY place where we confirm WebSocket after validation
+      Serial.println("[LABELS] Device config validated - confirming WebSocket connection");
+      networkStatus.confirmed.websocket = true;
       
 #if ENABLE_BITCOIN_DATA
       // Always fetch Bitcoin data with the correct currency (not just when ticker is active)
@@ -118,6 +126,23 @@ void fetchSwitchLabels()
     }
   } else {
     Serial.printf("[LABELS] HTTP request failed with code: %d\n", httpCode);
+    
+    // HTTP 404 means the bitcoinswitch instance was deleted on the server
+    // This is a critical configuration error - invalidate WebSocket connection
+    if (httpCode == 404) {
+      Serial.println("[LABELS] ERROR: Bitcoinswitch instance not found (404) - device configuration invalid!");
+      Serial.println("[LABELS] The configured device ID no longer exists on the server.");
+      Serial.println("[LABELS] Marking WebSocket as unconfirmed to trigger error LED pattern.");
+      networkStatus.confirmed.websocket = false;
+      labelsValidationAttempted = true; // Mark validation as completed (failed)
+      labelsLoadedSuccessfully = false;
+    }
+    // Other HTTP errors (500, timeout, etc.) - could be temporary
+    else if (httpCode < 0) {
+      Serial.println("[LABELS] Connection error - could not reach server");
+    } else if (httpCode >= 500) {
+      Serial.println("[LABELS] Server error - may be temporary, will retry");
+    }
   }
   
   http.end();

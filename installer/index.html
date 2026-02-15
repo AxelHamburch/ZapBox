@@ -111,7 +111,7 @@
             </esp-web-install-button>
         </div>
 
-        <p><i><strong>Note on the headless version:</strong> The headless version does not support display. The terminal window can be used for status monitoring and error analysis. LEDs connected to GPIO 21 and GPIO 2 (onboard LED) can be used as status LEDs. They indicate "Ready": Connected and no errors.</i></p>
+        <p><i><strong>Note on the headless version:</strong> The headless version does not support display. The terminal window can be used for status monitoring and error analysis. LEDs connected to GPIO 21 and GPIO 2 (onboard LED) provide visual status feedback: 3 fast blinks on boot, fast blinking during initialization, slow blinking in config mode, solid ON when ready. Error states show distinct blink patterns: 1 blink = No WiFi, 2 blinks = No Internet, 3 blinks = No Server, 4 blinks = No WebSocket (each with 2 second pause between sequences).</i></p>
 
         <p><i><strong>Note:</strong> The configuration data can be deleted using "Erase device." Otherwise, it will be retained even with the new firmware. You can use LOGS & CONSOLE for debugging.</i></p>
         
