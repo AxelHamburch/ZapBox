@@ -925,6 +925,13 @@ void setup()
   
   Serial.println("[STARTUP] Startup screen completed");
   
+  // CRITICAL: Don't proceed if config mode was triggered during startup
+  // Config mode runs on Core 0, setup() runs on Core 1 - race condition possible
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
+    Serial.println("[STARTUP] Config mode active - setup() exits to avoid state override");
+    return; // Let config mode run on Core 0, don't interfere from Core 1
+  }
+  
   // Determine what to show after startup screen
   if (allConnectionsReady) {
     Serial.println("[STARTUP] All connections successful - ready to show QR code");
