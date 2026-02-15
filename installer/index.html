@@ -65,7 +65,8 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v936258/manifest.json">v936258 (Latest - Add option vending machine with light barrier)</option>
+                <option value="./firmware/v936746/manifest.json">v936746 (Latest - Advanced error detection)</option>
+                <option value="./firmware/v936258/manifest.json">v936258 (Add option vending machine with light barrier)</option>
                 <option value="./firmware/v933714/manifest.json">v933714 (Add "ZapBox ready! 🎉" log status)</option>
                 <option value="./firmware/v933545/manifest.json">v933545 (Display fixes & payment queue system)</option>
                 <option value="./firmware/v930750/manifest.json">v930750 (White Paper 📄 Release)</option>
@@ -87,7 +88,7 @@
                 <option value="./firmware/v926531/manifest.json">v926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v936258/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v936746/manifest.json">
                 <button slot="activate">🔥 Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -98,13 +99,14 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version-headless" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v936258h/manifest.json">v936258h (Latest - Fix Serial connection and optimizations)</option>
+                <option value="./firmware/v936746h/manifest.json">v936746h (Latest - Advanced LED error error detection and messages)</option>
+                <option value="./firmware/v936258h/manifest.json">v936258h (Fix Serial connection and optimizations)</option>
                 <option value="./firmware/v933714h/manifest.json">v933714h (Add GPIO 2 onboard LED support and status log)</option>
                 <option value="./firmware/v933545h/manifest.json">v933545h (Add payment queue system)</option>
                 <option value="./firmware/v932987h/manifest.json">v932987h (First ESP32 Dev Headless)</option>
             </select>
             
-            <esp-web-install-button id="flash-button-headless" manifest="./firmware/v936258h/manifest.json">
+            <esp-web-install-button id="flash-button-headless" manifest="./firmware/v936746h/manifest.json">
                 <button slot="activate">🔥 Flash Headless</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
