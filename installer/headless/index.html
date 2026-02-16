@@ -318,15 +318,16 @@
         <ul>
             <li>Check that the USB cable is plugged directly into the USB port of the ESP32 (behind the flap) and not into the USB port of the power supply.</li>
             <li>Check/replace the cable. There are USB cables that have no data lines and are only for power supply.</li>
-            <li>For connection problems due to interface drivers, check this <a href="https://ereignishorizont.xyz/en/bitcoinswitch_en/#76_Notes_on_Setting_Up_and_Checking_Drivers" target="_blank" rel="noopener noreferrer">Help</a> page.</li>
-            <li>Check if a connection already exists through another browser window. Close the window if necessary.</li>
+            <li>If you encounter connection problems due to interface drivers with the pop-up window and the message “No port selected” please read this help page:  <a href="https://ereignishorizont.xyz/en/bitcoinswitch_en/#76_Notes_on_Setting_Up_and_Checking_Drivers" target="_blank" rel="noopener noreferrer">"7.6 Notes on Setting Up and Checking Drivers"</a></li>
+            <li>Double connection: Check whether a connection already exists via another browser window. Close one window.</li>
             <li>A website refresh with CTRL+F5 or CTRL+SHIFT+R can also help.</li>
-            <li>If nothing else helps, do a complete restart by erasing all data on the ESP32. Use <a href="https://espressif.github.io/esptool-js/" target="_blank" rel="noopener noreferrer">https://espressif.github.io/esptool-js/</a>. → Press: <strong>Connect</strong> > <strong>Erase Flash</strong></li>
+            <li>Message: “Installation failed ⚠️ Your ESP32 board is not supported” -> The firmware you want to flash is not compatible with the hardware. Check that you are using the correct web installer.</li>
+            <li>If nothing else helps, do a complete restart by erasing all data on the ESP32. Use <a href="https://espressif.github.io/esptool-js/" target="_blank" rel="noopener noreferrer">https://espressif.github.io/esptool-js/</a>. → Press: <strong>Connect</strong> > <strong>Erase Flash</strong> and reflash the ZapBox.</li>
         </ul>
         
-        <h3 id="hardwareproblems">Hardware problems:</h3>
+        <h3 id="hardwareproblems">Further note:</h3>
 
-        <p>If none of the above works, reset board in boot mode and start over.</p>
+        <p>Some ESP32s must first be put into mode before flashing or transferring data. Otherwise, they will refuse to transfer. Try these:</p>
             <ul>
                 <li>Connect the board via the USB cable</li>
                 <li>Press and hold the BOOT button</li>
