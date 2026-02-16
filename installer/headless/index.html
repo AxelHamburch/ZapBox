@@ -27,8 +27,8 @@
 
     <link rel="icon" href="../assets/favicon_headless.webp" sizes="32x32">
     <link rel="stylesheet" href="../assets/style.css">
-    <script src="../assets/config-common.js"></script>
     <script src="../assets/serial.js?v=2"></script>
+    <script src="../assets/config-common.js"></script>
     <script type="module" src="https://unpkg.com/esp-web-tools@9/dist/web/install-button.js?module"></script>
     <style>
         body {
@@ -101,17 +101,13 @@
 
         <h2 id="prepare-connection">2- Prepare connection</h2>
 
-        <p>Flash the ESP32 with "Erase device." After boot, the ZapBox will automatically enter "CONF / SERIAL CONFIG MODE".</p>
+        <p>When you flash a new ESP32 or use “Erase device.” the ZapBox automatically starts in configuration mode and the READY LED will blink slow.”</p>
 
-        <p>→ The ZapBox is now ready to receive configuration data.</p>
+        <p>→ The ZapBox is now ready to receive configuration data. ⚙️</p>
 
-        <p>If parameters have already been stored and need to be changed, you can also open CONF mode retrospectively:</p>
-        <ul>
-            <li>Press and hold BOOT button for 5 seconds.</li>
-            <li>Press the LED button once briefly and then hold it down for at least 5 seconds.</li>
-        </ul>
+        <p>If parameters have already been saved and need to be changed, you can also open CONF mode retrospectively by pressing and holding the BOOT button for at least 5 seconds.</p>
 
-        <p><i><strong>Note:</strong> If data is already available and you start the connection manually, the connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. You can terminate the connection prematurely by pressing the external button. </i></p>
+        <p><i><strong>Note:</strong> The connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. If data is already available. You can terminate the connection prematurely by pressing the BOOT button again. </i></p>
 
         <p><i><strong>Note on the headless version:</strong> On-board LED 2 and GPIO 21 (external ready LED) flash in CONF status.</i></p>
 
