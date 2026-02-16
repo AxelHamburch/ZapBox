@@ -672,6 +672,7 @@ Electrical design and housing variants, see table.
 | e932547 | Quattro | First Quattro |
 | e932714 | Duo | Duo update |
 | e935776 | Headless | First Headless |
+| e932547 | Quattro | Add update button cable & IR light barrier |
 
 ## Support
 
