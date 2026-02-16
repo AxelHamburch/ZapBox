@@ -101,7 +101,7 @@
 
         <h2 id="prepare-connection">2- Prepare connection</h2>
 
-        <p>When you flash a new ESP32 or use “Erase device.” the ZapBox automatically starts in configuration mode and the READY LED will blink slow.”</p>
+        <p>When you flash a new ESP32 or use “Erase device.” the ZapBox automatically starts in configuration mode and the ready LED will blink slow.”</p>
 
         <p>→ The ZapBox is now ready to receive configuration data. ⚙️</p>
 
@@ -109,7 +109,7 @@
 
         <p><i><strong>Note:</strong> The connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. If data is already available. You can terminate the connection prematurely by pressing the BOOT button again. </i></p>
 
-        <p><i><strong>Note on the headless version:</strong> On-board LED 2 and GPIO 21 (external ready LED) flash in CONF status.</i></p>
+        <p><i><strong>Note:</strong> Once you establish a connection by clicking “Connect” below, some ESP32s with special communication chips (CP2102) will restart once, and you will need to reactivate configuration mode after connecting.</i></p>
 
         <hr>
 
@@ -117,7 +117,7 @@
 
         <ul>
             <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔌 Connect</span> - select the connection and connect.</li>
-            <li>Check whether the ZapBox is in config mode.⚙️✅</li>
+            <li>Set or check whether the ZapBox is in configuration mode.⚙️✅</li>
              <li>If values are already available, press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">📖 Read Config</span>.</li>
             <li>Define your configuration.📝 At least Wi-Fi and device data.</li>
             <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Write Config</span> to write the configuration.</li>
@@ -328,6 +328,7 @@
                 <li>Release the BOOT button</li>
                 <li><a href="#flash">Go to step 1</a></li>
             </ul>
+        <img class="center-img" src="../assets/esp32 30Pin.webp" />
 
         <h3 id="goaround">Make a fresh start:</h3>
 
