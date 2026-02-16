@@ -2,40 +2,46 @@
 <html lang="en">
 
 <head>
-    <title>ZAPBOX⚡️WEB INSTALLER</title>
+    <title>ZAPBOX⚡️WEB INSTALLER (Headless)</title>
 
     <!-- Primary Meta Tags -->
-    <meta name="description" content="Flash & config your ZapBox from the browser">
+    <meta name="description" content="Flash & config your ZapBox Headless from the browser">
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
 
     <!-- Open Graph -->
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="ZAPBOX⚡️WEB INSTALLER" />
+    <meta property="og:title" content="ZAPBOX⚡️WEB INSTALLER (Headless)" />
     <meta property="og:description"
-        content="Flash & config your ZapBox from the browser" />
-    <meta property="og:url" content="https://installer.zapbox.space/" />
+        content="Flash & config your ZapBox Headless from the browser" />
+    <meta property="og:url" content="https://installer.zapbox.space/headless/" />
     <meta property="og:image" content="https://installer.zapbox.space/assets/zapbox-social.webp" />
 
     <!-- Twitter Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://installer.zapbox.space">
-    <meta name="twitter:title" content="ZAPBOX⚡️WEB INSTALLER" />
-    <meta name="twitter:description" content="Flash & config your ZapBox from the browser">
+    <meta name="twitter:url" content="https://installer.zapbox.space/headless/">
+    <meta name="twitter:title" content="ZAPBOX⚡️WEB INSTALLER (Headless)" />
+    <meta name="twitter:description" content="Flash & config your ZapBox Headless from the browser">
     <meta name="twitter:image" content="https://installer.zapbox.space/assets/zapbox-social.webp" />
 
-    <link rel="icon" href="./assets/favicon.webp" sizes="32x32">
-    <link rel="stylesheet" href="./assets/style.css">
-    <script src="./assets/serial.js?v=2"></script>
+    <link rel="icon" href="../assets/favicon_headless.webp" sizes="32x32">
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="../assets/serial.js?v=2"></script>
     <script type="module" src="https://unpkg.com/esp-web-tools@9/dist/web/install-button.js?module"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #e8e8e8 0%, #f5f5f5 25%, #e0e0e0 50%, #f5f5f5 75%, #e8e8e8 100%);
+            background-attachment: fixed;
+        }
+    </style>
 </head>
 
 <body>
     <!-- Image Popup Modal -->
     <div id="help-image-modal" class="modal" onclick="closeHelpModal()">
         <div class="modal-content">
-            <img src="./assets/Help-DeviceString.webp" alt="Help - Device String" onclick="closeHelpModal()">
+            <img src="../assets/Help-DeviceString.webp" alt="Help - Device String" onclick="closeHelpModal()">
         </div>
     </div>
 
@@ -47,47 +53,31 @@
             </p>
         </noscript>
 
-        <h1 style="margin-bottom: 5px; display: inline-block;">ZAPBOX⚡️WEB INSTALLER (Display)</h1>
-        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with LILYGO T-Display-S3. Headless version <a href="./headless/">see here</a>.</i></p>
+        <h1 style="margin-bottom: 5px; display: inline-block;">ZAPBOX⚡️WEB INSTALLER (Headless)</h1>
+        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with standard esp32. Version with Display <a href="../">see here</a>.</i></p>
         <div style="margin-bottom: 30px;"></div>
 
         <h2 id="flash">1- Flash firmware</h2>
 
         <ul>
-            <li>Connect your ZapBox to the front USB port</li>
-            <li>Keep latest or select your version from the drop-down menu</li>
+            <li>Connect your ZapBox to the USB port from ESP32</li>
+            <li>Select your version from the drop-down menu</li>
             <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Flash</span> - select the connection and follow screen instructions</li>
         </ul>
 
         <!-- ##### Version selector and flash button ##### -->
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
-            <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v936746/manifest.json">v936746 (Latest - Advanced error detection)</option>
-                <option value="./firmware/v936258/manifest.json">v936258 (Add option vending machine with light barrier)</option>
-                <option value="./firmware/v933714/manifest.json">v933714 (Add "ZapBox ready! 🎉" log status)</option>
-                <option value="./firmware/v933545/manifest.json">v933545 (Display fixes & payment queue system)</option>
-                <option value="./firmware/v930750/manifest.json">v930750 (White Paper 📄 Release)</option>
-                <option value="./firmware/v930331/manifest.json">v930331 (Gold theme, navigation fix, BTC retry logic)</option>
-                <option value="./firmware/v930053/manifest.json">v930053 (Bug fixes, improvements and BTC ORANGE theme)</option>
-                <option value="./firmware/v929880/manifest.json">v929880 (Code Refactoring Release 🔧)</option>
-                <option value="./firmware/v929761/manifest.json">v929761 (Add bug fixes and external LED button support 🔌💡)</option>
-                <option value="./firmware/v929303/manifest.json">v929303 (Add BTC-Ticker 🚀 and bug fixes)</option>
-                <option value="./firmware/v929126/manifest.json">v929126 (Add Touch control and Multi-Channel-Control Mode)</option>
-                <option value="./firmware/v928945/manifest.json">v928945 (Proactive error detection and optimized startup)</option>
-                <option value="./firmware/v928559/manifest.json">v928559 (Small fixes and add BLACK & LIGHT GREY color theme)</option>
-                <option value="./firmware/v927737/manifest.json">v927737 (Core dump support + fix config mode after deep sleep)</option>
-                <option value="./firmware/v927726/manifest.json">v927726 (Add power saving modes with screensaver and deep sleep)</option>
-                <option value="./firmware/v927292/manifest.json">v927292 (Add 4-step error handling and more cool stuff 🤙)</option>
-                <option value="./firmware/v926800/manifest.json">v926800 (Add options for color and special mode (blinking, etc.))</option>
-                <option value="./firmware/v926705/manifest.json">v926705 (Add Threshold Mode with configurable payment trigger)</option>
-                <option value="./firmware/v926666/manifest.json">v926666 (Add wss:// support for LNbits v1.3.1 and bS_extension v1.1.2)</option>
-                <option value="./firmware/v926561/manifest.json">v926561 (Fix some bugs and edit documentation)</option>
-                <option value="./firmware/v926531/manifest.json">v926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
+            <select id="firmware-version-headless" style="padding: 10px; font-size: 16px; border-radius: 4px;">
+                <option value="../firmware/v936746h/manifest.json">v936746h (Latest - Advanced LED error error detection and messages)</option>
+                <option value="../firmware/v936258h/manifest.json">v936258h (Fix Serial connection and optimizations)</option>
+                <option value="../firmware/v933714h/manifest.json">v933714h (Add GPIO 2 onboard LED support and status log)</option>
+                <option value="../firmware/v933545h/manifest.json">v933545h (Add payment queue system)</option>
+                <option value="../firmware/v932987h/manifest.json">v932987h (First ESP32 Dev Headless)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v936746/manifest.json">
-                <button slot="activate">🔥 Flash</button>
+            <esp-web-install-button id="flash-button-headless" manifest="../firmware/v936746h/manifest.json">
+                <button slot="activate">🔥 Flash Headless</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
             </esp-web-install-button>
@@ -95,12 +85,14 @@
 
         <p><i><strong>Note:</strong> The configuration data can be deleted using "Erase device." Otherwise, it will be retained even with the new firmware. LOGS & CONSOLE is no needed.</i></p>
         
+        <p><i><strong>Note on the headless version:</strong> The headless version does not support display. The terminal window can be used for status monitoring and error analysis. LEDs connected to GPIO 21 and GPIO 2 (onboard LED) provide visual status <a href="#error-detection">feedback</a>.</i></p>
+     
         <script>
-            // Update manifest when version is changed
-            document.getElementById('firmware-version').addEventListener('change', function(e) {
-                const flashButton = document.getElementById('flash-button');
+            // Update manifest when headless version is changed
+            document.getElementById('firmware-version-headless').addEventListener('change', function(e) {
+                const flashButton = document.getElementById('flash-button-headless');
                 flashButton.setAttribute('manifest', e.target.value);
-                console.log('Manifest changed to:', e.target.value);
+                console.log('Headless manifest changed to:', e.target.value);
             });
         </script>
 
@@ -108,18 +100,19 @@
 
         <h2 id="prepare-connection">2- Prepare connection</h2>
 
-        <p>When you flash a new ESP32 or use “Erase device.” the ZapBox automatically starts in configuration mode and displays the following message: “CONF / SERIAL CONFIG MODE.”</p>
+        <p>Flash the ESP32 with "Erase device." After boot, the ZapBox will automatically enter "CONF / SERIAL CONFIG MODE".</p>
 
-        <p>→ The ZapBox is now ready to receive configuration data. ⚙️</p>
+        <p>→ The ZapBox is now ready to receive configuration data.</p>
 
         <p>If parameters have already been stored and need to be changed, you can also open CONF mode retrospectively:</p>
         <ul>
-            <li>Press and hold NEXT or BOOT button for 5 seconds.</li>
+            <li>Press and hold BOOT button for 5 seconds.</li>
             <li>Press the LED button once briefly and then hold it down for at least 5 seconds.</li>
-            <li>On a touchscreen, touch the HELP button at least 5 times in quick succession.</li>
         </ul>
 
-        <p><i><strong>Note:</strong> The connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. If data is already available. You can terminate the connection prematurely by pressing the NEXT button, touching the display, or pressing the external button. </i></p>
+        <p><i><strong>Note:</strong> If data is already available and you start the connection manually, the connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. You can terminate the connection prematurely by pressing the external button. </i></p>
+
+        <p><i><strong>Note on the headless version:</strong> On-board LED 2 and GPIO 21 (external ready LED) flash in CONF status.</i></p>
 
         <hr>
 
@@ -184,75 +177,6 @@
                 <h3 style="margin: 0; color: #000; font-weight: bold; white-space: nowrap;">Optional settings and functions</h3>
                 <hr style="flex: 1; border: none; border-top: 1px solid #888; margin: 0;">
             </div>
-            
-            <div class="input-wrapper">
-                <div>
-                    <label for="theme">Display color options</label>
-                    <select name="theme" id="theme">
-                        <option value="zapbox" selected>ZAPBOX (default, Gold & Black, inv. QR)</option>
-                        <option value="black-white">BLACK & WHITE</option>
-                        <option value="black-darkcyan">BLACK & DARKCYAN (for very dark env.)</option>
-                        <option value="black-red">BLACK & RED</option>
-                        <option value="black-olive">BLACK & OLIVE</option>
-                        <option value="white-navy">WHITE & NAVY</option>
-                        <option value="white-darkcyan">WHITE & DARKCYAN</option>
-                        <option value="darkgreen-green">DARKGREEN & GREEN</option>
-                        <option value="darkgreen-lightgrey">DARKGREEN & LIGHTGREY</option>
-                        <option value="red-green">RED & GREEN</option>
-                        <option value="black-blue">BLACK & BLUE</option>
-                        <option value="orange-brown">ORANGE & BROWN</option>
-                        <option value="black-orange">BLACK & ORANGE</option>
-                        <option value="brown-orange">BROWN & ORANGE</option>
-                        <option value="black-btcorange">BLACK & BTC ORANGE</option>
-                        <option value="btcorange-black">BTC ORANGE & BLACK (inv. QR)</option>
-                        <option value="darkgrey-btcorange">DARK GREY & BTC ORANGE</option>
-                        <option value="maroon-magenta">MAROON & MAGENTA</option>
-                        <option value="darkcyan-cyan">DARKCYAN & CYAN</option>
-                        <option value="black-darkgrey">BLACK & DARK GREY (for dark env.)</option>
-                        <option value="black-lightgrey">BLACK & LIGHT GREY</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="orientation">Screen orientation</label>
-                    <select name="orientation" id="orientation">
-                        <option value="h" selected>Horizontal (default)</option>
-                        <option value="v">Vertical</option>
-                        <option value="hi">Horizontal (inverse)</option>
-                        <option value="vi">Vertical (inverse)</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="qrFormat">QR-Code Format</label>
-                    <select name="qrFormat" id="qrFormat">
-                        <option value="bech32" selected>LNURL in bech32 format (default)</option>
-                        <option value="lud17">LNURL in LUD17 format (raw)</option>
-                    </select>
-                </div>
-            </div>
-            
-            <p style="margin-top: 5px; margin-bottom: 5px; color: #888;"><i><strong>Note:</strong> QR code format is used to generate the QR code. Recommended bech32.</i></p>
-            
-            <div class="input-wrapper">
-                <div>
-                    <label for="externalButton">LED button</label>
-                    <select name="externalButton" id="externalButton">
-                        <option value="no" selected>No (default)</option>
-                        <option value="yes">Yes</option>
-                    </select>
-                </div>
-            </div>
-            
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> The LED button YES function hides the texts HELP and NEXT on the display.</i></p>
-            <p style="margin-top: 10px; color: #888; margin-left: 20px;">
-                <i>Function of the LED button - press: <br><br>
-                &nbsp;&nbsp;• once => Change display / product<br>
-                &nbsp;&nbsp;• once and hold => Help page<br>
-                &nbsp;&nbsp;• several times => Report page<br>
-                &nbsp;&nbsp;• once briefly and then hold at least 5 seconds => CONF page</i>
-            </p>
-        
-        <!-- Section Separator -->
-        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
         
         <!-- Special Mode Section -->
             <div class="input-wrapper">
@@ -283,57 +207,6 @@
             
             <!-- Section Separator -->
             <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
-            
-            <div class="input-wrapper">
-                <div>
-                    <label for="multiControl">Multi-Channel Mode</label>
-                    <select name="multiControl" id="multiControl">
-                        <option value="off" selected>Single (1 channel - default - pin 12 [& 13])</option>
-                        <option value="duo">Duo (2 channels - pin 12, 13)</option>
-                        <option value="quattro">Quattro (4 channels - pin 12, 13, 10, 11)</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="lightBarrier">Vending machine with light barrier</label>
-                    <select name="lightBarrier" id="lightBarrier">
-                        <option value="no" selected>No (default)</option>
-                        <option value="yes">Yes - Stop the action</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN light barrier on GPIO 2 (T-Display-S3 only)</p>
-                </div>
-            </div>
-            
-            <p style="margin-top: 20px; color: #888;"><i><strong>Multi-Channel-Control:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use NEXT button, touch gestures (swipe ←→) or external button (if available) to navigate between products.</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note on Multi-Channel Mode:</strong> Not compatible with the Threshold feature. Please disable it.</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note on selecting "Vending machine with light barrier":</strong> A trigger from the light barrier stops the action after 2 seconds at the earliest.</i></p>
-
-        <!-- Section Separator -->
-        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
-
-        <!-- BTC-Ticker Section -->
-            <div class="input-wrapper">
-                <div>
-                    <label for="btcTicker">BTC-Ticker Mode</label>
-                    <select name="btcTicker" id="btcTicker">
-                        <option value="off">OFF</option>
-                        <option value="always">ON - always</option>
-                        <option value="selecting" selected>ON - when selecting (default)</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Control when Bitcoin price/block info is shown</p>
-                </div>
-                <div>
-                    <label for="currency">Currency (ISO Code)</label>
-                    <input type="text" name="currency" id="currency" placeholder="USD" maxlength="3" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">E.g. USD, EUR, GBP, JPY, CHF, TRY, CAD, BRL, CUP, etc.</p>
-                </div>
-            </div>
-            
-            <p style="margin-top: 20px; color: #888;"><i><strong>OFF:</strong> No ticker shown (Duo/Quattro: productSelectionScreen; Single: only QR code)</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>ON - always:</strong> Ticker overlays screen, navigate with NEXT/swipe to show products temporarily (returns after timeout)</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>ON - when selecting:</strong> Single: Ticker only visible for a short time after NEXT/swipe. Duo/Quattro: productSelectionScreen → products → ticker (at end of product cycle)</i></p>
-
-        <!-- Section Separator -->
-        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
         <!-- Threshold Mode Section -->
             <div class="input-wrapper">
@@ -368,53 +241,20 @@
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
-
-        <!-- Screensaver and Deep Sleep Section -->
-            <div class="input-wrapper">
-                <div>
-                    <label for="screensaver">Screensaver</label>
-                    <select name="screensaver" id="screensaver">
-                        <option value="off" selected>OFF (default)</option>
-                        <option value="backlight">ON (backlight off)</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="deepSleep">Deep sleep</label>
-                    <select name="deepSleep" id="deepSleep">
-                        <option value="off" selected>OFF (default)</option>
-                        <option value="light">ON (light, power consumption: ~3-5mA)</option>
-                        <option value="freeze">ON (freeze, power consumption: ~0.01-0.15mA)</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="activationTime">Time until activation</label>
-                    <input type="number" name="activationTime" id="activationTime" min="1" max="120" placeholder="5" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">1-120 minutes</p>
-                </div>
-            </div>
-            
-            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> Screensaver and Deep Sleep cannot be active simultaneously. Press BOOT button or HELP button to deactivate and resume normal operation.</i></p>
-            
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> With the T-Display-S3 with touch, the screensaver mode can be used because the touch function remains active. Deep sleep disables touch wake-up for maximum power savings.</i></p>
-            
-            <p style="margin-top: 10px; color: #888;"><i><strong>Use Cases:</strong> Energy saving (screensaver ~80-90% and deep sleep up to ~99%), reducing device heat, extending display lifespan in always-on scenarios.</i></p>
-
-        <!-- Section Separator -->
-        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
         </div>
 
         <!-- Error Detection Section -->
         <div style="background-color: #FFFFCC; padding: 30px 20px; margin: 0 -20px;">
             <h2 id="error-detection">Error Detection & Report</h2>
 
-            <p>The ZapBox features a hierarchical error detection system with automatic diagnostics. Errors are displayed on screen with abbreviations:</p>
+            <p>The ZapBox features a hierarchical error detection system with automatic diagnostics. Error states show distinct blink patterns on GPIO 21 and GPIO 2 (onboard LED):</p>
 
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
             <thead>
                 <tr style="background-color: #f0f0f0;">
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Priority</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Error Type</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Abbreviation</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">LED Pattern</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Description</th>
                 </tr>
             </thead>
@@ -422,40 +262,42 @@
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 8px;">1 (Highest)</td>
                     <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WIFI</strong></td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">NW</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">1 blink</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">WiFi network not connected<br>→ Wifi data correct?<br>→ WiFi signal too weak?</td>
                 </tr>
                 <tr style="background-color: #f9f9f9;">
                     <td style="border: 1px solid #ddd; padding: 8px;">2</td>
                     <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO INTERNET</strong></td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">NI</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">2 blinks</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">Internet connectivity lost<br>→ Internet accessible?</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 8px;">3</td>
                     <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO SERVER</strong></td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">NS</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">3 blinks</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">LNbits server unreachable<br>-> Server hardware down?<br>-> Device string correct?</td>
                 </tr>
                 <tr style="background-color: #f9f9f9;">
                     <td style="border: 1px solid #ddd; padding: 8px;">4 (Lowest)</td>
                     <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WEBSOCKET</strong></td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">NWS</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">4 blinks</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">WebSocket protocol/handshake failure<br>-> LNbits down?<br>-> Device string correct?</td>
                 </tr>
             </tbody>
         </table>
 
-        <p><i><strong>Note:</strong> Higher priority errors override lower priority error displays. For example, if WiFi is down, all other checks are skipped and only "NO WIFI" is shown.</i></p>
+        <p><i><strong>Note:</strong> Higher priority errors override lower priority error displays. Each error pattern has a 2 second pause between sequences. Use the serial terminal to monitor detailed error messages.</i></p>
 
-        <h3>Error Report Page</h3>
-
-        <p>All errors with their occurrence counts (0-99) are logged on the Report page. To access the Report page:</p>
+        <h3>LED Status Indicators</h3>
 
         <ul>
-            <li><strong>Press HELP button twice</strong> in quick succession</li>
-            <li><strong>Press LED button four times</strong> (if external LED button is available)</li>
+            <li><strong>3 fast blinks:</strong> Device boot indicator</li>
+            <li><strong>Fast blinking:</strong> Initialization in progress</li>
+            <li><strong>Slow blinking:</strong> Config mode active</li>
+            <li><strong>Solid ON:</strong> ZapBox ready</li>
         </ul>
+
+        <p><i><strong>Note:</strong> The headless version (ESP32 Dev Module without display) does not have a visual Report page. Use the serial terminal to monitor all errors and status messages.</i></p>
 
         <h3>Common Wallet Error</h3>
 
@@ -484,12 +326,11 @@
             <ul>
                 <li>Connect the board via the USB cable</li>
                 <li>Press and hold the BOOT button</li>
-                <li>While still pressing the BOOT button, press RESET</li>
-                <li>Release the RESET button</li>
+                <li>While still pressing the BOOT button, press RESET (or disconnect/reconnect power)</li>
+                <li>Release the RESET button (or wait after power reconnect)</li>
                 <li>Release the BOOT button</li>
                 <li><a href="#flash">Go to step 1</a></li>
             </ul>
-        <img class="center-img" src="./assets/troubleshoot.jpg" />
 
         <h3 id="goaround">Make a fresh start:</h3>
 
@@ -501,13 +342,14 @@
         
         <p><i><strong>Note:</strong> Only one serial connection can be active at a time. Disconnect the active connection on the other side by refreshing the page. Please follow the same steps after clearing the memory using the ESP tool page so that you can use the ZapBox Web Installer again.</i></p>
 
-        <h3 id="pinout">Pinout:</h3>
+        <h3 id="headless">Headless Version (Standard ESP32):</h3>
         
-        <a href="./assets/Pinout.webp" target="_blank">
-            <img class="center-img" src="./assets/Pinout.webp" />
-        </a>
+        <p><strong>Important note for CP2102 communication chip:</strong> After connecting to the Web Installer, the ESP32 must be completely disconnected from power once for it to start properly again. This phenomenon does not occur with the CH340C communication chip, but it is recommended to do this for all headless chip types.</p>
         
-        <p style="text-align: center; margin-top: 10px;"><i>Source: <a href="https://lilygo.cc/products/t-display-s3?variant=42589373268149" target="_blank" rel="noopener noreferrer">lilygo.cc</a></i></p>
+        <p><strong>Affected:</strong> Standard ESP32 boards with CP2102 USB-to-Serial chip</p>
+        <p><strong>Symptom:</strong> LED blinks in a repeating pattern: 3× very fast (boot indicator), then 5 seconds fast blinking, then repeats. This indicates a reset loop.</p>
+        <p><strong>Workaround:</strong> After using the Web Installer (connect/disconnect), unplug the USB cable and reconnect it to reset the device properly.</p>
+        <p><strong>Not affected:</strong> ESP32 boards with CH340C/CH340G chips work without issues.</p>
         </div>
 
 
@@ -523,10 +365,6 @@
         const ssid = document.getElementById('ssid');
         const wifiPassword = document.getElementById('wifiPassword');
         const socket = document.getElementById('socket');
-        const qrFormat = document.getElementById('qrFormat');
-        const orientation = document.getElementById('orientation');
-        const theme = document.getElementById('theme');
-        const externalButton = document.getElementById('externalButton');
         const specialMode = document.getElementById('specialMode');
         const frequency = document.getElementById('frequency');
         const dutyCycleRatio = document.getElementById('dutyCycleRatio');
@@ -537,13 +375,6 @@
         const thresholdPin = document.getElementById('thresholdPin');
         const thresholdTime = document.getElementById('thresholdTime');
         const thresholdLnurl = document.getElementById('thresholdLnurl');
-        const screensaver = document.getElementById('screensaver');
-        const deepSleep = document.getElementById('deepSleep');
-        const activationTime = document.getElementById('activationTime');
-        const multiControl = document.getElementById('multiControl');
-        const lightBarrier = document.getElementById('lightBarrier');
-        const btcTicker = document.getElementById('btcTicker');
-        const currency = document.getElementById('currency');
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
@@ -553,19 +384,6 @@
             } else {
                 frequencyDiv.style.display = 'none';
                 dutyCycleDiv.style.display = 'none';
-            }
-        });
-        
-        // Screensaver and Deep Sleep - mutually exclusive
-        screensaver.addEventListener('change', function() {
-            if (screensaver.value !== 'off' && deepSleep.value !== 'off') {
-                deepSleep.value = 'off';
-            }
-        });
-        
-        deepSleep.addEventListener('change', function() {
-            if (deepSleep.value !== 'off' && screensaver.value !== 'off') {
-                screensaver.value = 'off';
             }
         });
 
@@ -1064,13 +882,10 @@
                 config[19].value = configData[19]?.value || "no"; // lightBarrier
                 config[20].value = configData[20]?.value || "USD"; // currency
 
-                // Fill form fields
+                // Fill form fields (only supported ones for headless)
                 ssid.value = config[0].value;
                 wifiPassword.value = config[1].value;
                 socket.value = config[2].value;
-                qrFormat.value = config[3].value;
-                orientation.value = config[4].value;
-                theme.value = config[5].value;
                 thresholdKey.value = config[6].value;
                 thresholdAmount.value = config[7].value;
                 thresholdPin.value = config[8].value;
@@ -1079,19 +894,6 @@
                 specialMode.value = config[11].value;
                 frequency.value = config[12].value;
                 dutyCycleRatio.value = config[13].value;
-                screensaver.value = config[14].value;
-                deepSleep.value = config[15].value;
-                activationTime.value = config[16].value;
-                multiControl.value = config[17].value;
-                btcTicker.value = config[18].value;
-                lightBarrier.value = config[19].value;
-                currency.value = config[20].value;
-                // Index 21: External button (may not exist in older configs)
-                if (config[21] && config[21].value) {
-                    externalButton.value = config[21].value;
-                } else {
-                    externalButton.value = 'no'; // Default for older configs
-                }
                 
                 // Show/hide custom fields based on loaded special mode
                 if (specialMode.value === 'custom') {
@@ -1161,9 +963,10 @@
             config[0].value = ssid.value;
             config[1].value = wifiPassword.value;
             config[2].value = socket.value;
-            config[3].value = qrFormat.value;
-            config[4].value = orientation.value;
-            config[5].value = theme.value;
+            // Set defaults for headless (not editable in UI)
+            config[3].value = "bech32"; // Default QR format
+            config[4].value = "h"; // Default orientation
+            config[5].value = "zapbox"; // Default theme
             config[6].value = thresholdKey.value;
             config[7].value = thresholdAmount.value;
             config[8].value = thresholdPin.value;
@@ -1172,19 +975,19 @@
             config[11].value = specialMode.value;
             config[12].value = frequency.value || "1.0";
             config[13].value = dutyCycleRatio.value || "1.0";
-            config[14].value = screensaver.value;
-            config[15].value = deepSleep.value;
-            config[16].value = activationTime.value || "5";
-            config[17].value = multiControl.value;
-            config[18].value = btcTicker.value;
-            config[19].value = lightBarrier.value;
-            config[20].value = currency.value.toUpperCase() || "USD"; // Convert to uppercase
+            config[14].value = "off"; // Screensaver disabled for headless
+            config[15].value = "off"; // Deep Sleep disabled for headless
+            config[16].value = "5"; // Default activation time
+            config[17].value = "off"; // Multi-Channel disabled for headless
+            config[18].value = "off"; // BTC Ticker off for headless
+            config[19].value = "no"; // Light Barrier disabled for headless
+            config[20].value = "USD"; // Default currency
             
             // Ensure config[21] exists for external button
             if (!config[21]) {
-                config[21] = { key: "externalButton", value: "no" };
+                config[21] = { name: "externalButton", value: "no" };
             }
-            config[21].value = externalButton.value; // Index 21 for external button
+            config[21].value = "no"; // External button disabled for headless
             
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -1333,18 +1136,6 @@
             config[2].value = event.target.value;
         });
 
-        qrFormat.addEventListener("change", (event) => {
-            config[3].value = event.target.value;
-        });
-
-        orientation.addEventListener("change", (event) => {
-            config[4].value = event.target.value;
-        });
-
-        theme.addEventListener("change", (event) => {
-            config[5].value = event.target.value;
-        });
-
         thresholdKey.addEventListener("input", (event) => {
             config[6].value = event.target.value;
         });
@@ -1363,31 +1154,6 @@
 
         thresholdLnurl.addEventListener("input", (event) => {
             config[10].value = event.target.value;
-        });
-
-        screensaver.addEventListener("change", (event) => {
-            config[14].value = event.target.value;
-        });
-
-        deepSleep.addEventListener("change", (event) => {
-            config[15].value = event.target.value;
-        });
-
-        activationTime.addEventListener("input", (event) => {
-            config[16].value = event.target.value;
-        });
-
-        btcTicker.addEventListener("change", (event) => {
-            config[18].value = event.target.value;
-        });
-
-        lightBarrier.addEventListener("change", (event) => {
-            config[19].value = event.target.value;
-        });
-
-        currency.addEventListener("input", (event) => {
-            config[20].value = event.target.value.toUpperCase();
-            event.target.value = event.target.value.toUpperCase(); // Show uppercase in input
         });
 
         // Help modal functionality

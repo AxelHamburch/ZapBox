@@ -382,8 +382,8 @@ The ZapBox features a hierarchical error detection system with automatic diagnos
 |----------|-----------|--------------|------------------|-------------|
 | 1 (Highest) | **NO WIFI** | NW | WiFi connection status | WiFi network not connected<br>-> Wifi data correct?<br>-> WiFi signal too weak? |
 | 2 | **NO INTERNET** | NI | HTTP check to Google | Internet connectivity lost<br>-> Internet accessible? |
-| 3 | **NO SERVER** | NS | TCP port 443 check | LNbits server unreachable<br>-> Server hardware down? |
-| 4 (Lowest) | **NO WEBSOCKET** | NWS | WebSocket connection status | WebSocket protocol/handshake failure<br>-> LNbits down or Bitcoin Switch parameter correct? |
+| 3 | **NO SERVER** | NS | TCP port 443 check | LNbits server unreachable<br>-> Server hardware down?<br>-> Device string correct?  |
+| 4 (Lowest) | **NO WEBSOCKET** | NWS | WebSocket connection status | WebSocket protocol/handshake failure<br>-> LNbits down?<br>-> Device string correct?  |
 
 **Error Detection Logic:**
 - Each error level is only checked if all higher priority levels are OK
