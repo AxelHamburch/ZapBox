@@ -879,8 +879,18 @@
                 // Clear buffer after successful parse
                 serialBuffer = "";
             } catch (error) {
-                // Silent - wait for more data
                 console.log("JSON parse attempt failed:", error);
+                console.log("Raw JSON string:", jsonString);
+                
+                // Show error to user with helpful message
+                const errorMsg = document.createElement('span');
+                errorMsg.style.color = '#ff4444';
+                errorMsg.textContent = '⚠️ Config data is corrupted on device. Please fill in the fields and write new config.\n';
+                consoleDebug.appendChild(errorMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                
+                // Clear buffer to prevent repeated error messages
+                serialBuffer = "";
             }
         }
 
@@ -890,9 +900,11 @@
             if (navigator.serial) {
                 if (!serial.isOpen()) {
                     // Use flowControl: 'none' to prevent automatic DTR/RTS manipulation
+                    // bufferSize: 4096 prevents data loss when ESP32 sends large config JSON (~830 bytes)
                     await serial.connectAndOpen(portFilters = null, serialOptions = { 
                         baudRate: 115200,
-                        flowControl: 'none'
+                        flowControl: 'none',
+                        bufferSize: 4096
                     })
                 } else {
                     console.log("The serial connection appears already open");
@@ -993,10 +1005,14 @@
                 }
             }
             
-            serial.writeLine("/file-remove config.json");
-            serial.writeLine("/file-append config.json " + JSON.stringify(config));
+            // Remove old config first, wait for ESP32 to process
+            await serial.writeLine("/file-remove config.json");
+            await new Promise(resolve => setTimeout(resolve, 300));
             
-            // Wait a moment for command to be processed
+            // Write new config - await ensures data is fully sent before continuing
+            await serial.writeLine("/file-append config.json " + JSON.stringify(config));
+            
+            // Wait for ESP32 to finish writing to flash
             await new Promise(resolve => setTimeout(resolve, 500));
             
             // Show success message

@@ -94,6 +94,9 @@ bool isReadyForReceive() {
  */
 void updateReadyLed() {
 #if !ENABLE_DISPLAY
+  // Skip LED updates when in CONFIG_MODE to prevent race condition with config blink on other core
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
+
   // Headless version: Fast blink during initialization to show progress
   static unsigned long lastInitBlinkTime = 0;
   static bool initBlinkState = false;

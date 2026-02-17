@@ -102,6 +102,18 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
     Serial.printf("WiFi initial state: %s\n", wifiWasDisconnected ? "DISCONNECTED" : "CONNECTED");
     Serial.flush();
 
+    // CRITICAL: Stop WiFi activity during config mode to prevent:
+    // 1. Constant 4WAY_HANDSHAKE_TIMEOUT spam in serial console
+    // 2. Unnecessary CPU load from WiFi reconnect attempts
+    // 3. Interference with serial communication
+    // WiFi will be properly re-established on ESP.restart() after config is done
+    if (wifiWasDisconnected) {
+        WiFi.disconnect(true); // true = turn off WiFi radio completely
+        WiFi.mode(WIFI_OFF);
+        Serial.println("WiFi radio disabled during config mode");
+        Serial.flush();
+    }
+
     unsigned long lastWiFiCheck = millis();
     unsigned long lastActivity = millis(); // Track last serial activity
     const unsigned long inactivityTimeout = 180000; // 180 seconds
@@ -161,24 +173,12 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
         }
         
         // Check WiFi every 5 seconds to see if it's back
-        if (millis() - lastWiFiCheck > 5000)
+        // Only relevant if WiFi WAS connected when entering config mode
+        // (WiFi radio is OFF if it was disconnected - see above)
+        if (!wifiWasDisconnected && millis() - lastWiFiCheck > 5000)
         {
-            // Only restart if WiFi was disconnected and now came back
-            if (wifiWasDisconnected && WiFi.status() == WL_CONNECTED)
-            {
-                Serial.println("\n--- WiFi reconnected! Restarting... ---");
-                Serial.println("[CONFIG_MODE_EXIT]");
-                Serial.flush();
-                delay(500);
-                ESP.restart();
-            }
-            // Try to reconnect if we have credentials and WiFi is down
-            else if (wifiWasDisconnected && wifiSSID.length() > 0 && WiFi.status() != WL_CONNECTED)
-            {
-                Serial.println("Attempting WiFi reconnect...");
-                WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN); // Force scanning for all APs, not just the first one
-                WiFi.begin(wifiSSID.c_str(), wifiPass.c_str());
-            }
+            // WiFi was connected but may have dropped - if still connected, no action needed
+            // If it disconnected during config, don't try to reconnect (user may be changing credentials)
             lastWiFiCheck = millis();
         }
 
@@ -297,32 +297,18 @@ void readFile(String path)
     File file = FFat.open("/" + path, "r");
     if (file)
     {
-        // Send prefix only once at the beginning
-        Serial.print("/file-read ");
-        Serial.flush();
-        delay(10);
-        
-        while (file.available())
-        {
-            String line = file.readStringUntil('\n');
-            
-            // Send in chunks to avoid buffer overflow for long lines
-            const int chunkSize = 32; // Smaller chunks for more reliability
-            
-            for (int i = 0; i < line.length(); i += chunkSize)
-            {
-                String chunk = line.substring(i, min(i + chunkSize, (int)line.length()));
-                Serial.print(chunk);
-                Serial.flush();
-                delay(10); // Delay between chunks
-            }
-            
-            // Ensure newline and final flush
-            Serial.println();
-            Serial.flush();
-            delay(20); // Extra delay after complete line
-        }
+        // Read entire file into a String and send as one block
+        // This avoids chunking issues where individual small chunks
+        // can overflow the Web Serial API's default 255-byte buffer
+        String content = file.readString();
         file.close();
+        
+        // Send prefix + content + newline as efficiently as possible
+        Serial.print("/file-read ");
+        Serial.print(content);
+        Serial.println();
+        Serial.flush();
+        delay(50); // Allow USB transfer to complete
     }
     else
     {

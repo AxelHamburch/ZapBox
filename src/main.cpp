@@ -673,7 +673,10 @@ void Task1code(void *pvParameters)
   for (;;)
   {
     // Monitor WiFi state and update device state machine
-    checkWiFiStatus();
+    // Skip during CONFIG_MODE: WiFi radio may be OFF and serial config handles everything
+    if (!deviceState.isInState(DeviceState::CONFIG_MODE)) {
+      checkWiFiStatus();
+    }
 
     leftButton.tick();
     rightButton.tick();
@@ -1047,12 +1050,10 @@ void processPaymentEvent(String &payloadStr);
 
 void loop()
 {
-  // Update ready LED state regularly (including during INITIALIZING for fast blink)
-  updateReadyLed();
-  
   // Wait for setup to complete before running loop
   if (deviceState.getState() == DeviceState::INITIALIZING)
   {
+    updateReadyLed(); // Fast blink during init
     vTaskDelay(pdMS_TO_TICKS(100));
     return;
   }
@@ -1065,6 +1066,9 @@ void loop()
     vTaskDelay(pdMS_TO_TICKS(100));
     return;
   }
+
+  // Update ready LED state (after CONFIG_MODE check to avoid LED race condition with config blink)
+  updateReadyLed();
 
   // Once loop is running, we are past init screens
   if (initializationActive && !firstLoop) {

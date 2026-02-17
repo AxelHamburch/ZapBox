@@ -110,7 +110,7 @@ class Serial {
    * @param {*} data
    */
   async writeLine(data) {
-    this.write(data + "\n");
+    await this.write(data + "\n");
   }
 
   /**
@@ -118,7 +118,7 @@ class Serial {
    * @param {*} data
    */
   async write(data) {
-    this.serialWriter.write(data);
+    await this.serialWriter.write(data);
   }
 
   /**
