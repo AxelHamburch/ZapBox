@@ -230,6 +230,16 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
                 serialPrintln("received: " + data);
             }
         }
+
+        // Debounce /file-read: ignore if last read was less than 1s ago.
+        // Prevents USB CDC buffer corruption from rapid-fire read requests.
+        static unsigned long lastFileReadTime = 0;
+        if (commandName == "/file-read") {
+            if (millis() - lastFileReadTime < 1000) {
+                continue; // Silently skip — browser will use last successful response
+            }
+            lastFileReadTime = millis();
+        }
         
         if (commandName == "/config-done")
         {

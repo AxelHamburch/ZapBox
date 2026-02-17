@@ -566,7 +566,16 @@ void configMode()
 
   // Suppress ESP-IDF internal logging (ssl_client, WiFiGeneric, etc.)
   // These bypass our Log:: system and write directly via esp_log_write().
+  // The wildcard "*" only sets the DEFAULT level — tags that were already
+  // registered with explicit levels (wifi, ssl_client) keep their old level.
+  // So we must also suppress the known offenders by tag name.
   esp_log_level_set("*", ESP_LOG_NONE);
+  esp_log_level_set("wifi", ESP_LOG_NONE);
+  esp_log_level_set("WiFiGeneric.cpp", ESP_LOG_NONE);
+  esp_log_level_set("ssl_client.cpp", ESP_LOG_NONE);
+  esp_log_level_set("ssl_client", ESP_LOG_NONE);
+  esp_log_level_set("WiFiSTA", ESP_LOG_NONE);
+  esp_log_level_set("WiFiMulti", ESP_LOG_NONE);
 
   // CRITICAL: Stop WiFi to prevent async WiFi event callbacks
   // from corrupting serial output via USB CDC.
