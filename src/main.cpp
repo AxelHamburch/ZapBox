@@ -565,6 +565,10 @@ void configMode()
   WiFi.mode(WIFI_OFF);
   delay(100); // Let pending WiFi callbacks drain
 
+  // Suppress ALL Log output globally (LOG_INFO, LOG_WARN, etc.)
+  // This prevents background tasks from writing to Serial during config mode.
+  Log::suppressed = true;
+
   // Set CONFIG_MODE state SILENTLY (DeviceState suppresses serial for CONFIG_MODE)
   configModeScreen(); // Draw config screen
   deviceState.transition(DeviceState::CONFIG_MODE);
@@ -774,6 +778,12 @@ void setup()
 
   Serial.println("Button task created - config mode available");
 
+  // From this point on, configMode() can fire on Core 0 at any time.
+  // All Serial output below must check CONFIG_MODE to avoid interleaving
+  // with the paced serial output from executeConfig().
+  #define SETUP_PRINT(msg) do { if (!deviceState.isInState(DeviceState::CONFIG_MODE)) Serial.println(msg); } while(0)
+  #define SETUP_PRINTF(...) do { if (!deviceState.isInState(DeviceState::CONFIG_MODE)) Serial.printf(__VA_ARGS__); } while(0)
+
   // Start WiFi connection BEFORE showing startup screen (parallel execution!)
   WiFi.mode(WIFI_STA); // Set to Station mode
   WiFi.setSleep(false); // Disable WiFi power saving for stable connection
@@ -784,25 +794,25 @@ void setup()
   // Guard: only start WiFi if SSID is present and valid length (<= 32)
   if (wifiConfig.ssid.length() > 0 && wifiConfig.ssid.length() <= 32) {
     WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
-    Serial.println("[STARTUP] WiFi connection started in background (Power Save: OFF)");
+    SETUP_PRINT("[STARTUP] WiFi connection started in background (Power Save: OFF)");
   } else {
-    Serial.println("[STARTUP] Skipping WiFi.begin(): SSID missing or invalid length");
+    SETUP_PRINT("[STARTUP] Skipping WiFi.begin(): SSID missing or invalid length");
     ssidMissingOrInvalid = true;
   }
 
   // Show startup screen for 5 seconds
-  Serial.println("[STARTUP] Showing startup screen for 5 seconds...");
+  SETUP_PRINT("[STARTUP] Showing startup screen for 5 seconds...");
   for (int i = 0; i < 50; i++) { // 50 * 100ms = 5 seconds
     vTaskDelay(pdMS_TO_TICKS(100));
     if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
       return; // Exit silently - config serial output is paced by executeConfig()
     }
   }
-  Serial.println("[STARTUP] Startup screen completed, switching to initialization screen");
+  SETUP_PRINT("[STARTUP] Startup screen completed, switching to initialization screen");
 
   // If WiFi was intentionally skipped (no SSID configured), enter Config mode immediately
   if (ssidMissingOrInvalid) {
-    Serial.println("[STARTUP] No SSID configured - entering CONFIG mode");
+    SETUP_PRINT("[STARTUP] No SSID configured - entering CONFIG mode");
     configMode();
     return;
   }
@@ -812,7 +822,7 @@ void setup()
 
   // Continue initialization for max 20 more seconds (total 25s)
   // Exit early if all connections are successful
-  Serial.println("[STARTUP] Showing initialization screen (max 20s more) while connections establish...");
+  SETUP_PRINT("[STARTUP] Showing initialization screen (max 20s more) while connections establish...");
 
   const int MAX_INIT_TIME = 200; // 200 * 100ms = 20 seconds (5s startup + 20s init = 25s total)
   bool allConnectionsReady = false;
@@ -834,41 +844,41 @@ void setup()
     if (!networkStatus.confirmed.wifi && WiFi.status() == WL_CONNECTED) {
       networkStatus.confirmed.wifi = true;
       wifiConnectTime = millis(); // Record when WiFi connected
-      Serial.println("[STARTUP] WiFi connected!");
+      SETUP_PRINT("[STARTUP] WiFi connected!");
     }
     
     // Step 2: Check Internet (once WiFi is connected, DNS is configured, and not yet checked)
     // Wait 2+ seconds after WiFi connect to allow DNS/DHCP/gateway to stabilize
     if (networkStatus.confirmed.wifi && !internetChecked && (millis() - wifiConnectTime > 2000)) {
-      Serial.println("[STARTUP] Checking Internet...");
+      SETUP_PRINT("[STARTUP] Checking Internet...");
       bool hasInternet = checkInternetConnectivity();
       internetChecked = true;
       if (hasInternet) {
         networkStatus.confirmed.internet = true;
-        Serial.println("[STARTUP] Internet OK!");
+        SETUP_PRINT("[STARTUP] Internet OK!");
       } else {
-        Serial.println("[STARTUP] No Internet connection");
+        SETUP_PRINT("[STARTUP] No Internet connection");
         if (networkStatus.errors.internet < 99) networkStatus.errors.internet++;
       }
     }
     
     // Step 3: Check Server (once Internet is confirmed and not yet checked)
     if (networkStatus.confirmed.internet && !serverChecked) {
-      Serial.println("[STARTUP] Checking Server...");
+      SETUP_PRINT("[STARTUP] Checking Server...");
       bool serverReachable = checkServerReachability();
       serverChecked = true;
       if (serverReachable) {
         networkStatus.confirmed.server = true;
-        Serial.println("[STARTUP] Server OK!");
+        SETUP_PRINT("[STARTUP] Server OK!");
       } else {
-        Serial.println("[STARTUP] Server not reachable");
+        SETUP_PRINT("[STARTUP] Server not reachable");
         if (networkStatus.errors.server < 99) networkStatus.errors.server++;
       }
     }
     
     // Step 4: Start WebSocket (once Server is confirmed and not yet started)
     if (networkStatus.confirmed.server && !websocketStarted) {
-      Serial.println("[STARTUP] Starting WebSocket connection...");
+      SETUP_PRINT("[STARTUP] Starting WebSocket connection...");
       if (lightningConfig.thresholdKey.length() > 0) {
         webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + lightningConfig.thresholdKey);
       } else {
@@ -886,7 +896,7 @@ void setup()
       // Only log once when WebSocket connects (not every loop iteration)
       static bool wsConnectLogged = false;
       if (webSocket.isConnected() && !wsConnectLogged) {
-        Serial.println("[STARTUP] WebSocket TCP connected, waiting for config validation...");
+        SETUP_PRINT("[STARTUP] WebSocket TCP connected, waiting for config validation...");
         wsConnectLogged = true;
       }
     }
@@ -896,43 +906,42 @@ void setup()
         networkStatus.confirmed.server && networkStatus.confirmed.websocket && 
         labelsLoadedSuccessfully && labelsValidationAttempted) {
       allConnectionsReady = true;
-      Serial.printf("[STARTUP] All connections ready after %.1f seconds!\n", (i + 1) * 0.1);
+      SETUP_PRINTF("[STARTUP] All connections ready after %.1f seconds!\n", (i + 1) * 0.1);
       break; // Exit startup screen early
     }
     
     // Check if validation is complete but failed (404 error)
     if (labelsValidationAttempted && !labelsLoadedSuccessfully) {
-      Serial.println("[STARTUP] Config validation failed - device ID invalid or deleted");
+      SETUP_PRINT("[STARTUP] Config validation failed - device ID invalid or deleted");
       break; // Exit startup screen to show error
     }
     
     // Progress indicator every 5 seconds
     if ((i + 1) % 50 == 0) {
-      Serial.printf("[STARTUP] Progress: %.1fs - WiFi:%d Internet:%d Server:%d WS:%d Validated:%d Success:%d\n", 
+      SETUP_PRINTF("[STARTUP] Progress: %.1fs - WiFi:%d Internet:%d Server:%d WS:%d Validated:%d Success:%d\n", 
                     (i + 1) * 0.1, networkStatus.confirmed.wifi, networkStatus.confirmed.internet, 
                     networkStatus.confirmed.server, networkStatus.confirmed.websocket, 
                     labelsValidationAttempted, labelsLoadedSuccessfully);
     }
   }
   
-  Serial.println("[STARTUP] Startup screen completed");
+  SETUP_PRINT("[STARTUP] Startup screen completed");
   
   // CRITICAL: Don't proceed if config mode was triggered during startup
   // Config mode runs on Core 0, setup() runs on Core 1 - race condition possible
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
-    Serial.println("[STARTUP] Config mode active - setup() exits to avoid state override");
     return; // Let config mode run on Core 0, don't interfere from Core 1
   }
   
   // Determine what to show after startup screen
   if (allConnectionsReady) {
-    Serial.println("[STARTUP] All connections successful - ready to show QR code");
+    SETUP_PRINT("[STARTUP] All connections successful - ready to show QR code");
     deviceState.transition(DeviceState::READY);
     currentErrorType = 0;
   } else {
     // Show appropriate error screen based on what failed (priority order)
     if (!networkStatus.confirmed.wifi) {
-      Serial.println("[STARTUP] WiFi failed - showing WiFi error");
+      SETUP_PRINT("[STARTUP] WiFi failed - showing WiFi error");
       wifiReconnectScreen();
       deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 1;
@@ -946,17 +955,17 @@ void setup()
       // Don't call checkAndReconnectWiFi here - it will be called below
       // This allows the loop to continue and handle touch/buttons
     } else if (!networkStatus.confirmed.internet) {
-      Serial.println("[STARTUP] Internet failed - showing Internet error");
+      SETUP_PRINT("[STARTUP] Internet failed - showing Internet error");
       internetReconnectScreen();
       deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 2;
     } else if (!networkStatus.confirmed.server) {
-      Serial.println("[STARTUP] Server failed - showing Server error");
+      SETUP_PRINT("[STARTUP] Server failed - showing Server error");
       serverReconnectScreen();
       deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 3;
     } else if (!networkStatus.confirmed.websocket) {
-      Serial.println("[STARTUP] WebSocket failed - showing WebSocket error");
+      SETUP_PRINT("[STARTUP] WebSocket failed - showing WebSocket error");
       websocketReconnectScreen();
       deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 4;
@@ -980,13 +989,13 @@ void setup()
   // Set maxProducts based on multiChannelConfig.mode mode
   if (multiChannelConfig.mode == "quattro") {
     maxProducts = 4;
-    Serial.println("[MULTI-CHANNEL-CONTROL] Quattro mode - 4 products available");
+    SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Quattro mode - 4 products available");
   } else if (multiChannelConfig.mode == "duo") {
     maxProducts = 2;
-    Serial.println("[MULTI-CHANNEL-CONTROL] Duo mode - 2 products available");
+    SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Duo mode - 2 products available");
   } else {
     maxProducts = 1;
-    Serial.println("[MULTI-CHANNEL-CONTROL] Single mode - 1 product");
+    SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Single mode - 1 product");
   }
   
   // Initialize product navigation
@@ -994,15 +1003,15 @@ void setup()
 
 #if ENABLE_BITCOIN_DATA
   // Fetch initial Bitcoin data after setup is complete
-  Serial.println("[BTC] Fetching initial Bitcoin data...");
+  SETUP_PRINT("[BTC] Fetching initial Bitcoin data...");
   fetchBitcoinData();
-  Serial.println("[BTC] Initial fetch complete");
+  SETUP_PRINT("[BTC] Initial fetch complete");
 #else
-  Serial.println("[BTC] Bitcoin data fetching disabled (headless mode)");
+  SETUP_PRINT("[BTC] Bitcoin data fetching disabled (headless mode)");
 #endif
   
   // Single mode: show BTC ticker immediately after setup (no product selection exists)
-  Serial.printf("[DEBUG_SETUP] mode=%s, tickerMode=%s, special=%s, thresholdKeyLen=%d, errorState=%d\n",
+  SETUP_PRINTF("[DEBUG_SETUP] mode=%s, tickerMode=%s, special=%s, thresholdKeyLen=%d, errorState=%d\n",
                 multiChannelConfig.mode.c_str(),
                 multiChannelConfig.btcTickerMode.c_str(),
                 specialModeConfig.mode.c_str(),
@@ -1012,12 +1021,12 @@ void setup()
       multiChannelConfig.mode == "off" &&
       !deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
     if (multiChannelConfig.btcTickerMode == "always") {
-      Serial.println("[STARTUP] Single mode (ALWAYS) - showing Bitcoin ticker immediately");
+      SETUP_PRINT("[STARTUP] Single mode (ALWAYS) - showing Bitcoin ticker immediately");
       btctickerScreen();
       multiChannelConfig.btcTickerActive = true;
       productSelectionState.showTime = millis();
     } else {
-      Serial.println("[STARTUP] Single mode (SELECTING/OFF) - showing QR screen");
+      SETUP_PRINT("[STARTUP] Single mode (SELECTING/OFF) - showing QR screen");
       // Show normal or special QR for single mode
       ensureQrForPin(12);
       if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
@@ -1032,6 +1041,8 @@ void setup()
   }
   
   // Setup complete - device state already set appropriately above
+  #undef SETUP_PRINT
+  #undef SETUP_PRINTF
 }
 
 // Punkt 3: forward declaration for modularized payment handler

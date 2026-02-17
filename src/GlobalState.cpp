@@ -6,6 +6,10 @@
  */
 
 #include "GlobalState.h"
+#include "Log.h"
+
+// Log suppression flag (used during config mode to keep serial clean)
+namespace Log { bool suppressed = false; }
 
 // WiFi & Network Configuration
 WifiConfig wifiConfig;

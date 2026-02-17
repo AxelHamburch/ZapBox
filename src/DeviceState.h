@@ -67,9 +67,12 @@ public:
 
         // Validate transition
         if (!isValidTransition(currentState, newState)) {
-            Serial.printf("[STATE_ERROR] Invalid transition: %s -> %s\n",
-                         getDeviceStateName(currentState),
-                         getDeviceStateName(newState));
+            // Silently reject during CONFIG_MODE (loop() keeps trying - expected)
+            if (currentState != DeviceState::CONFIG_MODE) {
+                Serial.printf("[STATE_ERROR] Invalid transition: %s -> %s\n",
+                             getDeviceStateName(currentState),
+                             getDeviceStateName(newState));
+            }
             return false;
         }
 
@@ -79,6 +82,9 @@ public:
                          getDeviceStateName(currentState),
                          getDeviceStateName(newState));
         }
+
+        // Suppress invalid transition error output during CONFIG_MODE
+        // (loop() will keep trying to transition - that's fine, we just block it silently)
 
         // Execute exit callback for previous state
         onStateExit(currentState);
@@ -146,6 +152,9 @@ public:
      */
     void updateWiFiState(WiFiState newWiFiState) {
         if (wifiState == newWiFiState) return;
+
+        // Ignore WiFi events during CONFIG_MODE - WiFi is intentionally off
+        if (currentState == DeviceState::CONFIG_MODE) return;
 
         Serial.printf("[WiFi] %s -> %s\n",
                      getWiFiStateName(wifiState),
@@ -222,6 +231,12 @@ private:
         // Can't transition FROM these states at all
         if (from == DeviceState::DEEP_SLEEP) {
             // Can only wake from deep sleep via initialization
+            return to == DeviceState::INITIALIZING;
+        }
+
+        // CONFIG_MODE is UNBREAKABLE - only ESP.restart() exits it
+        // (restart resets to INITIALIZING automatically)
+        if (from == DeviceState::CONFIG_MODE) {
             return to == DeviceState::INITIALIZING;
         }
 

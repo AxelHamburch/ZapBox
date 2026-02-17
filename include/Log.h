@@ -11,6 +11,11 @@ namespace Log {
     DEBUG = 3
   };
 
+  // Global flag to suppress all log output during config mode.
+  // Set to true by configMode() before serial handshake begins.
+  // This avoids coupling Log.h to DeviceState.h (circular dependency).
+  extern bool suppressed;
+
 #ifndef LOG_ENABLE
 #define LOG_ENABLE 1
 #endif
@@ -32,6 +37,7 @@ namespace Log {
   // Core print function
   inline void print(Level lvl, const char* tag, const String& message, bool showTime = true) {
 #if LOG_ENABLE
+    if (suppressed) return; // Silent during config mode
     if ((int)lvl <= (int)LOG_LEVEL) {
       String out;
       out += "[";
