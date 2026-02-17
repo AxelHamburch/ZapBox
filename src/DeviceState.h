@@ -73,10 +73,12 @@ public:
             return false;
         }
 
-        // Log transition
-        Serial.printf("[STATE_TRANSITION] %s -> %s\n",
-                     getDeviceStateName(currentState),
-                     getDeviceStateName(newState));
+        // Log transition (suppress for CONFIG_MODE to keep serial clean during config handshake)
+        if (newState != DeviceState::CONFIG_MODE) {
+            Serial.printf("[STATE_TRANSITION] %s -> %s\n",
+                         getDeviceStateName(currentState),
+                         getDeviceStateName(newState));
+        }
 
         // Execute exit callback for previous state
         onStateExit(currentState);
@@ -294,7 +296,7 @@ private:
                 break;
 
             case DeviceState::CONFIG_MODE:
-                Serial.println("[STATE_ENTRY] CONFIG_MODE - showing config screen");
+                // Suppress serial output - executeConfig() handles all paced output
                 break;
 
             case DeviceState::HELP_SCREEN:

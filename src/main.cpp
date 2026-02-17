@@ -564,38 +564,20 @@ void configMode()
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
   delay(100); // Let pending WiFi callbacks drain
-  
-  Serial.flush();
-  delay(50);
-  Serial.println("[BUTTON] Config mode button pressed");
-  Serial.flush();
-  delay(15);
-  
-  LOG_INFO("Config", "Testing serial connection...");
-  Serial.flush();
-  delay(15);
-  
-  configModeScreen(); // Draw config screen IMMEDIATELY
-  deviceState.transition(DeviceState::CONFIG_MODE); // Then set flag
-  configModeStartTime = millis(); // Track start to enforce 2s guard for exit
+
+  // Set CONFIG_MODE state SILENTLY (DeviceState suppresses serial for CONFIG_MODE)
+  configModeScreen(); // Draw config screen
+  deviceState.transition(DeviceState::CONFIG_MODE);
+  configModeStartTime = millis();
   updateReadyLed();
-  
+
   // Set touch controller pointer for SerialConfig to access
   extern void* touchControllerPtr;
   touchControllerPtr = (void*)&touch;
-  
-  LOG_INFO("Config", "Config mode screen displayed, entering serial config...");
-  Serial.flush();
-  delay(15);
-  LOG_INFO("Config", "Touch screen anywhere to exit config mode.");
-  Serial.flush();
-  delay(15);
-  
+
+  // ALL serial output happens inside executeConfig() with proper USB CDC pacing.
+  // Do NOT print anything here — setup() on Core 1 may still be writing to Serial.
   bool hasExistingData = (wifiConfig.ssid.length() > 0);
-  LOG_INFO("Config", String("Has existing data: ") + (hasExistingData ? "YES" : "NO"));
-  Serial.flush();
-  delay(15);
-  
   configOverSerialPort(wifiConfig.ssid, wifiConfig.wifiPassword, hasExistingData);
 }
 
@@ -813,8 +795,7 @@ void setup()
   for (int i = 0; i < 50; i++) { // 50 * 100ms = 5 seconds
     vTaskDelay(pdMS_TO_TICKS(100));
     if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
-      Serial.println("[STARTUP] Config mode triggered during startup");
-      return;
+      return; // Exit silently - config serial output is paced by executeConfig()
     }
   }
   Serial.println("[STARTUP] Startup screen completed, switching to initialization screen");
@@ -846,8 +827,7 @@ void setup()
     
     // Check for config mode
     if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
-      Serial.println("[STARTUP] Config mode triggered during startup");
-      return;
+      return; // Exit silently - config serial output is paced by executeConfig()
     }
     
     // Step 1: Check WiFi (runs continuously until connected)

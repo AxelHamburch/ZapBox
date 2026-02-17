@@ -115,41 +115,33 @@ static void serialWriteChunked(const String &msg) {
 
 void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 {
-    // CRITICAL: Stop WiFi FIRST before any serial output!
-    // WiFi event callbacks (e.g., 4WAY_HANDSHAKE_TIMEOUT) fire asynchronously and
-    // write to Serial, which corrupts our paced serial output via USB CDC.
-    bool wifiWasConnected = (WiFi.status() == WL_CONNECTED);
-    WiFi.disconnect(true); // true = turn off WiFi radio completely
-    WiFi.mode(WIFI_OFF);
-    delay(100); // Let any pending WiFi callbacks finish
+    // WiFi is already OFF (disabled in configMode() before we get here).
     
     // CRITICAL: Ensure serial is fully ready (especially after wake from deep sleep)
+    // Also wait for setup() on Core 1 to notice CONFIG_MODE and stop writing to Serial.
     Serial.flush();
-    delay(300); // Give serial port time to stabilize (USB CDC enumeration)
+    delay(500); // Give Core 1 time to see CONFIG_MODE and exit + USB CDC stabilize
+
+    // Drain any stale bytes that other cores may have written while we waited
+    while (Serial.available()) Serial.read();
     
-    serialPrintln("\n--- Serial Config Mode Active ---");
+    serialPrintln("");
+    serialPrintln("===================================");
+    serialPrintln("   Serial Config Mode Active");
+    serialPrintln("===================================");
     serialPrintln("[CONFIG_MODE_ENTER]");
     serialPrintln("Waiting for commands...");
+    serialPrintln("Touch screen or press button to exit.");
     
-    // Send multiple CONFIG_MODE_ENTER signals to ensure web installer detects it
+    // Send additional CONFIG_MODE_ENTER signals to ensure web installer detects it
     for (int i = 0; i < 3; i++) {
         delay(150);
         serialPrintln("[CONFIG_MODE_ENTER]");
     }
 
-    serialPrintln(String("WiFi initial state: ") + (wifiWasConnected ? "CONNECTED" : "DISCONNECTED"));
-    serialPrintln("WiFi radio disabled during config mode");
-
-    // ── Settling phase ──────────────────────────────────────────────
-    // loop() on Core 1 may still have one last Serial.println() in
-    // flight.  Drain any stale bytes that landed in our RX buffer
-    // while waiting for Core 1 to see CONFIG_MODE and go silent.
-    delay(500);                 // give Core 1 time to exit its loop
-    while (Serial.available())  // throw away any residual noise
-        Serial.read();
-    Serial.flush();             // make sure our TX is done too
-    delay(50);
-    // ────────────────────────────────────────────────────────────────
+    // Drain RX once more just before entering command loop
+    while (Serial.available()) Serial.read();
+    Serial.flush();
 
     unsigned long lastActivity = millis(); // Track last serial activity
     const unsigned long inactivityTimeout = 180000; // 180 seconds
