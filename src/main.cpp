@@ -559,15 +559,15 @@ void showHelp()
 
 void configMode()
 {
-  // CRITICAL: Stop WiFi IMMEDIATELY to prevent async WiFi event callbacks
-  // from corrupting serial output via USB CDC. Must happen BEFORE any Serial writes!
+  // Suppress ALL Log output globally FIRST - before WiFi.disconnect() triggers
+  // async callbacks (e.g. WebSocket Disconnected) that write via LOG_INFO.
+  Log::suppressed = true;
+
+  // CRITICAL: Stop WiFi to prevent async WiFi event callbacks
+  // from corrupting serial output via USB CDC.
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
   delay(100); // Let pending WiFi callbacks drain
-
-  // Suppress ALL Log output globally (LOG_INFO, LOG_WARN, etc.)
-  // This prevents background tasks from writing to Serial during config mode.
-  Log::suppressed = true;
 
   // Set CONFIG_MODE state SILENTLY (DeviceState suppresses serial for CONFIG_MODE)
   configModeScreen(); // Draw config screen

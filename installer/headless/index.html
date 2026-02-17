@@ -878,6 +878,11 @@
                 
                 // Clear buffer after successful parse
                 serialBuffer = "";
+                
+                // Re-enable read button immediately
+                const readBtn = document.getElementById('read-config-button');
+                readBtn.disabled = false;
+                readBtn.textContent = '📖 Read Config';
             } catch (error) {
                 console.log("JSON parse attempt failed:", error);
                 console.log("Raw JSON string:", jsonString);
@@ -915,8 +920,18 @@
         }
 
         async function onReadConfigButtonClick() {
+            // Prevent rapid-fire: disable button until response is complete
+            const btn = document.getElementById('read-config-button');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = '⏳ Reading...';
             console.log("Read config button clicked!");
-            serial.writeLine("/file-read config.json");
+            await serial.writeLine("/file-read config.json");
+            // Re-enable after a short delay to allow response to arrive
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = '📖 Read Config';
+            }, 2000);
         }
 
         async function onWriteConfigButtonClick() {
