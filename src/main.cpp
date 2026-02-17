@@ -559,16 +559,21 @@ void showHelp()
 
 void configMode()
 {
-  Serial.println("[BUTTON] Config mode button pressed");
+  // CRITICAL: Stop WiFi IMMEDIATELY to prevent async WiFi event callbacks
+  // from corrupting serial output via USB CDC. Must happen BEFORE any Serial writes!
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  delay(100); // Let pending WiFi callbacks drain
   
-  // CRITICAL: Ensure serial is ready after deep sleep wake-up
-  Serial.flush();
-  delay(100); // Give serial time to stabilize
-  
-  // Verify serial is actually working
-  LOG_INFO("Config", "Testing serial connection...");
   Serial.flush();
   delay(50);
+  Serial.println("[BUTTON] Config mode button pressed");
+  Serial.flush();
+  delay(15);
+  
+  LOG_INFO("Config", "Testing serial connection...");
+  Serial.flush();
+  delay(15);
   
   configModeScreen(); // Draw config screen IMMEDIATELY
   deviceState.transition(DeviceState::CONFIG_MODE); // Then set flag
@@ -580,12 +585,16 @@ void configMode()
   touchControllerPtr = (void*)&touch;
   
   LOG_INFO("Config", "Config mode screen displayed, entering serial config...");
+  Serial.flush();
+  delay(15);
   LOG_INFO("Config", "Touch screen anywhere to exit config mode.");
   Serial.flush();
+  delay(15);
   
   bool hasExistingData = (wifiConfig.ssid.length() > 0);
   LOG_INFO("Config", String("Has existing data: ") + (hasExistingData ? "YES" : "NO"));
   Serial.flush();
+  delay(15);
   
   configOverSerialPort(wifiConfig.ssid, wifiConfig.wifiPassword, hasExistingData);
 }
@@ -1138,23 +1147,21 @@ void loop()
   }
   
   checkAndReconnectWiFi();
-  Serial.println("[DEBUG] Returned from checkAndReconnectWiFi()");
-  if (deviceState.isInState(DeviceState::CONFIG_MODE)) return; // Exit if we entered config mode
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
   
   // Handle QR redraw after WiFi recovery (outside of deep call stack)
   if (needsQRRedraw) {
-    Serial.println("[RECOVERY] Redrawing QR screen after WiFi recovery");
     redrawQRScreen();
     needsQRRedraw = false;
-    Serial.println("[RECOVERY] QR screen redrawn successfully");
   }
 
+  // Re-check: config mode may have been triggered while we were busy above
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
+
   payloadStr = "";
-  Serial.println("[DEBUG] About to check connections...");
   
   // CRITICAL: Only show QR screen ONCE on first loop if ALL connections confirmed
   bool allConnectionsConfirmed = networkStatus.confirmed.wifi && networkStatus.confirmed.internet && networkStatus.confirmed.server && networkStatus.confirmed.websocket;
-  Serial.printf("[DEBUG] allConnectionsConfirmed: %d, firstLoop: %d\n", allConnectionsConfirmed, firstLoop);
   
   // If ticker is already active from setup in Single mode, don't override it
   if (firstLoop && multiChannelConfig.mode == "off" && multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::REPORT_SCREEN)) {
@@ -1184,9 +1191,8 @@ void loop()
   unsigned long loopCount = 0;
   // Don't reset onErrorScreen/currentErrorType - they should persist across loop iterations
   
-  Serial.println("[LOOP] Entering payment wait loop...");
-  Serial.printf("[LOOP] Initial queue size: %d\n", paymentQueue.size());
-  Serial.printf("[LOOP] Error state: onErrorScreen=%d, currentErrorType=%d\n", deviceState.isInState(DeviceState::ERROR_RECOVERABLE), currentErrorType);
+  // Final CONFIG_MODE check before entering the long-running payment wait loop
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
   
   // Initialize ping/pong tracking
   networkStatus.lastPongTime = millis();
@@ -1200,17 +1206,16 @@ void loop()
   {
     loopIterations++;
     
-    // Print debug info every 10 seconds
-    if (millis() - lastLoopDebugPrint > 10000) {
-      Serial.printf("[LOOP_DEBUG] Iterations: %lu, touchState.available: %d, inConfigMode: %d, onErrorScreen: %d\n", 
-                    loopIterations, touchState.available, deviceState.isInState(DeviceState::CONFIG_MODE), deviceState.isInState(DeviceState::ERROR_RECOVERABLE));
+    // Print debug info every 10 seconds (skip during config mode to keep serial clean)
+    if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastLoopDebugPrint > 10000) {
+      Serial.printf("[LOOP_DEBUG] Iterations: %lu, touchState.available: %d, onErrorScreen: %d\n", 
+                    loopIterations, touchState.available, deviceState.isInState(DeviceState::ERROR_RECOVERABLE));
       lastLoopDebugPrint = millis();
     }
     // Check if config mode was triggered during payment wait
     if (deviceState.isInState(DeviceState::CONFIG_MODE))
     {
-      Serial.println("[LOOP] Config mode detected, exiting payment loop");
-      return;
+      return; // Exit silently - config mode handles serial output
     }
     
     // Check for touch input (if available)

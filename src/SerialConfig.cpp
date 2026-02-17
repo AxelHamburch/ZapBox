@@ -79,42 +79,78 @@ void configOverSerialPort(String wifiSSID, String wifiPass, bool hasExistingData
     executeConfig(wifiSSID, wifiPass, hasExistingData);
 }
 
+// Helper: Send a line over serial with USB CDC pacing.
+// ESP32-S3 native USB CDC sends at USB speed, not limited by baud rate.
+// Without pacing, rapid Serial.println() calls overflow the browser's
+// Web Serial API buffer and bytes get silently dropped.
+static void serialPrint(const String &msg) {
+    Serial.print(msg);
+    Serial.flush();
+    delay(15);
+}
+
+static void serialPrintln(const String &msg) {
+    Serial.println(msg);
+    Serial.flush();
+    delay(15);
+}
+
+static void serialPrintln() {
+    Serial.println();
+    Serial.flush();
+    delay(15);
+}
+
+// Helper: Send long string over serial with USB CDC pacing (chunked).
+// Used for any output longer than ~64 bytes to prevent buffer overflow.
+static void serialWriteChunked(const String &msg) {
+    const int chunkSize = 64;
+    for (unsigned int i = 0; i < msg.length(); i += chunkSize) {
+        unsigned int endPos = min(i + (unsigned int)chunkSize, (unsigned int)msg.length());
+        Serial.write(msg.c_str() + i, endPos - i);
+        Serial.flush();
+        delay(15);
+    }
+}
+
 void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 {
+    // CRITICAL: Stop WiFi FIRST before any serial output!
+    // WiFi event callbacks (e.g., 4WAY_HANDSHAKE_TIMEOUT) fire asynchronously and
+    // write to Serial, which corrupts our paced serial output via USB CDC.
+    bool wifiWasConnected = (WiFi.status() == WL_CONNECTED);
+    WiFi.disconnect(true); // true = turn off WiFi radio completely
+    WiFi.mode(WIFI_OFF);
+    delay(100); // Let any pending WiFi callbacks finish
+    
     // CRITICAL: Ensure serial is fully ready (especially after wake from deep sleep)
     Serial.flush();
-    delay(200); // Give serial port time to stabilize
+    delay(300); // Give serial port time to stabilize (USB CDC enumeration)
     
-    Serial.println("\n--- Serial Config Mode Active ---");
-    Serial.println("[CONFIG_MODE_ENTER]");
-    Serial.println("Waiting for commands...");
-    Serial.flush();
+    serialPrintln("\n--- Serial Config Mode Active ---");
+    serialPrintln("[CONFIG_MODE_ENTER]");
+    serialPrintln("Waiting for commands...");
     
     // Send multiple CONFIG_MODE_ENTER signals to ensure web installer detects it
     for (int i = 0; i < 3; i++) {
-        delay(100);
-        Serial.println("[CONFIG_MODE_ENTER]");
-        Serial.flush();
+        delay(150);
+        serialPrintln("[CONFIG_MODE_ENTER]");
     }
 
-    // Remember initial WiFi state - only restart if WiFi comes BACK (was disconnected)
-    bool wifiWasDisconnected = (WiFi.status() != WL_CONNECTED);
-    Serial.printf("WiFi initial state: %s\n", wifiWasDisconnected ? "DISCONNECTED" : "CONNECTED");
-    Serial.flush();
+    serialPrintln(String("WiFi initial state: ") + (wifiWasConnected ? "CONNECTED" : "DISCONNECTED"));
+    serialPrintln("WiFi radio disabled during config mode");
 
-    // CRITICAL: Stop WiFi activity during config mode to prevent:
-    // 1. Constant 4WAY_HANDSHAKE_TIMEOUT spam in serial console
-    // 2. Unnecessary CPU load from WiFi reconnect attempts
-    // 3. Interference with serial communication
-    // WiFi will be properly re-established on ESP.restart() after config is done
-    if (wifiWasDisconnected) {
-        WiFi.disconnect(true); // true = turn off WiFi radio completely
-        WiFi.mode(WIFI_OFF);
-        Serial.println("WiFi radio disabled during config mode");
-        Serial.flush();
-    }
+    // ── Settling phase ──────────────────────────────────────────────
+    // loop() on Core 1 may still have one last Serial.println() in
+    // flight.  Drain any stale bytes that landed in our RX buffer
+    // while waiting for Core 1 to see CONFIG_MODE and go silent.
+    delay(500);                 // give Core 1 time to exit its loop
+    while (Serial.available())  // throw away any residual noise
+        Serial.read();
+    Serial.flush();             // make sure our TX is done too
+    delay(50);
+    // ────────────────────────────────────────────────────────────────
 
-    unsigned long lastWiFiCheck = millis();
     unsigned long lastActivity = millis(); // Track last serial activity
     const unsigned long inactivityTimeout = 180000; // 180 seconds
 
@@ -142,8 +178,7 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
         
         // Check for button exit (NEXT or HELP pressed)
         if (checkButtonExit()) {
-            Serial.println("[CONFIG_MODE_EXIT]");
-            Serial.flush();
+            serialPrintln("[CONFIG_MODE_EXIT]");
             delay(500);
             ESP.restart();
         }
@@ -154,9 +189,8 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
             TouchCST816S* touch = (TouchCST816S*)touchControllerPtr;
             if (touch->available())
             {
-                Serial.println("[CONFIG] Touch detected - exiting config mode");
-                Serial.println("[CONFIG_MODE_EXIT]");
-                Serial.flush();
+                serialPrintln("[CONFIG] Touch detected - exiting config mode");
+                serialPrintln("[CONFIG_MODE_EXIT]");
                 delay(500);
                 ESP.restart();
             }
@@ -165,22 +199,14 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
         // Check for inactivity timeout - only if existing data is present
         if (hasExistingData && (millis() - lastActivity > inactivityTimeout))
         {
-            Serial.println("\n--- Inactivity timeout (60s) - returning to QR screen ---");
-            Serial.println("[CONFIG_MODE_EXIT]");
-            Serial.flush();
+            serialPrintln("\n--- Inactivity timeout (180s) - returning to QR screen ---");
+            serialPrintln("[CONFIG_MODE_EXIT]");
             delay(500);
             ESP.restart();
         }
         
-        // Check WiFi every 5 seconds to see if it's back
-        // Only relevant if WiFi WAS connected when entering config mode
-        // (WiFi radio is OFF if it was disconnected - see above)
-        if (!wifiWasDisconnected && millis() - lastWiFiCheck > 5000)
-        {
-            // WiFi was connected but may have dropped - if still connected, no action needed
-            // If it disconnected during config, don't try to reconnect (user may be changing credentials)
-            lastWiFiCheck = millis();
-        }
+        // WiFi is OFF during config mode - no need to check.
+        // WiFi will be re-established on ESP.restart() after config is done.
 
         if (Serial.available() == 0)
         {
@@ -198,17 +224,22 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
         if (data.length() == 0)
             continue;
             
-        Serial.print("received: ");
-        Serial.println(data);
-        Serial.flush();
+        // Echo received command - truncate long data to avoid USB CDC overflow
+        if (data.length() > 100) {
+            // Show command + first/last part of data for debugging
+            int spaceIdx = data.indexOf(' ');
+            String cmdPart = (spaceIdx > 0) ? data.substring(0, spaceIdx) : data;
+            serialPrintln("received: " + cmdPart + " [" + String(data.length()) + " bytes]");
+        } else {
+            serialPrintln("received: " + data);
+        }
         
         KeyValue kv = extractKeyValue(data);
         String commandName = kv.key;
         
         if (commandName == "/config-done")
         {
-            Serial.println("/config-done");
-            Serial.flush();
+            serialPrintln("/config-done");
             delay(500);
             ESP.restart();
         }
@@ -233,22 +264,21 @@ void executeCommand(String commandName, String commandData)
         logo += " /___/_/ |_/_/  /____/\\____/_/|_|\n";
         Serial.print(logo);
         Serial.flush();
+        delay(50);
         return;
     }
     if (commandName == "/config-restart")
     {
-        Serial.println("- Restarting ESP32...");
-        Serial.println("[CONFIG_MODE_EXIT]");
-        Serial.flush();
+        serialPrintln("- Restarting ESP32...");
+        serialPrintln("[CONFIG_MODE_EXIT]");
         delay(500);
         ESP.restart();
         return;
     }
     if (commandName == "/config-soft-reset")
     {
-        Serial.println("- Soft reset: Restarting ESP32 (connection stays open)...");
-        Serial.println("[CONFIG_MODE_EXIT]");
-        Serial.flush();
+        serialPrintln("- Soft reset: Restarting ESP32 (connection stays open)...");
+        serialPrintln("[CONFIG_MODE_EXIT]");
         delay(500);
         ESP.restart();
         return;
@@ -268,17 +298,19 @@ void executeCommand(String commandName, String commandData)
     }
 
     Serial.println("- Unknown command");
+    Serial.flush();
+    delay(15);
 }
 
 void removeFile(String path)
 {
-    Serial.println("- Remove file: " + path);
+    serialPrintln("- Remove file: " + path);
     FFat.remove("/" + path);
 }
 
 void appendToFile(String path, String data)
 {
-    Serial.println("- Append to file: " + path);
+    serialPrintln("- Append to file: " + path);
     File file = FFat.open("/" + path, FILE_APPEND);
     if (!file)
     {
@@ -289,33 +321,32 @@ void appendToFile(String path, String data)
         file.println(data);
         file.close();
     }
+    serialPrintln("- Append done");
 }
 
 void readFile(String path)
 {
-    Serial.println("- Read file: " + path);
+    serialPrintln("- Read file: " + path);
+    delay(30); // Extra gap before data payload
+    
     File file = FFat.open("/" + path, "r");
     if (file)
     {
-        // Read entire file into a String and send as one block
-        // This avoids chunking issues where individual small chunks
-        // can overflow the Web Serial API's default 255-byte buffer
         String content = file.readString();
         file.close();
         
-        // Send prefix + content + newline as efficiently as possible
-        Serial.print("/file-read ");
-        Serial.print(content);
-        Serial.println();
+        // Build complete response line and send chunked
+        String response = "/file-read " + content;
+        serialWriteChunked(response);
+        Serial.println(); // Terminating newline
         Serial.flush();
-        delay(50); // Allow USB transfer to complete
+        delay(30); // Gap before status line
     }
     else
     {
-        Serial.println("- Failed to open file for reading");
+        serialPrintln("- Failed to open file for reading");
     }
-    Serial.println("- Read file done");
-    Serial.flush();
+    serialPrintln("- Read file done");
 }
 
 KeyValue extractKeyValue(String s)
