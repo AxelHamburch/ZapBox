@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_log.h>
 #include <WebSocketsClient.h>
 #include <HTTPClient.h>
 #include <OneButton.h>
@@ -563,11 +564,15 @@ void configMode()
   // async callbacks (e.g. WebSocket Disconnected) that write via LOG_INFO.
   Log::suppressed = true;
 
+  // Suppress ESP-IDF internal logging (ssl_client, WiFiGeneric, etc.)
+  // These bypass our Log:: system and write directly via esp_log_write().
+  esp_log_level_set("*", ESP_LOG_NONE);
+
   // CRITICAL: Stop WiFi to prevent async WiFi event callbacks
   // from corrupting serial output via USB CDC.
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
-  delay(100); // Let pending WiFi callbacks drain
+  delay(200); // Let pending WiFi/SSL callbacks drain completely
 
   // Set CONFIG_MODE state SILENTLY (DeviceState suppresses serial for CONFIG_MODE)
   configModeScreen(); // Draw config screen
@@ -1142,6 +1147,7 @@ void loop()
   
   // Handle QR redraw after WiFi recovery (outside of deep call stack)
   if (needsQRRedraw) {
+    Serial.println("[RECOVERY] Redrawing QR screen after WiFi recovery");
     redrawQRScreen();
     needsQRRedraw = false;
   }
@@ -1184,6 +1190,9 @@ void loop()
   
   // Final CONFIG_MODE check before entering the long-running payment wait loop
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
+
+  Serial.println("[LOOP] Entering payment wait loop...");
+  Serial.printf("[LOOP] Initial queue size: %d\n", paymentQueue.size());
   
   // Initialize ping/pong tracking
   networkStatus.lastPongTime = millis();

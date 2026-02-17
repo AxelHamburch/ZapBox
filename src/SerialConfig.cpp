@@ -216,18 +216,20 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
         if (data.length() == 0)
             continue;
             
-        // Echo received command - truncate long data to avoid USB CDC overflow
-        if (data.length() > 100) {
-            // Show command + first/last part of data for debugging
-            int spaceIdx = data.indexOf(' ');
-            String cmdPart = (spaceIdx > 0) ? data.substring(0, spaceIdx) : data;
-            serialPrintln("received: " + cmdPart + " [" + String(data.length()) + " bytes]");
-        } else {
-            serialPrintln("received: " + data);
-        }
-        
+        // Echo received command - skip echo for /file-read to keep output clean
+        // (the response already shows what was requested)
         KeyValue kv = extractKeyValue(data);
         String commandName = kv.key;
+        
+        if (commandName != "/file-read") {
+            if (data.length() > 100) {
+                int spaceIdx = data.indexOf(' ');
+                String cmdPart = (spaceIdx > 0) ? data.substring(0, spaceIdx) : data;
+                serialPrintln("received: " + cmdPart + " [" + String(data.length()) + " bytes]");
+            } else {
+                serialPrintln("received: " + data);
+            }
+        }
         
         if (commandName == "/config-done")
         {
@@ -318,7 +320,6 @@ void appendToFile(String path, String data)
 
 void readFile(String path)
 {
-    serialPrintln("- Read file: " + path);
     delay(30); // Extra gap before data payload
     
     File file = FFat.open("/" + path, "r");
@@ -327,18 +328,18 @@ void readFile(String path)
         String content = file.readString();
         file.close();
         
-        // Build complete response line and send chunked
+        // Send response: /file-read <JSON>
+        // No extra status lines — keeps serial output clean and predictable
         String response = "/file-read " + content;
         serialWriteChunked(response);
         Serial.println(); // Terminating newline
         Serial.flush();
-        delay(30); // Gap before status line
+        delay(50); // Gap after data payload
     }
     else
     {
         serialPrintln("- Failed to open file for reading");
     }
-    serialPrintln("- Read file done");
 }
 
 KeyValue extractKeyValue(String s)
