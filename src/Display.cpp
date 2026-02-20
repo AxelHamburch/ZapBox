@@ -1334,36 +1334,7 @@ void setupDeepSleepWakeup(String mode)
   deepSleepMode = mode;
   
   // Configure power domain settings based on mode
-  if (mode == "light") {
-    // Light sleep: CPU pauses, RAM active, faster wake-up than freeze
-    // WiFi disconnects but reconnects faster than full reboot
-    // NO payment processing possible during sleep (CPU is paused)
-    
-    // Configure BOOT button (GPIO 0) for wake-up on LOW (button pressed)
-    gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
-    
-    // Configure IO14 button (GPIO 14) for wake-up on LOW (button pressed)
-    gpio_wakeup_enable(GPIO_NUM_14, GPIO_INTR_LOW_LEVEL);
-    
-    // Enable GPIO wake-up
-    esp_sleep_enable_gpio_wakeup();
-    
-    Serial.println("[DEEP_SLEEP] Light Sleep mode configured");
-    Serial.println("[DEEP_SLEEP] Wake-up sources: BOOT (GPIO 0) and IO14 (GPIO 14)");
-    Serial.println("[DEEP_SLEEP] Display OFF, WiFi reconnects after wake");
-    Serial.println("[DEEP_SLEEP] Power consumption: ~0.8-3mA");
-    Serial.println("[DEEP_SLEEP] Wake-up time: ~1-2 seconds");
-    Serial.println("[DEEP_SLEEP] NO payment processing during sleep");
-    Serial.println("[DEEP_SLEEP] Press BOOT or IO14 button to wake up");
-    Serial.println("[DEEP_SLEEP] Entering Light Sleep now...");
-    
-    esp_light_sleep_start();
-    
-    // Execution continues here after wake-up
-    Serial.println("[WAKE_UP] Device woke from light sleep");
-    
-  } 
-  else if (mode == "freeze") {
+  if (mode == "freeze") {
     // Deep sleep/Freeze: CPU off, only RTC active
     // WiFi/Bluetooth will be disconnected
     

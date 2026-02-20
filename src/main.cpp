@@ -1116,9 +1116,7 @@ void loop()
     }
     
     // Display deep sleep status with clear description
-    if (powerConfig.deepSleep == "light") {
-      Serial.println("Deep Sleep: light sleep mode");
-    } else if (powerConfig.deepSleep == "freeze") {
+    if (powerConfig.deepSleep == "freeze") {
       Serial.println("Deep Sleep: deep sleep (freeze) mode");
     } else {
       Serial.println("Deep Sleep: " + powerConfig.deepSleep);

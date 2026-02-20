@@ -558,10 +558,9 @@ Automatic power-saving modes that activate after a configurable timeout:
 |------|-----------|---------|-----|-----|------|-----------|----------|-------|---------|---------|
 | **Normal** | ON | Active | Running | Active | Active | Active | ✅ Yes | ~150-250mA | 0% | - |
 | **Screensaver** | OFF | Active | Running | Active | Active | Active | ✅ Yes | ~40-60mA | ~80-90% | Instant |
-| **Light Sleep** | OFF | Active | Paused | Active | Reconnect | Reconnect | ❌ No* | ~0.8-3mA | ~98-99% | ~1-2s |
 | **Deep Sleep** | OFF | Active | OFF | RTC only | Reconnect | Reconnect | ❌ No* | ~0.01-0.15mA | ~99.9% | ~3-5s |
 
-*Light Sleep and Deep Sleep require wake-up (button press) and WiFi reconnection before payments can be received
+*Deep Sleep requires wake-up (button press) and WiFi reconnection before payments can be received
 
 **Wake-up Methods**:
 - **Screensaver**: Touch display (Touch version) or press any button → Instant wake-up
@@ -574,18 +573,12 @@ Automatic power-saving modes that activate after a configurable timeout:
   - Good for public terminals with frequent use
   - Battery operation: ~7-10 days with 10000mAh battery
   
-- **Light Sleep**: ⭐ **Best for button-activated devices** - 98-99% power saving, fast wake-up, good battery life
-  - WiFi reconnects quickly after wake-up (~1-2 seconds)
-  - NO payments received during sleep (CPU is paused)
-  - Press button to wake, then ready for payments quickly
-  - Battery operation: ~83-139 days with 10000mAh battery
-  
 - **Deep Sleep (freeze)**: ⭐ **Best for long-term installations** - 99.9% power saving, maximum battery life
   - WiFi reconnects after wake-up (~3-5 seconds)
   - NO payments received during sleep
-  - Press button to wake, slower reconnect than light sleep
+  - Press button to wake and device will restart
   - Battery operation: 7.5-114 years(!) with 10000mAh battery
-  - Ideal for devices used rarely
+  - Ideal for devices used rarely or for maximum energy savings
 
 **Configuration**:
 
@@ -595,8 +588,7 @@ Automatic power-saving modes that activate after a configurable timeout:
 
 - **Deep Sleep Options**:
   - **OFF**: No deep sleep (default)
-  - **Light**: Light sleep mode - CPU pauses, faster wake-up, NO payments during sleep
-  - **Freeze**: Deep sleep mode - Maximum power saving, slowest wake-up, NO payments during sleep
+  - **Freeze**: Deep sleep mode - Maximum power saving, NO payments during sleep
 
 - **Mutual Exclusion**: Only one mode can be active at a time (Screensaver or Deep Sleep)
 - **Activation Time**: Configurable timeout (1-120 minutes)
@@ -605,7 +597,6 @@ Automatic power-saving modes that activate after a configurable timeout:
 
 **Technical Notes**:
 - **Screensaver - Backlight Power**: The T-Display-S3's backlight consumes most display power (~150-200mA). Turning it off saves 80-90% while keeping the display controller active for instant wake-up. CPU continues running, payments work normally.
-- **Light Sleep - CPU Pause**: CPU is paused to save power (~0.8-3mA total), WiFi disconnects but RAM is retained. Wake-up is fast (~1-2s) because no full reboot needed. NO payment processing during sleep.
 - **Deep Sleep - Complete Shutdown**: Only RTC memory active, device performs full restart on wake-up (~3-5s), requires complete WiFi reconnection. NO payment processing during sleep. Maximum battery life.
 
 **Use Cases**: Energy saving for installations, battery operation, reducing device heat, extending display lifespan in always-on scenarios

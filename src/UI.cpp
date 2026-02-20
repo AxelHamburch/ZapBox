@@ -442,64 +442,10 @@ void handlePowerSavingChecks() {
       LOG_INFO("DeepSleep", "Entering sleep mode now...");
       Serial.flush();
 
-      // Enter deep sleep (will not return in freeze mode)
+      // Enter deep sleep (will not return - device will restart on wake-up)
       setupDeepSleepWakeup(powerConfig.deepSleep);
 
-      // Execution continues here after wake-up from light sleep
-      // (Deep sleep/freeze mode will restart the device instead)
-
-      // CRITICAL: Light sleep disconnects USB-Serial hardware
-      // We need to reinitialize USB-CDC to make Serial work again
-      LOG_INFO("WakeUp", "Device woke from light sleep");
-
-      // Reinitialize USB-CDC peripheral after light sleep
-      Serial.end();
-      delay(100);
-      Serial.setRxBufferSize(2048); // Same as in setup()
-      Serial.begin(115200);
-      delay(200); // Give USB-CDC time to enumerate
-
-      LOG_INFO("WakeUp", "USB-Serial reinitialized after light sleep");
-      Serial.flush();
-
-      // Show boot-up screen first
-      bootUpScreen();
-      LOG_INFO("WakeUp", "Boot screen displayed");
-
-      // Turn backlight back on
-      pinMode(PIN_LCD_BL, OUTPUT);
-      digitalWrite(PIN_LCD_BL, HIGH);
-      LOG_INFO("WakeUp", "Backlight restored");
-
-      // Check WiFi connection status
-      LOG_INFO("WakeUp", "Checking WiFi connection...");
-      int wifiCheckCount = 0;
-      while (WiFi.status() != WL_CONNECTED && wifiCheckCount < 30) {
-        delay(100);
-        wifiCheckCount++;
-        if (wifiCheckCount % 10 == 0) {
-          LOG_DEBUG("WakeUp", String("Waiting for WiFi... (") + String(wifiCheckCount) + String("/30)"));
-        }
-      }
-
-      if (WiFi.status() == WL_CONNECTED) {
-        LOG_INFO("WakeUp", "WiFi connected");
-      } else {
-        LOG_WARN("WakeUp", "WiFi not connected after wake-up, will retry in loop");
-        // WiFi reconnection will be handled by checkAndReconnectWiFi() in main loop
-      }
-
-      // Reset activity time and clear sleep flag
-      activityTracking.lastActivityTime = millis();
-      powerConfig.lastWakeUpTime = millis();
-      deviceState.transition(DeviceState::READY);
-
-      // Small delay before redrawing screen
-      delay(500);
-
-      // Redraw the appropriate QR screen
-      redrawQRScreen();
-      LOG_INFO("WakeUp", "Ready for payments");
+      // Note: This code is never reached because deep sleep/freeze mode restarts the device
     }
   }
 }
