@@ -70,7 +70,7 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version-headless" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="../firmware/v937549h/manifest.json">v937549h (Latest - Remove Light Sleep mode)</option>
+                <option value="../firmware/v937549h/manifest.json">v937549h (Latest - Bug fixes)</option>
                 <option value="../firmware/v936746h/manifest.json">v936746h (Advanced LED error detection and messages)</option>
                 <option value="../firmware/v936258h/manifest.json">v936258h (Fix Serial connection and optimizations)</option>
                 <option value="../firmware/v933714h/manifest.json">v933714h (Add GPIO 2 onboard LED support and status log)</option>
@@ -829,7 +829,7 @@
                 config[2].value = configData[2].value; // socket
                 config[3].value = configData[3]?.value || "bech32"; // qrFormat
                 config[4].value = configData[4].value; // orientation
-                config[5].value = configData[5]?.value || "zapbox"; // theme
+                config[5].value = configData[5]?.value || "black-white"; // theme
                 config[6].value = configData[6]?.value || ""; // thresholdKey
                 config[7].value = configData[7]?.value || ""; // thresholdAmount
                 config[8].value = configData[8]?.value || ""; // thresholdPin
@@ -962,7 +962,7 @@
             // Set defaults for headless (not editable in UI)
             config[3].value = "bech32"; // Default QR format
             config[4].value = "h"; // Default orientation
-            config[5].value = "zapbox"; // Default theme
+            config[5].value = "black-white"; // Default theme
             config[6].value = thresholdKey.value;
             config[7].value = thresholdAmount.value;
             config[8].value = thresholdPin.value;
