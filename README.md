@@ -1,48 +1,6 @@
 # Lightning ZapBox ⚡
 
-Bitcoin Lightning-controlled USB power switch for LilyGo T-Display-S3
-
-## Table of Contents
-
-- [What is the ZapBox?](#what-is-the-zapbox)
-- [How it Works](#how-it-works)
-- [Hardware](#hardware)
-  - [LilyGo T-Display-S3 (Full Version)](#lilygo-t-display-s3-full-version)
-  - [ESP32 Dev Module (Headless Version)](#esp32-dev-module-headless-version)
-  - [Pin Configuration](#pin-configuration)
-  - [NFC Reader Setup (Optional)](#nfc-reader-setup-optional)
-  - [Electrical Layout](#electrical-layout)
-  - [External LED Button (Optional)](#external-led-button-optional)
-  - [Headless Version: LED Status Diagnostics](#headless-version-led-status-diagnostics)
-- [Operation](#operation)
-  - [On-board Button - Reset](#on-board-button---reset)
-  - [On-board Button - HELP (GPIO 14)](#on-board-button---help-gpio-14)
-  - [On-board Button - NEXT (BOOT / GPIO 0)](#on-board-button---next-boot--gpio-0)
-  - [Touch display (touch version only)](#touch-display-touch-version-only)
-  - [Touch button (Red circle next to the touch field)](#touch-button-red-circle-next-to-the-touch-field)
-  - [External LED-Button (if available)](#external-led-button-if-available)
-  - [Startup & Initialization Sequence](#startup--initialization-sequence)
-  - [Error Detection & Priority System](#error-detection--priority-system)
-- [Features](#features)
-  - [Basic Configuration](#basic-configuration)
-  - [Advanced Features](#advanced-features)
-    - [Multi-Channel-Control Mode (Touch Variant)](#multi-channel-control-mode-touch-variant)
-    - [BTC-Ticker with Currency Display](#btc-ticker-with-currency-display)
-    - [Special Modes](#special-modes)
-    - [Threshold Mode](#threshold-mode)
-    - [Screensaver & Deep Sleep Function](#screensaver--deep-sleep-function)
-- [Web Installer](#web-installer)
-- [PlatformIO Project](#platformio-project)
-  - [Required Libraries](#required-libraries)
-  - [Project Structure](#project-structure)
-- [Compatibility](#compatibility)
-- [Acknowledgement](#acknowledgement)
-- [Versioning](#versioning)
-  - [Housing / 3D modeling (FreeCAD)](#housing--3d-modeling-freecad)
-  - [Electrical layout / circuit diagram (Inkscape)](#electrical-layout--circuit-diagram-inkscape)
-- [Support](#support)
-
----
+Bitcoin Lightning-controlled USB power switch for LilyGo T-Display-S3 or standard ESP32
 
 ## What is the ZapBox?
 
@@ -53,6 +11,21 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
 - **ESP32 Dev Module**: Headless version for embedded applications (no display, status LED only)
 
 Detailed descriptions, images and application examples can be found at [zapbox.space](https://zapbox.space/), [ereignishorizont.xyz](https://ereignishorizont.xyz/en/zapbox-en/) or in the [white paper](https://github.com/AxelHamburch/ZapBox/tree/main/assets/white-paper).
+
+## Table of Contents
+
+- [How it Works](#how-it-works)
+- [Hardware](#hardware)
+- [Operation](#operation)
+- [Features](#features)
+- [Web Installer](#web-installer)
+- [PlatformIO Project](#platformio-project)
+- [Compatibility](#compatibility)
+- [Versioning](#versioning)
+- [Acknowledgement](#acknowledgement)
+- [Support](#support)
+
+---
 
 ## How it Works
 
@@ -79,7 +52,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
   - **Position 0**: Everything off
   - **Position 1**: Output permanently on (bypass mode)
   - **Position A**: Automatic mode - ESP32 active, waiting for Lightning payment
-- **PN532 NFC Reader** (Optional): For contactless NFC card/tag reading
+- **PN532 NFC Reader** (Optional, in planning): For contactless NFC card/tag reading
   - Connected via I2C (shared bus with Touch controller)
   - Enables NFC-based payment triggers and card identification
 
@@ -95,28 +68,112 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 
 ### Pin Configuration
 
-**T-Display-S3 GPIO Usage:**
+#### T-Display-S3 GPIO Mapping (ENABLE_DISPLAY=1)
 
-| GPIO | Function | Description |
-|------|----------|-------------|
-| 0 | BOOT Button | Physical button (left), Config mode trigger |
-| 14 | HELP Button | Physical button (right), Help/Report mode |
-| 4 | Battery Voltage | ADC for battery monitoring |
-| 15 | Power On | Power control pin |
-| 17 | I2C SCL | Shared: Touch controller + NFC reader |
-| 18 | I2C SDA | Shared: Touch controller + NFC reader |
-| 16 | Touch INT | Touch controller interrupt pin |
-| 21 | Touch RES | Touch controller reset pin |
-| **1** | **NFC IRQ** | **PN532 interrupt (card detection)** |
-| 5-9 | LCD Control | Display control signals (RES, CS, DC, WR, RD) |
-| 38 | LCD Backlight | Display brightness control |
-| 39-42, 45-48 | LCD Data | 8-bit parallel display data bus |
+| GPIO | Function | Type | Direction | Description |
+|------|----------|------|-----------|-------------|
+| **User Input** |
+| 0 | BOOT Button | Input | Pull-up | Left physical button - Config mode trigger (5s hold) |
+| 14 | HELP Button | Input | Pull-up | Right physical button - Help/Report mode |
+| 2 | Light Barrier | Input | Pull-up | NPN vending machine light barrier (active LOW) |
+| 4 | Battery Voltage | ADC Input | - | Battery voltage monitoring |
+| **Display Control** |
+| 38 | LCD Backlight | Output | HIGH=ON | Display brightness (PWM capable) |
+| 5 | LCD RES | Output | - | Display reset signal |
+| 6 | LCD CS | Output | - | Display chip select |
+| 7 | LCD DC | Output | - | Display data/command signal |
+| 8 | LCD WR | Output | - | Display write signal |
+| 9 | LCD RD | Output | - | Display read signal |
+| 39-42, 45-48 | LCD Data (D0-D7) | Output | - | 8-bit parallel display data bus |
+| **Touch & NFC** |
+| 17 | I2C SCL | I2C | - | Shared: Touch + NFC |
+| 18 | I2C SDA | I2C | - | Shared: Touch + NFC |
+| 16 | Touch INT | Input | - | Touch controller interrupt |
+| 21 | Touch RES | Output | - | Touch controller reset |
+| 1 | NFC IRQ | Input | - | PN532 interrupt (card detection) |
+| **Power & External Controls** |
+| 15 | Power On | Output | - | Power control pin |
+| 43 | LED Button (LED) | Output | HIGH=ON | External illuminated button LED (3.3V) |
+| 44 | LED Button (SW) | Input | Pull-up | External button switch (active LOW) |
+| **Relay Channels (Multi-Channel-Control)** |
+| 12 | Relay 1 | Output | - | Single mode default, Duo/Quattro mode 1 |
+| 13 | Relay 2 | Output | - | Duo/Quattro mode 2 |
+| 10 | Relay 3 | Output | - | Quattro mode 3 |
+| 11 | Relay 4 | Output | - | Quattro mode 4 |
 
 **I2C Bus Addresses:**
 - Touch CST816S/CST328: `0x15` or `0x5A`
 - PN532 NFC Reader: `0x24`
 
-### NFC Reader Setup (Optional)
+#### ESP32 Dev Module GPIO Mapping (ENABLE_DISPLAY=0 - Headless)
+
+| GPIO | Function | Type | Direction | Description |
+|------|----------|------|-----------|-------------|
+| **User Input** |
+| 0 | BOOT Button | Input | Pull-up | Wake from sleep / Config mode |
+| 14 | HELP Button | Input | Pull-up | Help/Report mode |
+| 2 | Light Barrier | Input | Pull-up | Optional NPN light barrier (not used in headless) |
+| **LEDs & Status** |
+| 21 | Status LED | Output | HIGH=ON | Status indication (RTC-capable) |
+| **I2C (Optional)** |
+| 17 | I2C SCL | I2C | - | Optional: NFC reader |
+| 18 | I2C SDA | I2C | - | Optional: NFC reader |
+| 1 | NFC IRQ | Input | - | Optional: PN532 interrupt |
+| **Power & Control** |
+| 15 | Power On | Output | - | Power control pin |
+| **Relay Channels (Multi-Channel-Control)** |
+| 12 | Relay 1 | Output | - | Single/Duo/Quattro mode 1 |
+| 13 | Relay 2 | Output | - | Duo/Quattro mode 2 |
+| 10 | Relay 3 | Output | - | Quattro mode 3 |
+| 11 | Relay 4 | Output | - | Quattro mode 4 |
+
+#### Key Differences Between Variants
+
+| Feature | T-Display-S3 | ESP32 Dev |
+|---------|--------------|-----------|
+| Display | LCD (170x320) | None (Headless) |
+| Touch | CST816S/CST328 | N/A |
+| External LED Button | Supported (GPIO 43/44) | N/A |
+| Light Barrier | Supported (GPIO 2) | Available but not typically used |
+| Status Indication | Display + LED | LED only (GPIO 21 and onboard LED GPIO 2) |
+| NFC Support | Yes (GPIO 1, 17, 18) | Yes (optional) |
+| Power Consumption | ~150-250mA | Lower (no display overhead) |
+| Configuration Method | Web Installer + Serial | Web Installer + Serial |
+| Deep Sleep Wake | GPIO 0, 14 (not 43/44) | N/A |
+
+### Vending Machine Light Barrier (Optional)
+
+**Feature:** Optical item detection for vending machines via infrared light barrier.
+
+**Use Cases:** This allows automated systems to detect the end of the conveying cycle, as the product has fallen through the light barrier. The conveying cycle is thus terminated prematurely.
+
+**Hardware:** NPN phototransistor light barrier module (3-wire, active LOW)
+- **Pin Assignment**: GPIO 2 (T-Display-S3 only)
+- **Input Type**: Digital input with internal pull-up
+- **Active State**: LOW (barrier broken / item detected)
+- **Inactive State**: HIGH (barrier intact / no item)
+
+**Wiring:**
+```
+Light Barrier Module    →    T-Display-S3    →    GND
+────────────────────────────────────────────────────
++5V / +3.3V            →    Power supply
+GND                    →    GND
+Signal (NPN output)    →    GPIO 2
+```
+
+### Relay Control Pins
+
+**Multi-Channel Configuration:**
+- **Single Mode (default)**: Pin 12 only
+- **Duo Mode**: Pins 12 and 13
+- **Quattro Mode**: Pins 12, 13, 10, and 11
+
+**Output Type:** Digital GPIO outputs (HIGH = relay activated)
+**Max Current per Pin:** ~40mA (requires external relay driver for high-power loads)
+**Typical Usage:** Relay driver IC (ULN2003/ULN2803) or MOSFET for external circuits
+
+### NFC Reader Setup (Optional, in planning)
 
 **Hardware:** PN532 NFC Module (HW-147, I2C mode)
 
@@ -154,6 +211,7 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
 - [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
 - [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
+- [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
 
 ### External LED Button (Optional)
 
@@ -197,24 +255,17 @@ Button Terminal 2      →                    →    GND
 
 **Note:** GPIOs 43 and 44 are not RTC-capable and cannot be used for deep sleep wake-up.
 
-#### ESP32 Dev Module Configuration
-
-**GPIO Assignment:**
-| GPIO | Function | Direction | Configuration |
-|------|----------|-----------|---------------|
-| 21 | LED Control | Output | Sources 3.3V when device is ready |
-
 **Wiring:**
 ```
 Status LED             →    ESP32 Dev       →    GND
-─────────────────────────────────────────────────────
+────────────────────────────────────────────────────
 LED Anode (+)          →    GPIO 21         
 LED Cathode (-)        →    Resistor (220Ω) →    GND
 ```
 
 **Features:**
 - Status LED only (no button functionality on ESP32 Dev)
-- GPIO 21 is RTC-capable and can be used for other purposes if LED is not needed
+- GPIO 21 is RTC-capable and can be used for deep sleep wake-up
 - Distinct LED patterns for clear status and error indication
 
 **LED Behavior (ESP32 Dev Headless):**
@@ -586,26 +637,67 @@ This project is configured for PlatformIO and based on the Arduino framework for
 
 ```
 ZapBox/
-├── src/
-│   ├── main.cpp           # Main application logic
-│   ├── Display.cpp/h      # Display functions and themes
-│   ├── SerialConfig.cpp/h # Serial configuration interface
-│   └── PinConfig.h        # Hardware pin definitions
-├── installer/
-│   ├── index.html         # Web-based installer and configuration tool
-│   ├── assets/            # Web installer assets (CSS, JS, images)
-│   └── firmware/          # Firmware versions with binaries and manifests
+├── src/                           # Main application source code
+│   ├── main.cpp                   # Entry point and main loop
+│   ├── API.cpp/h                  # LNbits Bitcoin Switch API integration
+│   ├── Display.cpp/h              # Display rendering and theme management
+│   ├── DisplayStubs.cpp           # Display stubs for headless mode
+│   ├── GlobalState.cpp/h          # Global application state management
+│   ├── DeviceState.h              # Device state definitions
+│   ├── Input.cpp/h                # Input handling (buttons, touch)
+│   ├── Navigation.cpp/h           # Navigation logic and screen management
+│   ├── Network.cpp/h              # WiFi and network connectivity
+│   ├── Payment.cpp/h              # Payment processing and relay control
+│   ├── UI.cpp/h                   # User interface components and rendering
+│   ├── Utils.cpp/h                # Utility functions (string, math, helpers)
+│   ├── NFCPN532.cpp/h             # NFC reader support (PN532)
+│   ├── TouchCST816S.cpp/h         # Touch display support (CST816S)
+│   ├── SerialConfig.cpp/h         # Serial configuration interface
+│   └── PinConfig.h                # Hardware pin definitions and GPIO mapping
+├── include/                       # Additional headers
+│   ├── Log.h                      # Logging utilities
+│   └── README                     # Include documentation
+├── lib/                           # External library configurations
+│   ├── README                     # Library documentation
+│   └── TFT_eSPI_Setup/            # TFT_eSPI display driver configuration
+├── installer/                     # Web-based firmware installer & configurator
+│   ├── index.html                 # Console interface and configuration UI
+│   ├── how-to-upload.md           # Installation instructions
+│   ├── assets/                    # Installer CSS, JavaScript, images
+│   ├── firmware/                  # Firmware binaries and release manifests
+│   ├── headless/                  # Headless device firmware
+│   └── templates/                 # HTML templates
 ├── assets/
-│   ├── electric/          # Electrical layouts and circuit diagrams
-│   ├── housing/           # 3D models and FreeCAD files
-│   └── lightning-address.png
-├── lib/                   # TFT_eSPI configuration
-├── include/               # Additional headers
-├── platformio.ini         # PlatformIO configuration
-├── partitions_16mb.csv    # ESP32 partition table
-├── FIRMWARE.md            # Firmware release process documentation
-├── RELEASE.md             # GitHub release process documentation
-└── TODO.md                # Development roadmap
+│   ├── electric/                  # Electrical schematics (Inkscape)
+│   │   ├── e926834-Compact/       # Prototype compact
+│   │   ├── e928304-Compact/       # Prototype 2 compact
+│   │   ├── e928556-Compact/       # Sample device compact
+│   │   ├── e931557-Duo/           # First Duo variant
+│   │   ├── e932547-Quattro/       # First Quattro variant
+│   │   ├── e932714-Duo/           # Duo update
+│   │   ├── e935776-Headless/      # Headless variant
+│   │   ├── e937540-Duo/           # Duo update
+│   │   └── e937544-USB-Power-Hub/ # USB Power Hub
+│   ├── housing/                   # 3D models and housing (FreeCAD)
+│   │   ├── b926837-Compact/       # Prototype compact
+│   │   ├── b928260-Compact/       # Prototype 2 compact
+│   │   ├── b931760-Duo/           # Prototype Duo
+│   │   ├── b932595-Quattro/       # Prototype Quattro
+│   │   ├── b935750-Headless/      # Headless variant
+│   │   └── b937544-USB-Power-Hub/ # USB Power Hub
+│   ├── white-paper/               # Technical documentation
+│   └── lightning-address.png      # Lightning address QR code
+├── temp/                          # Temporary files and work-in-progress
+│   ├── for-later.md               # Notes for future work
+│   ├── webdoc.md                  # Web documentation backup
+│   └── wordpress-*.html           # Marketing content backups
+├── platformio.ini                 # PlatformIO build configuration
+├── partitions_4mb.csv             # ESP32 partition table (4 MB devices)
+├── partitions_16mb.csv            # ESP32 partition table (16 MB devices)
+├── FIRMWARE.md                    # Firmware development and release documentation
+├── LICENSE                        # Open source license
+├── README.md                       # Main project documentation
+└── .gitignore                     # Git ignore rules
 ```
 
 ## Compatibility
@@ -613,12 +705,6 @@ ZapBox/
 - **LNbits**: Compatible with v0.12.12+ and v1.3.1+ (supports both `ws://` and `wss://`)
 - **Bitcoin Switch Extension**: Compatible with v1.1.2+
 - **ESP32-S3**: Optimized for LilyGo T-Display-S3
-
-## Acknowledgement
-
-This project is based on Daniel's [SATOFFEE](https://github.com/danielcharrua/satoffee) and uses parts from Ben's [bitcoinswitch](https://github.com/lnbits/bitcoinswitch).
-
-A big thank you goes to [Ben Arc](https://njump.to/nprofile1qqsvrlrhw86l5sv06wkyjgs6rrcekskvk7nx8k50qn9m7mqgeqxjpvgpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtctcf224) and the entire LNbits team for their incredible work.
 
 ## Versioning
 
@@ -633,11 +719,12 @@ Electrical design and housing variants, see table.
 | b928260 | Compact | Prototyp 2, uses e928304 |
 | b928555 | Compact | Sample device, uses e928556 |
 | b930595 | Compact | Optimization, separate label |
-| b931760 | Duo |  First Duo with two front panels, 90 and 35 degrees  |
-| b932506 | Compact |  Add adapter system, 90-degree front, change USB-C position  |
-| b932595 | Duo & Quattro |  First Quattro and update Duo, 90 and 35 degrees front |
-| b932788 | Illuminated Sign |  First mini ZapBox LED sign for demonstration and testing purposes |
-| b935750 | Headless |  First Headless - ZapBox without display |
+| b931760 | Duo | Prototyp Duo with two front panels, 90 and 35 degrees  |
+| b932506 | Compact | Add adapter system, 90-degree front, change USB-C position  |
+| b932595 | Duo & Quattro | Prototyp Quattro and update Duo, 90 and 35 degrees front |
+| b932788 | Illuminated Sign | Prototyp ZapBox LED sign for demonstration and testing purposes |
+| b935750 | Headless |  Prototyp Headless - ZapBox without display |
+| b937454 | USB-Power-Hub |  Prototyp USB-Power-Hub - Just for voltage distribution |
 
 ### Electrical layout / circuit diagram (Inkscape)
 
@@ -651,6 +738,14 @@ Electrical design and housing variants, see table.
 | e932714 | Duo | Duo update |
 | e935776 | Headless | First Headless |
 | e932547 | Quattro | Add update button cable & IR light barrier |
+| e937540 | Duo | Duo Update |
+| e937544 | USB-Power-Hub | First USB-Power-Hub |
+
+## Acknowledgement
+
+This project is based on Daniel's [SATOFFEE](https://github.com/danielcharrua/satoffee) and uses parts from Ben's [bitcoinswitch](https://github.com/lnbits/bitcoinswitch).
+
+A big thank you goes to [Ben Arc](https://njump.to/nprofile1qqsvrlrhw86l5sv06wkyjgs6rrcekskvk7nx8k50qn9m7mqgeqxjpvgpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtctcf224) and the entire LNbits team for their incredible work.
 
 ## Support
 
