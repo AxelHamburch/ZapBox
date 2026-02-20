@@ -57,10 +57,10 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       LOG_INFO("WebSocket", String("Payment enqueued. Queue size: ") + String(paymentQueue.size()));
       break;
     case WStype_PING:
-      LOG_DEBUG("WebSocket", "Ping received");
+      LOG_INFO("WebSocket", "Ping received from server");
       break;
     case WStype_PONG:
-      LOG_DEBUG("WebSocket", "Pong received - connection alive");
+      LOG_INFO("WebSocket", "Pong received - connection alive");
       networkStatus.lastPongTime = millis();
       networkStatus.waitingForPong = false;
       break;

@@ -1774,10 +1774,22 @@ void loop()
       }
     }
     
-    // Send ping every 60 seconds to check if WebSocket connection is really alive
+    // Send ping every 30 seconds to check if WebSocket connection is really alive
     // Only if WebSocket is connected!
-    if (webSocket.isConnected() && millis() - networkStatus.lastPingTime > 60000 && !deviceState.isInState(DeviceState::CONFIG_MODE))
+    if (webSocket.isConnected() && millis() - networkStatus.lastPingTime > 30000 && !deviceState.isInState(DeviceState::CONFIG_MODE))
     {
+      // Check if we're still waiting for a pong from previous ping
+      if (networkStatus.waitingForPong && (millis() - networkStatus.lastPingTime) > 40000)
+      {
+        // No pong received for 40+ seconds - connection is dead
+        Serial.println("[PING] ERROR: No pong received for 40+ seconds, connection dead!");
+        Serial.println("[PING] Forcing WebSocket disconnect and reconnect...");
+        webSocket.disconnect();
+        networkStatus.confirmed.websocket = false;
+        networkStatus.waitingForPong = false;
+        return; // Let reconnect logic handle it in next cycle
+      }
+      
       Serial.println("[PING] Sending WebSocket ping to verify connection...");
       webSocket.sendPing();
       networkStatus.lastPingTime = millis();
