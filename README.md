@@ -619,7 +619,8 @@ The ZapBox includes a browser-based Web Installer for easy firmware updates and 
 3. **Serial Console**: Debug and monitor device in real-time
 4. **Automatic Config Mode Detection**: Press BOOT button for 5 seconds to enter config mode
 
-Access the installer: [https://installer.zapbox.space/](https://installer.zapbox.space/)
+Access the installer: [https://installer.zapbox.space/](https://installer.zapbox.space/)<br>
+Access the headless installer: [https://installer.zapbox.space/headless/](https://installer.zapbox.space/headless/)
 
 ## PlatformIO Project
 
@@ -687,10 +688,6 @@ ZapBox/
 │   │   └── b937544-USB-Power-Hub/ # USB Power Hub
 │   ├── white-paper/               # Technical documentation
 │   └── lightning-address.png      # Lightning address QR code
-├── temp/                          # Temporary files and work-in-progress
-│   ├── for-later.md               # Notes for future work
-│   ├── webdoc.md                  # Web documentation backup
-│   └── wordpress-*.html           # Marketing content backups
 ├── platformio.ini                 # PlatformIO build configuration
 ├── partitions_4mb.csv             # ESP32 partition table (4 MB devices)
 ├── partitions_16mb.csv            # ESP32 partition table (16 MB devices)
@@ -702,9 +699,10 @@ ZapBox/
 
 ## Compatibility
 
-- **LNbits**: Compatible with v0.12.12+ and v1.3.1+ (supports both `ws://` and `wss://`)
-- **Bitcoin Switch Extension**: Compatible with v1.1.2+
+- **LNbits**: Compatible with v1.4.x or higher
+- **Bitcoin Switch Extension**: Compatible with v1.2.1 ohr higher
 - **ESP32-S3**: Optimized for LilyGo T-Display-S3
+- **ESP32 classic**: A standard ESP32 can also be used. For installation in the headless case, an unsoldered 30-pin board is recommended.
 
 ## Versioning
 
@@ -726,6 +724,8 @@ Electrical design and housing variants, see table.
 | b935750 | Headless |  Prototyp Headless - ZapBox without display |
 | b937454 | USB-Power-Hub |  Prototyp USB-Power-Hub - Just for voltage distribution |
 
+-> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
+
 ### Electrical layout / circuit diagram (Inkscape)
 
 | Version | Type | Comment |
@@ -740,6 +740,8 @@ Electrical design and housing variants, see table.
 | e932547 | Quattro | Add update button cable & IR light barrier |
 | e937540 | Duo | Duo Update |
 | e937544 | USB-Power-Hub | First USB-Power-Hub |
+
+-> Find all versions here: [./assets/electric)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
 ## Acknowledgement
 
