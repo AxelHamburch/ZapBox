@@ -622,8 +622,8 @@ void reportMode()
   
   Serial.println("[REPORT] Showing error report screen");
   errorReportScreen(networkStatus.errors.wifi, networkStatus.errors.internet, networkStatus.errors.server, networkStatus.errors.websocket);
-  Serial.println("[REPORT] Error report shown, waiting 2s");
-  vTaskDelay(pdMS_TO_TICKS(2000)); // First screen: 2 seconds
+  Serial.println("[REPORT] Error report shown, waiting 5s");
+  vTaskDelay(pdMS_TO_TICKS(5000)); // First screen: 5 seconds
   
   Serial.println("[REPORT] Showing WiFi screen");
   wifiReconnectScreen();
