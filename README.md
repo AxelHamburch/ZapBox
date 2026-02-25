@@ -99,7 +99,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 | 12 | Relay 1 | Output | - | Single mode default, Duo/Quattro mode 1 |
 | 13 | Relay 2 | Output | - | Duo/Quattro mode 2 |
 | 10 | Relay 3 | Output | - | Quattro mode 3 |
-| 11 | Relay 4 | Output | - | Quattro mode 4 |
+| 11 | Relay 4 / Ambient | Output | - | Quattro mode 4, or ambient lighting (synced with backlight) |
 
 **I2C Bus Addresses:**
 - Touch CST816S/CST328: `0x15` or `0x5A`
@@ -168,6 +168,7 @@ Signal (NPN output)    →    GPIO 2
 - **Single Mode (default)**: Pin 12 only
 - **Duo Mode**: Pins 12 and 13
 - **Quattro Mode**: Pins 12, 13, 10, and 11
+  - **Special Option**: Pin 11 can be configured as ambient lighting switch (syncs with display backlight)
 
 **Output Type:** Digital GPIO outputs (HIGH = relay activated)
 **Max Current per Pin:** ~40mA (requires external relay driver for high-power loads)
@@ -494,6 +495,39 @@ Set Multi-Channel-Control Mode in Web Installer:
 - `quattro`: Pins 12, 13, 10, 11
 
 **Use Cases**: Vending machines, multi-product payment terminals, flexible product offerings
+
+##### Special Function Channel 4 - Ambient Lighting Switch
+**Available in Quattro Mode only (T-Display-S3)**
+
+Channel 4 (GPIO 11) can be configured as an ambient lighting switch that synchronizes with the display backlight instead of functioning as a regular payment-controlled relay:
+
+**Features:**
+- **Backlight Synchronization**: GPIO 11 mirrors the state of the display backlight (GPIO 38)
+  - HIGH when display is active and backlight is on
+  - LOW when screensaver is active or device enters deep sleep
+- **Reduced Product Count**: When enabled, only 3 products are shown (channels 1-3) instead of 4
+- **Automatic Control**: No payment needed - GPIO 11 switches automatically based on display state
+- **Use Cases**: 
+  - Ambient LED strip lighting synchronized with display activity
+  - Mood lighting that turns off during screensaver/sleep
+  - Visual power state indicator
+  - External backlight control for custom displays
+
+**Configuration:**
+Set in Web Installer under "Multi-Channel Mode - Quattro":
+- **Special function Channel 4** dropdown:
+  - `Off (default)`: GPIO 11 works as normal payment-controlled channel 4
+  - `Ambient lighting switch`: GPIO 11 synchronized with display backlight
+
+**Technical Details:**
+- GPIO 11 is initialized after configuration is loaded
+- State changes occur in:
+  - `activateScreensaver()`: Sets GPIO 11 LOW
+  - `deactivateScreensaver()`: Sets GPIO 11 HIGH
+  - `prepareDeepSleep()`: Sets GPIO 11 LOW
+- Initial state after boot: HIGH (display active by default)
+
+**Note**: When ambient lighting mode is active, channel 4 cannot be used for payment-controlled switching. The device displays and accepts payments only for channels 1-3.
 
 #### BTC-Ticker with Currency Display
 **Available on all variants**
