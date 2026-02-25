@@ -114,6 +114,10 @@ void navigateToNextProduct() {
   // Determine navigation behavior based on multiChannelConfig.btcTickerMode
   if (multiChannelConfig.btcTickerMode == "selecting") {
     // SELECTING mode: After last product, show BTC ticker (which will auto-return to product selection)
+    // Determine max products based on ambient light mode
+    int maxProducts = (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) ? 3 : 
+                      (multiChannelConfig.mode == "quattro") ? 4 : 2;
+    
     if (multiChannelConfig.mode == "duo" && multiChannelConfig.currentProduct > 2) {
       multiChannelConfig.currentProduct = 0; // Reset for next navigation
       btctickerScreen();
@@ -121,7 +125,7 @@ void navigateToNextProduct() {
       productSelectionState.showTime = millis(); // Start timer for auto-return
       LOG_INFO("Navigation", "SELECTING mode - Showing Bitcoin ticker after last product");
       return;
-    } else if (multiChannelConfig.mode == "quattro" && multiChannelConfig.currentProduct > 4) {
+    } else if (multiChannelConfig.mode == "quattro" && multiChannelConfig.currentProduct > maxProducts) {
       multiChannelConfig.currentProduct = 0; // Reset for next navigation
       btctickerScreen();
       multiChannelConfig.btcTickerActive = true;
@@ -131,9 +135,13 @@ void navigateToNextProduct() {
     }
   } else {
     // ALWAYS or OFF mode: Loop back to first product
+    // Determine max products based on ambient light mode
+    int maxProducts = (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) ? 3 : 
+                      (multiChannelConfig.mode == "quattro") ? 4 : 2;
+    
     if (multiChannelConfig.mode == "duo" && multiChannelConfig.currentProduct > 2) {
       multiChannelConfig.currentProduct = 1; // Loop back to first product
-    } else if (multiChannelConfig.mode == "quattro" && multiChannelConfig.currentProduct > 4) {
+    } else if (multiChannelConfig.mode == "quattro" && multiChannelConfig.currentProduct > maxProducts) {
       multiChannelConfig.currentProduct = 1; // Loop back to first product
     }
   }

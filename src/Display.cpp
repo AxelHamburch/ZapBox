@@ -1270,6 +1270,13 @@ void activateScreensaver(String mode)
     pinMode(PIN_LCD_BL, OUTPUT);
     digitalWrite(PIN_LCD_BL, LOW);
     Serial.println("[SCREENSAVER] Backlight turned off");
+    
+    // If channel 4 ambient light mode is enabled, turn off GPIO 11 when backlight is off
+    if (channel4AmbientConfig.enabled) {
+      pinMode(11, OUTPUT);
+      digitalWrite(11, LOW);
+      Serial.println("[SCREENSAVER] Channel 4 (GPIO 11) turned OFF (ambient light sync)");
+    }
   }
 }
 
@@ -1286,6 +1293,13 @@ void deactivateScreensaver()
     pinMode(PIN_LCD_BL, OUTPUT);
     digitalWrite(PIN_LCD_BL, HIGH);
     Serial.println("[SCREENSAVER] Backlight turned on");
+    
+    // If channel 4 ambient light mode is enabled, turn on GPIO 11 when backlight is on
+    if (channel4AmbientConfig.enabled) {
+      pinMode(11, OUTPUT);
+      digitalWrite(11, HIGH);
+      Serial.println("[SCREENSAVER] Channel 4 (GPIO 11) turned ON (ambient light sync)");
+    }
   }
   
   screensaverIsActive = false;
@@ -1319,6 +1333,13 @@ void prepareDeepSleep()
   pinMode(PIN_LCD_BL, OUTPUT);
   digitalWrite(PIN_LCD_BL, LOW);
   Serial.println("[DEEP_SLEEP] Backlight turned OFF");
+  
+  // If channel 4 ambient light mode is enabled, turn off GPIO 11 when backlight is off
+  if (channel4AmbientConfig.enabled) {
+    pinMode(11, OUTPUT);
+    digitalWrite(11, LOW);
+    Serial.println("[DEEP_SLEEP] Channel 4 (GPIO 11) turned OFF (ambient light sync)");
+  }
   
   // Longer delay to ensure all operations complete
   delay(500);

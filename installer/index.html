@@ -295,19 +295,32 @@
                         <option value="quattro">Quattro (4 channels - pin 12, 13, 10, 11)</option>
                     </select>
                 </div>
+            </div>
+            
+            <p style="margin-top: 10px; color: #888;"><i><strong>Multi-Channel-Mode:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use NEXT button, touch gestures (swipe ←→) or external button (if available) to navigate between products.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note on Multi-Channel Mode:</strong> Not compatible with the Threshold feature. Please disable it.</i></p>
+            
+            <div class="input-wrapper">
                 <div>
                     <label for="lightBarrier">Vending machine with light barrier</label>
                     <select name="lightBarrier" id="lightBarrier">
                         <option value="no" selected>No (default)</option>
                         <option value="yes">Yes - Stop the action</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN light barrier on GPIO 2 (T-Display-S3 only)</p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN light barrier on GPIO 2</p>
+                </div>
+                <div>
+                    <label for="channel4Ambient">Special function Channel 4</label>
+                    <select name="channel4Ambient" id="channel4Ambient">
+                        <option value="normal" selected>Off (default)</option>
+                        <option value="ambient">Ambient lighting switch</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Channel 4 (as ambient light) is deactivated in screensaver mode.</p>
                 </div>
             </div>
             
-            <p style="margin-top: 20px; color: #888;"><i><strong>Multi-Channel-Control:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use NEXT button, touch gestures (swipe ←→) or external button (if available) to navigate between products.</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note on Multi-Channel Mode:</strong> Not compatible with the Threshold feature. Please disable it.</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Note on selecting "Vending machine with light barrier":</strong> A trigger from the light barrier stops the action after 2 seconds at the earliest.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note on "Ambient lighting switch":</strong> With pre-selection enabled, channel 4 is switched depending on the display backlight. Whenever the display is on, channel 4 is activated, thus, for example, the lighting for a vending machine. If the display backlight switches off because the screensaver mode is active, channel 4 is also deactivated.</i></p>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
@@ -543,6 +556,7 @@
         const lightBarrier = document.getElementById('lightBarrier');
         const btcTicker = document.getElementById('btcTicker');
         const currency = document.getElementById('currency');
+        const channel4Ambient = document.getElementById('channel4Ambient');
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
@@ -656,6 +670,10 @@
             {
                 "name": "externalButton",
                 "value": "no"
+            },
+            {
+                "name": "channel4Ambient",
+                "value": "normal"
             }
         ]
 
@@ -1406,6 +1424,10 @@
         currency.addEventListener("input", (event) => {
             config[20].value = event.target.value.toUpperCase();
             event.target.value = event.target.value.toUpperCase(); // Show uppercase in input
+        });
+
+        channel4Ambient.addEventListener("change", (event) => {
+            config[22].value = event.target.value;
         });
 
         // Help modal functionality

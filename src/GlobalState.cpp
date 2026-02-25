@@ -35,6 +35,9 @@ MultiChannelConfig multiChannelConfig;
 // Vending Machine Light Barrier
 LightBarrierConfig lightBarrierConfig;
 
+// Channel 4 Ambient Light
+Channel4AmbientConfig channel4AmbientConfig;
+
 // Bitcoin Data & Ticker
 BitcoinData bitcoinData;
 

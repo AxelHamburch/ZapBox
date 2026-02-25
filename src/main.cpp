@@ -382,6 +382,21 @@ void readFiles()
       }
       LOG_INFO("Config", String("External LED button: ") + (externalButtonState.enabled ? "ENABLED" : "DISABLED"));
     }
+
+    // Read channel 4 ambient light configuration (index 22)
+    const JsonObject maRoot22 = doc[22];
+    if (!maRoot22.isNull()) {
+      const char *maRoot22Char = maRoot22["value"];
+      if (maRoot22Char != nullptr) {
+        String ambientSetting = String(maRoot22Char);
+        ambientSetting.toLowerCase();
+        ambientSetting.trim();
+        channel4AmbientConfig.mode = ambientSetting;
+        channel4AmbientConfig.enabled = (ambientSetting == "ambient");
+      }
+      LOG_INFO("Config", String("Channel 4 ambient light: ") + (channel4AmbientConfig.enabled ? "ENABLED" : "DISABLED (normal)"));
+    }
+
     // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 
     // Apply predefined mode settings
@@ -758,6 +773,14 @@ void setup()
   Serial.println("\n[SETUP] readFiles() completed");
   Serial.println("[SETUP] currency = " + currency);
   Serial.println("[SETUP] multiChannelConfig.btcTickerMode = " + multiChannelConfig.btcTickerMode);
+  
+  // Channel 4 ambient light (GPIO 11 synced with display backlight)
+  // MUST be initialized AFTER readFiles() because channel4AmbientConfig is set there
+  if (channel4AmbientConfig.enabled) {
+    pinMode(11, OUTPUT);
+    digitalWrite(11, HIGH); // Turn on by default (display backlight is on at startup)
+    Serial.println("[AMBIENT LIGHT] GPIO 11 initialized (synced with display backlight)");
+  }
 
   initDisplay();
   startupScreen();

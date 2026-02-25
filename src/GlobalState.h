@@ -126,6 +126,17 @@ struct LightBarrierConfig {
 extern LightBarrierConfig lightBarrierConfig;
 
 // ============================================================================
+// CHANNEL 4 AMBIENT LIGHT (GPIO 11)
+// ============================================================================
+
+struct Channel4AmbientConfig {
+  String mode = "normal";    // "normal" (default 4-channel behavior), "ambient" (backlight sync)
+  bool enabled = false;      // Parsed boolean: true if ambient mode is active
+};
+
+extern Channel4AmbientConfig channel4AmbientConfig;
+
+// ============================================================================
 // BITCOIN DATA & TICKER
 // ============================================================================
 
