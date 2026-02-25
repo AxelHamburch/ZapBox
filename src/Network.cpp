@@ -80,6 +80,73 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
   }
 }
 
+// ─── NFC Bolt Card LNURLW handler ──────────────────────────────────────────
+#ifdef ENABLE_NFC
+/**
+ * Called from the NFC FreeRTOS task (NFCBoltCard.cpp) when a valid LNURLW
+ * is read from a Bolt Card (NTAG424 DNA).
+ *
+ * Determines the currently active relay pin (single mode → 12, multi-channel
+ * mode → pin of the currently displayed product) and sends a WebSocket event
+ * to the LNbits bitcoinswitch_extension, which is expected to:
+ *   1. Create a Lightning invoice for the switch associated with <pin>
+ *   2. Call the LNURLW endpoint (Bolt Card wallet) with that invoice
+ *   3. Notify the device via the normal "paid" WS event once settled
+ *
+ * WS message format:
+ *   {"event":"lnurlw", "lnurlw":"lnurlw://...", "pin":<activePin>}
+ *
+ * NOTE: The bitcoinswitch_extension server-side must be extended to handle
+ * this "lnurlw" event (analogous to partytap_extension/views_ws.py).
+ */
+void nfcLnurlwReceived(const String &lnurlw)
+{
+#if ENABLE_NFC_TEST
+  // Hardware-Test-Modus: Kein Server nötig.
+  // Serial + Bildschirm zeigen den eingelesenen LNURLW.
+  Serial.println("[NFC-TEST] Bolt Card gelesen:");
+  Serial.println(lnurlw);
+  nfcTestScreen(lnurlw); // Display.h
+  return;
+#endif
+    LOG_INFO("NFC", "LNURLW received from Bolt Card – sending WS event");
+
+    // Determine which relay pin is currently active.
+    int activePin = 12; // Default: single mode uses pin 12.
+    if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct > 0)
+    {
+        switch (multiChannelConfig.currentProduct)
+        {
+            case 1: activePin = 12; break;
+            case 2: activePin = 13; break;
+            case 3: activePin = 10; break;
+            case 4: activePin = 11; break;
+            default: activePin = 12; break;
+        }
+    }
+
+    LOG_INFO("NFC", String("Active relay pin for NFC payment: ") + String(activePin));
+
+    // Build and send WebSocket message.
+    // The server creates an invoice for this pin, calls the LNURLW endpoint,
+    // and sends the normal "paid" event once the card wallet settles the invoice.
+    String msg = "{\"event\":\"lnurlw\",\"lnurlw\":\"";
+    msg += lnurlw;
+    msg += "\",\"pin\":";
+    msg += String(activePin);
+    msg += "}";
+
+    if (webSocket.sendTXT(msg))
+    {
+        LOG_INFO("NFC", "WS lnurlw event sent to server");
+    }
+    else
+    {
+        LOG_ERROR("NFC", "WS send failed – WebSocket not connected?");
+    }
+}
+#endif // ENABLE_NFC
+
 // HTTP-based Internet check (doesn't require WebSocket connection)
 // Tries multiple times to account for DNS/DHCP stabilization delays
 bool checkInternetConnectivity()

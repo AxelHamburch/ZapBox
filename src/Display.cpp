@@ -1427,5 +1427,32 @@ bool isDeepSleepActive()
   return deepSleepIsActive;
 }
 
+// NFC Hardware Test Screen
+// Shown when ENABLE_NFC=1 and ENABLE_NFC_TEST=1.
+// Displays the raw LNURLW read from the Bolt Card so
+// hardware functionality can be verified without a server.
+void nfcTestScreen(String lnurlw)
+{
+  safeFillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_GREEN);
+  tft.setTextSize(3);
+  tft.drawString("NFC OK!", x, y - 45, GFXFF);
+
+  tft.setTextColor(themeForeground);
+  tft.setTextSize(1);
+  // Show first 24 chars of lnurlw (fits horizontal layout)
+  String preview = lnurlw.substring(0, 24);
+  tft.drawString(preview, x, y, GFXFF);
+  if (lnurlw.length() > 24) {
+    String preview2 = lnurlw.substring(24, 48);
+    tft.drawString(preview2, x, y + 14, GFXFF);
+  }
+
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_DARKGREY);
+  tft.drawString("See Serial for full LNURLW", x, y + 45, GFXFF);
+}
+
 #endif // ENABLE_DISPLAY
 

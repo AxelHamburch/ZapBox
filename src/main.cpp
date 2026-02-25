@@ -29,6 +29,11 @@
 #include "Navigation.h"
 #include "Log.h"
 
+// NFC Bolt Card reader (optional feature, gated by ENABLE_NFC build flag)
+#ifdef ENABLE_NFC
+#include "NFCBoltCard.h"
+#endif
+
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
 
@@ -792,6 +797,15 @@ void setup()
   } else {
     Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
   }
+
+  // NFC Bolt Card reader (optional, activated via -DENABLE_NFC=1 in platformio.ini)
+  // Must run AFTER touch.begin() because Wire.begin(GPIO17, GPIO18) must have been
+  // called first (PN532 shares the same I2C bus as the touch controller).
+#ifdef ENABLE_NFC
+  if (!nfcBoltCardInit()) {
+    Serial.println("[NFC] Bolt Card reader not found or disabled - normal operation unaffected");
+  }
+#endif
 
   // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
   leftButton.setPressMs(3000); // 3 seconds for config mode (documented as 5 sec for users)

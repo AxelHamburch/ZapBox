@@ -34,6 +34,9 @@ void prepareDeepSleep();
 void setupDeepSleepWakeup(String mode);
 bool isDeepSleepActive();
 
+// NFC Hardware Test (ENABLE_NFC=1 + ENABLE_NFC_TEST=1)
+void nfcTestScreen(String lnurlw);
+
 #else
 
 // Headless mode - stub implementations (no display)
@@ -66,5 +69,6 @@ inline bool isScreensaverActive() { return false; }
 inline void prepareDeepSleep() {}
 inline void setupDeepSleepWakeup(String) {}
 inline bool isDeepSleepActive() { return false; }
+inline void nfcTestScreen(String) {}
 
 #endif // ENABLE_DISPLAY

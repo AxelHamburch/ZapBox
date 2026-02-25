@@ -583,6 +583,65 @@ Monitor a wallet balance and trigger the relay when a threshold is reached:
 
 **Use Cases**: Crowdfunding triggers, donation goals, pay-per-use with accumulated balance
 
+---
+
+#### NFC Bolt Card (NTAG424 DNA / LNURLW)
+
+> **Optional feature** — activated via build flag `ENABLE_NFC=1` (default: disabled).
+
+The ZapBox can optionally read **Bolt Cards** (NFC cards with NTAG424 DNA chip) and forward the embedded LNURLW link to the bitcoinswitch_extension backend. This enables tap-to-pay workflows where a customer simply holds their card near the reader.
+
+**Hardware Requirements**:
+- PN532 NFC module wired on the shared I2C bus (SDA=GPIO18, SCL=GPIO17)
+- IRQ line connected to GPIO1 (`PIN_NFC_IRQ`)
+- Pull-up resistor on IRQ (internal `INPUT_PULLUP` used)
+
+**Payment Flow**:
+```
+[Bolt Card]  →  tap on PN532 reader
+    ↓
+PN532 detects ISO14443A card (IRQ LOW on GPIO1)
+    ↓
+FreeRTOS Task (Core 0) reads NTAG424 DNA file via authenticated I²C read
+    ↓
+ZapBox validates "lnurlw://" prefix in returned data
+    ↓
+ZapBox sends WebSocket event to bitcoinswitch_extension:
+  { "event": "lnurlw", "lnurlw": "lnurlw://...", "pin": <activePin> }
+    ↓
+bitcoinswitch_extension resolves LNURLW → Lightning invoice → payment detected
+    ↓
+bitcoinswitch_extension sends back WS event → ZapBox activates relay / channel
+```
+
+**Implementation Notes**:
+- Uses [Adafruit-PN532-NTAG424](https://github.com/bitcoin-ring/Adafruit-PN532-NTAG424) library
+- FreeRTOS task runs on Core 0 with priority 1 (stack 8 KB)
+- IRQ-based detection — no I²C polling, does not interfere with touch sensor on shared bus
+- The active channel (`pin`) is derived from `multiChannelConfig.currentProduct`
+
+**Activate in `platformio.ini`**:
+```ini
+build_flags =
+  ...
+  -DENABLE_NFC=1
+  -DENABLE_NFC_TEST=0   ; set to 1 for hardware test (no server needed)
+```
+
+**Hardware Test Mode (`ENABLE_NFC_TEST=1`)**:
+
+To verify the hardware without a running bitcoinswitch_extension server:
+
+1. Set both flags: `-DENABLE_NFC=1` and `-DENABLE_NFC_TEST=1`
+2. Flash and open Serial Monitor (115200 baud)
+3. Hold a Bolt Card near the PN532 reader
+4. The display shows **"NFC OK!"** and a preview of the LNURLW
+5. The full LNURLW string is printed to Serial — no WebSocket connection required
+
+This allows testing the complete NFC read path (PN532 init → NTAG424 read → LNURLW decode) independently of the payment backend.
+
+---
+
 #### Screensaver & Deep Sleep Function
 Automatic power-saving modes that activate after a configurable timeout:
 

@@ -15,4 +15,15 @@ bool checkServerReachability();
 void checkWiFiStatus();
 void checkAndReconnectWiFi();
 
+// ─── NFC Bolt Card (ENABLE_NFC=1 only) ───────────────────────────────────────
+// Called by NFCBoltCard.cpp when a valid LNURLW is read from a Bolt Card.
+// Sends: {"event":"lnurlw", "lnurlw":"lnurlw://...", "pin":<activePin>}
+// The server (bitcoinswitch_extension) must handle this event:
+//   1. Create a Lightning invoice for <pin>
+//   2. Call the LNURLW callback with the invoice
+//   3. Send the normal "paid" WS event when settled
+#ifdef ENABLE_NFC
+void nfcLnurlwReceived(const String &lnurlw);
+#endif
+
 #endif // NETWORK_H
