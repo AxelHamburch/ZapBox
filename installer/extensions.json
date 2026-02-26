@@ -3,7 +3,7 @@
     {
       "id": "zapbox",
       "repo": "https://github.com/AxelHamburch/zapbox_extension",
-      "name": "ZapBox",
+      "name": "Zap⚡Box",
       "version": "2.0.0",
       "min_lnbits_version": "1.4.0",
       "short_description": "Turn things on with bitcoin – NFC Bolt Card support for ZapBox",
