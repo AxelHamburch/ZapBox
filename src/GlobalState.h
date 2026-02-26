@@ -137,6 +137,19 @@ struct Channel4AmbientConfig {
 extern Channel4AmbientConfig channel4AmbientConfig;
 
 // ============================================================================
+// EXTENSION / API PATH CONFIGURATION
+// ============================================================================
+
+struct ExtensionConfig {
+  // API path base: "bitcoinswitch" (classic) or "zapbox" (zapbox_extension)
+  // Controls which LNbits extension the device communicates with.
+  // Set to "zapbox" when zapbox_extension is installed on the server.
+  String apiPath = "bitcoinswitch";
+};
+
+extern ExtensionConfig extensionConfig;
+
+// ============================================================================
 // BITCOIN DATA & TICKER
 // ============================================================================
 

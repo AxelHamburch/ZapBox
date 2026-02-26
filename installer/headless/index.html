@@ -239,6 +239,22 @@
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+        <!-- NFC Bolt Card Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="nfcBoltCard">NFC Bolt Card support</label>
+                    <select name="nfcBoltCard" id="nfcBoltCard">
+                        <option value="no" selected>No (default)</option>
+                        <option value="yes">Yes (requires zapbox_extension)</option>
+                    </select>
+                </div>
+            </div>
+
+            <p style="margin-top: 10px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "zapbox_extension". It replaces the "bitcoinswitch_extension" (Bitcoin Switch) extension and must be supported by the LNbits server. The "zapbox_extension" offers the full functionality of the classic Bitcoin Switch, extending it only with the NFC Bolt Card feature.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
         </div>
 
         <!-- Error Detection Section -->
@@ -363,6 +379,7 @@
         const thresholdPin = document.getElementById('thresholdPin');
         const thresholdTime = document.getElementById('thresholdTime');
         const thresholdLnurl = document.getElementById('thresholdLnurl');
+        const nfcBoltCard = document.getElementById('nfcBoltCard');
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
@@ -462,6 +479,14 @@
             },
             {
                 "name": "externalButton",
+                "value": "no"
+            },
+            {
+                "name": "channel4Ambient",
+                "value": "normal"
+            },
+            {
+                "name": "nfcBoltCard",
                 "value": "no"
             }
         ]
@@ -858,6 +883,11 @@
                 specialMode.value = config[11].value;
                 frequency.value = config[12].value;
                 dutyCycleRatio.value = config[13].value;
+
+                // Index 23: NFC Bolt Card / extension API path (may not exist in older configs)
+                if (!config[23]) config[23] = { name: "nfcBoltCard", value: "no" };
+                config[23].value = configData[23]?.value || "no";
+                nfcBoltCard.value = config[23].value;
                 
                 // Show/hide custom fields based on loaded special mode
                 if (specialMode.value === 'custom') {
@@ -984,6 +1014,14 @@
                 config[21] = { name: "externalButton", value: "no" };
             }
             config[21].value = "no"; // External button disabled for headless
+
+            // channel4Ambient (index 22) - not used in headless, hardcoded default
+            if (!config[22]) config[22] = { name: "channel4Ambient", value: "normal" };
+            config[22].value = "normal";
+
+            // NFC Bolt Card / extension API path (index 23)
+            if (!config[23]) config[23] = { name: "nfcBoltCard", value: "no" };
+            config[23].value = nfcBoltCard.value;
             
             // Validate required fields
             const ssidValue = config[0].value.trim();

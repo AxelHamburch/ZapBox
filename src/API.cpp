@@ -15,6 +15,7 @@ extern String deviceId;
 extern String currency;
 extern bool labelsLoadedSuccessfully;
 extern bool labelsValidationAttempted;
+extern ExtensionConfig extensionConfig;
 
 // External constants from main.cpp
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
@@ -47,7 +48,8 @@ void fetchSwitchLabels()
   lastFetchAttempt = millis();
 
   HTTPClient http;
-  String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/public/" + deviceId;
+  // Build URL: https://{server}/{extension}/api/v1/public/{deviceId}
+  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath + "/api/v1/public/" + deviceId;
   
   Serial.println("[LABELS] Fetching switch configurations from: " + url);
   http.begin(url);

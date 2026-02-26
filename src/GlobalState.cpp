@@ -38,6 +38,9 @@ LightBarrierConfig lightBarrierConfig;
 // Channel 4 Ambient Light
 Channel4AmbientConfig channel4AmbientConfig;
 
+// Extension / API Path Configuration
+ExtensionConfig extensionConfig;
+
 // Bitcoin Data & Ticker
 BitcoinData bitcoinData;
 

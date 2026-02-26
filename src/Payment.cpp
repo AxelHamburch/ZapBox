@@ -8,6 +8,7 @@
 extern String lnbitsServer;
 extern String deviceId;
 extern String qrFormat; // "bech32" or "lud17"
+extern ExtensionConfig extensionConfig;
 
 // Bech32 encoding helpers (copied from main.cpp to isolate payment logic)
 static uint32_t bech32Polymod(const std::vector<uint8_t>& values) {
@@ -101,8 +102,8 @@ String generateLNURL(int pin) {
     LOG_WARN("LNURL", "Cannot generate - server or deviceId not configured");
     return "";
   }
-  // Build URL: https://{server}/bitcoinswitch/api/v1/lnurl/{deviceId}?pin={pin}
-  String url = "https://" + lnbitsServer + "/bitcoinswitch/api/v1/lnurl/" + deviceId + "?pin=" + String(pin);
+  // Build URL: https://{server}/{extension}/api/v1/lnurl/{deviceId}?pin={pin}
+  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath + "/api/v1/lnurl/" + deviceId + "?pin=" + String(pin);
   LOG_DEBUG("LNURL", String("Generated for pin ") + String(pin) + String(": ") + url);
   if (qrFormat == "lud17") {
     // LUD17 format: replace https: with lnurlp:
