@@ -1,40 +1,40 @@
 # ZapBox Extension – Release & Update Guide
 
-## Überblick
+## Overview
 
-Zwei Repos sind beteiligt:
-- **`zapbox_extension`** – der Python-Code der LNbits Extension
-- **`ZapBox`** – enthält `installer/extensions.json` mit dem SHA256-Hash des aktuellen Releases
+Two repositories are involved:
+- **`zapbox_extension`** – the Python code of the LNbits extension
+- **`ZapBox`** – contains `installer/extensions.json` with the SHA256 hash of the current release
 
-Jedes Mal wenn `zapbox_extension` geändert wird, muss der Hash in `extensions.json` neu berechnet und hochgeladen werden.
+Every time `zapbox_extension` is changed, the hash in `extensions.json` must be recalculated and re-uploaded.
 
 ---
 
-## A) Bugfix / Update (gleiche Version, z. B. weiterhin v2.0.0)
+## A) Bugfix / Update (same version, e.g. still v2.0.0)
 
-### 1. Änderungen in `zapbox_extension` vornehmen und pushen
+### 1. Make changes in `zapbox_extension` and push
 
 ```bash
 cd d:\VSCode\zapbox_extension
-git add <geänderte Dateien>
-git commit -m "fix: beschreibung"
+git add <changed files>
+git commit -m "fix: description"
 git push
 ```
 
-### 2. Tag löschen und neu setzen
+### 2. Delete and recreate the tag
 
-Da sich der Inhalt des ZIPs durch den neuen Commit geändert hat, muss der Tag neu gesetzt werden, damit GitHub ein neues ZIP für denselben Tag erzeugt:
+Since the ZIP content changes with every new commit, the tag must be moved so GitHub generates a fresh ZIP for the same version:
 
 ```bash
-git tag -d v2.0.0                        # lokalen Tag löschen
-git push origin :refs/tags/v2.0.0        # Remote-Tag löschen
-git tag v2.0.0                           # neuen Tag am aktuellen Commit
-git push origin v2.0.0                   # pushen
+git tag -d v2.0.0                        # delete local tag
+git push origin :refs/tags/v2.0.0        # delete remote tag
+git tag v2.0.0                           # create tag at current commit
+git push origin v2.0.0                   # push
 ```
 
-### 3. SHA256-Hash berechnen (PowerShell)
+### 3. Calculate SHA256 hash (PowerShell)
 
-Kurz warten bis GitHub das ZIP gebaut hat (~3–5 Sek.), dann:
+Wait a few seconds for GitHub to build the ZIP, then:
 
 ```powershell
 Start-Sleep -Seconds 5
@@ -43,9 +43,9 @@ Invoke-WebRequest -Uri "https://github.com/AxelHamburch/zapbox_extension/archive
 (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
 ```
 
-### 4. Hash in `extensions.json` eintragen
+### 4. Update the hash in `extensions.json`
 
-Datei: `d:\VSCode\ZapBox\installer\extensions.json`
+File: `d:\VSCode\ZapBox\installer\extensions.json`
 
 ```json
 {
@@ -56,12 +56,12 @@ Datei: `d:\VSCode\ZapBox\installer\extensions.json`
     "version": "2.0.0",
     "min_lnbits_version": "1.4.0",
     "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.0.0.zip",
-    "hash": "<NEUER HASH>"
+    "hash": "<NEW HASH>"
   }]
 }
 ```
 
-### 5. `extensions.json` im ZapBox-Repo committen und pushen
+### 5. Commit and push `extensions.json` in the ZapBox repo
 
 ```bash
 cd d:\VSCode\ZapBox
@@ -70,49 +70,49 @@ git commit -m "fix: update extensions.json hash for zapbox_extension v2.0.0"
 git push
 ```
 
-### 6. `extensions.json` via SFTP hochladen
+### 6. Upload `extensions.json` via SFTP
 
-Die Datei `installer/extensions.json` auf den Webserver hochladen:
+Upload `installer/extensions.json` to the web server:
 
 ```
-Ziel: /var/www/zapbox/extensions.json   (oder entsprechender Webroot)
-URL:  https://installer.zapbox.space/extensions.json
+Target: /var/www/zapbox/extensions.json   (or the appropriate webroot)
+URL:    https://installer.zapbox.space/extensions.json
 ```
 
-### 7. Extension in LNbits neu installieren
+### 7. Reinstall the extension in LNbits
 
-In LNbits: Extension deinstallieren → neu installieren (damit die neuen statischen Dateien geladen werden).
+In LNbits: uninstall the extension → reinstall it (so the new static files are loaded).
 
 ---
 
-## B) Neues Release (neue Version, z. B. v2.1.0)
+## B) New Release (new version, e.g. v2.1.0)
 
-### 1. Version hochzählen
+### 1. Bump the version number
 
 In `zapbox_extension/config.json`:
 ```json
 "version": "2.1.0"
 ```
 
-### 2. Änderungen committen und pushen
+### 2. Commit and push changes
 
 ```bash
 cd d:\VSCode\zapbox_extension
 git add .
-git commit -m "feat: release v2.1.0 – beschreibung"
+git commit -m "feat: release v2.1.0 – description"
 git push
 ```
 
-### 3. Neuen Tag erstellen und pushen
+### 3. Create and push a new tag
 
 ```bash
 git tag v2.1.0
 git push origin v2.1.0
 ```
 
-> **Kein Löschen nötig** – v2.0.0 bleibt als History erhalten.
+> **No deletion needed** – v2.0.0 remains intact in history.
 
-### 4. SHA256-Hash berechnen (PowerShell)
+### 4. Calculate SHA256 hash (PowerShell)
 
 ```powershell
 Start-Sleep -Seconds 5
@@ -121,9 +121,9 @@ Invoke-WebRequest -Uri "https://github.com/AxelHamburch/zapbox_extension/archive
 (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
 ```
 
-### 5. `extensions.json` aktualisieren
+### 5. Update `extensions.json`
 
-`version`, `archive` und `hash` anpassen:
+Update `version`, `archive` and `hash`:
 
 ```json
 {
@@ -134,27 +134,27 @@ Invoke-WebRequest -Uri "https://github.com/AxelHamburch/zapbox_extension/archive
     "version": "2.1.0",
     "min_lnbits_version": "1.4.0",
     "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.1.0.zip",
-    "hash": "<NEUER HASH>"
+    "hash": "<NEW HASH>"
   }]
 }
 ```
 
-### 6. Committen, pushen und hochladen
+### 6. Commit, push and upload
 
-Gleich wie Schritte 5–7 aus Abschnitt A.
+Same as steps 5–7 from section A.
 
 ---
 
-## Schnell-Checkliste
+## Quick Checklist
 
-| Schritt | Bugfix (gleiche Version) | Neues Release |
+| Step | Bugfix (same version) | New Release |
 |---|---|---|
-| Änderungen committen & pushen | ✅ | ✅ |
-| Alten Tag löschen (lokal + remote) | ✅ | ❌ (nicht nötig) |
-| Neuen Tag setzen & pushen | ✅ | ✅ |
-| SHA256 neu berechnen | ✅ | ✅ |
-| `extensions.json` Hash aktualisieren | ✅ | ✅ |
-| `extensions.json` Version + URL aktualisieren | ❌ | ✅ |
-| `config.json` Version hochzählen | ❌ | ✅ |
-| Via SFTP hochladen | ✅ | ✅ |
-| LNbits Extension neu installieren | ✅ | ✅ |
+| Commit & push changes | ✅ | ✅ |
+| Delete old tag (local + remote) | ✅ | ❌ (not needed) |
+| Create & push new tag | ✅ | ✅ |
+| Recalculate SHA256 | ✅ | ✅ |
+| Update `extensions.json` hash | ✅ | ✅ |
+| Update `extensions.json` version + URL | ❌ | ✅ |
+| Bump version in `config.json` | ❌ | ✅ |
+| Upload via SFTP | ✅ | ✅ |
+| Reinstall extension in LNbits | ✅ | ✅ |
