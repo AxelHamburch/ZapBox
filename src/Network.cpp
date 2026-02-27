@@ -10,10 +10,12 @@
 // Externals from main.cpp
 extern StateManager deviceState;
 extern String lnbitsServer;
+extern String deviceId;
 extern String payloadStr;
 extern WebSocketsClient webSocket;
 extern byte currentErrorType;
 extern bool needsQRRedraw;
+extern ExtensionConfig extensionConfig;
 #if ENABLE_BITCOIN_DATA
 extern void fetchBitcoinData();
 #endif
@@ -127,23 +129,29 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     LOG_INFO("NFC", String("Active relay pin for NFC payment: ") + String(activePin));
 
-    // Build and send WebSocket message.
-    // The server creates an invoice for this pin, calls the LNURLW endpoint,
-    // and sends the normal "paid" event once the card wallet settles the invoice.
-    String msg = "{\"event\":\"lnurlw\",\"lnurlw\":\"";
-    msg += lnurlw;
-    msg += "\",\"pin\":";
-    msg += String(activePin);
-    msg += "}";
+    // POST to extension: /<apiPath>/api/v1/nfc/<deviceId>?pin=<pin>
+    // Body: {"lnurlw":"lnurlw://..."}
+    // The extension creates an invoice, resolves the LNURLW withdraw request,
+    // submits the invoice to the Bolt Card wallet, and the normal tasks.py
+    // "paid" handler sends the relay trigger (pin-duration) via WebSocket.
+    HTTPClient http;
+    String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+                 + "/api/v1/nfc/" + deviceId + "?pin=" + String(activePin);
+    LOG_INFO("NFC", String("Sending NFC request to: ") + url);
+    http.begin(url);
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(15000); // LNURLW resolution can take several seconds
 
-    if (webSocket.sendTXT(msg))
-    {
-        LOG_INFO("NFC", "WS lnurlw event sent to server");
+    String body = String("{\"lnurlw\":\"") + lnurlw + String("\"}" );
+    int httpCode = http.POST(body);
+
+    if (httpCode == 200) {
+        LOG_INFO("NFC", "NFC payment initiated – waiting for WebSocket paid event");
+    } else {
+        String resp = http.getString();
+        LOG_ERROR("NFC", String("NFC payment failed: HTTP ") + String(httpCode) + " – " + resp);
     }
-    else
-    {
-        LOG_ERROR("NFC", "WS send failed – WebSocket not connected?");
-    }
+    http.end();
 }
 #endif // ENABLE_NFC
 
