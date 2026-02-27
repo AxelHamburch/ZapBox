@@ -2045,7 +2045,29 @@ void loop()
       }
       paymentQueue.processing = false;
     }
-    
+
+    // NFC payment pending: show PENDING NFC screen while waiting for LNURLW invoice settlement
+    #if ENABLE_NFC
+    {
+      static bool nfcPendingScreenShown = false;
+      if (extensionConfig.nfcPaymentPending) {
+        if (!nfcPendingScreenShown) {
+          nfcPendingScreen();
+          nfcPendingScreenShown = true;
+        }
+        // Timeout: if no payment arrives within 30s, return to QR screen
+        if (millis() - extensionConfig.nfcPaymentPendingStart > 30000) {
+          extensionConfig.nfcPaymentPending = false;
+          nfcPendingScreenShown = false;
+          needsQRRedraw = true;
+          LOG_WARN("NFC", "NFC payment timed out (30s) \u2013 returning to QR screen");
+        }
+      } else if (nfcPendingScreenShown) {
+        nfcPendingScreenShown = false;
+      }
+    }
+    #endif
+
     // CRITICAL: Yield to other tasks to prevent tight loop
     // Without this, the loop runs thousands of times per second,
     // blocking WebSocket processing and causing connection loss
@@ -2167,6 +2189,11 @@ static void processThresholdPayment(const JsonDocument &doc)
 static void processNormalPayment(int pin, int duration)
 {
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
+
+  // Clear NFC payment pending state when payment is received
+  #if ENABLE_NFC
+  extensionConfig.nfcPaymentPending = false;
+  #endif
 
   // Pause product timeout while ACTION TIME is active
   productSelectionState.showTime = 0;

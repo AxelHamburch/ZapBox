@@ -146,8 +146,8 @@ void nfcLnurlwReceived(const String &lnurlw)
     int httpCode = http.POST(body);
 
     if (httpCode == 200) {
-        LOG_INFO("NFC", "NFC payment initiated – waiting for WebSocket paid event");
-    } else {
+        LOG_INFO("NFC", "NFC payment initiated – waiting for WebSocket paid event");        extensionConfig.nfcPaymentPending = true;
+        extensionConfig.nfcPaymentPendingStart = millis();    } else {
         String resp = http.getString();
         LOG_ERROR("NFC", String("NFC payment failed: HTTP ") + String(httpCode) + " – " + resp);
     }

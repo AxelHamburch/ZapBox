@@ -806,6 +806,39 @@ void actionTimeScreen()
   }
 }
 
+// NFC payment pending screen
+void nfcPendingScreen()
+{
+  // ZAPBOX theme color inversion fix: Reset display controller with double-clear
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
+    tft.fillScreen(TFT_BLACK);
+    delay(10);
+    tft.fillScreen(TFT_BLACK);
+    delay(5);
+  }
+  safeFillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    tft.setTextSize(3);
+    tft.drawString("PENDING", x + 5, y - 50, GFXFF);
+    // NFC in inverted-color box
+    tft.fillRect(15, y + 10, 140, 62, themeForeground);
+    tft.setTextColor(themeBackground);
+    tft.setTextSize(4);
+    tft.drawString("NFC", x + 5, y + 41, GFXFF);
+  } else {
+    tft.setTextSize(4);
+    tft.drawString("PENDING", x + 5, y - 25, GFXFF);
+    // NFC in inverted-color box
+    tft.fillRect(100, y + 10, 132, 55, themeForeground);
+    tft.setTextColor(themeBackground);
+    tft.setTextSize(4);
+    tft.drawString("NFC", x + 5, y + 37, GFXFF);
+  }
+}
+
 // Thank you
 void thankYouScreen()
 {

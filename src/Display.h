@@ -20,6 +20,7 @@ void stepOneScreen();
 void stepTwoScreen();
 void stepThreeScreen();
 void actionTimeScreen();
+void nfcPendingScreen();
 void thankYouScreen();
 void drawQRCode();
 void showQRScreen();
@@ -56,6 +57,7 @@ inline void stepOneScreen() {}
 inline void stepTwoScreen() {}
 inline void stepThreeScreen() {}
 inline void actionTimeScreen() {}
+inline void nfcPendingScreen() {}
 inline void thankYouScreen() {}
 inline void drawQRCode() {}
 inline void showQRScreen() {}

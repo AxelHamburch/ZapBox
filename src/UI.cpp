@@ -97,6 +97,23 @@ void updateReadyLed() {
   // Skip LED updates when in CONFIG_MODE to prevent race condition with config blink on other core
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
 
+  // Very fast blink (10Hz = 100ms) while NFC payment is pending (LNURLW resolution)
+  #if ENABLE_NFC
+  if (extensionConfig.nfcPaymentPending) {
+    static unsigned long lastNfcBlinkTime = 0;
+    static bool nfcBlinkState = false;
+    if (millis() - lastNfcBlinkTime > 100) {
+      nfcBlinkState = !nfcBlinkState;
+      digitalWrite(PIN_LED_BUTTON_LED, nfcBlinkState ? HIGH : LOW);
+      #ifdef PIN_ONBOARD_LED
+      digitalWrite(PIN_ONBOARD_LED, nfcBlinkState ? HIGH : LOW);
+      #endif
+      lastNfcBlinkTime = millis();
+    }
+    return;
+  }
+  #endif
+
   // Headless version: Fast blink during initialization to show progress
   static unsigned long lastInitBlinkTime = 0;
   static bool initBlinkState = false;
