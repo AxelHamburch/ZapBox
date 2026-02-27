@@ -788,7 +788,8 @@ void actionTimeScreen()
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
 
-  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi"){
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    // "ACTION" stacked letters in foreground color
     tft.setTextSize(4);
     tft.drawString("A", x + 5, y - 105, GFXFF);
     tft.drawString("C", x + 5, y - 70, GFXFF);
@@ -796,13 +797,20 @@ void actionTimeScreen()
     tft.drawString("I", x + 5, y, GFXFF);
     tft.drawString("O", x + 5, y + 35, GFXFF);
     tft.drawString("N", x + 5, y + 70, GFXFF);
+    // "TIME" in inverted-color box (same style as PENDING NFC)
+    tft.fillRect(15, y + 82, 140, 48, themeForeground);
+    tft.setTextColor(themeBackground);
     tft.setTextSize(3);
     tft.drawString("TIME", x + 3, y + 105, GFXFF);
   } else {
+    // "ACTION" in foreground color
     tft.setTextSize(6);
     tft.drawString("ACTION", x + 5, y - 15, GFXFF);
+    // "TIME" in inverted-color box (same style as PENDING NFC)
+    tft.fillRect(83, y + 16, 160, 52, themeForeground);
+    tft.setTextColor(themeBackground);
     tft.setTextSize(4);
-    tft.drawString("TIME", x + 3, y + 30, GFXFF);
+    tft.drawString("TIME", x + 3, y + 43, GFXFF);
   }
 }
 
