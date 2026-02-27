@@ -61,7 +61,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 - **Microcontroller**: ESP32 (classic) without display
 - **Memory**: 4MB Flash, 512KB SRAM
 - **Operation**: Fully functional headless mode - all core features work via serial configuration
-- **Status LED**: GPIO 21 with distinct blink patterns (3 fast boot blinks, fast blink during startup, slow blink in config mode, solid when ready, error blink patterns 1-4 for network issues)
+- **Status LED**: GPIO 21 with distinct blink patterns (3 fast boot blinks, fast blink during startup, slow blink in config mode, solid when ready, 200ms/800ms blink during NFC payment pending, off during relay action, error blink patterns 1-4 for network issues)
 - **Use Cases**: Embedded installations, wall-mounted relay control, hidden installations
 - **Configuration**: Serial terminal for WiFi, LNbits, and device settings
 - **Advantages**: Lower cost, smaller footprint, lower power consumption
@@ -284,6 +284,8 @@ LED Cathode (-)        →    Resistor (220Ω) →    GND
 - **Fast Blink (5Hz, 200ms)**: During startup and initialization (INITIALIZING, CONNECTING_WIFI states)
 - **Slow Blink (1Hz, 1000ms)**: Config mode active - device waiting for configuration
 - **Solid ON**: Device is ready to receive payments
+- **200ms ON / 800ms OFF blink**: NFC payment pending – waiting for invoice settlement via WebSocket
+- **OFF (during relay action)**: NFC payment confirmed, relay firing
 - **Error Blink Patterns** (with 2 second pause between sequences):
   - **1 Blink** (500ms on, 500ms off): NO WIFI - WiFi connection lost or not established
   - **2 Blinks** (300ms on/off each): NO INTERNET - WiFi connected but no internet access
@@ -314,6 +316,8 @@ For example: If WiFi is disconnected, the LED will show 1 blink (WiFi error) eve
 | **Fast Continuous** | 200ms on/off (5Hz) | **INITIALIZING** | System startup, WiFi connecting |
 | **Slow Continuous** | 1000ms on/off (1Hz) | **CONFIG MODE** | Configuration interface active, waiting for settings |
 | **Solid ON** | Continuous light | **READY** | All systems operational, ready for payments |
+| **Asymmetric Blink** | 200ms ON / 800ms OFF | **NFC PENDING** | NFC payment initiated, waiting for invoice settlement |
+| **OFF (during action)** | No light while relay fires | **NFC ACTION** | Payment confirmed, relay active |
 | **1 Blink + Pause** | 500ms on/off, 2s pause | **NO WIFI** | WiFi connection lost or failed to connect |
 | **2 Blinks + Pause** | 300ms on/off/on/off, 2s pause | **NO INTERNET** | WiFi connected, but no internet gateway access |
 | **3 Blinks + Pause** | 250ms each, 2s pause | **NO SERVER** | Internet connected, LNbits server unreachable |
