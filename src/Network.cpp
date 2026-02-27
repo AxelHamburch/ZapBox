@@ -143,13 +143,23 @@ void nfcLnurlwReceived(const String &lnurlw)
     http.setTimeout(15000); // LNURLW resolution can take several seconds
 
     String body = String("{\"lnurlw\":\"") + lnurlw + String("\"}" );
+
+    // Set pending flag BEFORE sending the POST request.
+    // The server resolves and pays the invoice so fast that the WebSocket "paid" event
+    // can arrive and processNormalPayment() can run before http.POST() returns.
+    // Setting the flag here ensures processNormalPayment() will correctly clear it.
+    extensionConfig.nfcPaymentPending = true;
+    extensionConfig.nfcPaymentPendingStart = millis();
+
     int httpCode = http.POST(body);
 
     if (httpCode == 200) {
-        LOG_INFO("NFC", "NFC payment initiated – waiting for WebSocket paid event");        extensionConfig.nfcPaymentPending = true;
-        extensionConfig.nfcPaymentPendingStart = millis();    } else {
+        LOG_INFO("NFC", "NFC payment initiated – waiting for WebSocket paid event");
+    } else {
         String resp = http.getString();
         LOG_ERROR("NFC", String("NFC payment failed: HTTP ") + String(httpCode) + " – " + resp);
+        // Reset flag – no payment was initiated
+        extensionConfig.nfcPaymentPending = false;
     }
     http.end();
 }
