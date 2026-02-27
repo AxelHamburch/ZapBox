@@ -37,36 +37,42 @@ static void nfc_task_code(void *pvParams)
     uint8_t uidLength   = 0;
     uint8_t fileBuf[512];
 
+    // UID-based cooldown: same card cannot trigger again within this window.
+    // This prevents re-processing a card that is still physically present
+    // after a successful payment (the 4 s debounce was not enough because
+    // readPassiveTargetID immediately re-detects the card after the delay).
+    static uint8_t  lastUid[7]       = {0};
+    static uint8_t  lastUidLength    = 0;
+    static unsigned long lastUidTime = 0;
+    const  unsigned long UID_COOLDOWN_MS = 10000; // 10 s between same-card triggers
+
     LOG_INFO("NFC", "Bolt Card task started – waiting for cards");
 
     while (true)
     {
         // Block until a card is detected (up to 30 s per attempt).
-        // Library polls GPIO1 (digitalRead) internally – no I2C during wait.
-        // vTaskDelay calls inside the library yield CPU to other tasks.
         bool found = s_nfc->readPassiveTargetID(
             PN532_MIFARE_ISO14443A, uid, &uidLength, 30000);
 
         if (!found)
         {
-            // No card in 30 s; yield briefly then retry.
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
 
         LOG_INFO("NFC", String("Card detected – UID length: ") + String(uidLength));
 
-        // If a payment is already in progress, ignore this card tap entirely.
-        // Wait actively (in a loop) until the payment is fully done, then
-        // apply the normal 4 s debounce so the same card cannot re-trigger
-        // immediately after the relay finishes.
+        // If a payment is already in progress for ANY card, wait until done.
         if (extensionConfig.nfcPaymentPending) {
             LOG_WARN("NFC", "Card detected but payment already pending – waiting...");
             while (extensionConfig.nfcPaymentPending) {
                 vTaskDelay(pdMS_TO_TICKS(100));
             }
-            LOG_INFO("NFC", "Payment done – applying 4 s debounce before next scan");
-            vTaskDelay(pdMS_TO_TICKS(4000));
+            // After payment is done, reset UID cooldown and restart scan loop
+            // so we require the card to be lifted and re-presented.
+            lastUidLength = 0;
+            lastUidTime   = 0;
+            vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
 
@@ -74,6 +80,16 @@ static void nfc_task_code(void *pvParams)
         if (uidLength != 4 && uidLength != 7)
         {
             LOG_WARN("NFC", "Incompatible card (unexpected UID length)");
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+
+        // UID cooldown: skip if this is the same card within the cooldown window.
+        // Handles the case where the card stays on the reader after a payment.
+        bool sameUid = (uidLength == lastUidLength) &&
+                       (memcmp(uid, lastUid, uidLength) == 0);
+        if (sameUid && (millis() - lastUidTime) < UID_COOLDOWN_MS) {
+            // Card is still present – wait 500 ms and re-check without spamming log.
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
@@ -127,12 +143,15 @@ static void nfc_task_code(void *pvParams)
         String lnurlw = String((char *)fileBuf);
         LOG_INFO("NFC", String("✓ LNURLW read: ") + lnurlw.substring(0, 40) + "...");
 
-        // Notify network layer – this sends the WS event to LNbits.
-        nfcLnurlwReceived(lnurlw);
+        // Record this UID and timestamp so the cooldown guard above prevents
+        // the same card from being processed again while it is still present.
+        memcpy(lastUid, uid, uidLength);
+        lastUidLength = uidLength;
+        lastUidTime   = millis();
 
-        // Debounce: wait before scanning again to avoid processing the same card
-        // multiple times in quick succession.
-        vTaskDelay(pdMS_TO_TICKS(4000));
+        // Notify network layer – sets nfcPaymentPending + shows screen + http.POST.
+        // The UID cooldown (10 s) replaces the old fixed 4 s vTaskDelay debounce.
+        nfcLnurlwReceived(lnurlw);
     }
 }
 
