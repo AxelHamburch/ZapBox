@@ -100,7 +100,9 @@ void updateReadyLed() {
   // NFC payment pending blink: 200ms ON / 800ms OFF while waiting for invoice settlement.
   // LED turns OFF as soon as the relay fires (paymentQueue.processing).
   #if ENABLE_NFC
+  static bool wasNfcPending = false;
   if (extensionConfig.nfcPaymentPending) {
+    wasNfcPending = true;
     if (paymentQueue.processing) {
       // Relay is active – turn LED off, the relay is the action indicator
       digitalWrite(PIN_LED_BUTTON_LED, LOW);
@@ -122,6 +124,11 @@ void updateReadyLed() {
       }
     }
     return;
+  }
+  // NFC pending just ended (success or failure) – force LED state re-apply
+  if (wasNfcPending) {
+    wasNfcPending = false;
+    readyLedState = !isReadyForReceive(); // Force mismatch so digitalWrite fires below
   }
   #endif
 
