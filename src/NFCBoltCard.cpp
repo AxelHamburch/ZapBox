@@ -143,14 +143,8 @@ static void nfc_task_code(void *pvParams)
         String lnurlw = String((char *)fileBuf);
         LOG_INFO("NFC", String("✓ LNURLW read: ") + lnurlw.substring(0, 40) + "...");
 
-        // Record this UID and timestamp so the cooldown guard above prevents
-        // the same card from being processed again while it is still present.
-        memcpy(lastUid, uid, uidLength);
-        lastUidLength = uidLength;
-        lastUidTime   = millis();
-
-        // Notify network layer – sets nfcPaymentPending + shows screen + http.POST.
-        // The UID cooldown (10 s) replaces the old fixed 4 s vTaskDelay debounce.
+        // Notify network layer \u2013 sets nfcPaymentPending, shows PENDING NFC screen,
+        // and sends the HTTP POST. Flag stays true until QR screen is restored.
         nfcLnurlwReceived(lnurlw);
     }
 }

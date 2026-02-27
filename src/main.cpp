@@ -2201,9 +2201,6 @@ static void processNormalPayment(int pin, int duration)
       deviceState.transition(DeviceState::READY);
     }
     actionTimeScreen();
-    #if ENABLE_NFC
-    extensionConfig.nfcPaymentPending = false;
-    #endif
     executeSpecialMode(pin, duration, specialModeConfig.frequency, specialModeConfig.dutyCycleRatio);
   } else {
     Serial.println("[NORMAL] Using standard mode");
@@ -2213,13 +2210,6 @@ static void processNormalPayment(int pin, int duration)
       deviceState.transition(DeviceState::READY);
     }
     actionTimeScreen();
-    // Clear NFC pending flag now: the payment is confirmed and the relay is
-    // about to fire. Clearing here (not at the very end) lets the NFC task
-    // exit its wait-loop and begin its 4 s debounce while the relay runs,
-    // so the next card tap is accepted ~4 s after ACTION TIME starts.
-    #if ENABLE_NFC
-    extensionConfig.nfcPaymentPending = false;
-    #endif
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
     Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
@@ -2270,6 +2260,11 @@ static void processNormalPayment(int pin, int duration)
   // Force QR display (not ticker) after payment in ALWAYS mode
   multiChannelConfig.btcTickerActive = false;
   ensureQrForPin(12);
+
+  // Device is fully ready again – allow next NFC tap.
+  #if ENABLE_NFC
+  extensionConfig.nfcPaymentPending = false;
+  #endif
 
   if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
     showSpecialModeQRScreen();
