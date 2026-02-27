@@ -822,7 +822,7 @@ void nfcPendingScreen()
 
   if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
     tft.setTextSize(3);
-    tft.drawString("PENDING", x - 5, y - 50, GFXFF);
+    tft.drawString("PENDING", x + 1, y - 50, GFXFF);
     // NFC in inverted-color box
     tft.fillRect(15, y + 10, 140, 62, themeForeground);
     tft.setTextColor(themeBackground);
