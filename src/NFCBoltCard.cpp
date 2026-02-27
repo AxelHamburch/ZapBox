@@ -37,15 +37,6 @@ static void nfc_task_code(void *pvParams)
     uint8_t uidLength   = 0;
     uint8_t fileBuf[512];
 
-    // UID-based cooldown: same card cannot trigger again within this window.
-    // This prevents re-processing a card that is still physically present
-    // after a successful payment (the 4 s debounce was not enough because
-    // readPassiveTargetID immediately re-detects the card after the delay).
-    static uint8_t  lastUid[7]       = {0};
-    static uint8_t  lastUidLength    = 0;
-    static unsigned long lastUidTime = 0;
-    const  unsigned long UID_COOLDOWN_MS = 10000; // 10 s between same-card triggers
-
     LOG_INFO("NFC", "Bolt Card task started – waiting for cards");
 
     while (true)
@@ -62,34 +53,10 @@ static void nfc_task_code(void *pvParams)
 
         LOG_INFO("NFC", String("Card detected – UID length: ") + String(uidLength));
 
-        // If a payment is already in progress for ANY card, wait until done.
-        if (extensionConfig.nfcPaymentPending) {
-            LOG_WARN("NFC", "Card detected but payment already pending – waiting...");
-            while (extensionConfig.nfcPaymentPending) {
-                vTaskDelay(pdMS_TO_TICKS(100));
-            }
-            // After payment is done, reset UID cooldown and restart scan loop
-            // so we require the card to be lifted and re-presented.
-            lastUidLength = 0;
-            lastUidTime   = 0;
-            vTaskDelay(pdMS_TO_TICKS(500));
-            continue;
-        }
-
         // Accept only 4- or 7-byte UIDs (ISO14443A standard lengths).
         if (uidLength != 4 && uidLength != 7)
         {
             LOG_WARN("NFC", "Incompatible card (unexpected UID length)");
-            vTaskDelay(pdMS_TO_TICKS(500));
-            continue;
-        }
-
-        // UID cooldown: skip if this is the same card within the cooldown window.
-        // Handles the case where the card stays on the reader after a payment.
-        bool sameUid = (uidLength == lastUidLength) &&
-                       (memcmp(uid, lastUid, uidLength) == 0);
-        if (sameUid && (millis() - lastUidTime) < UID_COOLDOWN_MS) {
-            // Card is still present – wait 500 ms and re-check without spamming log.
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
@@ -146,6 +113,8 @@ static void nfc_task_code(void *pvParams)
         // Notify network layer \u2013 sets nfcPaymentPending, shows PENDING NFC screen,
         // and sends the HTTP POST. Flag stays true until QR screen is restored.
         nfcLnurlwReceived(lnurlw);
+        // Simple debounce: prevent immediate re-detection of the same card.
+        vTaskDelay(pdMS_TO_TICKS(4000));
     }
 }
 
