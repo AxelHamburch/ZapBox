@@ -98,17 +98,47 @@ void updateReadyLed() {
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
 
   // NFC payment pending blink: 200ms ON / 800ms OFF while waiting for invoice settlement.
-  // LED turns OFF as soon as the relay fires (paymentQueue.processing).
+  // As soon as the relay fires (paymentQueue.processing), two quick confirmation blinks
+  // (100ms ON / 100ms OFF × 2) indicate the payment was accepted, then LED goes OFF for
+  // the relay duration. After nfcPaymentPending clears, LED returns to steady ON.
   #if ENABLE_NFC
   static bool wasNfcPending = false;
+  static bool nfcConfirmStarted = false;
+  static unsigned long nfcConfirmStartTime = 0;
+
   if (extensionConfig.nfcPaymentPending) {
     wasNfcPending = true;
+
     if (paymentQueue.processing) {
-      // Relay is active – turn LED off, the relay is the action indicator
-      digitalWrite(PIN_LED_BUTTON_LED, LOW);
-      #ifdef PIN_ONBOARD_LED
-      digitalWrite(PIN_ONBOARD_LED, LOW);
-      #endif
+      // Relay just started or is running – fire 2 quick blinks first (400ms), then LED off
+      if (!nfcConfirmStarted) {
+        nfcConfirmStarted = true;
+        nfcConfirmStartTime = millis();
+        // First edge: ON
+        digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+        #ifdef PIN_ONBOARD_LED
+        digitalWrite(PIN_ONBOARD_LED, HIGH);
+        #endif
+      }
+      unsigned long elapsed = millis() - nfcConfirmStartTime;
+      if (elapsed < 400) {
+        // 0-100ms: ON, 100-200ms: OFF, 200-300ms: ON, 300-400ms: OFF
+        bool on = ((elapsed / 100) % 2 == 0);
+        static bool lastConfirmState = true;
+        if (on != lastConfirmState) {
+          lastConfirmState = on;
+          digitalWrite(PIN_LED_BUTTON_LED, on ? HIGH : LOW);
+          #ifdef PIN_ONBOARD_LED
+          digitalWrite(PIN_ONBOARD_LED, on ? HIGH : LOW);
+          #endif
+        }
+      } else {
+        // Blink sequence done – LED ON for rest of relay duration (it's the READY LED)
+        digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+        #ifdef PIN_ONBOARD_LED
+        digitalWrite(PIN_ONBOARD_LED, HIGH);
+        #endif
+      }
     } else {
       // Waiting for WS paid event: slow asymmetric blink 200ms ON / 800ms OFF
       static unsigned long lastNfcBlinkTime = 0;
@@ -125,9 +155,10 @@ void updateReadyLed() {
     }
     return;
   }
-  // NFC pending just ended (success or failure) – force LED state re-apply
+  // NFC pending cleared – reset confirm-blink state and force LED re-apply
   if (wasNfcPending) {
     wasNfcPending = false;
+    nfcConfirmStarted = false;
     readyLedState = !isReadyForReceive(); // Force mismatch so digitalWrite fires below
   }
   #endif

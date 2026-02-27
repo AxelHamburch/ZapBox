@@ -144,17 +144,19 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     String body = String("{\"lnurlw\":\"") + lnurlw + String("\"}" );
 
-    // Set pending flag and show screen BEFORE sending the POST request.
-    // The WebSocket "paid" event can arrive before http.POST() returns,
-    // so we must set the flag early. We also call nfcPendingScreen() here
-    // directly from the NFC task – the most reliable time to update the display.
+    // Set pending flag BEFORE the POST so the LED blink starts immediately.
+    // nfcPendingScreen() is called here from the NFC task for immediate display update.
     extensionConfig.nfcPaymentPending = true;
-    extensionConfig.nfcPaymentPendingStart = millis();
+    extensionConfig.nfcPaymentPendingStart = millis(); // preliminary – reset after POST
     nfcPendingScreen();
 
     int httpCode = http.POST(body);
 
     if (httpCode == 200) {
+        // Reset the 30s timeout AFTER the POST returns 200.
+        // The server-side already resolved LNURLW and submitted the invoice to the
+        // Bolt Card wallet – the WS "paid" event should follow within ~30s from now.
+        extensionConfig.nfcPaymentPendingStart = millis();
         LOG_INFO("NFC", "NFC payment initiated – waiting for WebSocket paid event");
     } else {
         String resp = http.getString();

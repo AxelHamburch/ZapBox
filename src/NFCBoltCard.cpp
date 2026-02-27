@@ -124,8 +124,25 @@ bool nfcBoltCardInit()
 {
     LOG_INFO("NFC", "Initializing PN532 Bolt Card reader...");
     LOG_INFO("NFC", "  I2C: SDA=GPIO18, SCL=GPIO17  (shared with Touch controller)");
-    LOG_INFO("NFC", "  IRQ: GPIO1 (active LOW, INPUT_PULLUP)");
+    LOG_INFO("NFC", String("  IRQ: GPIO") + String(PIN_NFC_IRQ) + " (active LOW, INPUT_PULLUP)");
     LOG_INFO("NFC", "  I2C address: 0x24");
+
+    // Quick I2C probe: check if anything responds at PN532 address 0x24.
+    // beginTransmission / endTransmission returns 0 only if a device ACKs.
+    // This avoids 20+ seconds of getFirmwareVersion() retries when no PN532 is connected.
+    // Only call Wire.begin() if the bus is not already running (touch.begin() initializes it).
+    // Calling Wire.begin() on an already-running bus can disrupt ongoing I2C operations.
+    #if !ENABLE_DISPLAY
+    Wire.begin(18, 17); // headless: no touch controller initializes Wire, so do it here
+    #endif
+    Wire.beginTransmission(0x24);
+    uint8_t probeResult = Wire.endTransmission();
+    if (probeResult != 0) {
+        LOG_INFO("NFC", String("No device at I2C address 0x24 (probe result: ") + String(probeResult) + ") – PN532 not connected");
+        LOG_INFO("NFC", "  → Bolt Card feature disabled, normal operation unaffected");
+        return false;
+    }
+    LOG_INFO("NFC", "I2C probe OK – device found at 0x24");
 
     // Wire was already initialized by TouchCST816S::begin() on GPIO17/18.
     // Create the PN532 instance using the shared Wire bus.

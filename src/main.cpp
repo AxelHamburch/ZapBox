@@ -1230,6 +1230,14 @@ void loop()
   
   firstLoop = false; // Mark first loop as completed
 
+  // Clear initialization flag immediately so Ready LED turns on without a one-loop delay.
+  // Previously this happened at the start of the next loop() iteration, causing a brief
+  // LED gap after the initial screen was shown.
+  if (initializationActive) {
+    initializationActive = false;
+    updateReadyLed();
+  }
+
   unsigned long lastWiFiCheck = millis();
   networkStatus.lastPingTime = millis(); // Initialize global variable
   unsigned long loopCount = 0;
@@ -2056,7 +2064,7 @@ void loop()
           nfcPendingScreenShown = true;
         }
         // Timeout: if no payment arrives within 30s, return to QR screen
-        if (millis() - extensionConfig.nfcPaymentPendingStart > 30000) {
+        if (millis() - extensionConfig.nfcPaymentPendingStart > 45000) {
           extensionConfig.nfcPaymentPending = false;
           nfcPendingScreenShown = false;
           needsQRRedraw = true;
