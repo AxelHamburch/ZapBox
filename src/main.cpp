@@ -2190,11 +2190,6 @@ static void processNormalPayment(int pin, int duration)
 {
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
 
-  // Clear NFC payment pending state when payment is received
-  #if ENABLE_NFC
-  extensionConfig.nfcPaymentPending = false;
-  #endif
-
   // Pause product timeout while ACTION TIME is active
   productSelectionState.showTime = 0;
 
@@ -2265,6 +2260,13 @@ static void processNormalPayment(int pin, int duration)
   // Force QR display (not ticker) after payment in ALWAYS mode
   multiChannelConfig.btcTickerActive = false;
   ensureQrForPin(12);
+
+  // Clear NFC payment pending state now – relay has finished and thank-you
+  // screen was shown. Only now is the device ready for the next card tap.
+  #if ENABLE_NFC
+  extensionConfig.nfcPaymentPending = false;
+  #endif
+
   if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
     showSpecialModeQRScreen();
   } else {
