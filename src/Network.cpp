@@ -144,12 +144,13 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     String body = String("{\"lnurlw\":\"") + lnurlw + String("\"}" );
 
-    // Set pending flag BEFORE sending the POST request.
-    // The server resolves and pays the invoice so fast that the WebSocket "paid" event
-    // can arrive and processNormalPayment() can run before http.POST() returns.
-    // Setting the flag here ensures processNormalPayment() will correctly clear it.
+    // Set pending flag and show screen BEFORE sending the POST request.
+    // The WebSocket "paid" event can arrive before http.POST() returns,
+    // so we must set the flag early. We also call nfcPendingScreen() here
+    // directly from the NFC task – the most reliable time to update the display.
     extensionConfig.nfcPaymentPending = true;
     extensionConfig.nfcPaymentPendingStart = millis();
+    nfcPendingScreen();
 
     int httpCode = http.POST(body);
 
