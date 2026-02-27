@@ -57,12 +57,16 @@ static void nfc_task_code(void *pvParams)
         LOG_INFO("NFC", String("Card detected – UID length: ") + String(uidLength));
 
         // If a payment is already in progress, ignore this card tap entirely.
-        // The relay may still be firing (ACTION TIME screen) or the HTTP POST
-        // is still in flight. Starting a second payment now would cause a
-        // double-charge. Wait 1 s and let the main loop finish first.
+        // Wait actively (in a loop) until the payment is fully done, then
+        // apply the normal 4 s debounce so the same card cannot re-trigger
+        // immediately after the relay finishes.
         if (extensionConfig.nfcPaymentPending) {
-            LOG_WARN("NFC", "Card detected but payment already pending – ignoring");
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            LOG_WARN("NFC", "Card detected but payment already pending – waiting...");
+            while (extensionConfig.nfcPaymentPending) {
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
+            LOG_INFO("NFC", "Payment done – applying 4 s debounce before next scan");
+            vTaskDelay(pdMS_TO_TICKS(4000));
             continue;
         }
 
