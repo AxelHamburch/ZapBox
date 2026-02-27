@@ -1,10 +1,15 @@
-# Lightning ZapBox ⚡
+# Lightning Zap⚡Box
 
-Bitcoin Lightning-controlled USB power switch for LilyGo T-Display-S3 or standard ESP32
+> **Forked from [danielcharrua/satoffee](https://github.com/danielcharrua/satoffee)**  
+> Expanded with many new features and hardware for many new use cases.
+
+Bitcoin Lightning-controlled switching unit for the LilyGo T-Display-S3 and standard ESP32.
 
 ## What is the ZapBox?
 
 The Lightning ZapBox is a compact device that controls a USB output via Bitcoin Lightning payment. Various 5V devices can be operated on the USB output, such as LED lamps, fans, or other USB-powered devices. It features multiple operation modes, customizable display themes, and advanced relay control patterns. 
+
+Ease of use, verifiability and reliability are paramount – all in one package.
 
 **Supported Hardware:**
 - **LilyGo T-Display-S3**: Full-featured version with integrated display (Touch and Non-Touch variants)
