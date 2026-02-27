@@ -64,6 +64,11 @@ static void nfc_task_code(void *pvParams)
             continue;
         }
 
+        // Give the PN532 time to finish the ISO14443A activation sequence
+        // before sending NTAG424 APDUs. Without this pause the PN532 is still
+        // busy and I2C requestFrom() returns Error -1.
+        vTaskDelay(pdMS_TO_TICKS(50));
+
         // Verify the card is an NTAG424 DNA (required for Bolt Card).
         if (!s_nfc->ntag424_isNTAG424())
         {
@@ -73,11 +78,22 @@ static void nfc_task_code(void *pvParams)
         }
 
         // Read the NDEF file from the NTAG424.
-        uint8_t bytesRead = s_nfc->ntag424_ISOReadFile(fileBuf, sizeof(fileBuf) - 1);
+        // Retry up to 3 times with 50 ms between attempts – I2C timing on the
+        // shared bus (Touch + PN532) can occasionally cause a failed read.
+        uint8_t bytesRead = 0;
+        for (int attempt = 1; attempt <= 3 && bytesRead == 0; attempt++)
+        {
+            bytesRead = s_nfc->ntag424_ISOReadFile(fileBuf, sizeof(fileBuf) - 1);
+            if (bytesRead == 0 && attempt < 3)
+            {
+                LOG_WARN("NFC", String("NTAG424 read attempt ") + attempt + " returned 0 bytes – retrying...");
+                vTaskDelay(pdMS_TO_TICKS(50));
+            }
+        }
 
         if (bytesRead == 0)
         {
-            LOG_WARN("NFC", "NTAG424 read returned 0 bytes");
+            LOG_WARN("NFC", "NTAG424 read returned 0 bytes after 3 attempts");
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
