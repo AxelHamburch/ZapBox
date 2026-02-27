@@ -402,22 +402,8 @@ void readFiles()
       LOG_INFO("Config", String("Channel 4 ambient light: ") + (channel4AmbientConfig.enabled ? "ENABLED" : "DISABLED (normal)"));
     }
 
-    // Read NFC Bolt Card / extension API path configuration (index 23)
-    // "no"  -> use /bitcoinswitch/api/v1/ (classic bitcoinswitch_extension, default)
-    // "yes" -> use /zapbox/api/v1/        (zapbox_extension required on server)
-    const JsonObject maRoot23 = doc[23];
-    if (!maRoot23.isNull()) {
-      const char *maRoot23Char = maRoot23["value"];
-      if (maRoot23Char != nullptr) {
-        String nfcExtSetting = String(maRoot23Char);
-        nfcExtSetting.toLowerCase();
-        nfcExtSetting.trim();
-        extensionConfig.apiPath = (nfcExtSetting == "yes") ? "zapbox" : "bitcoinswitch";
-      }
-      LOG_INFO("Config", String("Extension API path: /") + extensionConfig.apiPath + "/api/v1/");
-    } else {
-      LOG_INFO("Config", String("Index 23 (nfcBoltCard) not found - using default: /") + extensionConfig.apiPath + "/api/v1/");
-    }
+    // Extension API path (bitcoinswitch vs. zapbox) is auto-detected at runtime in API.cpp
+    // No manual config needed - ZapBox tries bitcoinswitch first, falls back to zapbox on 404.
 
     // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 

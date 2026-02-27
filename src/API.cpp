@@ -48,15 +48,31 @@ void fetchSwitchLabels()
   lastFetchAttempt = millis();
 
   HTTPClient http;
-  // Build URL: https://{server}/{extension}/api/v1/public/{deviceId}
+  // Try primary extension path first (default: bitcoinswitch).
+  // On 404, auto-detect by trying the other extension path (zapbox).
   String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath + "/api/v1/public/" + deviceId;
-  
   Serial.println("[LABELS] Fetching switch configurations from: " + url);
   http.begin(url);
-  http.setTimeout(5000); // 5 second timeout
-  
+  http.setTimeout(5000);
   int httpCode = http.GET();
-  
+
+  // Auto-detect extension path: if primary returns 404, try the other extension
+  if (httpCode == 404) {
+    String fallbackPath = (extensionConfig.apiPath == "bitcoinswitch") ? "zapbox" : "bitcoinswitch";
+    Serial.println("[LABELS] " + extensionConfig.apiPath + " returned 404 - trying fallback: " + fallbackPath);
+    http.end();
+    url = "https://" + lnbitsServer + "/" + fallbackPath + "/api/v1/public/" + deviceId;
+    Serial.println("[LABELS] Fetching switch configurations from: " + url);
+    http.begin(url);
+    http.setTimeout(5000);
+    httpCode = http.GET();
+    if (httpCode == 200) {
+      // Fallback succeeded - remember this path for all future requests (including Payment.cpp)
+      extensionConfig.apiPath = fallbackPath;
+      Serial.println("[LABELS] Auto-detected extension: /" + fallbackPath + "/api/v1/ (saved for payments)");
+    }
+  }
+
   if (httpCode == 200) {
     String payload = http.getString();
     Serial.println("[LABELS] Received response: " + payload);
@@ -132,8 +148,8 @@ void fetchSwitchLabels()
     // HTTP 404 means the bitcoinswitch instance was deleted on the server
     // This is a critical configuration error - invalidate WebSocket connection
     if (httpCode == 404) {
-      Serial.println("[LABELS] ERROR: Bitcoinswitch instance not found (404) - device configuration invalid!");
-      Serial.println("[LABELS] The configured device ID no longer exists on the server.");
+      Serial.println("[LABELS] ERROR: Device not found (404) - tried /bitcoinswitch/ and /zapbox/ paths.");
+      Serial.println("[LABELS] The configured device ID does not exist on the server.");
       Serial.println("[LABELS] Marking WebSocket as unconfirmed to trigger error LED pattern.");
       networkStatus.confirmed.websocket = false;
       labelsValidationAttempted = true; // Mark validation as completed (failed)
