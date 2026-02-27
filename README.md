@@ -118,7 +118,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 | **I2C (Optional)** |
 | 17 | I2C SCL | I2C | - | Optional: NFC reader |
 | 18 | I2C SDA | I2C | - | Optional: NFC reader |
-| 1 | NFC IRQ | Input | - | Optional: PN532 interrupt |
+| 4 | NFC IRQ | Input | - | Optional: PN532 interrupt (GPIO 1 = UART0 TX on classic ESP32) |
 | **Power & Control** |
 | 15 | Power On | Output | - | Power control pin |
 | **Relay Channels (Multi-Channel-Control)** |
@@ -136,7 +136,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 | External LED Button | Supported (GPIO 43/44) | N/A |
 | Light Barrier | Supported (GPIO 2) | Available but not typically used |
 | Status Indication | Display + LED | LED only (GPIO 21 and onboard LED GPIO 2) |
-| NFC Support | Yes (GPIO 1, 17, 18) | Yes (optional) |
+| NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 4, 17, 18) |
 | Power Consumption | ~150-250mA | Lower (no display overhead) |
 | Configuration Method | Web Installer + Serial | Web Installer + Serial |
 | Deep Sleep Wake | GPIO 0, 14 (not 43/44) | N/A |
@@ -187,6 +187,16 @@ GND             →    GND
 SDA             →    GPIO 18 (shared with Touch)
 SCL             →    GPIO 17 (shared with Touch)
 IRQ             →    GPIO 1
+```
+
+```
+PN532 HW-147    →    ESP32 Dev Module
+────────────────────────────────────
+VCC (3.3V)      →    3.3V
+GND             →    GND
+SDA             →    GPIO 18
+SCL             →    GPIO 17
+IRQ             →    GPIO 4  (GPIO 1 = UART0 TX on classic ESP32 → not usable)
 ```
 
 **Note:** The HW-147 module does not expose a hardware reset pin (RSTPD_N).

@@ -48,7 +48,12 @@
 #endif
 
 // NFC Reader (PN532) - Optional
-#define PIN_NFC_IRQ 1          // NFC interrupt (card detection)
+// GPIO 1 is safe on ESP32-S3 (T-Display-S3), but equals UART0 TX on classic ESP32 Dev.
+#if ENABLE_DISPLAY
+  #define PIN_NFC_IRQ 1   // T-Display-S3 (ESP32-S3): GPIO 1 is free (no UART conflict)
+#else
+  #define PIN_NFC_IRQ 4   // ESP32 Dev (classic ESP32): GPIO 1 = UART0 TX → use GPIO 4
+#endif
 
 // Relay channels (Multi-Channel-Control)
 // PIN 12 - Relay channel 1 (default)
@@ -69,6 +74,6 @@
 #endif
 
 // Free GPIO pins (RTC-capable): 3
-// Note: GPIO 1, 2, 10, 11 are assigned to NFC/Relay but can be repurposed
-// Note: GPIO 12, 13 are assigned to Relay but can be repurposed
+// Note: T-Display-S3: GPIO 1 = NFC IRQ, GPIO 10/11/12/13 = Relay
+// Note: ESP32 Dev:    GPIO 4 = NFC IRQ, GPIO 10/11/12/13 = Relay
 // Note: GPIO 43, 44 are assigned to LED-button but NOT RTC-capable
