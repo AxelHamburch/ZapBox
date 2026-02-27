@@ -97,18 +97,29 @@ void updateReadyLed() {
   // Skip LED updates when in CONFIG_MODE to prevent race condition with config blink on other core
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
 
-  // Very fast blink (10Hz = 100ms) while NFC payment is pending (LNURLW resolution)
+  // NFC payment pending blink: 200ms ON / 800ms OFF while waiting for invoice settlement.
+  // LED turns OFF as soon as the relay fires (paymentQueue.processing).
   #if ENABLE_NFC
   if (extensionConfig.nfcPaymentPending) {
-    static unsigned long lastNfcBlinkTime = 0;
-    static bool nfcBlinkState = false;
-    if (millis() - lastNfcBlinkTime > 100) {
-      nfcBlinkState = !nfcBlinkState;
-      digitalWrite(PIN_LED_BUTTON_LED, nfcBlinkState ? HIGH : LOW);
+    if (paymentQueue.processing) {
+      // Relay is active – turn LED off, the relay is the action indicator
+      digitalWrite(PIN_LED_BUTTON_LED, LOW);
       #ifdef PIN_ONBOARD_LED
-      digitalWrite(PIN_ONBOARD_LED, nfcBlinkState ? HIGH : LOW);
+      digitalWrite(PIN_ONBOARD_LED, LOW);
       #endif
-      lastNfcBlinkTime = millis();
+    } else {
+      // Waiting for WS paid event: slow asymmetric blink 200ms ON / 800ms OFF
+      static unsigned long lastNfcBlinkTime = 0;
+      static bool nfcBlinkState = false;
+      unsigned long interval = nfcBlinkState ? 200 : 800; // ON=200ms, OFF=800ms
+      if (millis() - lastNfcBlinkTime > interval) {
+        nfcBlinkState = !nfcBlinkState;
+        digitalWrite(PIN_LED_BUTTON_LED, nfcBlinkState ? HIGH : LOW);
+        #ifdef PIN_ONBOARD_LED
+        digitalWrite(PIN_ONBOARD_LED, nfcBlinkState ? HIGH : LOW);
+        #endif
+        lastNfcBlinkTime = millis();
+      }
     }
     return;
   }
