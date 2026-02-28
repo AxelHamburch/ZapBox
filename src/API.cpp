@@ -172,6 +172,15 @@ void fetchSwitchLabels()
  */
 void fetchBitcoinData()
 {
+  // SAFETY: Abort immediately if WiFi is being torn down for config mode.
+  // configMode() calls WiFi.disconnect(true) on Core 0; if we start an HTTPS
+  // request on Core 1 at the same time the SSL/WiFi stack is freed underneath
+  // us, the result is a LoadProhibited crash (EXCVADDR ~0x130).
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
+    Serial.println("[BTC] Skipping fetch - CONFIG_MODE active");
+    return;
+  }
+
   Serial.println("[BTC] Fetching Bitcoin data...");
   
   // Update last fetch attempt time for backoff
@@ -197,6 +206,13 @@ void fetchBitcoinData()
   http.end();
   
   delay(200); // SSL cleanup delay
+
+  // Second guard: config mode might have been triggered while the first
+  // HTTP call was running. Don't start a new SSL connection if WiFi is gone.
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
+    Serial.println("[BTC] Aborting mid-fetch - CONFIG_MODE active");
+    return;
+  }
   
   // Fetch block height from Mempool
   bitcoinData.blockHigh = "Error";

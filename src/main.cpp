@@ -1067,10 +1067,16 @@ void setup()
   multiChannelConfig.currentProduct = 0; // Start at selection screen
 
 #if ENABLE_BITCOIN_DATA
-  // Fetch initial Bitcoin data after setup is complete
-  SETUP_PRINT("[BTC] Fetching initial Bitcoin data...");
-  fetchBitcoinData();
-  SETUP_PRINT("[BTC] Initial fetch complete");
+  // Fetch initial Bitcoin data after setup is complete.
+  // Guard against the race condition where the button task fires configMode()
+  // on Core 0 and tears down WiFi while the HTTPS call runs on Core 1.
+  if (!deviceState.isInState(DeviceState::CONFIG_MODE)) {
+    SETUP_PRINT("[BTC] Fetching initial Bitcoin data...");
+    fetchBitcoinData();
+    SETUP_PRINT("[BTC] Initial fetch complete");
+  } else {
+    SETUP_PRINT("[BTC] Skipping initial fetch - CONFIG_MODE active");
+  }
 #else
   SETUP_PRINT("[BTC] Bitcoin data fetching disabled (headless mode)");
 #endif
