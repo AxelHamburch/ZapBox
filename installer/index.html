@@ -158,15 +158,16 @@
                 <input type="text" name="wifiPassword" id="wifiPassword" placeholder="password" autocomplete="off">
             </div>
             <div>
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;">
-                    <label for="socket" style="margin: 0;">Device settings string</label>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <div id="connection-status" style="padding: 3px 12px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">● Not connected</div>
-                        <div id="config-mode-status" style="padding: 3px 12px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">● No config mode</div>
-                    </div>
-                </div>
+                <label for="socket">Device settings string</label>
                 <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
                 <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
+            </div>
+            <div>
+                <label>Status</label>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                    <div id="connection-status" style="padding: 6px 14px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">● Not connected</div>
+                    <div id="config-mode-status" style="padding: 6px 14px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">● No config mode</div>
+                </div>
             </div>
         </div>
 
