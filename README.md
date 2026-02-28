@@ -257,6 +257,7 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
 - [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
 - [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
+- [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
 
 ### External LED Button (Optional)
 
@@ -872,6 +873,7 @@ Electrical design and housing variants, see table.
 | e932547 | Quattro | Add update button cable & IR light barrier |
 | e937540 | Duo | Duo Update |
 | e937544 | USB-Power-Hub | First USB-Power-Hub |
+| e938714 | ZapOMat | Firest ZapOMat design |
 
 -> Find all versions here: [./assets/electric)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
