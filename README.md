@@ -881,6 +881,8 @@ This project is based on Daniel's [SATOFFEE](https://github.com/danielcharrua/sa
 
 A big thank you goes to [Ben Arc](https://njump.to/nprofile1qqsvrlrhw86l5sv06wkyjgs6rrcekskvk7nx8k50qn9m7mqgeqxjpvgpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtctcf224) and the entire LNbits team for their incredible work.
 
+Parts of this project were developed with the assistance of **GitHub Copilot** powered by **Claude Sonnet** (Anthropic) as an AI coding assistant.
+
 ## Support
 
 This is a free and open source project. Support is welcome. Making Bitcoin Lightning technology ⚡ accessible to everyone — worldwide. 🌍
