@@ -990,8 +990,11 @@
             // Accumulate serial data in buffer
             serialBuffer += newData;
 
-            // Try to parse config data when we see /file-read
-            if (serialBuffer.includes("/file-read ")) {
+            // Try to parse config data when we see /file-read OR the config JSON directly.
+            // Note: ESP32-S3 USB CDC can drop bytes at chunk boundaries, causing "/file-read "
+            // to arrive as "/file-rea" with missing chars. The complete JSON still arrives
+            // separately, so we also trigger on the JSON array start pattern.
+            if (serialBuffer.includes("/file-read ") || serialBuffer.includes('[{"name":"ssid"')) {
                 tryParseConfig();
             }
 
@@ -1003,15 +1006,27 @@
         }
 
         function tryParseConfig() {
-            // Look for /file-read followed by JSON array
-            let fileReadIndex = serialBuffer.lastIndexOf("/file-read ");
-            if (fileReadIndex === -1) return;
+            // Primary strategy: find the config JSON array directly in the buffer.
+            // This is robust against USB CDC byte-drops that can corrupt the "/file-read "
+            // prefix (e.g. arriving as "/file-rea" with "d [{" dropped).
+            // The complete JSON always arrives – just sometimes without the prefix.
+            let configStart = serialBuffer.lastIndexOf('[{"name":"ssid"');
+            let searchSection;
 
-            // Extract everything after /file-read
-            let afterFileRead = serialBuffer.substring(fileReadIndex);
-            
+            if (configStart !== -1) {
+                searchSection = serialBuffer.substring(configStart);
+            } else {
+                // Fallback: look for /file-read prefix (old behaviour)
+                let fileReadIndex = serialBuffer.lastIndexOf("/file-read ");
+                if (fileReadIndex === -1) return;
+                let afterFileRead = serialBuffer.substring(fileReadIndex);
+                let fallbackStart = afterFileRead.indexOf("[");
+                if (fallbackStart === -1) return;
+                searchSection = afterFileRead.substring(fallbackStart);
+            }
+
             // Find complete JSON array with matching brackets
-            let jsonStart = afterFileRead.indexOf("[");
+            let jsonStart = searchSection.indexOf("[");
             if (jsonStart === -1) return;
             
             let bracketCount = 0;
@@ -1019,8 +1034,8 @@
             let escape = false;
             let jsonEnd = -1;
             
-            for (let i = jsonStart; i < afterFileRead.length; i++) {
-                let char = afterFileRead[i];
+            for (let i = jsonStart; i < searchSection.length; i++) {
+                let char = searchSection[i];
                 
                 if (escape) {
                     escape = false;
@@ -1052,7 +1067,7 @@
             // Found complete JSON with matching brackets
             if (jsonEnd === -1) return;
             
-            let jsonString = afterFileRead.substring(jsonStart, jsonEnd + 1);
+            let jsonString = searchSection.substring(jsonStart, jsonEnd + 1);
 
             try {
                 let configData = JSON.parse(jsonString);
