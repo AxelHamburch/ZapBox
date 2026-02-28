@@ -127,10 +127,18 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 | **Power & Control** |
 | 15 | Power On | Output | - | Power control pin |
 | **Relay Channels (Multi-Channel-Control)** |
-| 12 | Relay 1 | Output | - | Single/Duo/Quattro mode 1 |
-| 13 | Relay 2 | Output | - | Duo/Quattro mode 2 |
-| 10 | Relay 3 | Output | - | Quattro mode 3 |
-| 11 | Relay 4 | Output | - | Quattro mode 4 |
+| 12 | Relay 1 (CH01) | Output | - | Single/Duo/Quattro mode 1 |
+| 13 | Relay 2 (CH02) | Output | - | Duo/Quattro mode 2 |
+| 14 | Relay 3 (CH03) | Output | - | Quattro mode 3 (⚠️ NOT GPIO 10/11 – internal flash!) |
+| 16 | Relay 4 (CH04) | Output | - | Quattro mode 4 |
+| 19 | Relay 5 (CH05) | Output | - | Headless extended channel |
+| 22 | Relay 6 (CH06) | Output | - | Headless extended channel |
+| 23 | Relay 7 (CH07) | Output | - | Headless extended channel |
+| 25 | Relay 8 (CH08) | Output | - | Headless extended channel |
+| 26 | Relay 9 (CH09) | Output | - | Headless extended channel |
+| 27 | Relay 10 (CH10) | Output | - | Headless extended channel |
+| 32 | Relay 11 (CH11) | Output | - | Headless extended channel |
+| 33 | Relay 12 (CH12) | Output | - | Headless extended channel |
 
 #### Key Differences Between Variants
 
@@ -169,11 +177,32 @@ Signal (NPN output)    →    GPIO 2
 
 ### Relay Control Pins
 
-**Multi-Channel Configuration:**
+**T-Display-S3 (Multi-Channel-Control with display):**
 - **Single Mode (default)**: Pin 12 only
 - **Duo Mode**: Pins 12 and 13
 - **Quattro Mode**: Pins 12, 13, 10, and 11
   - **Special Option**: Pin 11 can be configured as ambient lighting switch (syncs with display backlight)
+
+**ESP32 Dev Module (Headless – up to 12 independent channels):**
+
+> The headless version does not use Single/Duo/Quattro modes for channel selection.
+> Instead, the active GPIO is determined directly by the switch configuration in LNbits.
+> Simply assign the desired GPIO pin to each switch in the LNbits extension.
+
+| Channel | GPIO | Note |
+|---------|------|------|
+| CH01 | 12 | Default / single-mode |
+| CH02 | 13 | |
+| CH03 | 14 | ⚠️ GPIO 10 = internal flash on WROOM-32! |
+| CH04 | 16 | ⚠️ GPIO 11 = internal flash on WROOM-32! |
+| CH05 | 19 | |
+| CH06 | 22 | |
+| CH07 | 23 | |
+| CH08 | 25 | |
+| CH09 | 26 | |
+| CH10 | 27 | |
+| CH11 | 32 | RTC-capable |
+| CH12 | 33 | RTC-capable |
 
 **Output Type:** Digital GPIO outputs (HIGH = relay activated)
 **Max Current per Pin:** ~40mA (requires external relay driver for high-power loads)

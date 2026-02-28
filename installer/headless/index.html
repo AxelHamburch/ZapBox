@@ -207,6 +207,29 @@
             <!-- Section Separator -->
             <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
 
+        <!-- Multi-Channel Mode Section -->
+            <p style="margin-top: 10px;"><strong>Multi-Channel Mode</strong></p>
+            <p style="margin-top: 10px; color: #888;"><i>The headless ZapBox supports up to <strong>10 independent relay channels</strong>. Each channel maps to a GPIO output that can switch a relay, solenoid, or any other 3.3 V-driven load.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Available GPIO channels:</strong></i></p>
+            <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH01</strong></td><td>GPIO 12</td><td style="padding-left: 16px; color: #aaa;">(default / single-mode)</td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH02</strong></td><td>GPIO 13</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH03</strong></td><td>GPIO 14</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH04</strong></td><td>GPIO 16</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH05</strong></td><td>GPIO 19</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH06</strong></td><td>GPIO 22</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH07</strong></td><td>GPIO 23</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH08</strong></td><td>GPIO 25</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH09</strong></td><td>GPIO 26</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH10</strong></td><td>GPIO 27</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH11</strong></td><td>GPIO 32</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH12</strong></td><td>GPIO 33</td><td></td></tr>
+            </table>
+            <p style="margin-top: 14px; color: #888;"><i>No additional configuration is needed on the device. Simply assign the desired GPIO to each switch in your <strong>LNbits extension</strong> (zapbox / bitcoinswitch). The device will activate exactly the GPIO returned in the "paid" event – all 10 channels are ready at boot.</i></p>
+
+            <!-- Section Separator -->
+            <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
+
         <!-- Threshold Mode Section -->
             <div class="input-wrapper">
                 <div>

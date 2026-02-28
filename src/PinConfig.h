@@ -55,11 +55,68 @@
   #define PIN_NFC_IRQ 4   // ESP32 Dev (classic ESP32): GPIO 1 = UART0 TX → use GPIO 4
 #endif
 
+// ─────────────────────────────────────────────────────────────
 // Relay channels (Multi-Channel-Control)
-// PIN 12 - Relay channel 1 (default)
-// PIN 13 - Relay channel 2
-// PIN 10 - Relay channel 3
-// PIN 11 - Relay channel 4
+//
+// CH01 and CH02 are identical on both boards:
+//   CH01 → GPIO 12  (default / single-mode)
+//   CH02 → GPIO 13
+//
+// CH03 / CH04 differ per board:
+//   T-Display-S3 (ESP32-S3, ENABLE_DISPLAY=1):
+//     CH03 → GPIO 10  │ ESP32-S3: GPIO 10/11 are available breakout pins
+//     CH04 → GPIO 11  │ GPIO 11 also used for channel-4 ambient-light sync
+//   ESP32 Dev / headless (ENABLE_DISPLAY=0):
+//     CH03 → GPIO 14  │ GPIO 10/11 are internal flash on ESP32-WROOM-32
+//     CH04 → GPIO 16  │ and must NOT be used as output!
+//
+// Headless ESP32 Dev only – 8 additional channels (total: 12):
+//   CH05 → GPIO 19
+//   CH06 → GPIO 22
+//   CH07 → GPIO 23
+//   CH08 → GPIO 25
+//   CH09 → GPIO 26
+//   CH10 → GPIO 27
+//   CH11 → GPIO 32
+//   CH12 → GPIO 33
+// ─────────────────────────────────────────────────────────────
+#define PIN_RELAY_CH01 12
+#define PIN_RELAY_CH02 13
+
+#if ENABLE_DISPLAY
+  // T-Display-S3 (ESP32-S3): GPIO 10/11 are valid breakout pins
+  #define PIN_RELAY_CH03 10
+  #define PIN_RELAY_CH04 11  // also ambient-light sync
+#else
+  // ESP32 Dev Module (classic ESP32-WROOM-32):
+  // GPIO 6-11 are connected to internal SPI flash – NEVER use as output!
+  #define PIN_RELAY_CH03 14
+  #define PIN_RELAY_CH04 16
+#endif
+
+#if !ENABLE_DISPLAY
+  // Extra relay channels available on ESP32 Dev Module (no display pins consumed)
+  #define PIN_RELAY_CH05 19
+  #define PIN_RELAY_CH06 22
+  #define PIN_RELAY_CH07 23
+  #define PIN_RELAY_CH08 25
+  #define PIN_RELAY_CH09 26
+  #define PIN_RELAY_CH10 27
+  #define PIN_RELAY_CH11 32
+  #define PIN_RELAY_CH12 33
+  #define RELAY_CHANNEL_MAX 12
+  // Ordered list of all relay GPIOs (indices 0-11 = CH01-CH12)
+  static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
+    PIN_RELAY_CH01, PIN_RELAY_CH02, PIN_RELAY_CH03, PIN_RELAY_CH04,
+    PIN_RELAY_CH05, PIN_RELAY_CH06, PIN_RELAY_CH07, PIN_RELAY_CH08,
+    PIN_RELAY_CH09, PIN_RELAY_CH10, PIN_RELAY_CH11, PIN_RELAY_CH12
+  };
+#else
+  #define RELAY_CHANNEL_MAX 4
+  static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
+    PIN_RELAY_CH01, PIN_RELAY_CH02, PIN_RELAY_CH03, PIN_RELAY_CH04
+  };
+#endif
 
 // LED Button (Optional) - Different pins for different boards
 #if ENABLE_DISPLAY
@@ -73,7 +130,11 @@
   // PIN_LED_BUTTON_SW not defined for ESP32 Dev
 #endif
 
-// Free GPIO pins (RTC-capable): 3
-// Note: T-Display-S3: GPIO 1 = NFC IRQ, GPIO 10/11/12/13 = Relay
-// Note: ESP32 Dev:    GPIO 4 = NFC IRQ, GPIO 10/11/12/13 = Relay
-// Note: GPIO 43, 44 are assigned to LED-button but NOT RTC-capable
+// ─────────────────────────────────────────────────────────────
+// Free GPIO pins summary:
+//   T-Display-S3 : GPIO 1=NFC-IRQ, 10-13=Relay(CH01-04), 43/44=LED-Button (not RTC-capable)
+//   ESP32 Dev    : GPIO 4=NFC-IRQ, 12/13/14/16/19/22/23/25/26/27/32/33=Relay (CH01-12)
+//                  21=LED, 2=OnboardLED
+//                  ⚠ GPIO 6-11 = internal SPI flash on WROOM-32, NOT usable as output!
+//                  Remaining free (output-capable): GPIO 5, 15
+// ─────────────────────────────────────────────────────────────

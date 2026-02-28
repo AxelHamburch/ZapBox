@@ -790,6 +790,17 @@ void setup()
     Serial.println("[AMBIENT LIGHT] GPIO 11 initialized (synced with display backlight)");
   }
 
+#if !ENABLE_DISPLAY
+  // Headless ESP32 Dev: initialize all 10 relay channels to LOW at startup.
+  // CH01=GPIO12, CH02=GPIO13, CH03=GPIO14, CH04=GPIO16 (NOT 10/11 – internal flash!)
+  // CH05-CH10: GPIO 19, 22, 23, 25, 26, 27  |  CH11=GPIO32, CH12=GPIO33
+  for (int i = 0; i < RELAY_CHANNEL_MAX; i++) {
+    pinMode(RELAY_CHANNEL_PINS[i], OUTPUT);
+    digitalWrite(RELAY_CHANNEL_PINS[i], LOW);
+  }
+  Serial.println("[RELAY] All 10 relay channels initialized (GPIOs 12,13,10,11,19,22,23,25,26,27)");
+#endif
+
   initDisplay();
   startupScreen();
 
@@ -2197,6 +2208,18 @@ static void processThresholdPayment(const JsonDocument &doc)
 static void processNormalPayment(int pin, int duration)
 {
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
+
+#if !ENABLE_DISPLAY
+  // Whitelist check: only fire pins that are registered relay channels
+  bool validPin = false;
+  for (int i = 0; i < RELAY_CHANNEL_MAX; i++) {
+    if (RELAY_CHANNEL_PINS[i] == pin) { validPin = true; break; }
+  }
+  if (!validPin) {
+    Serial.printf("[RELAY] ERROR: GPIO %d is not a registered relay channel – ignoring!\n", pin);
+    return;
+  }
+#endif
 
   // Pause product timeout while ACTION TIME is active
   productSelectionState.showTime = 0;

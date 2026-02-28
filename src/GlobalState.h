@@ -126,7 +126,7 @@ struct LightBarrierConfig {
 extern LightBarrierConfig lightBarrierConfig;
 
 // ============================================================================
-// CHANNEL 4 AMBIENT LIGHT (GPIO 11)
+// CHANNEL 4 AMBIENT LIGHT (GPIO 11 on T-Display-S3 only)
 // ============================================================================
 
 struct Channel4AmbientConfig {
@@ -168,23 +168,49 @@ extern BitcoinData bitcoinData;
 // ============================================================================
 
 struct ProductLabels {
-  // Labels stored in array: index 0=pin10, 1=pin11, 2=pin12, 3=pin13
-  // Use getLabelForPin(pin) and setLabelForPin(pin, label) for access
-  String labels[4] = {"", "", "", ""};
+  // Labels stored in array by RELAY_CHANNEL_PINS order (see PinConfig.h):
+  //   index 0=GPIO12(CH01), 1=GPIO13(CH02)
+  //   index 2=CH03 (GPIO10 on T-Display-S3 / GPIO14 on esp32dev)
+  //   index 3=CH04 (GPIO11 on T-Display-S3 / GPIO16 on esp32dev)
+  //   index 4=GPIO19(CH05), 5=GPIO22(CH06), 6=GPIO23(CH07), 7=GPIO25(CH08)
+  //   index 8=GPIO26(CH09), 9=GPIO27(CH10), 10=GPIO32(CH11), 11=GPIO33(CH12)
+  //   indices 4-11 only on esp32dev
+  String labels[12] = {"", "", "", "", "", "", "", "", "", "", "", ""};
   unsigned long lastUpdate = 0;
 };
 
 extern ProductLabels productLabels;
 
-// Helper function to convert GPIO pin to array index
-// Pin 10 -> index 0, Pin 11 -> index 1, Pin 12 -> index 2, Pin 13 -> index 3
-// Returns -1 if pin is invalid
+// Helper function to convert GPIO pin to ProductLabels array index.
+// Order matches RELAY_CHANNEL_PINS in PinConfig.h.
+// CH03/CH04 GPIOs differ per board (see PinConfig.h for details).
+//   GPIO 12 → 0 (CH01)   GPIO 13 → 1 (CH02)
+//   T-Display-S3: GPIO 10 → 2 (CH03), GPIO 11 → 3 (CH04)
+//   esp32dev:     GPIO 14 → 2 (CH03), GPIO 16 → 3 (CH04)
+//   GPIO 19 → 4 (CH05)   GPIO 22 → 5 (CH06)
+//   GPIO 23 → 6 (CH07)   GPIO 25 → 7 (CH08)
+//   GPIO 26 → 8 (CH09)   GPIO 27 → 9 (CH10)
+//   GPIO 32 → 10 (CH11)  GPIO 33 → 11 (CH12)  ← esp32dev only
+// Returns -1 if pin is not a relay channel.
 inline int getPinIndex(int pin) {
   switch (pin) {
-    case 10: return 0;
-    case 11: return 1;
-    case 12: return 2;
-    case 13: return 3;
+    case 12: return 0;
+    case 13: return 1;
+#if ENABLE_DISPLAY
+    case 10: return 2;  // CH03 on T-Display-S3 (ESP32-S3)
+    case 11: return 3;  // CH04 on T-Display-S3 (ESP32-S3)
+#else
+    case 14: return 2;  // CH03 on esp32dev (GPIO10/11 = internal flash!)
+    case 16: return 3;  // CH04 on esp32dev
+#endif
+    case 19: return 4;
+    case 22: return 5;
+    case 23: return 6;
+    case 25: return 7;
+    case 26: return 8;
+    case 27: return 9;
+    case 32: return 10;
+    case 33: return 11;
     default: return -1;
   }
 }

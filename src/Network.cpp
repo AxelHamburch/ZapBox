@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "Network.h"
+#include "PinConfig.h"
 #include "DeviceState.h"
 #include "GlobalState.h"
 #include "Display.h"
@@ -114,16 +115,14 @@ void nfcLnurlwReceived(const String &lnurlw)
     LOG_INFO("NFC", "LNURLW received from Bolt Card – sending WS event");
 
     // Determine which relay pin is currently active.
-    int activePin = 12; // Default: single mode uses pin 12.
+    // Uses RELAY_CHANNEL_PINS[product-1] so the mapping stays in sync with PinConfig.h.
+    // currentProduct is 1-based; RELAY_CHANNEL_PINS is 0-based.
+    int activePin = RELAY_CHANNEL_PINS[0]; // Default: CH01 / GPIO 12
     if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct > 0)
     {
-        switch (multiChannelConfig.currentProduct)
-        {
-            case 1: activePin = 12; break;
-            case 2: activePin = 13; break;
-            case 3: activePin = 10; break;
-            case 4: activePin = 11; break;
-            default: activePin = 12; break;
+        int idx = multiChannelConfig.currentProduct - 1;
+        if (idx >= 0 && idx < RELAY_CHANNEL_MAX) {
+            activePin = RELAY_CHANNEL_PINS[idx];
         }
     }
 

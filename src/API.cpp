@@ -97,8 +97,8 @@ void fetchSwitchLabels()
         Serial.println("[LABELS] No currency in API response, keeping config value: " + currency);
       }
       
-      // Clear existing labels
-      for (int i = 0; i < 4; i++) {
+      // Clear existing labels (12 channels: 4 shared + 8 headless-only)
+      for (int i = 0; i < 12; i++) {
         productLabels.labels[i] = "";
       }
       
@@ -109,9 +109,9 @@ void fetchSwitchLabels()
         const char* labelChar = switchObj["label"];
         String labelStr = (labelChar != nullptr) ? String(labelChar) : "";
         
-        // Store label based on pin number using array index
+        // Store label based on pin number using array index (0-11)
         int pinIndex = getPinIndex(pin);
-        if (pinIndex >= 0 && pinIndex < 4) {
+        if (pinIndex >= 0 && pinIndex < 12) {
           productLabels.labels[pinIndex] = labelStr;
           Serial.println("[LABELS] Pin " + String(pin) + " label: " + labelStr);
         }
