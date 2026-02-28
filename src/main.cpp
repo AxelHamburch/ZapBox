@@ -711,7 +711,9 @@ void Task1code(void *pvParameters)
     }
 
     leftButton.tick();
-    rightButton.tick();
+#if ENABLE_DISPLAY
+    rightButton.tick(); // Only T-Display-S3 has a physical right (HELP) button
+#endif
 
     // Handle external LED-button (GPIO 44 input)
     handleExternalButton();
@@ -826,11 +828,15 @@ void setup()
   leftButton.setDebounceMs(50); // 50ms debounce - fast response
   leftButton.attachClick(onNextButtonClick); // Single click = Navigate products OR exit config mode
   leftButton.attachLongPressStart(configMode); // Long press = Config mode
-  rightButton.setDebounceMs(50); // 50ms debounce - fast response
-  rightButton.setClickMs(400); // 400ms max for single click
-  rightButton.attachClick(showHelp); // Single click = Help
-  rightButton.attachDoubleClick(reportMode); // Double click = Report
-  rightButton.attachLongPressStart(showHelp); // Long press = Help (prevents missed clicks)
+#if ENABLE_DISPLAY
+  // T-Display-S3 only: physical right button on PIN_BUTTON_2 (GPIO14 on esp32dev is unconnected
+  // and floats during EN reset, causing ghost presses if ticked on headless version)
+  rightButton.setDebounceMs(50);
+  rightButton.setClickMs(400);
+  rightButton.attachClick(showHelp);           // Single click = Help
+  rightButton.attachDoubleClick(reportMode);   // Double click = Report
+  rightButton.attachLongPressStart(showHelp);  // Long press = Help
+#endif
 
   xTaskCreatePinnedToCore(
       Task1code, /* Function to implement the task */
