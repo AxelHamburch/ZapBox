@@ -10,6 +10,7 @@
 #include "NFCBoltCard.h"
 #include "PinConfig.h"
 #include "GlobalState.h"
+#include "DeviceState.h"
 #include "Log.h"
 
 #include <Wire.h>
@@ -19,6 +20,9 @@
 
 static Adafruit_PN532 *s_nfc = nullptr;
 static TaskHandle_t    s_taskHandle = nullptr;
+
+// Shared device state (defined in main.cpp)
+extern StateManager deviceState;
 
 // ─── FreeRTOS task ───────────────────────────────────────────────────────────
 
@@ -49,6 +53,23 @@ static void nfc_task_code(void *pvParams)
         {
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
+        }
+
+        // Discard card tap when device is not ready for payments.
+        // This prevents the NFC pending state from being entered during
+        // initialisation, WiFi connect or any error condition.
+        {
+            DeviceState curState = deviceState.getState();
+            if (curState == DeviceState::INITIALIZING   ||
+                curState == DeviceState::CONNECTING_WIFI ||
+                curState == DeviceState::ERROR_CRITICAL  ||
+                curState == DeviceState::ERROR_RECOVERABLE)
+            {
+                LOG_WARN("NFC", String("Card tap ignored – device not ready (state: ") +
+                                    deviceState.getDeviceStateName(curState) + String(")"));
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                continue;
+            }
         }
 
         LOG_INFO("NFC", String("Card detected – UID length: ") + String(uidLength));
