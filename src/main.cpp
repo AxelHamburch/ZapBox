@@ -1147,6 +1147,7 @@ void loop()
     Serial.println("");
     Serial.println("======================");
     Serial.println("   ZapBox ready! 🎉");
+    Serial.println("   Firmware: " VERSION);
     Serial.println("======================");
     readyMessageShown = true;
   }
