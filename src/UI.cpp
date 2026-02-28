@@ -168,8 +168,11 @@ void updateReadyLed() {
   static bool initBlinkState = false;
   
   // Fast blink during INITIALIZING or CONNECTING_WIFI (5Hz = 200ms period)
+  // Also keep fast blink when initializationActive is true, even if the state
+  // temporarily jumped to HELP_SCREEN / READY (e.g. button pressed mid-init).
   if (deviceState.isInState(DeviceState::INITIALIZING) || 
-      deviceState.isInState(DeviceState::CONNECTING_WIFI)) {
+      deviceState.isInState(DeviceState::CONNECTING_WIFI) ||
+      initializationActive) {
     if (millis() - lastInitBlinkTime > 200) { // Blink every 200ms (5Hz)
       initBlinkState = !initBlinkState;
       digitalWrite(PIN_LED_BUTTON_LED, initBlinkState ? HIGH : LOW);
