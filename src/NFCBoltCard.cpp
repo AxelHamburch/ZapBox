@@ -3,6 +3,10 @@
  * @brief NFC Bolt Card reader implementation for ZapBox (PN532 + NTAG424 DNA)
  *
  * See NFCBoltCard.h for full documentation.
+ *
+ * Also supports plain NDEF tags (e.g. NTAG215) carrying a bech32-encoded
+ * LNURL (LNURLwithdraw). The LNURL is decoded to the target HTTPS URL and
+ * processed via the same nfcLnurlwReceived() path as a Bolt Card.
  */
 
 #ifdef ENABLE_NFC
@@ -15,10 +19,168 @@
 
 #include <Wire.h>
 #include <Adafruit_PN532_NTAG424.h>
+#include <vector>
+
+// ─── Bech32 / LNURL helpers ──────────────────────────────────────────────────
+
+// Forward declaration (defined in the module-private state section below)
+static Adafruit_PN532 *s_nfc;
+
+/**
+ * @brief Decode a bech32-encoded LNURL to the underlying HTTPS URL.
+ *
+ * Accepts both bare "LNURL1..." and "lightning:LNURL1..." forms.
+ * Returns an empty String on failure.
+ */
+static String decodeLnurlBech32(String lnurl)
+{
+    // Strip optional "lightning:" prefix
+    lnurl.toLowerCase();
+    if (lnurl.startsWith("lightning:")) lnurl = lnurl.substring(10);
+
+    // Must start with "lnurl1"
+    int sep = lnurl.indexOf('1');
+    if (sep < 0) return "";
+    String hrp  = lnurl.substring(0, sep);   // should be "lnurl"
+    String data = lnurl.substring(sep + 1);  // base32 data + 6-char checksum
+
+    if (hrp != "lnurl" || data.length() < 7) return "";
+
+    // Drop 6 checksum characters
+    data = data.substring(0, data.length() - 6);
+
+    // Build reverse-lookup table for bech32 charset
+    int8_t rev[128];
+    memset(rev, -1, sizeof(rev));
+    for (int i = 0; i < 32; i++) rev[(uint8_t)BECH32_CHARSET[i]] = i;
+
+    // Decode base32 → 5-bit values
+    std::vector<uint8_t> vals;
+    vals.reserve(data.length());
+    for (size_t i = 0; i < data.length(); i++) {
+        char c = data[i];
+        if (c < 0 || rev[(uint8_t)c] < 0) return "";
+        vals.push_back((uint8_t)rev[(uint8_t)c]);
+    }
+
+    // Convert 5-bit groups to 8-bit bytes
+    std::vector<uint8_t> result;
+    int acc = 0, bits = 0;
+    for (uint8_t v : vals) {
+        acc = (acc << 5) | v;
+        bits += 5;
+        if (bits >= 8) {
+            bits -= 8;
+            result.push_back((acc >> bits) & 0xFF);
+        }
+    }
+
+    if (result.empty()) return "";
+    return String((const char*)result.data()).substring(0, result.size());
+}
+
+// ─── NTAG215 / plain NDEF reader ─────────────────────────────────────────────
+
+/**
+ * @brief Read NDEF URI from a plain NFC tag (e.g. NTAG213/215/216) using
+ *        page reads (4 bytes per page, starting at page 4).
+ *
+ * Parses the NDEF TLV structure and extracts the first URI record payload.
+ * Returns empty String on any failure.
+ */
+static String readNdefUri()
+{
+    // Collect all readable pages (NTAG215 has pages 0-44, user data 4-39)
+    uint8_t buf[256] = {0};
+    int bufLen = 0;
+
+    for (uint8_t page = 4; page < 44 && bufLen < (int)sizeof(buf) - 4; page++) {
+        uint8_t pageData[4];
+        if (!s_nfc->mifareultralight_ReadPage(page, pageData)) break;
+        memcpy(buf + bufLen, pageData, 4);
+        bufLen += 4;
+    }
+
+    if (bufLen == 0) return "";
+
+    // Parse NDEF TLV: find tag 0x03 (NDEF Message)
+    int pos = 0;
+    while (pos < bufLen - 1) {
+        uint8_t tag = buf[pos++];
+        if (tag == 0xFE) break;          // terminator
+        if (tag == 0x00) continue;       // NULL TLV
+
+        // Read TLV length (can be 1 or 3 bytes)
+        int tlvLen = 0;
+        if (pos >= bufLen) break;
+        if (buf[pos] == 0xFF) {          // 3-byte length
+            if (pos + 2 >= bufLen) break;
+            tlvLen = ((int)buf[pos+1] << 8) | buf[pos+2];
+            pos += 3;
+        } else {
+            tlvLen = buf[pos++];
+        }
+
+        if (tag != 0x03) { pos += tlvLen; continue; }  // skip non-NDEF TLVs
+
+        // We have an NDEF message at buf[pos], length tlvLen.
+        // Minimal NDEF record header: [flags][type_len][payload_len][id_len?][type][payload]
+        if (tlvLen < 5 || pos + tlvLen > bufLen) break;
+
+        uint8_t flags      = buf[pos];
+        uint8_t typeLen    = buf[pos+1];
+        // payload length: 4 bytes for long records, 1 byte for short records (SR flag)
+        int     payloadLen = 0;
+        int     hdrOff     = 2;
+        bool    sr         = (flags & 0x10) != 0;
+        if (sr) {
+            payloadLen = buf[pos + hdrOff++];
+        } else {
+            if (pos + hdrOff + 4 > bufLen) break;
+            payloadLen = ((int)buf[pos+hdrOff]   << 24) | ((int)buf[pos+hdrOff+1] << 16) |
+                         ((int)buf[pos+hdrOff+2] <<  8) |  (int)buf[pos+hdrOff+3];
+            hdrOff += 4;
+        }
+        bool hasId = (flags & 0x08) != 0;
+        if (hasId) hdrOff++;  // skip ID length byte (we don't need ID)
+
+        int typeStart    = pos + hdrOff;
+        int payloadStart = typeStart + typeLen + (hasId ? buf[pos+3] : 0);
+
+        if (payloadStart + payloadLen > pos + tlvLen) break;
+
+        // Check NDEF record type: 'U' (0x55) = URI record
+        if (typeLen == 1 && buf[typeStart] == 0x55 && payloadLen > 1) {
+            // First byte of payload is URI identifier code
+            // 0x00 = no prefix, others map to common prefixes (https://, http://, etc.)
+            static const char* URI_PREFIXES[] = {
+                "", "http://www.", "https://www.", "http://", "https://",
+                "tel:", "mailto:", "ftp://anonymous:anonymous@", "ftp://ftp.",
+                "ftps://", "sftp://", "smb://", "nfs://", "ftp://",
+                "dav://", "news:", "telnet://", "imap:", "rtsp://", "urn:",
+                "pop:", "sip:", "sips:", "tftp:", "btspp://", "btl2cap://",
+                "btgoep://", "tcpobex://", "irdaobex://", "file://",
+                "urn:epc:id:", "urn:epc:tag:", "urn:epc:pat:", "urn:epc:raw:",
+                "urn:epc:", "urn:nfc:"
+            };
+            uint8_t prefixCode = buf[payloadStart];
+            String prefix = (prefixCode < 36) ? String(URI_PREFIXES[prefixCode]) : "";
+            String uriPayload = prefix;
+            for (int i = 1; i < payloadLen; i++) {
+                uriPayload += (char)buf[payloadStart + i];
+            }
+            return uriPayload;
+        }
+
+        // Not a URI record – skip
+        pos += tlvLen;
+    }
+    return "";
+}
 
 // ─── Module-private state ────────────────────────────────────────────────────
 
-static Adafruit_PN532 *s_nfc = nullptr;
+// Note: s_nfc is forward-declared before the helper functions above.
 static TaskHandle_t    s_taskHandle = nullptr;
 
 // Shared device state (defined in main.cpp)
@@ -91,8 +253,37 @@ static void nfc_task_code(void *pvParams)
         // Verify the card is an NTAG424 DNA (required for Bolt Card).
         if (!s_nfc->ntag424_isNTAG424())
         {
-            LOG_WARN("NFC", "Not an NTAG424 card – Bolt Card requires NTAG424 DNA");
-            vTaskDelay(pdMS_TO_TICKS(500));
+            LOG_INFO("NFC", "Not an NTAG424 – trying plain NDEF read (NTAG215 / LNURL tag)...");
+
+            String uri = readNdefUri();
+            if (uri.length() == 0) {
+                LOG_WARN("NFC", "No readable NDEF URI found on card");
+                vTaskDelay(pdMS_TO_TICKS(500));
+                continue;
+            }
+
+            LOG_INFO("NFC", String("NDEF URI: ") + uri.substring(0, 60));
+
+            // Strip optional "lightning:" URI scheme prefix
+            String lnurlRaw = uri;
+            if (lnurlRaw.startsWith("lightning:") || lnurlRaw.startsWith("LIGHTNING:"))
+                lnurlRaw = lnurlRaw.substring(10);
+
+            // Decode bech32 LNURL → https:// URL
+            String url = decodeLnurlBech32(lnurlRaw);
+            if (!url.startsWith("https://") && !url.startsWith("http://")) {
+                LOG_WARN("NFC", String("NDEF URI is not a valid LNURL (decoded: ") + url.substring(0, 40) + ")");
+                vTaskDelay(pdMS_TO_TICKS(500));
+                continue;
+            }
+
+            // Convert https:// to lnurlw:// so the server handler can process it
+            // (views_api.py /nfc endpoint expects lnurlw:// and converts to https://)
+            String lnurlw = "lnurlw://" + url.substring(url.indexOf("://") + 3);
+            LOG_INFO("NFC", String("✓ LNURL decoded → lnurlw: ") + lnurlw.substring(0, 50) + "...");
+
+            nfcLnurlwReceived(lnurlw);
+            vTaskDelay(pdMS_TO_TICKS(4000));
             continue;
         }
 
