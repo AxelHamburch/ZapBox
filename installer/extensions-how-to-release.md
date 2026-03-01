@@ -47,17 +47,30 @@ Invoke-WebRequest -Uri "https://github.com/AxelHamburch/zapbox_extension/archive
 
 File: `d:\VSCode\ZapBox\installer\extensions.json`
 
+> **Important:** Do **not** overwrite the old entry. **Add the new version as a new object at the top** of the array so users can choose which version to install. Old versions remain available.
+
 ```json
 {
-  "extensions": [{
-    "id": "zapbox",
-    "repo": "https://github.com/AxelHamburch/zapbox_extension",
-    "name": "Zap⚡Box",
-    "version": "2.0.0",
-    "min_lnbits_version": "1.4.0",
-    "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.0.0.zip",
-    "hash": "<NEW HASH>"
-  }]
+  "extensions": [
+    {
+      "id": "zapbox",
+      "repo": "https://github.com/AxelHamburch/zapbox_extension",
+      "name": "Zap⚡Box",
+      "version": "2.0.0",
+      "min_lnbits_version": "1.4.0",
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.0.0.zip",
+      "hash": "<NEW HASH>"
+    },
+    {
+      "id": "zapbox",
+      "repo": "https://github.com/AxelHamburch/zapbox_extension",
+      "name": "Zap⚡Box",
+      "version": "<PREVIOUS VERSION>",
+      "min_lnbits_version": "1.4.0",
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v<PREVIOUS VERSION>.zip",
+      "hash": "<PREVIOUS HASH>"
+    }
+  ]
 }
 ```
 
@@ -123,19 +136,30 @@ Invoke-WebRequest -Uri "https://github.com/AxelHamburch/zapbox_extension/archive
 
 ### 5. Update `extensions.json`
 
-Update `version`, `archive` and `hash`:
+Add the new version **at the top** of the array. Keep the old entry below it – do **not** delete it.
 
 ```json
 {
-  "extensions": [{
-    "id": "zapbox",
-    "repo": "https://github.com/AxelHamburch/zapbox_extension",
-    "name": "Zap⚡Box",
-    "version": "2.1.0",
-    "min_lnbits_version": "1.4.0",
-    "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.1.0.zip",
-    "hash": "<NEW HASH>"
-  }]
+  "extensions": [
+    {
+      "id": "zapbox",
+      "repo": "https://github.com/AxelHamburch/zapbox_extension",
+      "name": "Zap⚡Box",
+      "version": "2.1.0",
+      "min_lnbits_version": "1.4.0",
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.1.0.zip",
+      "hash": "<NEW HASH>"
+    },
+    {
+      "id": "zapbox",
+      "repo": "https://github.com/AxelHamburch/zapbox_extension",
+      "name": "Zap⚡Box",
+      "version": "<PREVIOUS VERSION>",
+      "min_lnbits_version": "1.4.0",
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v<PREVIOUS VERSION>.zip",
+      "hash": "<PREVIOUS HASH>"
+    }
+  ]
 }
 ```
 
@@ -155,6 +179,7 @@ Same as steps 5–7 from section A.
 | Recalculate SHA256 | ✅ | ✅ |
 | Update `extensions.json` hash | ✅ | ✅ |
 | Update `extensions.json` version + URL | ❌ | ✅ |
+| Keep old version entry in `extensions.json` | ✅ | ✅ |
 | Bump version in `config.json` | ❌ | ✅ |
 | Upload via SFTP | ✅ | ✅ |
 | Reinstall extension in LNbits | ✅ | ✅ |
