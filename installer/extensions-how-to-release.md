@@ -47,7 +47,7 @@ Invoke-WebRequest -Uri "https://github.com/AxelHamburch/zapbox_extension/archive
 
 File: `d:\VSCode\ZapBox\installer\extensions.json`
 
-> **Important:** Do **not** overwrite the old entry. **Add the new version as a new object at the top** of the array so users can choose which version to install. Old versions remain available.
+> **Important:** Do **not** overwrite the old entry. **Add the new version at the bottom** of the array so users can choose which version to install. LNbits picks the highest version number – placing it last avoids false "update available" notifications for older entries.
 
 ```json
 {
@@ -56,19 +56,19 @@ File: `d:\VSCode\ZapBox\installer\extensions.json`
       "id": "zapbox",
       "repo": "https://github.com/AxelHamburch/zapbox_extension",
       "name": "Zap⚡Box",
-      "version": "2.0.0",
+      "version": "<PREVIOUS VERSION>",
       "min_lnbits_version": "1.4.0",
-      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.0.0.zip",
-      "hash": "<NEW HASH>"
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v<PREVIOUS VERSION>.zip",
+      "hash": "<PREVIOUS HASH>"
     },
     {
       "id": "zapbox",
       "repo": "https://github.com/AxelHamburch/zapbox_extension",
       "name": "Zap⚡Box",
-      "version": "<PREVIOUS VERSION>",
+      "version": "2.0.0",
       "min_lnbits_version": "1.4.0",
-      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v<PREVIOUS VERSION>.zip",
-      "hash": "<PREVIOUS HASH>"
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.0.0.zip",
+      "hash": "<NEW HASH>"
     }
   ]
 }
@@ -136,7 +136,7 @@ Invoke-WebRequest -Uri "https://github.com/AxelHamburch/zapbox_extension/archive
 
 ### 5. Update `extensions.json`
 
-Add the new version **at the top** of the array. Keep the old entry below it – do **not** delete it.
+Add the new version **at the bottom** of the array. Keep the old entry above it – do **not** delete it.
 
 ```json
 {
@@ -145,19 +145,19 @@ Add the new version **at the top** of the array. Keep the old entry below it –
       "id": "zapbox",
       "repo": "https://github.com/AxelHamburch/zapbox_extension",
       "name": "Zap⚡Box",
-      "version": "2.1.0",
+      "version": "<PREVIOUS VERSION>",
       "min_lnbits_version": "1.4.0",
-      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.1.0.zip",
-      "hash": "<NEW HASH>"
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v<PREVIOUS VERSION>.zip",
+      "hash": "<PREVIOUS HASH>"
     },
     {
       "id": "zapbox",
       "repo": "https://github.com/AxelHamburch/zapbox_extension",
       "name": "Zap⚡Box",
-      "version": "<PREVIOUS VERSION>",
+      "version": "2.1.0",
       "min_lnbits_version": "1.4.0",
-      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v<PREVIOUS VERSION>.zip",
-      "hash": "<PREVIOUS HASH>"
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.1.0.zip",
+      "hash": "<NEW HASH>"
     }
   ]
 }
