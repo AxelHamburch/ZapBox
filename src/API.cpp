@@ -1,6 +1,7 @@
 #include "API.h"
 #include "GlobalState.h"
 #include "DeviceState.h"
+#include "Log.h"
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
