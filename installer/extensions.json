@@ -11,6 +11,19 @@
       "details_link": "https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/config.json",
       "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.0.2.zip",
       "hash": "449014165011379d586001ebb9cb7ce9b58fb3619616be5e99e809d87a91f221"
+    },
+    {
+      "id": "zapbox",
+      "repo": "https://github.com/AxelHamburch/zapbox_extension",
+      "name": "Zap⚡Box",
+      "version": "2.0.1",
+      "min_lnbits_version": "1.4.0",
+      "short_description": "Turn things on with bitcoin – NFC Bolt Card support for ZapBox",
+      "icon": "https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/static/image/icon.png",
+      "details_link": "https://raw.githubusercontent.com/AxelHamburch/zapbox_extension/main/config.json",
+      "archive": "https://github.com/AxelHamburch/zapbox_extension/archive/refs/tags/v2.0.1.zip",
+      "hash": "a6081046d5d69237c8a729d289af4a3ea76c462e5635e0d3bbf742ab6a02bda5"
     }
   ]
 }
+
