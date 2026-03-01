@@ -82,19 +82,18 @@ void fetchSwitchLabels()
     DeserializationError error = deserializeJson(doc, payload);
     
     if (!error) {
-      // Extract currency from response
+      // Extract currency from response (optional field – not all extensions send it)
       const char* currencyChar = doc["currency"];
-      Serial.print("[LABELS] DEBUG - currency field from API: ");
       if (currencyChar != nullptr) {
-        Serial.println(String(currencyChar));
         String oldCurrency = currency;
         currency = String(currencyChar);
         currency.toUpperCase(); // Ensure uppercase for display and API calls
-        Serial.println("[LABELS] Currency changed from '" + oldCurrency + "' to '" + currency + "'");
+        LOG_INFO("LABELS", "Currency set by server: " + currency +
+                           (oldCurrency != currency ? " (was: " + oldCurrency + ")" : ""));
       } else {
-        Serial.println("NULL - field not found in response");
-        // Keep currency from config (don't override with USD)
-        Serial.println("[LABELS] No currency in API response, keeping config value: " + currency);
+        // Server did not include a currency field – keep the current value (default: USD).
+        // This is normal for extensions that don't configure currency per-device.
+        LOG_INFO("LABELS", "No currency in API response – using: " + currency);
       }
       
       // Clear existing labels (12 channels: 4 shared + 8 headless-only)

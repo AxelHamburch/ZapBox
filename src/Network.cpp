@@ -112,6 +112,20 @@ void nfcLnurlwReceived(const String &lnurlw)
   nfcTestScreen(lnurlw); // Display.h
   return;
 #endif
+
+    // NFC is only supported by zapbox_extension.
+    // If the device is configured with bitcoinswitch_extension, the server-side
+    // has no /api/v1/nfc/ endpoint – silently swallowing the tap would leave the
+    // device stuck on the PENDING NFC screen.  Abort early and inform the user.
+    if (extensionConfig.apiPath != "zapbox")
+    {
+        LOG_WARN("NFC", "Bolt Card tap detected – NFC is not supported by the active extension ("
+                        + extensionConfig.apiPath + ").");
+        LOG_WARN("NFC", "To use NFC / Bolt Cards, switch to zapbox_extension (apiPath = \"zapbox\").");
+        LOG_WARN("NFC", "Tap ignored – device continues normal operation.");
+        return;
+    }
+
     LOG_INFO("NFC", "LNURLW received from Bolt Card – sending WS event");
 
     // Determine which relay pin is currently active.
