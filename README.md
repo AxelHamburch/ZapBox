@@ -874,6 +874,8 @@ Electrical design and housing variants, see table.
 | e937540 | Duo | Duo Update |
 | e937544 | USB-Power-Hub | First USB-Power-Hub |
 | e938714 | ZapOMat | Firest ZapOMat design |
+| e938889 | Headless | Update Headless with ZapBox picture |
+ |
 
 -> Find all versions here: [./assets/electric)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
