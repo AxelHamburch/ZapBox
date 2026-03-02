@@ -854,8 +854,9 @@ Electrical design and housing variants, see table.
 | b932506 | Compact | Add adapter system, 90-degree front, change USB-C position  |
 | b932595 | Duo & Quattro | Prototyp Quattro and update Duo, 90 and 35 degrees front |
 | b932788 | Illuminated Sign | Prototyp ZapBox LED sign for demonstration and testing purposes |
-| b935750 | Headless |  Prototyp Headless - ZapBox without display |
-| b937454 | USB-Power-Hub |  Prototyp USB-Power-Hub - Just for voltage distribution |
+| b935750 | Headless | Prototyp Headless - ZapBox without display |
+| b937454 | USB-Power-Hub | Prototyp USB-Power-Hub - Just for voltage distribution |
+| b939002 | Compact | Compact 35° now with NFC cap 🎉 |
 
 -> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
