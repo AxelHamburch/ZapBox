@@ -150,6 +150,7 @@ struct ExtensionConfig {
   volatile bool nfcPaymentPending = false;           // True while waiting for LNURLW invoice settlement
   volatile unsigned long nfcPaymentPendingStart = 0; // Timestamp when NFC payment was initiated (for timeout)
   volatile bool nfcPaymentFailed = false;            // True when HTTP POST to server failed – triggers NO LUCK screen
+  volatile bool nfcExtensionMismatch = false;         // True when NFC tap detected but extension is not zapbox
 };
 
 extern ExtensionConfig extensionConfig;

@@ -27,6 +27,7 @@ void stepThreeScreen();
 void actionTimeScreen();
 void nfcPendingScreen();
 void nfcNoLuckScreen();
+void nfcNotSupportedScreen();
 void thankYouScreen();
 void drawQRCode();
 void showQRScreen();
@@ -66,6 +67,7 @@ inline void stepThreeScreen() {}
 inline void actionTimeScreen() {}
 inline void nfcPendingScreen() {}
 inline void nfcNoLuckScreen() {}
+inline void nfcNotSupportedScreen() {}
 inline void thankYouScreen() {}
 inline void drawQRCode() {}
 inline void showQRScreen() {}

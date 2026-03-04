@@ -944,6 +944,49 @@ void nfcNoLuckScreen()
   }
 }
 
+// NFC not supported by active extension (e.g. bitcoinswitch instead of zapbox)
+void nfcNotSupportedScreen()
+{
+  DisplayLock lock;
+  // ZAPBOX theme color inversion fix
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
+    tft.fillScreen(TFT_BLACK);
+    delay(10);
+    tft.fillScreen(TFT_BLACK);
+    delay(5);
+  }
+  safeFillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    // NFC in inverted-color box (top)
+    tft.fillRect(15, y - 95, 140, 62, themeForeground);
+    tft.setTextColor(themeBackground);
+    tft.setTextSize(4);
+    tft.drawString("NFC", x + 5, y - 64, GFXFF);
+    // "not" + "supported" below
+    tft.setTextColor(themeForeground);
+    tft.setTextSize(2);
+    tft.drawString("not", x + 1, y + 0, GFXFF);
+    tft.drawString("supported", x + 1, y + 30, GFXFF);
+    tft.setTextSize(1);
+    tft.drawString("use zapbox extension", x + 1, y + 65, GFXFF);
+  } else {
+    // NFC in inverted-color box (left)
+    tft.fillRect(100, y - 55, 132, 55, themeForeground);
+    tft.setTextColor(themeBackground);
+    tft.setTextSize(4);
+    tft.drawString("NFC", x + 5, y - 28, GFXFF);
+    // "not supported" below
+    tft.setTextColor(themeForeground);
+    tft.setTextSize(2);
+    tft.drawString("not supported", x + 5, y + 20, GFXFF);
+    tft.setTextSize(1);
+    tft.drawString("use zapbox extension", x + 5, y + 50, GFXFF);
+  }
+}
+
 // Thank you
 void thankYouScreen()
 {

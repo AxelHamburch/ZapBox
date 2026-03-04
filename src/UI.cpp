@@ -101,10 +101,39 @@ void updateReadyLed() {
   // As soon as the relay fires (paymentQueue.processing), two quick confirmation blinks
   // (100ms ON / 100ms OFF × 2) indicate the payment was accepted, then LED goes OFF for
   // the relay duration. After nfcPaymentPending clears, LED returns to steady ON.
+  // On timeout / HTTP error (no payment): 3× fast blink (100ms ON/OFF) = "NO LUCK".
   #if ENABLE_NFC
   static bool wasNfcPending = false;
   static bool nfcConfirmStarted = false;
   static unsigned long nfcConfirmStartTime = 0;
+  static bool nfcNoLuckActive = false;
+  static unsigned long nfcNoLuckStartTime = 0;
+
+  // NFC "NO LUCK" blink: 3× fast blink (100ms ON / 100ms OFF) after timeout/error,
+  // then return to steady LED.
+  if (nfcNoLuckActive) {
+    unsigned long elapsed = millis() - nfcNoLuckStartTime;
+    if (elapsed < 600) { // 3 blinks × 200ms (100 ON + 100 OFF) = 600ms
+      bool on = ((elapsed / 100) % 2 == 0);
+      static bool lastNoLuckState = true;
+      if (on != lastNoLuckState) {
+        lastNoLuckState = on;
+        digitalWrite(PIN_LED_BUTTON_LED, on ? HIGH : LOW);
+        #ifdef PIN_ONBOARD_LED
+        digitalWrite(PIN_ONBOARD_LED, on ? HIGH : LOW);
+        #endif
+      }
+      return;
+    }
+    // Blink sequence done → return to steady ON
+    nfcNoLuckActive = false;
+    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    #ifdef PIN_ONBOARD_LED
+    digitalWrite(PIN_ONBOARD_LED, HIGH);
+    #endif
+    readyLedState = true;
+    return;
+  }
 
   if (extensionConfig.nfcPaymentPending) {
     wasNfcPending = true;
@@ -158,6 +187,18 @@ void updateReadyLed() {
   // NFC pending cleared – reset confirm-blink state and force LED re-apply
   if (wasNfcPending) {
     wasNfcPending = false;
+    if (!nfcConfirmStarted) {
+      // No payment received → timeout or HTTP error → "NO LUCK" 3× fast blink
+      nfcNoLuckActive = true;
+      nfcNoLuckStartTime = millis();
+      // Start first blink: ON
+      digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+      #ifdef PIN_ONBOARD_LED
+      digitalWrite(PIN_ONBOARD_LED, HIGH);
+      #endif
+      nfcConfirmStarted = false;
+      return;
+    }
     nfcConfirmStarted = false;
     readyLedState = !isReadyForReceive(); // Force mismatch so digitalWrite fires below
   }

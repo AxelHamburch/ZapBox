@@ -7,11 +7,11 @@ function updateConnectionStatus(connected) {
     if (connected) {
         statusElement.style.backgroundColor = '#d4edda';
         statusElement.style.color = '#155724';
-        statusElement.textContent = '● Connected';
+        statusElement.textContent = '✅ Connected';
     } else {
         statusElement.style.backgroundColor = '#e0e0e0';
         statusElement.style.color = '#888';
-        statusElement.textContent = '● Not connected';
+        statusElement.textContent = '❌ Not connected';
     }
 }
 
@@ -21,10 +21,10 @@ function updateConfigModeStatus(inConfigMode) {
     if (inConfigMode) {
         statusElement.style.backgroundColor = '#d4edda';
         statusElement.style.color = '#155724';
-        statusElement.textContent = '● Config mode';
+        statusElement.textContent = '✅ Config mode';
     } else {
         statusElement.style.backgroundColor = '#e0e0e0';
         statusElement.style.color = '#888';
-        statusElement.textContent = '● No config mode';
+        statusElement.textContent = '❌ No config mode';
     }
 }

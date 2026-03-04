@@ -45,6 +45,15 @@ void fetchSwitchLabels()
     return;
   }
 
+  // SAFETY: Abort if WiFi is being torn down for config mode.
+  // configMode() sets CONFIG_MODE on Core 0 before WiFi.disconnect();
+  // if we start an HTTPS request while WiFi is shutting down, the SSL
+  // stack will crash with LoadProhibited.
+  if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
+    Serial.println("[LABELS] Skipping fetch - CONFIG_MODE active");
+    return;
+  }
+
   // Update last attempt time to prevent rapid retries
   lastFetchAttempt = millis();
 

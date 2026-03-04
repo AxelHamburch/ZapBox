@@ -110,6 +110,8 @@ StateManager deviceState;  // Global state machine instance
 static bool          nfcPendingScreenShown = false;
 static bool          nfcNoLuckScreenShown  = false;
 static unsigned long nfcNoLuckStart        = 0;
+static bool          nfcNotSupportedShown  = false;
+static unsigned long nfcNotSupportedStart  = 0;
 #endif
 
 WebSocketsClient webSocket;
@@ -608,15 +610,31 @@ void configMode()
   esp_log_level_set("WiFiSTA", ESP_LOG_NONE);
   esp_log_level_set("WiFiMulti", ESP_LOG_NONE);
 
-  // CRITICAL: Stop WiFi to prevent async WiFi event callbacks
-  // from corrupting serial output via USB CDC.
-  WiFi.disconnect(true);
+  // Set CONFIG_MODE state BEFORE WiFi teardown so that any in-progress HTTP
+  // requests on Core 1 (e.g. fetchBitcoinData, fetchSwitchConfigurations) can
+  // check the flag and abort.  Without this, WiFi.disconnect(true) frees the
+  // mbedTLS/SSL resources while Core 1 is still inside http.GET(), causing a
+  // LoadProhibited crash (EXCVADDR ~0x130).
+  deviceState.transition(DeviceState::CONFIG_MODE);
+
+  // Give in-progress HTTPS requests on Core 1 time to complete or fail.
+  // fetchBitcoinData() uses http.setTimeout(5000) — the typical request
+  // finishes in <2s, so 2 seconds is enough for most cases.  Even if the
+  // request is still in flight, the graceful WiFi.disconnect(false) below
+  // will send TCP RST and trigger a clean HTTP error instead of a crash.
+  delay(2000);
+
+  // Step 1: Graceful WiFi disconnect (sends TCP FIN/RST to active sockets).
+  // Using false = don't kill the radio yet, just close connections cleanly.
+  WiFi.disconnect(false);
+  delay(200); // Let TCP close / SSL shutdown propagate
+
+  // Step 2: Now shut down the radio completely.
   WiFi.mode(WIFI_OFF);
-  delay(200); // Let pending WiFi/SSL callbacks drain completely
+  delay(100); // Let pending WiFi event callbacks drain
 
   // Set CONFIG_MODE state SILENTLY (DeviceState suppresses serial for CONFIG_MODE)
   configModeScreen(); // Draw config screen
-  deviceState.transition(DeviceState::CONFIG_MODE);
   configModeStartTime = millis();
   updateReadyLed();
 
@@ -1162,17 +1180,6 @@ void loop()
     updateReadyLed();
   }
   
-  // Show ready message when LED turns on (only once)
-  static bool readyMessageShown = false;
-  if (!readyMessageShown && isReadyForReceive()) {
-    Serial.println("");
-    Serial.println("======================");
-    Serial.println("   ZapBox ready! 🎉");
-    Serial.println("   Firmware: " VERSION);
-    Serial.println("======================");
-    readyMessageShown = true;
-  }
-  
   // Display power saving status on first loop iteration
   static bool firstLoopStatusShown = false;
   if (!firstLoopStatusShown) {
@@ -1271,6 +1278,20 @@ void loop()
     updateReadyLed();
   }
 
+  // Show ready message immediately after QR screen is displayed and LED is on.
+  // Previously this ran at the top of loop() using isReadyForReceive(), but since
+  // the inner while(true) never exits under normal conditions, the message would only
+  // appear after a delayed return, sometimes 5-10 seconds after the QR code was shown.
+  static bool readyMessageShown = false;
+  if (!readyMessageShown && isReadyForReceive()) {
+    Serial.println("");
+    Serial.println("======================");
+    Serial.println("   ZapBox ready! \xF0\x9F\x8E\x89");
+    Serial.println("   Firmware: " VERSION);
+    Serial.println("======================");
+    readyMessageShown = true;
+  }
+
   unsigned long lastWiFiCheck = millis();
   networkStatus.lastPingTime = millis(); // Initialize global variable
   unsigned long loopCount = 0;
@@ -1312,8 +1333,21 @@ void loop()
     // if it were placed later.
     #if ENABLE_NFC
     {
+      // Extension mismatch: NFC tap detected but not using zapbox_extension
+      if (extensionConfig.nfcExtensionMismatch) {
+        extensionConfig.nfcExtensionMismatch = false;
+        nfcNotSupportedScreen();
+        nfcNotSupportedShown = true;
+        nfcNotSupportedStart = millis();
+        LOG_WARN("NFC", "NFC not supported by active extension \u2013 showing error screen for 5s");
+      } else if (nfcNotSupportedShown) {
+        if (millis() - nfcNotSupportedStart > 5000) {
+          nfcNotSupportedShown = false;
+          needsQRRedraw = true;
+          LOG_INFO("NFC", "NFC not supported screen dismissed \u2013 returning to QR screen");
+        }
       // HTTP POST failed \u2192 show NO LUCK immediately
-      if (extensionConfig.nfcPaymentFailed) {
+      } else if (extensionConfig.nfcPaymentFailed) {
         extensionConfig.nfcPaymentFailed  = false;
         extensionConfig.nfcPaymentPending = false;
         nfcPendingScreenShown = false;
@@ -1335,8 +1369,8 @@ void loop()
         }
         // Timeout: if no payment confirmation arrives, show NO LUCK screen.
         // Timer runs from the card tap (set once before HTTP POST).
-        // Production: 60000 ms (60s).  Test: 20000 ms (20s).
-        if (millis() - extensionConfig.nfcPaymentPendingStart > 20000) {
+        // Production: 60000 ms (60s).
+        if (millis() - extensionConfig.nfcPaymentPendingStart > 60000) {
           extensionConfig.nfcPaymentPending = false;
           nfcPendingScreenShown = false;
           nfcNoLuckScreen();
@@ -2368,6 +2402,7 @@ static void processNormalPayment(int pin, int duration)
   extensionConfig.nfcPaymentPending = false;
   nfcPendingScreenShown = false;
   nfcNoLuckScreenShown  = false;
+  nfcNotSupportedShown  = false;
   #endif
 
   if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {

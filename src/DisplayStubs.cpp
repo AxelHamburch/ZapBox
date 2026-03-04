@@ -5,6 +5,7 @@
 #include <Arduino.h>
 
 // All display functions are no-ops in headless mode
+void initDisplayMutex() {}
 void initDisplay() {}
 void startupScreen() {}
 void btctickerScreen() {}
@@ -23,6 +24,7 @@ void stepThreeScreen() {}
 void actionTimeScreen() {}
 void nfcPendingScreen() {}
 void nfcNoLuckScreen() {}
+void nfcNotSupportedScreen() {}
 void thankYouScreen() {}
 void drawQRCode() {}
 void showQRScreen() {}

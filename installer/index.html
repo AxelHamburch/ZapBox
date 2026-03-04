@@ -71,7 +71,8 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v938908/manifest.json">v938908 (Latest - NTAG21x/LNURL NFC tag support 🎉)</option>
+                <option value="./firmware/v939296/manifest.json">v939296 (Latest - Display thread-safety &amp; NFC fixes 🛡️)</option>
+                <option value="./firmware/v938908/manifest.json">v938908 (NTAG21x/LNURL NFC tag support 🎉)</option>
                 <option value="./firmware/v938689/manifest.json">v938689 (NFC & serial connection fix 🛠️)</option>
                 <option value="./firmware/v938617/manifest.json">v938617 (NFC Bolt Card support &amp; zapbox_extension 🎉)</option>
                 <option value="./firmware/v938321/manifest.json">v938321 (Add ambient lighting switch for channel 4)</option>
@@ -99,7 +100,7 @@
                 <option value="./firmware/v926531/manifest.json">v926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v938908/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v939296/manifest.json">
                 <button slot="activate">🔥 Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -165,16 +166,18 @@
                 <label for="wifiPassword">WiFi password</label>
                 <input type="text" name="wifiPassword" id="wifiPassword" placeholder="password" autocomplete="off">
             </div>
-            <div>
-                <label for="socket">Device settings string</label>
-                <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
-                <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
-            </div>
-            <div>
-                <label>Status</label>
-                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-                    <div id="connection-status" style="padding: 6px 14px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">● Not connected</div>
-                    <div id="config-mode-status" style="padding: 6px 14px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">● No config mode</div>
+            <div style="display: flex; gap: 20px; align-items: flex-start; grid-column: span 2;">
+                <div style="flex: 2;">
+                    <label for="socket">Device settings string</label>
+                    <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? Use Bitcoin Switch or ZapBox extension → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
+                </div>
+                <div style="flex: 1;">
+                    <label>Status</label>
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                        <div id="connection-status" style="padding: 6px 14px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">❌ Not connected</div>
+                        <div id="config-mode-status" style="padding: 6px 14px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">❌ No config mode</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -499,6 +502,24 @@
         <h3>Other Errors</h3>
 
         <p><strong>Relay does not switch, but payment was successful</strong> → Wrong GPIO pin configured in LNbits?</p>
+
+        <h3>NFC Extension Mismatch</h3>
+
+        <p>If you tap an NFC Bolt Card or NTAG21x tag and see <strong>"NFC not supported"</strong> on the display (shown for 5 seconds), and the serial log shows:</p>
+
+        <pre style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 13px;">[WARN][NFC] Bolt Card tap detected – NFC is not supported by the active extension (bitcoinswitch).
+[WARN][NFC] To use NFC / Bolt Cards, switch to zapbox_extension (apiPath = "zapbox").</pre>
+
+        <p>This means the device is configured with the <strong>bitcoinswitch_extension</strong>, which does not have an NFC endpoint (<code>/api/v1/nfc/</code>). NFC payments are only supported by the <strong>zapbox_extension</strong>.</p>
+
+        <p><strong>Solution:</strong></p>
+        <ul>
+            <li>In LNbits, create a device using the <strong>zapbox_extension</strong> instead of bitcoinswitch</li>
+            <li>Copy the new device string and reconfigure the ZapBox</li>
+            <li>The device string format is the same – only the server-side extension changes</li>
+        </ul>
+
+        <p><i>This is <strong>not</strong> a hardware problem – the NFC reader works fine. It’s purely a server-side configuration issue.</i></p>
         </div>
 
         <!-- Troubleshoot Section -->

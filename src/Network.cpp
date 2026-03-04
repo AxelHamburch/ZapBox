@@ -123,6 +123,7 @@ void nfcLnurlwReceived(const String &lnurlw)
                         + extensionConfig.apiPath + ").");
         LOG_WARN("NFC", "To use NFC / Bolt Cards, switch to zapbox_extension (apiPath = \"zapbox\").");
         LOG_WARN("NFC", "Tap ignored – device continues normal operation.");
+        extensionConfig.nfcExtensionMismatch = true; // Signal main loop to show error screen
         return;
     }
 
