@@ -145,8 +145,11 @@ struct ExtensionConfig {
   // Controls which LNbits extension the device communicates with.
   // Set to "zapbox" when zapbox_extension is installed on the server.
   String apiPath = "bitcoinswitch";
-  bool nfcPaymentPending = false;           // True while waiting for LNURLW invoice settlement
-  unsigned long nfcPaymentPendingStart = 0; // Timestamp when NFC payment was initiated (for timeout)
+  // NFC state – written by the NFC task (Core 0), read by loop() (Core 1).
+  // Must be volatile to prevent the compiler from caching stale values in registers.
+  volatile bool nfcPaymentPending = false;           // True while waiting for LNURLW invoice settlement
+  volatile unsigned long nfcPaymentPendingStart = 0; // Timestamp when NFC payment was initiated (for timeout)
+  volatile bool nfcPaymentFailed = false;            // True when HTTP POST to server failed – triggers NO LUCK screen
 };
 
 extern ExtensionConfig extensionConfig;

@@ -22,6 +22,7 @@ void stepTwoScreen() {}
 void stepThreeScreen() {}
 void actionTimeScreen() {}
 void nfcPendingScreen() {}
+void nfcNoLuckScreen() {}
 void thankYouScreen() {}
 void drawQRCode() {}
 void showQRScreen() {}

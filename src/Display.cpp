@@ -13,6 +13,49 @@
 TFT_eSPI tft = TFT_eSPI();
 #define GFXFF 1
 
+// ============================================================================
+// DISPLAY MUTEX - Thread-safe SPI access
+// ============================================================================
+// TFT_eSPI is NOT thread-safe. Without this mutex, concurrent SPI access from
+// Core 0 (Task1: button callbacks, touch, navigation) and Core 1 (loop: payment
+// screens, NFC monitoring, ticker updates) causes display corruption (horizontal
+// stripes, garbled pixels, wrong colors).
+//
+// Uses RECURSIVE mutex because display functions call each other:
+//   showQRScreen() -> showProductQRScreen() -> drawQRCode()
+//   redrawQRScreen() -> btctickerScreen() / showProductQRScreen() / etc.
+// A regular mutex would deadlock on these nested calls from the same task.
+// ============================================================================
+static SemaphoreHandle_t displayMutex = NULL;
+
+// RAII guard: automatically takes mutex in constructor, gives in destructor.
+// Guarantees release even on early return statements within display functions.
+class DisplayLock {
+public:
+  DisplayLock() : _locked(false) {
+    if (displayMutex) {
+      xSemaphoreTakeRecursive(displayMutex, portMAX_DELAY);
+      _locked = true;
+    }
+  }
+  ~DisplayLock() {
+    if (_locked && displayMutex) {
+      xSemaphoreGiveRecursive(displayMutex);
+    }
+  }
+private:
+  bool _locked;
+};
+
+void initDisplayMutex() {
+  displayMutex = xSemaphoreCreateRecursiveMutex();
+  if (!displayMutex) {
+    Serial.println("[DISPLAY] FATAL: Failed to create display mutex!");
+  } else {
+    Serial.println("[DISPLAY] SPI mutex initialized (recursive)");
+  }
+}
+
 // Bitcoin Logo (64x64 pixels)
 const unsigned char bitcoin_logo[] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -163,6 +206,7 @@ void setThemeColors()
 
 void initDisplay()
 {
+  DisplayLock lock;
   tft.init();
   setThemeColors(); // Set displayConfig.theme colors based on configuration
   
@@ -194,6 +238,7 @@ void initDisplay()
 // Startup
 void startupScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
@@ -225,6 +270,7 @@ void startupScreen()
 // Bitcoin Ticker Screen
 void btctickerScreen()
 {
+  DisplayLock lock;
   // CRITICAL: Set rotation FIRST, before any drawing operations
   // This is especially important when switching from QR screens
   ensureCorrectRotation();
@@ -389,6 +435,7 @@ void btctickerScreen()
 // Only updates the dynamic values (price, sats, block) without redrawing the entire screen
 void updateBtctickerValues()
 {
+  DisplayLock lock;
   // Only update text areas, don't redraw logo or buttons
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
@@ -457,6 +504,7 @@ void updateBtctickerValues()
 // Initialization Screen (shown during connection setup)
 void initializationScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
@@ -488,6 +536,7 @@ void initializationScreen()
 // Boot-Up Screen (shown when waking from deep sleep or restarting)
 void bootUpScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
@@ -517,6 +566,7 @@ void bootUpScreen()
 // Config Mode Screen
 void configModeScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
@@ -546,6 +596,7 @@ void configModeScreen()
 // Error Report Screen
 void errorReportScreen(uint8_t wifiCount, uint8_t internetCount, uint8_t serverCount, uint8_t websocketCount)
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
@@ -577,6 +628,7 @@ void errorReportScreen(uint8_t wifiCount, uint8_t internetCount, uint8_t serverC
 // WiFi Reconnect Screen
 void wifiReconnectScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
@@ -606,6 +658,7 @@ void wifiReconnectScreen()
 // Internet/Server Reconnect Screen
 void internetReconnectScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
@@ -635,6 +688,7 @@ void internetReconnectScreen()
 // WebSocket Reconnect Screen
 void serverReconnectScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
@@ -661,6 +715,7 @@ void serverReconnectScreen()
 
 void websocketReconnectScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(4);
@@ -690,6 +745,7 @@ void websocketReconnectScreen()
 // Step one
 void stepOneScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
@@ -719,6 +775,7 @@ void stepOneScreen()
 // Step two
 void stepTwoScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
@@ -748,6 +805,7 @@ void stepTwoScreen()
 // Step three
 void stepThreeScreen()
 {
+  DisplayLock lock;
   tft.fillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
@@ -777,6 +835,7 @@ void stepThreeScreen()
 // Switched ON screen
 void actionTimeScreen()
 {
+  DisplayLock lock;
   // ZAPBOX theme color inversion fix: Reset display controller with double-clear
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);
@@ -817,6 +876,7 @@ void actionTimeScreen()
 // NFC payment pending screen
 void nfcPendingScreen()
 {
+  DisplayLock lock;
   // ZAPBOX theme color inversion fix: Reset display controller with double-clear
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);
@@ -847,9 +907,47 @@ void nfcPendingScreen()
   }
 }
 
+void nfcNoLuckScreen()
+{
+  DisplayLock lock;
+  // ZAPBOX theme color inversion fix
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
+    tft.fillScreen(TFT_BLACK);
+    delay(10);
+    tft.fillScreen(TFT_BLACK);
+    delay(5);
+  }
+  safeFillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    // NFC in inverted-color box (top)
+    tft.fillRect(15, y - 95, 140, 62, themeForeground);
+    tft.setTextColor(themeBackground);
+    tft.setTextSize(4);
+    tft.drawString("NFC", x + 5, y - 64, GFXFF);
+    // NO LUCK below
+    tft.setTextColor(themeForeground);
+    tft.setTextSize(3);
+    tft.drawString("NO LUCK", x + 1, y + 20, GFXFF);
+  } else {
+    // NFC in inverted-color box (left)
+    tft.fillRect(100, y - 55, 132, 55, themeForeground);
+    tft.setTextColor(themeBackground);
+    tft.setTextSize(4);
+    tft.drawString("NFC", x + 5, y - 28, GFXFF);
+    // NO LUCK below
+    tft.setTextColor(themeForeground);
+    tft.setTextSize(4);
+    tft.drawString("NO LUCK", x + 5, y + 37, GFXFF);
+  }
+}
+
 // Thank you
 void thankYouScreen()
 {
+  DisplayLock lock;
   safeFillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(10);
@@ -878,6 +976,7 @@ void thankYouScreen()
 // Show QR for ZAP action - uses product label from backend if available
 void showQRScreen()
 {
+  DisplayLock lock;
   int pinIndex = getPinIndex(12);
   String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : "READY 4 ZAP ACTION";
   showProductQRScreen(label, 12);
@@ -946,6 +1045,7 @@ void drawQRCodeWithColors(uint16_t fg, uint16_t bg)
 
 void showThresholdQRScreen()
 {
+  DisplayLock lock;
   tft.setTextDatum(ML_DATUM);
   safeFillScreen(themeBackground);
   tft.setTextSize(3);
@@ -991,6 +1091,7 @@ void showThresholdQRScreen()
 
 void showSpecialModeQRScreen()
 {
+  DisplayLock lock;
   int pinIndex = getPinIndex(12);
   String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : "READY 4 SP ACTION";
   showProductQRScreen(label, 12);
@@ -1000,6 +1101,7 @@ void showSpecialModeQRScreen()
 // Label can contain 1-3 words separated by spaces
 void showProductQRScreen(String label, int pin)
 {
+  DisplayLock lock;
   // CRITICAL: Set rotation FIRST, before any drawing operations
   // This is especially important for themes with color inversion
   ensureCorrectRotation();
@@ -1206,6 +1308,7 @@ void showProductQRScreen(String label, int pin)
 // Product Selection Screen - shown after 5 seconds of QR screen
 void productSelectionScreen()
 {
+  DisplayLock lock;
   safeFillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
@@ -1298,6 +1401,7 @@ static String screensaverMode = "off";
 
 void activateScreensaver(String mode)
 {
+  DisplayLock lock;
   Serial.println("[SCREENSAVER] Activating powerConfig.screensaver mode: " + mode);
   screensaverIsActive = true;
   screensaverMode = mode;
@@ -1323,6 +1427,7 @@ void activateScreensaver(String mode)
 
 void deactivateScreensaver()
 {
+  DisplayLock lock;
   if (!screensaverIsActive) {
     return;
   }
@@ -1360,6 +1465,7 @@ static String deepSleepMode = "off";
 
 void prepareDeepSleep()
 {
+  DisplayLock lock;
   Serial.println("[DEEP_SLEEP] Preparing for deep sleep...");
   
   // Disable watchdog timers to prevent reset during sleep preparation
@@ -1474,6 +1580,7 @@ bool isDeepSleepActive()
 // hardware functionality can be verified without a server.
 void nfcTestScreen(String lnurlw)
 {
+  DisplayLock lock;
   safeFillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_GREEN);

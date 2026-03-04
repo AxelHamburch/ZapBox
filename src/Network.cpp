@@ -157,25 +157,33 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     String body = String("{\"lnurlw\":\"") + lnurlw + String("\"}" );
 
-    // Set pending flag BEFORE the POST so the LED blink starts immediately.
-    // nfcPendingScreen() is called here from the NFC task for immediate display update.
+    // Set pending flag BEFORE the POST so the main loop (Core 1) can show
+    // the PENDING screen.  DO NOT call nfcPendingScreen() here – this function
+    // runs on Core 0 (NFC task) and TFT_eSPI is NOT thread-safe.  Concurrent
+    // SPI access from two cores corrupts the display controller (horizontal
+    // stripes / offset images that persist until power-cycle).
     extensionConfig.nfcPaymentPending = true;
-    extensionConfig.nfcPaymentPendingStart = millis(); // preliminary – reset after POST
-    nfcPendingScreen();
+    extensionConfig.nfcPaymentPendingStart = millis(); // starts the timeout in main.cpp
 
     int httpCode = http.POST(body);
 
     if (httpCode == 200) {
-        // Reset the 30s timeout AFTER the POST returns 200.
-        // The server-side already resolved LNURLW and submitted the invoice to the
-        // Bolt Card wallet – the WS "paid" event should follow within ~30s from now.
-        extensionConfig.nfcPaymentPendingStart = millis();
+        // Timer was already started before the POST – do NOT reset it here.
+        // The 45s timeout in main.cpp counts from the card tap, covering both
+        // the HTTP POST duration and the subsequent WebSocket "paid" wait.
         LOG_INFO("NFC", "NFC payment initiated – waiting for WebSocket paid event");
     } else {
         String resp = http.getString();
-        LOG_ERROR("NFC", String("NFC payment failed: HTTP ") + String(httpCode) + " – " + resp);
-        // Reset flag – no payment was initiated
-        extensionConfig.nfcPaymentPending = false;
+        LOG_ERROR("NFC", String("NFC payment HTTP ") + String(httpCode) + " – " + resp);
+        // Do NOT immediately show NO LUCK here.  Errors like "LNURLW callback
+        // failed" mean the server timed out on the callback, but the Bolt Card
+        // wallet may still pay the invoice asynchronously.  If we clear the
+        // pending state now, we show NO LUCK and then the WebSocket "paid" event
+        // arrives anyway → confusing NO-LUCK-then-ACTION-TIME sequence.
+        // Instead, keep nfcPaymentPending = true and let the normal timeout in
+        // main.cpp handle it.  If the payment arrives via WebSocket within the
+        // timeout window, it works correctly.  If not → NO LUCK after timeout.
+        LOG_WARN("NFC", "HTTP error – keeping pending state, waiting for WebSocket paid event or timeout");
     }
     http.end();
 }

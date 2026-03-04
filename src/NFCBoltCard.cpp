@@ -183,6 +183,49 @@ static String readNdefUri()
 // Note: s_nfc is forward-declared before the helper functions above.
 static TaskHandle_t    s_taskHandle = nullptr;
 
+// ─── Card-removal helper ─────────────────────────────────────────────────────
+
+/**
+ * @brief Block until the card has been physically removed from the reader.
+ *
+ * A single missed read is not sufficient – the PN532 can lose track of a card
+ * momentarily during RF field reset and still have it in range.  We therefore
+ * require REQUIRED_ABSENT_POLLS consecutive "not found" results before declaring
+ * the card gone.  With a 400 ms poll timeout this means the card must be absent
+ * for at least 400 ms × 2 = ~0.8 s without interruption.
+ */
+static void waitForCardRemoval()
+{
+    constexpr int REQUIRED_ABSENT_POLLS = 2;
+
+    LOG_INFO("NFC", "Waiting for card removal before accepting next tap...");
+
+    int absentCount = 0;
+    uint8_t chkUid[7] = {0};
+    uint8_t chkLen    = 0;
+
+    while (absentCount < REQUIRED_ABSENT_POLLS)
+    {
+        bool found = s_nfc->readPassiveTargetID(
+            PN532_MIFARE_ISO14443A, chkUid, &chkLen, 400);
+
+        if (!found)
+        {
+            absentCount++;
+            LOG_INFO("NFC", String("Checking if NFC reader is free (") + absentCount +
+                               "/" + REQUIRED_ABSENT_POLLS + ")...");
+        }
+        else
+        {
+            // Card still present – reset counter
+            absentCount = 0;
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    LOG_INFO("NFC", "Card confirmed removed – ready for next tap");
+}
+
 // Shared device state (defined in main.cpp)
 extern StateManager deviceState;
 
@@ -283,7 +326,7 @@ static void nfc_task_code(void *pvParams)
             LOG_INFO("NFC", String("✓ LNURL decoded → lnurlw: ") + lnurlw.substring(0, 50) + "...");
 
             nfcLnurlwReceived(lnurlw);
-            vTaskDelay(pdMS_TO_TICKS(4000));
+            waitForCardRemoval();
             continue;
         }
 
@@ -325,8 +368,7 @@ static void nfc_task_code(void *pvParams)
         // Notify network layer \u2013 sets nfcPaymentPending, shows PENDING NFC screen,
         // and sends the HTTP POST. Flag stays true until QR screen is restored.
         nfcLnurlwReceived(lnurlw);
-        // Simple debounce: prevent immediate re-detection of the same card.
-        vTaskDelay(pdMS_TO_TICKS(4000));
+        waitForCardRemoval();
     }
 }
 

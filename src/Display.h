@@ -4,6 +4,11 @@
 
 #ifdef ENABLE_DISPLAY
 
+// Must be called once in setup() BEFORE any display function.
+// Creates the recursive FreeRTOS mutex that serializes all SPI/TFT access
+// across Core 0 (Task1 button callbacks) and Core 1 (main loop).
+void initDisplayMutex();
+
 void initDisplay();
 void startupScreen();
 void btctickerScreen();
@@ -21,6 +26,7 @@ void stepTwoScreen();
 void stepThreeScreen();
 void actionTimeScreen();
 void nfcPendingScreen();
+void nfcNoLuckScreen();
 void thankYouScreen();
 void drawQRCode();
 void showQRScreen();
@@ -41,6 +47,7 @@ void nfcTestScreen(String lnurlw);
 #else
 
 // Headless mode - stub implementations (no display)
+inline void initDisplayMutex() {}
 inline void initDisplay() {}
 inline void startupScreen() {}
 inline void btctickerScreen() {}
@@ -58,6 +65,7 @@ inline void stepTwoScreen() {}
 inline void stepThreeScreen() {}
 inline void actionTimeScreen() {}
 inline void nfcPendingScreen() {}
+inline void nfcNoLuckScreen() {}
 inline void thankYouScreen() {}
 inline void drawQRCode() {}
 inline void showQRScreen() {}

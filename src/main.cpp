@@ -104,6 +104,14 @@ int maxProducts = 1; // Will be set based on multiChannelConfig.mode
 
 StateManager deviceState;  // Global state machine instance
 
+// NFC screen state – file-level so processNormalPayment() can reset them
+// when a successful payment clears the pending/NO LUCK screens.
+#if ENABLE_NFC
+static bool          nfcPendingScreenShown = false;
+static bool          nfcNoLuckScreenShown  = false;
+static unsigned long nfcNoLuckStart        = 0;
+#endif
+
 WebSocketsClient webSocket;
 
 //////////////////FORWARD DECLARATIONS///////////////////
@@ -803,6 +811,7 @@ void setup()
   Serial.println("[RELAY] All 10 relay channels initialized (GPIOs 12,13,10,11,19,22,23,25,26,27)");
 #endif
 
+  initDisplayMutex(); // MUST be called before any display function (thread-safe SPI)
   initDisplay();
   startupScreen();
 
@@ -1296,7 +1305,52 @@ void loop()
     {
       return; // Exit silently - config mode handles serial output
     }
-    
+
+    // ── NFC payment monitoring ──────────────────────────────────────────────
+    // MUST be very early in the loop – the network recovery block below contains
+    // many return statements that would prevent this code from ever executing
+    // if it were placed later.
+    #if ENABLE_NFC
+    {
+      // HTTP POST failed \u2192 show NO LUCK immediately
+      if (extensionConfig.nfcPaymentFailed) {
+        extensionConfig.nfcPaymentFailed  = false;
+        extensionConfig.nfcPaymentPending = false;
+        nfcPendingScreenShown = false;
+        nfcNoLuckScreen();
+        nfcNoLuckScreenShown = true;
+        nfcNoLuckStart = millis();
+        LOG_WARN("NFC", "NFC payment failed \u2013 showing NO LUCK screen");
+      } else if (nfcNoLuckScreenShown) {
+        // "NFC NO LUCK" screen is active \u2013 wait 5s then return to QR
+        if (millis() - nfcNoLuckStart > 5000) {
+          nfcNoLuckScreenShown = false;
+          needsQRRedraw = true;
+          LOG_INFO("NFC", "NFC NO LUCK screen dismissed \u2013 returning to QR screen");
+        }
+      } else if (extensionConfig.nfcPaymentPending) {
+        if (!nfcPendingScreenShown) {
+          nfcPendingScreen();
+          nfcPendingScreenShown = true;
+        }
+        // Timeout: if no payment confirmation arrives, show NO LUCK screen.
+        // Timer runs from the card tap (set once before HTTP POST).
+        // Production: 60000 ms (60s).  Test: 20000 ms (20s).
+        if (millis() - extensionConfig.nfcPaymentPendingStart > 20000) {
+          extensionConfig.nfcPaymentPending = false;
+          nfcPendingScreenShown = false;
+          nfcNoLuckScreen();
+          nfcNoLuckScreenShown = true;
+          nfcNoLuckStart = millis();
+          LOG_WARN("NFC", "NFC payment timed out \u2013 showing NO LUCK screen");
+        }
+      } else if (nfcPendingScreenShown) {
+        nfcPendingScreenShown = false;
+      }
+    }
+    #endif
+    // \u2500\u2500\u2500 End NFC payment monitoring \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
     // Check for touch input (if available)
     static unsigned long lastTouchEvent = 0;
     static bool wasTouched = false;
@@ -1985,21 +2039,36 @@ void loop()
           } else {
             webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
           }
+          webSocket.onEvent(webSocketEvent);
+          webSocket.setReconnectInterval(1000);
           
-          // Wait for connection to establish (2 seconds)
-          vTaskDelay(pdMS_TO_TICKS(2000));
+          // Wait for connection to establish (up to 3 seconds, with loop() calls)
+          for (int i = 0; i < 30 && !webSocket.isConnected(); i++) {
+            webSocket.loop();
+            vTaskDelay(pdMS_TO_TICKS(100));
+          }
         }
         
         if (webSocket.isConnected())
         {
           Serial.println("WebSocket reconnected successfully");
           networkStatus.confirmed.websocket = true; // Set confirmation
+          networkStatus.confirmed.wifi = true;       // WiFi must be OK if WS connected
+          networkStatus.confirmed.server = true;     // Server must be OK if WS connected
           onErrorScreen = false;
           currentErrorType = 0;
+          consecutiveWebSocketFailures = 0;
+          networkStatus.waitingForPong = false;
           
           // Fetch switch labels after successful reconnection
           Serial.println("[RECOVERY] Fetching switch labels after WebSocket reconnection...");
           fetchSwitchLabels();
+          
+          // Redraw QR screen to replace any leftover error screen
+          Serial.println("[RECOVERY] WebSocket recovery complete - redrawing QR screen");
+          redrawQRScreen();
+          productSelectionState.showTime = millis();
+          deviceState.transition(DeviceState::READY);
           
           return;
         }
@@ -2009,6 +2078,15 @@ void loop()
           Serial.printf("WebSocket reconnect failed after %d attempts\n", reconnectAttempts);
           if (networkStatus.errors.websocket < 99) networkStatus.errors.websocket++;
           Serial.printf("[ERROR] WebSocket error count: %d\n", networkStatus.errors.websocket);
+          
+          // CRITICAL: Fully tear down the WebSocket before showing error screen.
+          // The previous beginSSL() calls left the library in auto-reconnect mode.
+          // If WiFi comes up while we're on the error screen, the library reconnects
+          // in the background – but often into a broken state where it reports
+          // isConnected()==true yet the server never sends pings / data.
+          // disconnect() stops the auto-reconnect timer and closes the TCP socket.
+          webSocket.disconnect();
+          
           Serial.println("[SCREEN] Showing WebSocket error screen (type 4)");
           websocketReconnectScreen();
           networkStatus.confirmed.websocket = false; // Clear confirmation
@@ -2077,28 +2155,6 @@ void loop()
       }
       paymentQueue.processing = false;
     }
-
-    // NFC payment pending: show PENDING NFC screen while waiting for LNURLW invoice settlement
-    #if ENABLE_NFC
-    {
-      static bool nfcPendingScreenShown = false;
-      if (extensionConfig.nfcPaymentPending) {
-        if (!nfcPendingScreenShown) {
-          nfcPendingScreen();
-          nfcPendingScreenShown = true;
-        }
-        // Timeout: if no payment arrives within 30s, return to QR screen
-        if (millis() - extensionConfig.nfcPaymentPendingStart > 45000) {
-          extensionConfig.nfcPaymentPending = false;
-          nfcPendingScreenShown = false;
-          needsQRRedraw = true;
-          LOG_WARN("NFC", "NFC payment timed out (30s) \u2013 returning to QR screen");
-        }
-      } else if (nfcPendingScreenShown) {
-        nfcPendingScreenShown = false;
-      }
-    }
-    #endif
 
     // CRITICAL: Yield to other tasks to prevent tight loop
     // Without this, the loop runs thousands of times per second,
@@ -2306,8 +2362,12 @@ static void processNormalPayment(int pin, int duration)
   ensureQrForPin(12);
 
   // Device is fully ready again – allow next NFC tap.
+  // Also reset all NFC screen state so the monitoring block doesn't
+  // trigger a redundant QR redraw after the payment is complete.
   #if ENABLE_NFC
   extensionConfig.nfcPaymentPending = false;
+  nfcPendingScreenShown = false;
+  nfcNoLuckScreenShown  = false;
   #endif
 
   if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
