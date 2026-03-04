@@ -35,7 +35,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 ## How it Works
 
 1. **QR Code Display**: The integrated display of the T-Display-S3 shows a QR code with the LNURL for scanning *(T-Display-S3 only)*
-2. **Lightning Payment**: After scanning and paying the invoice, the payment is sent to the LNbits server
+2. **Lightning Payment**: After scanning and paying the invoice, the payment is sent to the LNbits server — or tap an **NFC Bolt Card / NTAG21x tag** on the PN532 reader for contactless payment
 3. **WebSocket Trigger**: The LNbits server sends a signal via WebSocket to the ESP32 microcontroller
 4. **Relay Switching**: The ESP32 activates the relay, which turns on the USB output for a specified period (with optional special modes like blinking, pulsing, or strobing)
 5. **Confirmation**: The display shows that the payment has been received and the relay has been switched *(T-Display-S3 only)*
@@ -57,9 +57,10 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
   - **Position 0**: Everything off
   - **Position 1**: Output permanently on (bypass mode)
   - **Position A**: Automatic mode - ESP32 active, waiting for Lightning payment
-- **PN532 NFC Reader** (Optional, in planning): For contactless NFC card/tag reading
+- **PN532 NFC Reader** (Optional): For contactless NFC card/tag payment
   - Connected via I2C (shared bus with Touch controller)
-  - Enables NFC-based payment triggers and card identification
+  - Supports **Bolt Cards** (NTAG424 DNA) and **NTAG21x (213/215/216) / LNURL tags**
+  - Tap-to-pay with automatic card removal detection and payment timeout
 
 ### ESP32 Dev Module (Headless Version)
 
@@ -208,7 +209,7 @@ Signal (NPN output)    →    GPIO 2
 **Max Current per Pin:** ~40mA (requires external relay driver for high-power loads)
 **Typical Usage:** Relay driver IC (ULN2003/ULN2803) or MOSFET for external circuits
 
-### NFC Reader Setup (Optional, in planning)
+### NFC Reader Setup (Optional)
 
 **Hardware:** PN532 NFC Module (HW-147, I2C mode)
 
@@ -634,11 +635,15 @@ Monitor a wallet balance and trigger the relay when a threshold is reached:
 
 ---
 
-#### NFC Bolt Card (NTAG424 DNA / LNURLW)
+#### NFC Payment (Bolt Card / NTAG21x / LNURL Tags)
 
-> **Optional feature** — activated via build flag `ENABLE_NFC=1` (default: disabled).
+> **Optional feature** — activated via build flag `ENABLE_NFC=1` (default: enabled on T-Display-S3).
 
-The ZapBox can optionally read **Bolt Cards** (NFC cards with NTAG424 DNA chip) and forward the embedded LNURLW link to the bitcoinswitch_extension backend. This enables tap-to-pay workflows where a customer simply holds their card near the reader.
+The ZapBox supports tap-to-pay via NFC with two card types:
+- **Bolt Cards** (NTAG424 DNA): Authenticated LNURLW read via SUN message
+- **NTAG21x (213/215/216) / LNURL Tags**: Plain NDEF text record containing an `lnurlw://` URL
+
+A customer simply holds their card or tag near the PN532 reader to trigger a payment.
 
 **Hardware Requirements**:
 - PN532 NFC module wired on the shared I2C bus (SDA=GPIO18, SCL=GPIO17)
@@ -647,13 +652,17 @@ The ZapBox can optionally read **Bolt Cards** (NFC cards with NTAG424 DNA chip) 
 
 **Payment Flow**:
 ```
-[Bolt Card]  →  tap on PN532 reader
+[Bolt Card / NTAG21x]  →  tap on PN532 reader
     ↓
 PN532 detects ISO14443A card (IRQ LOW on GPIO1)
     ↓
-FreeRTOS Task (Core 0) reads NTAG424 DNA file via authenticated I²C read
+FreeRTOS Task (Core 0) reads card:
+  • NTAG424 DNA: Authenticated file read (SUN message)
+  • NTAG21x (213/215/216): NDEF text record parse
     ↓
 ZapBox validates "lnurlw://" prefix in returned data
+    ↓
+Display shows "PENDING NFC" screen
     ↓
 ZapBox sends WebSocket event to bitcoinswitch_extension:
   { "event": "lnurlw", "lnurlw": "lnurlw://...", "pin": <activePin> }
@@ -661,13 +670,28 @@ ZapBox sends WebSocket event to bitcoinswitch_extension:
 bitcoinswitch_extension resolves LNURLW → Lightning invoice → payment detected
     ↓
 bitcoinswitch_extension sends back WS event → ZapBox activates relay / channel
+    ↓
+Display shows "ACTION TIME" → "THANK YOU" → returns to QR screen
 ```
+
+**NFC Timeout & NO LUCK Screen**:
+- After a card tap, the display shows **"PENDING NFC"** while waiting for payment confirmation
+- If no payment is confirmed within **60 seconds**, the display switches to a **"NO LUCK"** screen
+- The NO LUCK screen is shown for 5 seconds, then the device returns to the QR screen
+- This prevents the device from being stuck in a pending state indefinitely
+- HTTP errors during the LNURLW request do **not** immediately trigger NO LUCK — the server may still confirm the payment via WebSocket within the timeout period
+
+**Card Removal Detection**:
+- After a successful card read, the NFC task waits for the card to be physically removed
+- Detection requires **2 consecutive absent polls** (~0.8 seconds) to prevent false triggers
+- This prevents **double-trigger** issues where a single tap would fire two payment requests
 
 **Implementation Notes**:
 - Uses [Adafruit-PN532-NTAG424](https://github.com/bitcoin-ring/Adafruit-PN532-NTAG424) library
 - FreeRTOS task runs on Core 0 with priority 1 (stack 8 KB)
 - IRQ-based detection — no I²C polling, does not interfere with touch sensor on shared bus
 - The active channel (`pin`) is derived from `multiChannelConfig.currentProduct`
+- Cross-core communication via `volatile` flags in GlobalState.h (Core 0 NFC task ↔ Core 1 main loop)
 
 **Activate in `platformio.ini`**:
 ```ini

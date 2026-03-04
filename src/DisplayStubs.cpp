@@ -5,6 +5,7 @@
 #include <Arduino.h>
 
 // All display functions are no-ops in headless mode
+void initDisplayMutex() {}
 void initDisplay() {}
 void startupScreen() {}
 void btctickerScreen() {}

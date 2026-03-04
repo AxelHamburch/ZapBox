@@ -1335,8 +1335,8 @@ void loop()
         }
         // Timeout: if no payment confirmation arrives, show NO LUCK screen.
         // Timer runs from the card tap (set once before HTTP POST).
-        // Production: 60000 ms (60s).  Test: 20000 ms (20s).
-        if (millis() - extensionConfig.nfcPaymentPendingStart > 20000) {
+        // Production: 60000 ms (60s).
+        if (millis() - extensionConfig.nfcPaymentPendingStart > 60000) {
           extensionConfig.nfcPaymentPending = false;
           nfcPendingScreenShown = false;
           nfcNoLuckScreen();
