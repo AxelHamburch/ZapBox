@@ -169,7 +169,8 @@ const ThemeConfig themeConfigs[] = {
   {"darkcyan-cyan", TFT_DARKCYAN, TFT_CYAN},
   {"black-olive", TFT_BLACK, TFT_OLIVE},
   {"black-darkgrey", TFT_BLACK, TFT_DARKGREY},
-  {"black-lightgrey", TFT_BLACK, TFT_LIGHTGREY}
+  {"black-lightgrey", TFT_BLACK, TFT_LIGHTGREY},
+  {"black-green", TFT_BLACK, TFT_GREEN}
 };
 
 // Safe fillScreen wrapper to stabilize TFT refresh after heavy screen changes
