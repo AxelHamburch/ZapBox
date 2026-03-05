@@ -40,6 +40,33 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 4. **Relay Switching**: The ESP32 activates the relay, which turns on the USB output for a specified period (with optional special modes like blinking, pulsing, or strobing)
 5. **Confirmation**: The display shows that the payment has been received and the relay has been switched *(T-Display-S3 only)*
 
+### LNURL Generation Flow
+
+```
+Device String (switchStr)
+  ├── lnbitsServer  (host)
+  └── deviceId      (last 22 chars)
+          │
+          ▼
+  GET https://{server}/{ext}/api/v1/public/{deviceId}
+          │
+          ▼
+  Server responds: { title, switches[{pin, label, amount, duration}] }
+          │
+          ▼
+  For each pin:
+  https://{server}/{ext}/api/v1/lnurl/{deviceId}?pin={pin}
+          │
+     ┌────┴────┐
+     │         │
+  LUD17:    Bech32:
+  lnurlp://...  LNURL1DP68GURN...
+     │         │
+     └────┬────┘
+          ▼
+  lightning:{lnurl}  →  QR code on display
+```
+
 ## Hardware
 
 ### LilyGo T-Display-S3 (Full Version)
@@ -803,7 +830,7 @@ This project is configured for PlatformIO and based on the Arduino framework for
 ZapBox/
 ├── src/                           # Main application source code
 │   ├── main.cpp                   # Entry point and main loop
-│   ├── API.cpp/h                  # LNbits Bitcoin Switch API integration
+│   ├── API.cpp/h                  # LNbits API integration (labels, BTC ticker)
 │   ├── Display.cpp/h              # Display rendering and theme management
 │   ├── DisplayStubs.cpp           # Display stubs for headless mode
 │   ├── GlobalState.cpp/h          # Global application state management
@@ -811,10 +838,11 @@ ZapBox/
 │   ├── Input.cpp/h                # Input handling (buttons, touch)
 │   ├── Navigation.cpp/h           # Navigation logic and screen management
 │   ├── Network.cpp/h              # WiFi and network connectivity
-│   ├── Payment.cpp/h              # Payment processing and relay control
+│   ├── Payment.cpp/h              # Payment processing, LNURL/Bech32 encoding, relay control
 │   ├── UI.cpp/h                   # User interface components and rendering
 │   ├── Utils.cpp/h                # Utility functions (string, math, helpers)
-│   ├── NFCPN532.cpp/h             # NFC reader support (PN532)
+│   ├── NFCBoltCard.cpp/h          # Bolt Card (NTAG424 DNA) authentication and LNURLW
+│   ├── NFCPN532.cpp/h             # PN532 NFC reader driver (I2C, IRQ-based)
 │   ├── TouchCST816S.cpp/h         # Touch display support (CST816S)
 │   ├── SerialConfig.cpp/h         # Serial configuration interface
 │   └── PinConfig.h                # Hardware pin definitions and GPIO mapping
@@ -826,11 +854,11 @@ ZapBox/
 │   └── TFT_eSPI_Setup/            # TFT_eSPI display driver configuration
 ├── installer/                     # Web-based firmware installer & configurator
 │   ├── index.html                 # Console interface and configuration UI
-│   ├── how-to-upload.md           # Installation instructions
+│   ├── extensions.json            # Extension version manifest
+│   ├── extensions-how-to-release.md # Extension release instructions
 │   ├── assets/                    # Installer CSS, JavaScript, images
 │   ├── firmware/                  # Firmware binaries and release manifests
-│   ├── headless/                  # Headless device firmware
-│   └── templates/                 # HTML templates
+│   └── headless/                  # Headless device firmware
 ├── assets/
 │   ├── electric/                  # Electrical schematics (Inkscape)
 │   │   ├── e926834-Compact/       # Prototype compact
@@ -840,23 +868,37 @@ ZapBox/
 │   │   ├── e932547-Quattro/       # First Quattro variant
 │   │   ├── e932714-Duo/           # Duo update
 │   │   ├── e935776-Headless/      # Headless variant
+│   │   ├── e936954-Quattro/       # Quattro update (button cable & light barrier)
 │   │   ├── e937540-Duo/           # Duo update
-│   │   └── e937544-USB-Power-Hub/ # USB Power Hub
+│   │   ├── e937544-USB-Power-Hub/ # USB Power Hub
+│   │   ├── e938714-ZapOMat/       # ZapOMat design
+│   │   ├── e938889-Headless/      # Headless update with ZapBox picture
+│   │   ├── e938897-Compact/       # Compact update with ZapBox picture
+│   │   └── e939042-Compact/       # Compact with NFC cap
 │   ├── housing/                   # 3D models and housing (FreeCAD)
 │   │   ├── b926837-Compact/       # Prototype compact
 │   │   ├── b928260-Compact/       # Prototype 2 compact
+│   │   ├── b928555-Compact/       # Sample device compact
+│   │   ├── b930595-Compact/       # Optimization, separate label
 │   │   ├── b931760-Duo/           # Prototype Duo
-│   │   ├── b932595-Quattro/       # Prototype Quattro
+│   │   ├── b932506-Compact/       # Adapter system, 90° front
+│   │   ├── b932595-Duo&Quattro/   # Duo & Quattro, 90° and 35° fronts
+│   │   ├── b932788-IlluminatedSign/ # LED sign for demo/testing
 │   │   ├── b935750-Headless/      # Headless variant
-│   │   └── b937544-USB-Power-Hub/ # USB Power Hub
+│   │   ├── b937454-USB-Power-Hub/ # USB Power Hub
+│   │   ├── b939002-Compact/       # Compact with NFC cap
+│   │   └── fonts/                 # Fonts for housing labels
 │   ├── white-paper/               # Technical documentation
+│   ├── Pinout-T-DISPLAY-S3.jpg    # T-Display-S3 pinout reference
+│   ├── Pinout-T-DISPLAY-S3-TOUCH.png # T-Display-S3 Touch pinout reference
 │   └── lightning-address.png      # Lightning address QR code
+├── temp/                          # Temporary files
 ├── platformio.ini                 # PlatformIO build configuration
 ├── partitions_4mb.csv             # ESP32 partition table (4 MB devices)
 ├── partitions_16mb.csv            # ESP32 partition table (16 MB devices)
 ├── FIRMWARE.md                    # Firmware development and release documentation
 ├── LICENSE                        # Open source license
-├── README.md                       # Main project documentation
+├── README.md                      # Main project documentation
 └── .gitignore                     # Git ignore rules
 ```
 
