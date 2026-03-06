@@ -1,6 +1,6 @@
 # ZapBox Duo – Bedienungsanleitung
 
-**Sprache:** Deutsch | **Artikelnummer:** OI939600
+**Sprache:** Deutsch | **Version:** OI939600
 
 ---
 
