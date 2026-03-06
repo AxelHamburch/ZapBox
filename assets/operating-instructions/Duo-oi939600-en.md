@@ -30,11 +30,11 @@ The **ZapBox Duo** is an electronic switch for Bitcoin Lightning payments. A pay
 
 **Image 1: Front view**
 
-![Front view](pic-Duo/Duo-oi-01.webp)
+<img src="pic-Duo/Duo-oi-01.webp" alt="Front view" width="67%">
 
 **Image 2: Rear view**
 
-![Rear view](pic-Duo/Duo-oi-02.webp)
+<img src="pic-Duo/Duo-oi-02.webp" alt="Rear view" width="67%">
 
 ---
 
@@ -77,7 +77,7 @@ To read data from or transfer data to the device, connect the ZapBox to a comput
 
 **Image: Opening the panel and USB-C data port**
 
-![Opening the panel and USB-C data port](pic-Duo/Duo-oi-03.webp)
+<img src="pic-Duo/Duo-oi-03.webp" alt="Opening the panel and USB-C data port" width="67%">
 
 > **Important:** The USB port on the microcontroller is exclusively intended for flashing new firmware or transferring configuration parameters. If switching functions are triggered simultaneously during flashing, this can cause **malfunctions or damage to the microcontroller**.
 >

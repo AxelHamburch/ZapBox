@@ -30,11 +30,11 @@ Die **ZapBox Duo** ist ein elektronischer Schalter für Bitcoin-Lightning-Zahlun
 
 **Bild 1: Frontansicht**
 
-![Frontansicht](pic-Duo/Duo-oi-01.webp)
+<img src="pic-Duo/Duo-oi-01.webp" alt="Frontansicht" width="67%">
 
 **Bild 2: Rückansicht**
 
-![Rückansicht](pic-Duo/Duo-oi-02.webp)
+<img src="pic-Duo/Duo-oi-02.webp" alt="Rückansicht" width="67%">
 
 ---
 
@@ -77,7 +77,7 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 
 **Bild: Panel öffnen und USB-C-Anschluss für Daten**
 
-![Panel öffnen und USB-C-Anschluss](pic-Duo/Duo-oi-03.webp)
+<img src="pic-Duo/Duo-oi-03.webp" alt="Panel öffnen und USB-C-Anschluss" width="67%">
 
 > **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller dient ausschließlich zum Flashen neuer Firmware oder zur Übertragung von Konfigurationsparametern. Wenn während des Flashens gleichzeitig Schaltfunktionen ausgelöst werden, kann es zu **Fehlfunktionen oder Beschädigungen des Mikrocontrollers** kommen.
 >
