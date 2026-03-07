@@ -487,7 +487,7 @@ void showInitialScreenAfterConnections() {
     multiChannelConfig.currentProduct = 0; // ticker
     btctickerScreen();
     multiChannelConfig.btcTickerActive = true;
-    deviceState.transition(DeviceState::READY);
+    deviceState.transition(DeviceState::BTC_TICKER);
     productSelectionState.showTime = millis();
   } else if (multiChannelConfig.btcTickerMode == "selecting") {
     multiChannelConfig.currentProduct = -1; // product selection

@@ -1259,12 +1259,11 @@ void loop()
     Serial.println("[SCREEN] All connections confirmed - selecting initial screen");
     showInitialScreenAfterConnections();
     currentErrorType = 0;
-    // Clear error screen flag once QR is shown
-    deviceState.transition(DeviceState::READY);
-    currentErrorType = 0;
     // Start product selection timer
     productSelectionState.showTime = millis();
-    deviceState.transition(DeviceState::READY);
+    // Do NOT force READY here – showInitialScreenAfterConnections() already
+    // sets the correct state (PRODUCT_SELECTION for duo/quattro, READY for single).
+    // Overwriting with READY breaks the product selection guard that blocks NFC.
   } else if (firstLoop && !allConnectionsConfirmed) {
     Serial.printf("[SCREEN] First loop - waiting for all connections (WiFi:%d, Internet:%d, Server:%d, WS:%d)\n", 
                   networkStatus.confirmed.wifi, networkStatus.confirmed.internet, networkStatus.confirmed.server, networkStatus.confirmed.websocket);
@@ -1604,6 +1603,7 @@ void loop()
                 Serial.println("Show Bitcoin ticker for 10 seconds");
                 btctickerScreen();
                 multiChannelConfig.btcTickerActive = true;
+                deviceState.transition(DeviceState::BTC_TICKER);
                 productSelectionState.showTime = millis();
               }
             }
@@ -1758,6 +1758,7 @@ void loop()
             Serial.println("[SCREEN] Showing Bitcoin ticker screen after timeout (ALWAYS mode - Duo/Quattro)");
             btctickerScreen();
             multiChannelConfig.btcTickerActive = true;
+            deviceState.transition(DeviceState::BTC_TICKER);
             productSelectionState.showTime = 0; // Reset timer - ticker has no timeout in ALWAYS mode
           }
         } else {

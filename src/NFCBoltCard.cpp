@@ -262,17 +262,32 @@ static void nfc_task_code(void *pvParams)
 
         // Discard card tap when device is not ready for payments.
         // This prevents the NFC pending state from being entered during
-        // initialisation, WiFi connect or any error condition.
+        // initialisation, WiFi connect, any error condition, product
+        // selection (user hasn't chosen a product yet), or the BTC ticker.
         {
             DeviceState curState = deviceState.getState();
-            if (curState == DeviceState::INITIALIZING   ||
-                curState == DeviceState::CONNECTING_WIFI ||
-                curState == DeviceState::ERROR_CRITICAL  ||
-                curState == DeviceState::ERROR_RECOVERABLE)
+            if (curState == DeviceState::INITIALIZING    ||
+                curState == DeviceState::CONNECTING_WIFI  ||
+                curState == DeviceState::ERROR_CRITICAL   ||
+                curState == DeviceState::ERROR_RECOVERABLE||
+                curState == DeviceState::PRODUCT_SELECTION||
+                curState == DeviceState::BTC_TICKER)
             {
                 LOG_WARN("NFC", String("Card tap ignored – device not ready (state: ") +
                                     deviceState.getDeviceStateName(curState) + String(")"));
-                vTaskDelay(pdMS_TO_TICKS(1000));
+                // For PRODUCT_SELECTION and BTC_TICKER the device can quickly
+                // transition to READY while the card is still on the reader.
+                // Without waiting for removal the card would be detected again
+                // immediately in the next loop iteration and processed.
+                if (curState == DeviceState::PRODUCT_SELECTION ||
+                    curState == DeviceState::BTC_TICKER)
+                {
+                    waitForCardRemoval();
+                }
+                else
+                {
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                }
                 continue;
             }
         }

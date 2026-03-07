@@ -122,6 +122,7 @@ void navigateToNextProduct() {
       multiChannelConfig.currentProduct = 0; // Reset for next navigation
       btctickerScreen();
       multiChannelConfig.btcTickerActive = true;
+      deviceState.transition(DeviceState::BTC_TICKER);
       productSelectionState.showTime = millis(); // Start timer for auto-return
       LOG_INFO("Navigation", "SELECTING mode - Showing Bitcoin ticker after last product");
       return;
@@ -129,6 +130,7 @@ void navigateToNextProduct() {
       multiChannelConfig.currentProduct = 0; // Reset for next navigation
       btctickerScreen();
       multiChannelConfig.btcTickerActive = true;
+      deviceState.transition(DeviceState::BTC_TICKER);
       productSelectionState.showTime = millis(); // Start timer for auto-return
       LOG_INFO("Navigation", "SELECTING mode - Showing Bitcoin ticker after last product");
       return;
