@@ -1300,16 +1300,20 @@ void showProductQRScreen(String label, int pin)
     ensureCorrectRotation();
     
     // Display up to 3 lines of text
-    tft.setTextSize(3);
     tft.setTextColor(bg);
     int startY = y + 40; // Starting Y position
     if (wordCount == 1) {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
       tft.drawString(words[0], x - 58, startY + 30, GFXFF);
     } else if (wordCount == 2) {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
       tft.drawString(words[0], x - 58, startY + 15, GFXFF);
+      tft.setTextSize(words[1].length() >= 7 ? 2 : 3);
       tft.drawString(words[1], x - 58, startY + 45, GFXFF);
     } else { // 3 words
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
       tft.drawString(words[0], x - 58, startY, GFXFF);
+      tft.setTextSize(words[1].length() >= 7 ? 2 : 3);
       tft.drawString(words[1], x - 58, startY + 30, GFXFF);
       tft.setTextSize(2); // Smaller font for third line (currency text)
       tft.drawString(words[2], x - 58, startY + 60, GFXFF);
@@ -1345,17 +1349,21 @@ void showProductQRScreen(String label, int pin)
     ensureCorrectRotation();
     
     // Display up to 3 lines of text
-    tft.setTextSize(3);
     tft.setTextColor(bg);
     int startY = y - 30; // Starting Y position
     int textOffset = (displayConfig.orientation == "hi") ? 25 : 17;
     if (wordCount == 1) {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
       tft.drawString(words[0], x + textOffset, startY + 30, GFXFF);
     } else if (wordCount == 2) {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
       tft.drawString(words[0], x + textOffset, startY + 15, GFXFF);
+      tft.setTextSize(words[1].length() >= 7 ? 2 : 3);
       tft.drawString(words[1], x + textOffset, startY + 45, GFXFF);
     } else { // 3 words
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
       tft.drawString(words[0], x + textOffset, startY, GFXFF);
+      tft.setTextSize(words[1].length() >= 7 ? 2 : 3);
       tft.drawString(words[1], x + textOffset, startY + 30, GFXFF);
       tft.setTextSize(2); // Smaller font for third line (currency text)
       tft.drawString(words[2], x + textOffset, startY + 60, GFXFF);
