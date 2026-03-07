@@ -107,11 +107,13 @@ StateManager deviceState;  // Global state machine instance
 // NFC screen state – file-level so processNormalPayment() can reset them
 // when a successful payment clears the pending/NO LUCK screens.
 #if ENABLE_NFC
-static bool          nfcPendingScreenShown = false;
-static bool          nfcNoLuckScreenShown  = false;
-static unsigned long nfcNoLuckStart        = 0;
-static bool          nfcNotSupportedShown  = false;
-static unsigned long nfcNotSupportedStart  = 0;
+static bool          nfcPendingScreenShown  = false;
+static bool          nfcNoLuckScreenShown   = false;
+static unsigned long nfcNoLuckStart         = 0;
+static bool          nfcErrorDetailShown    = false;
+static unsigned long nfcErrorDetailStart    = 0;
+static bool          nfcNotSupportedShown   = false;
+static unsigned long nfcNotSupportedStart   = 0;
 #endif
 
 WebSocketsClient webSocket;
@@ -1356,11 +1358,26 @@ void loop()
         nfcNoLuckStart = millis();
         LOG_WARN("NFC", "NFC payment failed \u2013 showing NO LUCK screen");
       } else if (nfcNoLuckScreenShown) {
-        // "NFC NO LUCK" screen is active \u2013 wait 5s then return to QR
+        // "NFC NO LUCK" screen active – wait 5s, then show error detail (if any) or return to QR
         if (millis() - nfcNoLuckStart > 5000) {
           nfcNoLuckScreenShown = false;
+          if (extensionConfig.nfcErrorDetail[0] != '\0') {
+            nfcErrorDetailScreen(extensionConfig.nfcErrorDetail);
+            extensionConfig.nfcErrorDetail[0] = '\0';
+            nfcErrorDetailShown = true;
+            nfcErrorDetailStart = millis();
+            LOG_INFO("NFC", "NO LUCK dismissed – showing error detail screen");
+          } else {
+            needsQRRedraw = true;
+            LOG_INFO("NFC", "NFC NO LUCK screen dismissed – returning to QR screen");
+          }
+        }
+      } else if (nfcErrorDetailShown) {
+        // Error detail screen active – show for 6s then return to QR
+        if (millis() - nfcErrorDetailStart > 6000) {
+          nfcErrorDetailShown = false;
           needsQRRedraw = true;
-          LOG_INFO("NFC", "NFC NO LUCK screen dismissed \u2013 returning to QR screen");
+          LOG_INFO("NFC", "NFC error detail screen dismissed – returning to QR screen");
         }
       } else if (extensionConfig.nfcPaymentPending) {
         if (!nfcPendingScreenShown) {
@@ -2400,9 +2417,11 @@ static void processNormalPayment(int pin, int duration)
   // trigger a redundant QR redraw after the payment is complete.
   #if ENABLE_NFC
   extensionConfig.nfcPaymentPending = false;
-  nfcPendingScreenShown = false;
-  nfcNoLuckScreenShown  = false;
-  nfcNotSupportedShown  = false;
+  extensionConfig.nfcErrorDetail[0] = '\0';
+  nfcPendingScreenShown  = false;
+  nfcNoLuckScreenShown   = false;
+  nfcErrorDetailShown    = false;
+  nfcNotSupportedShown   = false;
   #endif
 
   if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {

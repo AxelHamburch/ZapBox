@@ -945,6 +945,52 @@ void nfcNoLuckScreen()
   }
 }
 
+// Shows the error detail message from the server after NO LUCK screen.
+// Splits the detail string at ": " (if present) for a two-line layout,
+// otherwise wraps at the nearest space around the midpoint.
+void nfcErrorDetailScreen(const char* detail)
+{
+  DisplayLock lock;
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
+    tft.fillScreen(TFT_BLACK);
+    delay(10);
+    tft.fillScreen(TFT_BLACK);
+    delay(5);
+  }
+  safeFillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  // Split detail into two lines: prefer ": " as break point, else mid-word-boundary
+  String full = String(detail);
+  String line1, line2;
+  int split = full.indexOf(": ");
+  if (split >= 0) {
+    line1 = full.substring(0, split + 1); // include the colon
+    line2 = full.substring(split + 2);
+  } else {
+    // Fall back: split at space nearest the middle
+    int mid = full.length() / 2;
+    split = mid;
+    for (int d = 0; d <= mid; d++) {
+      if (mid - d >= 0 && full.charAt(mid - d) == ' ') { split = mid - d; break; }
+      if (mid + d < (int)full.length() && full.charAt(mid + d) == ' ') { split = mid + d; break; }
+    }
+    line1 = full.substring(0, split);
+    line2 = full.substring(split + 1);
+  }
+
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    tft.setTextSize(2);
+    tft.drawString(line1, x + 1, y - 20, GFXFF);
+    tft.drawString(line2, x + 1, y + 20, GFXFF);
+  } else {
+    tft.setTextSize(2);
+    tft.drawString(line1, x + 5, y - 15, GFXFF);
+    tft.drawString(line2, x + 5, y + 20, GFXFF);
+  }
+}
+
 // NFC not supported by active extension (e.g. bitcoinswitch instead of zapbox)
 void nfcNotSupportedScreen()
 {

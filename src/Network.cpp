@@ -176,15 +176,34 @@ void nfcLnurlwReceived(const String &lnurlw)
     } else {
         String resp = http.getString();
         LOG_ERROR("NFC", String("NFC payment HTTP ") + String(httpCode) + " – " + resp);
-        // Do NOT immediately show NO LUCK here.  Errors like "LNURLW callback
-        // failed" mean the server timed out on the callback, but the Bolt Card
-        // wallet may still pay the invoice asynchronously.  If we clear the
-        // pending state now, we show NO LUCK and then the WebSocket "paid" event
-        // arrives anyway → confusing NO-LUCK-then-ACTION-TIME sequence.
-        // Instead, keep nfcPaymentPending = true and let the normal timeout in
-        // main.cpp handle it.  If the payment arrives via WebSocket within the
-        // timeout window, it works correctly.  If not → NO LUCK after timeout.
-        LOG_WARN("NFC", "HTTP error – keeping pending state, waiting for WebSocket paid event or timeout");
+
+        // Extract the "detail" field from the JSON response and store it for display.
+        extensionConfig.nfcErrorDetail[0] = '\0';
+        int detailStart = resp.indexOf("\"detail\":\"");
+        if (detailStart >= 0) {
+            detailStart += 10; // skip `"detail":"`
+            int detailEnd = resp.indexOf("\"", detailStart);
+            if (detailEnd > detailStart) {
+                String detail = resp.substring(detailStart, detailEnd);
+                detail.toCharArray(extensionConfig.nfcErrorDetail, sizeof(extensionConfig.nfcErrorDetail));
+            }
+        }
+
+        // Decide immediately vs. wait:
+        // "LNURLW error: …"          → resolve step returned STATUS ERROR → terminal
+        // "LNURLW callback error: …" → callback step returned STATUS ERROR → terminal
+        // "LNURLW resolve failed."   → network error on resolve → keep pending (async possible)
+        // "LNURLW callback failed."  → network error on callback → keep pending (async possible)
+        String detailStr = String(extensionConfig.nfcErrorDetail);
+        bool isTerminal = detailStr.startsWith("LNURLW error:")
+                       || detailStr.startsWith("LNURLW callback error:");
+        if (isTerminal) {
+            extensionConfig.nfcPaymentPending = false;
+            extensionConfig.nfcPaymentFailed  = true;
+            LOG_WARN("NFC", "Terminal LNURLW error – showing NO LUCK immediately");
+        } else {
+            LOG_WARN("NFC", "HTTP error – keeping pending state, waiting for WebSocket paid event or timeout");
+        }
     }
     http.end();
 }

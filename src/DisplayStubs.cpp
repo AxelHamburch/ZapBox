@@ -25,6 +25,7 @@ void actionTimeScreen() {}
 void nfcPendingScreen() {}
 void nfcNoLuckScreen() {}
 void nfcNotSupportedScreen() {}
+void nfcErrorDetailScreen(const char*) {}
 void thankYouScreen() {}
 void drawQRCode() {}
 void showQRScreen() {}
