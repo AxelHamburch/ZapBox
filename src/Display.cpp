@@ -168,7 +168,6 @@ const ThemeConfig themeConfigs[] = {
   {"black-orange", TFT_BLACK, TFT_ORANGE},
   {"white-darkcyan", TFT_WHITE, TFT_DARKCYAN},
   {"white-navy", TFT_WHITE, TFT_NAVY},
-  {"navy-white", TFT_NAVY, TFT_WHITE},
   {"darkcyan-cyan", TFT_DARKCYAN, TFT_CYAN},
   {"black-olive", TFT_BLACK, TFT_OLIVE},
   {"black-darkgrey", TFT_BLACK, TFT_DARKGREY},
@@ -182,9 +181,9 @@ const ThemeConfig themeConfigs[] = {
 inline void safeFillScreen(uint16_t color)
 {
   tft.fillScreen(color);
-  // ZAPBOX/BTCORANGE/NAVY-WHITE themes: No delay to prevent display controller corruption
+  // ZAPBOX/BTCORANGE/WHITE-NAVY themes: No delay to prevent display controller corruption
   // Other themes: Small delay for stability
-  if (displayConfig.theme != "zapbox" && displayConfig.theme != "btcorange-black" && displayConfig.theme != "navy-white") {
+  if (displayConfig.theme != "zapbox" && displayConfig.theme != "btcorange-black" && displayConfig.theme != "white-navy") {
     delay(5);
   }
 }
@@ -279,10 +278,10 @@ void btctickerScreen()
   // This is especially important when switching from QR screens
   ensureCorrectRotation();
   
-  // ZAPBOX/BTCORANGE/NAVY-WHITE theme color inversion fix
+  // ZAPBOX/BTCORANGE/WHITE-NAVY theme color inversion fix
   // Problem: Inverted QR has colored background, ticker has its own background
   // Need careful transition for color inversion
-  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black" || displayConfig.theme == "navy-white") {
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black" || displayConfig.theme == "white-navy") {
     // Transition from inverted QR to ticker background
     tft.fillScreen(themeBackground);  // Clear to theme background
     ensureCorrectRotation();
@@ -846,10 +845,10 @@ void actionTimeScreen()
     delay(10);
     tft.fillScreen(TFT_BLACK);
     delay(5);
-  } else if (displayConfig.theme == "navy-white") {
-    tft.fillScreen(TFT_WHITE);
+  } else if (displayConfig.theme == "white-navy") {
+    tft.fillScreen(TFT_NAVY);
     delay(10);
-    tft.fillScreen(TFT_WHITE);
+    tft.fillScreen(TFT_NAVY);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -892,10 +891,10 @@ void nfcPendingScreen()
     delay(10);
     tft.fillScreen(TFT_BLACK);
     delay(5);
-  } else if (displayConfig.theme == "navy-white") {
-    tft.fillScreen(TFT_WHITE);
+  } else if (displayConfig.theme == "white-navy") {
+    tft.fillScreen(TFT_NAVY);
     delay(10);
-    tft.fillScreen(TFT_WHITE);
+    tft.fillScreen(TFT_NAVY);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -930,10 +929,10 @@ void nfcNoLuckScreen()
     delay(10);
     tft.fillScreen(TFT_BLACK);
     delay(5);
-  } else if (displayConfig.theme == "navy-white") {
-    tft.fillScreen(TFT_WHITE);
+  } else if (displayConfig.theme == "white-navy") {
+    tft.fillScreen(TFT_NAVY);
     delay(10);
-    tft.fillScreen(TFT_WHITE);
+    tft.fillScreen(TFT_NAVY);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -975,10 +974,10 @@ void nfcErrorDetailScreen(const char* detail)
     delay(10);
     tft.fillScreen(TFT_BLACK);
     delay(5);
-  } else if (displayConfig.theme == "navy-white") {
-    tft.fillScreen(TFT_WHITE);
+  } else if (displayConfig.theme == "white-navy") {
+    tft.fillScreen(TFT_NAVY);
     delay(10);
-    tft.fillScreen(TFT_WHITE);
+    tft.fillScreen(TFT_NAVY);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -1025,10 +1024,10 @@ void nfcNotSupportedScreen()
     delay(10);
     tft.fillScreen(TFT_BLACK);
     delay(5);
-  } else if (displayConfig.theme == "navy-white") {
-    tft.fillScreen(TFT_WHITE);
+  } else if (displayConfig.theme == "white-navy") {
+    tft.fillScreen(TFT_NAVY);
     delay(10);
-    tft.fillScreen(TFT_WHITE);
+    tft.fillScreen(TFT_NAVY);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -1234,9 +1233,9 @@ void showProductQRScreen(String label, int pin)
   } else if (displayConfig.theme == "btcorange-black") {
     fg = TFT_BLACK;
     bg = 0xFCC0;
-  } else if (displayConfig.theme == "navy-white") {
-    fg = TFT_WHITE;
-    bg = TFT_NAVY;
+  } else if (displayConfig.theme == "white-navy") {
+    fg = TFT_NAVY;
+    bg = TFT_WHITE;
   }
 
   // Replace currency symbols with text abbreviations for better compatibility
@@ -1305,13 +1304,13 @@ void showProductQRScreen(String label, int pin)
     tft.fillScreen(bg);
     ensureCorrectRotation();
     delay(20);
-  } else if (displayConfig.theme == "navy-white") {
-    // Step 1: Clear to WHITE (ensures clean starting point from white ticker)
-    tft.fillScreen(TFT_WHITE);
+  } else if (displayConfig.theme == "white-navy") {
+    // Step 1: Clear to NAVY (normal theme background)
+    tft.fillScreen(TFT_NAVY);
     ensureCorrectRotation();
     delay(20);
     
-    // Step 2: Transition to navy background
+    // Step 2: Transition to white QR background
     tft.fillScreen(bg);
     ensureCorrectRotation();
     delay(30);
@@ -1327,7 +1326,7 @@ void showProductQRScreen(String label, int pin)
   ensureCorrectRotation();
   
   // Draw QR code immediately after screen clear, before anything else
-  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black" || displayConfig.theme == "navy-white") {
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black" || displayConfig.theme == "white-navy") {
     drawQRCodeWithColors(fg, bg);
   } else {
     drawQRCode();
