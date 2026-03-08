@@ -380,7 +380,8 @@ static void nfc_task_code(void *pvParams)
         fileBuf[bytesRead] = '\0'; // Null-terminate for safe String conversion.
 
         // Validate LNURLW prefix – Bolt Cards always start with "lnurlw://".
-        if (strncmp("lnurlw://", (char *)fileBuf, 9) != 0)
+        // Case-insensitive: some cards return "LNURLW://" in uppercase.
+        if (strncasecmp("lnurlw://", (char *)fileBuf, 9) != 0)
         {
             LOG_WARN("NFC", String("Card does not contain LNURLW (got: ") +
                                 String((char *)fileBuf).substring(0, 20) + "...)");

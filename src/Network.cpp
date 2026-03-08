@@ -190,12 +190,14 @@ void nfcLnurlwReceived(const String &lnurlw)
         }
 
         // Decide immediately vs. wait:
+        // HTTP 4xx (400, 404, 422)    → client error, request invalid → terminal
         // "LNURLW error: …"          → resolve step returned STATUS ERROR → terminal
         // "LNURLW callback error: …" → callback step returned STATUS ERROR → terminal
         // "LNURLW resolve failed."   → network error on resolve → keep pending (async possible)
         // "LNURLW callback failed."  → network error on callback → keep pending (async possible)
         String detailStr = String(extensionConfig.nfcErrorDetail);
-        bool isTerminal = detailStr.startsWith("LNURLW error:")
+        bool isTerminal = (httpCode >= 400 && httpCode < 500)
+                       || detailStr.startsWith("LNURLW error:")
                        || detailStr.startsWith("LNURLW callback error:");
         if (isTerminal) {
             extensionConfig.nfcPaymentPending = false;
