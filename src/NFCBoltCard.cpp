@@ -263,24 +263,35 @@ static void nfc_task_code(void *pvParams)
         // Discard card tap when device is not ready for payments.
         // This prevents the NFC pending state from being entered during
         // initialisation, WiFi connect, any error condition, product
-        // selection (user hasn't chosen a product yet), or the BTC ticker.
+        // selection (user hasn't chosen a product yet), the BTC ticker,
+        // or the screensaver (display off).
+        //
+        // btcTickerActive covers single mode where the device state stays
+        // READY while the ticker is displayed – the user cannot see the
+        // product/QR, so NFC must be blocked there as well.
         {
             DeviceState curState = deviceState.getState();
+            bool tickerShowing = multiChannelConfig.btcTickerActive;
             if (curState == DeviceState::INITIALIZING    ||
                 curState == DeviceState::CONNECTING_WIFI  ||
                 curState == DeviceState::ERROR_CRITICAL   ||
                 curState == DeviceState::ERROR_RECOVERABLE||
                 curState == DeviceState::PRODUCT_SELECTION||
-                curState == DeviceState::BTC_TICKER)
+                curState == DeviceState::BTC_TICKER      ||
+                curState == DeviceState::SCREENSAVER     ||
+                tickerShowing)
             {
                 LOG_WARN("NFC", String("Card tap ignored – device not ready (state: ") +
-                                    deviceState.getDeviceStateName(curState) + String(")"));
-                // For PRODUCT_SELECTION and BTC_TICKER the device can quickly
-                // transition to READY while the card is still on the reader.
-                // Without waiting for removal the card would be detected again
-                // immediately in the next loop iteration and processed.
+                                    deviceState.getDeviceStateName(curState) +
+                                    String(", ticker: ") + String(tickerShowing) + String(")"));
+                // For PRODUCT_SELECTION, BTC_TICKER and SCREENSAVER the device
+                // can quickly transition to READY while the card is still on
+                // the reader.  Without waiting for removal the card would be
+                // detected again immediately in the next loop iteration.
                 if (curState == DeviceState::PRODUCT_SELECTION ||
-                    curState == DeviceState::BTC_TICKER)
+                    curState == DeviceState::BTC_TICKER       ||
+                    curState == DeviceState::SCREENSAVER      ||
+                    tickerShowing)
                 {
                     waitForCardRemoval();
                 }

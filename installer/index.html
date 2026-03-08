@@ -1152,11 +1152,8 @@
                 lightBarrier.value = config[19].value;
                 currency.value = config[20].value;
                 // Index 21: External button (may not exist in older configs)
-                if (config[21] && config[21].value) {
-                    externalButton.value = config[21].value;
-                } else {
-                    externalButton.value = 'no'; // Default for older configs
-                }
+                config[21].value = configData[21]?.value || "no";
+                externalButton.value = config[21].value;
 
                 // Index 22: Channel 4 ambient light (may not exist in older configs)
                 if (config[22]) config[22].value = configData[22]?.value || "normal";
