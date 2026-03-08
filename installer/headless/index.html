@@ -555,6 +555,10 @@
             {
                 "name": "channel4Ambient",
                 "value": "normal"
+            },
+            {
+                "name": "deepSleepTime",
+                "value": "30"
             }
         ]
 
@@ -938,6 +942,11 @@
                 config[19].value = configData[19]?.value || "no"; // lightBarrier
                 config[20].value = configData[20]?.value || "USD"; // currency
 
+                // Index 21-23: may not exist in older configs
+                if (config[21]) config[21].value = configData[21]?.value || "no"; // externalButton
+                if (config[22]) config[22].value = configData[22]?.value || "normal"; // channel4Ambient
+                if (config[23]) config[23].value = configData[23]?.value || "30"; // deepSleepTime
+
                 // Fill form fields (only supported ones for headless)
                 ssid.value = config[0].value;
                 wifiPassword.value = config[1].value;
@@ -1080,6 +1089,10 @@
             // channel4Ambient (index 22) - not used in headless, hardcoded default
             if (!config[22]) config[22] = { name: "channel4Ambient", value: "normal" };
             config[22].value = "normal";
+
+            // deepSleepTime (index 23) - not used in headless, hardcoded default
+            if (!config[23]) config[23] = { name: "deepSleepTime", value: "30" };
+            config[23].value = "30";
 
             // Validate required fields
             const ssidValue = config[0].value.trim();

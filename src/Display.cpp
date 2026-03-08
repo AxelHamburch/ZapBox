@@ -6,6 +6,8 @@
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
 #include <driver/rtc_io.h>
+#include <driver/gpio.h>
+#include <esp_sleep.h>
 #include "Display.h"
 #include "PinConfig.h"
 #include "GlobalState.h"
@@ -1664,6 +1666,53 @@ void setupDeepSleepWakeup(String mode)
     
     esp_deep_sleep_start();
     // Note: esp_deep_sleep_start() does not return - device restarts on wake
+  }
+  else if (mode == "light") {
+    // Light sleep: CPU paused, RAM retained, WiFi disconnected
+    // Supports wake from ANY GPIO including GPIO 44 (LED button)
+    
+    Serial.println("[LIGHT_SLEEP] Configuring GPIO wake-up sources...");
+    
+    // Enable GPIO wake-up for BOOT button (GPIO 0) - wake on LOW
+    gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
+    Serial.println("[LIGHT_SLEEP] GPIO 0 (BOOT) wake-up enabled");
+    
+    // Enable GPIO wake-up for HELP button (GPIO 14) - wake on LOW
+    gpio_wakeup_enable(GPIO_NUM_14, GPIO_INTR_LOW_LEVEL);
+    Serial.println("[LIGHT_SLEEP] GPIO 14 (HELP) wake-up enabled");
+    
+    // Enable GPIO wake-up for LED button (GPIO 44) - wake on LOW
+    gpio_wakeup_enable((gpio_num_t)PIN_LED_BUTTON_SW, GPIO_INTR_LOW_LEVEL);
+    Serial.printf("[LIGHT_SLEEP] GPIO %d (LED button) wake-up enabled\n", PIN_LED_BUTTON_SW);
+    
+    // Enable GPIO as wake-up source
+    esp_sleep_enable_gpio_wakeup();
+    
+    Serial.println("[LIGHT_SLEEP] Wake-up sources: BOOT (GPIO 0), HELP (GPIO 14), LED button (GPIO 44)");
+    Serial.println("[LIGHT_SLEEP] Entering Light Sleep (~0.8-2mA)");
+    Serial.println("[LIGHT_SLEEP] Press any button to wake up (device resumes)");
+    
+    Serial.flush();
+    delay(200);
+    
+    esp_light_sleep_start();
+    
+    // Light sleep RETURNS here after wake-up (unlike deep sleep)
+    Serial.println("[LIGHT_SLEEP] Woke up from light sleep!");
+    
+    // Disable GPIO wake-up sources
+    gpio_wakeup_disable(GPIO_NUM_0);
+    gpio_wakeup_disable(GPIO_NUM_14);
+    gpio_wakeup_disable((gpio_num_t)PIN_LED_BUTTON_SW);
+    
+    deepSleepIsActive = false;
+    deepSleepMode = "off";
+    
+    // Restart the device to reinitialize everything cleanly
+    Serial.println("[LIGHT_SLEEP] Restarting device...");
+    Serial.flush();
+    delay(100);
+    ESP.restart();
   }
 }
 

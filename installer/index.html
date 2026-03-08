@@ -427,13 +427,11 @@
                 </div>
             </div>
             
-            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> Screensaver and Deep Sleep can be combined — the screensaver activates first (backlight off, payments still work), then deep sleep kicks in later for maximum power saving. Press BOOT button or HELP button to wake up.</i></p>
+            <p style="margin-top: 20px; color: #888;"><i><strong>Use Cases:</strong> Energy saving (screensaver ~80-90%, light sleep ~99%, freeze ~99.9%), reducing device heat, extending display lifespan in always-on scenarios.</i></p>
             
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> With the T-Display-S3 with touch, the screensaver mode can be used because the touch function remains active. Deep sleep disables touch wake-up for maximum power savings.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>⚡ Light sleep</strong> is recommended for devices with an external LED button. In freeze mode, only BOOT and HELP buttons can wake the device.</i></p>
             
-            <p style="margin-top: 10px; color: #888;"><i><strong>⚡ Light sleep</strong> is recommended for devices with an external LED button (GPIO 44). In freeze mode, only BOOT and HELP buttons (GPIO 0/14) can wake the device — the LED button cannot wake from freeze because GPIO 44 is not RTC-capable. Light sleep supports wake-up from <strong>all</strong> buttons including the LED button.</i></p>
-            
-            <p style="margin-top: 10px; color: #888;"><i><strong>Use Cases:</strong> Energy saving (screensaver ~80-90%, light sleep ~99%, freeze ~99.9%), reducing device heat, extending display lifespan in always-on scenarios.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> T-Display-S3 with touch, only the screensaver mode can be used. The ESP32 cannot be reactivated via touch while in Deep Sleep mode.</i></p>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">

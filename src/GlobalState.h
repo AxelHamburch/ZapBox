@@ -56,9 +56,11 @@ extern LightningConfig lightningConfig;
 
 struct PowerConfig {
   String screensaver = "off";   // Screensaver mode: "off", "on", etc.
-  String deepSleep = "off";     // Deep sleep mode: "off", "on", etc.
-  String activationTime = "5";  // Activation time in minutes
-  unsigned long activationTimeoutMs = 0;  // Calculated timeout in milliseconds
+  String deepSleep = "off";     // Deep sleep mode: "off", "freeze", "light"
+  String activationTime = "5";  // Screensaver activation time in minutes
+  unsigned long activationTimeoutMs = 0;  // Screensaver timeout in milliseconds
+  String deepSleepTime = "30";  // Deep sleep activation time in minutes
+  unsigned long deepSleepTimeoutMs = 0;   // Deep sleep timeout in milliseconds
   unsigned long lastWakeUpTime = 0;  // Track when device woke up from screensaver
 };
 
