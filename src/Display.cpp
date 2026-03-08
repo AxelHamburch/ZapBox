@@ -963,8 +963,7 @@ void nfcNoLuckScreen()
 }
 
 // Shows the error detail message from the server after NO LUCK screen.
-// Splits the detail string at ": " (if present) for a two-line layout,
-// otherwise wraps at the nearest space around the midpoint.
+// Word-wraps the detail string into up to 4 lines to fit the display width.
 void nfcErrorDetailScreen(const char* detail)
 {
   DisplayLock lock;
@@ -983,34 +982,65 @@ void nfcErrorDetailScreen(const char* detail)
   safeFillScreen(themeBackground);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(themeForeground);
+  tft.setTextSize(2);
 
-  // Split detail into two lines: prefer ": " as break point, else mid-word-boundary
+  // Available pixel width (leave some margin on each side)
+  bool isVertical = (displayConfig.orientation == "v" || displayConfig.orientation == "vi");
+  int screenW = isVertical ? 170 : 320;
+  int maxW = screenW - 20; // 10px margin each side
+
+  // Word-wrap into up to 4 lines based on actual pixel width
   String full = String(detail);
-  String line1, line2;
-  int split = full.indexOf(": ");
-  if (split >= 0) {
-    line1 = full.substring(0, split + 1); // include the colon
-    line2 = full.substring(split + 2);
+  String lines[4];
+  int lineCount = 0;
+
+  // First split at ": " to keep the error label on its own line
+  int colonSplit = full.indexOf(": ");
+  String remaining;
+  if (colonSplit >= 0) {
+    lines[0] = full.substring(0, colonSplit + 1);
+    remaining = full.substring(colonSplit + 2);
+    lineCount = 1;
   } else {
-    // Fall back: split at space nearest the middle
-    int mid = full.length() / 2;
-    split = mid;
-    for (int d = 0; d <= mid; d++) {
-      if (mid - d >= 0 && full.charAt(mid - d) == ' ') { split = mid - d; break; }
-      if (mid + d < (int)full.length() && full.charAt(mid + d) == ' ') { split = mid + d; break; }
-    }
-    line1 = full.substring(0, split);
-    line2 = full.substring(split + 1);
+    remaining = full;
   }
 
-  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
-    tft.setTextSize(2);
-    tft.drawString(line1, x + 1, y - 20, GFXFF);
-    tft.drawString(line2, x + 1, y + 20, GFXFF);
-  } else {
-    tft.setTextSize(2);
-    tft.drawString(line1, x + 5, y - 15, GFXFF);
-    tft.drawString(line2, x + 5, y + 20, GFXFF);
+  // Word-wrap remaining text into available lines
+  while (remaining.length() > 0 && lineCount < 4) {
+    remaining.trim();
+    if (tft.textWidth(remaining, GFXFF) <= maxW) {
+      lines[lineCount++] = remaining;
+      break;
+    }
+    // Find last space that fits within maxW
+    int breakAt = -1;
+    for (int i = 0; i < (int)remaining.length(); i++) {
+      String sub = remaining.substring(0, i + 1);
+      if (tft.textWidth(sub, GFXFF) > maxW) break;
+      if (remaining.charAt(i) == ' ') breakAt = i;
+    }
+    if (breakAt <= 0) {
+      // No space found that fits — hard break at pixel width
+      int hardBreak = remaining.length();
+      for (int i = 1; i < (int)remaining.length(); i++) {
+        if (tft.textWidth(remaining.substring(0, i), GFXFF) > maxW) { hardBreak = i - 1; break; }
+      }
+      lines[lineCount++] = remaining.substring(0, hardBreak);
+      remaining = remaining.substring(hardBreak);
+    } else {
+      lines[lineCount++] = remaining.substring(0, breakAt);
+      remaining = remaining.substring(breakAt + 1);
+    }
+  }
+
+  // Draw centered, vertically distributed around screen center
+  int lineH = 25; // line height in pixels at textSize 2
+  int totalH = lineCount * lineH;
+  int startY = y - totalH / 2 + lineH / 2;
+  int cx = isVertical ? x + 1 : x + 5;
+
+  for (int i = 0; i < lineCount; i++) {
+    tft.drawString(lines[i], cx, startY + i * lineH, GFXFF);
   }
 }
 

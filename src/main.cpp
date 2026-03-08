@@ -1386,13 +1386,26 @@ void loop()
         extensionConfig.nfcPaymentFailed  = false;
         extensionConfig.nfcPaymentPending = false;
         nfcPendingScreenShown = false;
+        // Blink LED 3 times to signal failure
+        for (int i = 0; i < 3; i++) {
+          digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+          #ifdef PIN_ONBOARD_LED
+          digitalWrite(PIN_ONBOARD_LED, HIGH);
+          #endif
+          delay(100);
+          digitalWrite(PIN_LED_BUTTON_LED, LOW);
+          #ifdef PIN_ONBOARD_LED
+          digitalWrite(PIN_ONBOARD_LED, LOW);
+          #endif
+          delay(100);
+        }
         nfcNoLuckScreen();
         nfcNoLuckScreenShown = true;
         nfcNoLuckStart = millis();
         LOG_WARN("NFC", "NFC payment failed \u2013 showing NO LUCK screen");
       } else if (nfcNoLuckScreenShown) {
-        // "NFC NO LUCK" screen active – wait 5s, then show error detail (if any) or return to QR
-        if (millis() - nfcNoLuckStart > 5000) {
+        // "NFC NO LUCK" screen active – wait 3s, then show error detail (if any) or return to QR
+        if (millis() - nfcNoLuckStart > 3000) {
           nfcNoLuckScreenShown = false;
           if (extensionConfig.nfcErrorDetail[0] != '\0') {
             nfcErrorDetailScreen(extensionConfig.nfcErrorDetail);
@@ -1423,6 +1436,19 @@ void loop()
         if (millis() - extensionConfig.nfcPaymentPendingStart > 60000) {
           extensionConfig.nfcPaymentPending = false;
           nfcPendingScreenShown = false;
+          // Blink LED 3 times to signal failure
+          for (int i = 0; i < 3; i++) {
+            digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+            #ifdef PIN_ONBOARD_LED
+            digitalWrite(PIN_ONBOARD_LED, HIGH);
+            #endif
+            delay(100);
+            digitalWrite(PIN_LED_BUTTON_LED, LOW);
+            #ifdef PIN_ONBOARD_LED
+            digitalWrite(PIN_ONBOARD_LED, LOW);
+            #endif
+            delay(100);
+          }
           nfcNoLuckScreen();
           nfcNoLuckScreenShown = true;
           nfcNoLuckStart = millis();
