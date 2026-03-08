@@ -414,6 +414,18 @@ void readFiles()
       LOG_INFO("Config", String("Channel 4 ambient light: ") + (channel4AmbientConfig.enabled ? "ENABLED" : "DISABLED (normal)"));
     }
 
+    // Read deep sleep activation time (index 23)
+    const JsonObject maRoot23 = doc[23];
+    if (!maRoot23.isNull()) {
+      const char *maRoot23Char = maRoot23["value"];
+      if (maRoot23Char != nullptr) {
+        powerConfig.deepSleepTime = maRoot23Char;
+        int dsTime = String(powerConfig.deepSleepTime).toInt();
+        if (dsTime < 1) powerConfig.deepSleepTime = "1";
+        if (dsTime > 120) powerConfig.deepSleepTime = "120";
+      }
+    }
+
     // Extension API path (bitcoinswitch vs. zapbox) is auto-detected at runtime in API.cpp
     // No manual config needed - ZapBox tries bitcoinswitch first, falls back to zapbox on 404.
 
@@ -486,24 +498,40 @@ void readFiles()
     LOG_INFO("Config", "=== POWER SAVING CONFIGURATION ===");
     LOG_INFO("Config", "Screensaver: " + powerConfig.screensaver);
     LOG_INFO("Config", "Deep Sleep: " + powerConfig.deepSleep);
-    LOG_INFO("Config", "Activation Time: " + powerConfig.activationTime + " minutes");
+    LOG_INFO("Config", "Screensaver Activation Time: " + powerConfig.activationTime + " minutes");
+    LOG_INFO("Config", "Deep Sleep Activation Time: " + powerConfig.deepSleepTime + " minutes");
     
-    // Convert activation time from minutes to milliseconds
+    // Convert screensaver activation time from minutes to milliseconds
     int activationTimeMinutes = String(powerConfig.activationTime).toInt();
     powerConfig.activationTimeoutMs = activationTimeMinutes * 60 * 1000UL;
-    LOG_INFO("Config", "Activation Timeout: " + String(powerConfig.activationTimeoutMs) + " ms");
+    LOG_INFO("Config", "Screensaver Timeout: " + String(powerConfig.activationTimeoutMs) + " ms");
+    
+    // Convert deep sleep activation time from minutes to milliseconds
+    int deepSleepTimeMinutes = String(powerConfig.deepSleepTime).toInt();
+    powerConfig.deepSleepTimeoutMs = deepSleepTimeMinutes * 60 * 1000UL;
+    LOG_INFO("Config", "Deep Sleep Timeout: " + String(powerConfig.deepSleepTimeoutMs) + " ms");
     
     // Determine and display active power saving mode
-    if (powerConfig.screensaver != "off" && powerConfig.deepSleep == "off") {
+    if (powerConfig.screensaver != "off" && powerConfig.deepSleep != "off") {
+      LOG_INFO("Config", "⚡ POWER SAVING MODE: SCREENSAVER + DEEP SLEEP (" + powerConfig.deepSleep + ")");
+      LOG_INFO("Config", "   Screensaver after " + powerConfig.activationTime + " min, then " + powerConfig.deepSleep + " sleep after " + powerConfig.deepSleepTime + " min");
+      if (powerConfig.deepSleep == "light") {
+        LOG_INFO("Config", "   Press BOOT, IO14 or LED button to wake up");
+      } else {
+        LOG_INFO("Config", "   Press BOOT or IO14 button to wake up");
+      }
+    } else if (powerConfig.screensaver != "off") {
       LOG_INFO("Config", "⚡ POWER SAVING MODE: SCREENSAVER");
       LOG_INFO("Config", "   Display backlight will turn off after " + powerConfig.activationTime + " minutes");
       LOG_INFO("Config", "   Press BOOT or IO14 button to wake up");
-    } else if (powerConfig.deepSleep != "off" && powerConfig.screensaver == "off") {
+    } else if (powerConfig.deepSleep != "off") {
       LOG_INFO("Config", "⚡ POWER SAVING MODE: DEEP SLEEP (" + powerConfig.deepSleep + ")");
-      LOG_INFO("Config", "   Device will enter " + powerConfig.deepSleep + " sleep after " + powerConfig.activationTime + " minutes");
-      LOG_INFO("Config", "   Press BOOT or IO14 button to wake up");
-      LOG_INFO("Config", "Deep Sleep enabled - configuring GPIO wake-up sources");
-      // Wake-up sources will be configured in setupDeepSleepWakeup() when sleep is triggered
+      LOG_INFO("Config", "   Device will enter " + powerConfig.deepSleep + " sleep after " + powerConfig.deepSleepTime + " minutes");
+      if (powerConfig.deepSleep == "light") {
+        LOG_INFO("Config", "   Press BOOT, IO14 or LED button to wake up");
+      } else {
+        LOG_INFO("Config", "   Press BOOT or IO14 button to wake up");
+      }
     } else {
       LOG_INFO("Config", "⚡ POWER SAVING MODE: DISABLED");
       LOG_INFO("Config", "   Device will stay active continuously");
@@ -1200,19 +1228,25 @@ void loop()
     // Display deep sleep status with clear description
     if (powerConfig.deepSleep == "freeze") {
       Serial.println("Deep Sleep: deep sleep (freeze) mode");
+    } else if (powerConfig.deepSleep == "light") {
+      Serial.println("Deep Sleep: light sleep mode");
     } else {
       Serial.println("Deep Sleep: " + powerConfig.deepSleep);
     }
     
-    Serial.println("Activation Time: " + String(powerConfig.activationTimeoutMs / 60000) + " minutes (" + String(powerConfig.activationTimeoutMs) + " ms)");
+    Serial.println("Screensaver Time: " + String(powerConfig.activationTimeoutMs / 60000) + " minutes (" + String(powerConfig.activationTimeoutMs) + " ms)");
+    Serial.println("Deep Sleep Time: " + String(powerConfig.deepSleepTimeoutMs / 60000) + " minutes (" + String(powerConfig.deepSleepTimeoutMs) + " ms)");
     Serial.println("screensaverActive: " + String(deviceState.isInState(DeviceState::SCREENSAVER)));
     Serial.println("deepSleepActive: " + String(deviceState.isInState(DeviceState::DEEP_SLEEP)));
     Serial.println("activityTracking.lastActivityTime: " + String(activityTracking.lastActivityTime));
     
-    if (powerConfig.screensaver != "off" && powerConfig.deepSleep == "off") {
+    if (powerConfig.screensaver != "off" && powerConfig.deepSleep != "off") {
+      Serial.println("\n⚡ MODE: SCREENSAVER + DEEP SLEEP (" + powerConfig.deepSleep + ")");
+      Serial.println("   Screensaver first, then deep sleep after longer inactivity");
+    } else if (powerConfig.screensaver != "off") {
       Serial.println("\n⚡ MODE: SCREENSAVER ENABLED");
       Serial.println("   Backlight will turn off after inactivity");
-    } else if (powerConfig.deepSleep != "off" && powerConfig.screensaver == "off") {
+    } else if (powerConfig.deepSleep != "off") {
       Serial.println("\n⚡ MODE: DEEP SLEEP ENABLED (" + powerConfig.deepSleep + ")");
       Serial.println("   Device will sleep after inactivity");
     } else {

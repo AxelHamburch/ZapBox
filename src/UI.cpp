@@ -503,8 +503,8 @@ void showInitialScreenAfterConnections() {
  * Contains the same logic previously embedded in the main loop.
  */
 void handlePowerSavingChecks() {
-  // Screensaver mode activation
-  if (!deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && powerConfig.screensaver != "off" && powerConfig.deepSleep == "off") {
+  // Screensaver mode activation (can run standalone or as first stage before deep sleep)
+  if (!deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && powerConfig.screensaver != "off") {
     unsigned long currentTime = millis();
     unsigned long elapsedTime = currentTime - activityTracking.lastActivityTime;
 
@@ -523,19 +523,19 @@ void handlePowerSavingChecks() {
     }
   }
 
-  // Deep sleep activation
-  if (!deviceState.isInState(DeviceState::DEEP_SLEEP) && powerConfig.deepSleep != "off" && powerConfig.screensaver == "off") {
+  // Deep sleep activation (can follow screensaver or run standalone)
+  if (!deviceState.isInState(DeviceState::DEEP_SLEEP) && powerConfig.deepSleep != "off") {
     unsigned long currentTime = millis();
     unsigned long elapsedTime = currentTime - activityTracking.lastActivityTime;
 
     // Debug output every 10 seconds
     static unsigned long lastDebugOutputDeep = 0;
     if (currentTime - lastDebugOutputDeep > 10000) {
-      LOG_DEBUG("DeepSleep", String("Elapsed: ") + String(elapsedTime) + " ms / Timeout: " + String(powerConfig.activationTimeoutMs) + " ms (" + String(elapsedTime * 100.0 / powerConfig.activationTimeoutMs, 1) + "%)");
+      LOG_DEBUG("DeepSleep", String("Elapsed: ") + String(elapsedTime) + " ms / Timeout: " + String(powerConfig.deepSleepTimeoutMs) + " ms (" + String(elapsedTime * 100.0 / powerConfig.deepSleepTimeoutMs, 1) + "%)");
       lastDebugOutputDeep = currentTime;
     }
 
-    if (elapsedTime >= powerConfig.activationTimeoutMs) {
+    if (elapsedTime >= powerConfig.deepSleepTimeoutMs) {
       LOG_INFO("DeepSleep", "Timeout reached, preparing for deep sleep");
       deviceState.transition(DeviceState::DEEP_SLEEP);
 

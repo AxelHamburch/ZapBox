@@ -757,13 +757,15 @@ Automatic power-saving modes that activate after a configurable timeout:
 |------|-----------|---------|-----|-----|------|-----------|----------|-------|---------|---------|
 | **Normal** | ON | Active | Running | Active | Active | Active | ✅ Yes | ~150-250mA | 0% | - |
 | **Screensaver** | OFF | Active | Running | Active | Active | Active | ✅ Yes | ~40-60mA | ~80-90% | Instant |
-| **Deep Sleep** | OFF | Active | OFF | RTC only | Reconnect | Reconnect | ❌ No* | ~0.01-0.15mA | ~99.9% | ~3-5s |
+| **Light Sleep** | OFF | Active | Paused | Retained | Reconnect | Reconnect | ❌ No* | ~0.8-2mA | ~99% | ~3-5s |
+| **Deep Sleep (Freeze)** | OFF | Active | OFF | RTC only | Reconnect | Reconnect | ❌ No* | ~0.01-0.15mA | ~99.9% | ~3-5s |
 
-*Deep Sleep requires wake-up (button press) and WiFi reconnection before payments can be received
+*Deep Sleep / Light Sleep requires wake-up (button press) and WiFi reconnection before payments can be received
 
 **Wake-up Methods**:
 - **Screensaver**: Touch display (Touch version) or press any button → Instant wake-up
-- **Deep Sleep**: Press BOOT or HELP button only (touch disabled for maximum power savings)
+- **Light Sleep**: Press BOOT, HELP or LED button → Device restarts and reconnects (~3-5s)
+- **Deep Sleep (Freeze)**: Press BOOT or HELP button only (touch and LED button disabled for maximum power savings)
 
 **Mode Recommendations**:
 
@@ -772,10 +774,17 @@ Automatic power-saving modes that activate after a configurable timeout:
   - Good for public terminals with frequent use
   - Battery operation: ~7-10 days with 10000mAh battery
   
+- **Light Sleep**: ⭐ **Best for devices with external LED button** - 99% power saving, all buttons can wake the device
+  - LED button (GPIO 44) can wake the device — not possible with freeze mode
+  - WiFi reconnects after wake-up (~3-5 seconds)
+  - NO payments received during sleep
+  - Battery operation: months with 10000mAh battery
+
 - **Deep Sleep (freeze)**: ⭐ **Best for long-term installations** - 99.9% power saving, maximum battery life
   - WiFi reconnects after wake-up (~3-5 seconds)
   - NO payments received during sleep
   - Press button to wake and device will restart
+  - ⚠️ LED button (GPIO 44) **cannot** wake from freeze — GPIO 44 is not RTC-capable
   - Battery operation: 7.5-114 years(!) with 10000mAh battery
   - Ideal for devices used rarely or for maximum energy savings
 
@@ -788,15 +797,17 @@ Automatic power-saving modes that activate after a configurable timeout:
 - **Deep Sleep Options**:
   - **OFF**: No deep sleep (default)
   - **Freeze**: Deep sleep mode - Maximum power saving, NO payments during sleep
+  - **Light Sleep**: Light sleep mode - All buttons can wake, LED button supported
 
-- **Mutual Exclusion**: Only one mode can be active at a time (Screensaver or Deep Sleep)
-- **Activation Time**: Configurable timeout (1-120 minutes)
-- **Wake-up**: Press BOOT button or IO14 button to wake from sleep
+- **Combined Mode**: Screensaver and Deep Sleep can be used together — screensaver activates first (backlight off, payments still work), then deep sleep kicks in later for maximum power saving
+- **Activation Timers**: Separate configurable timeouts for screensaver (default 5 min) and deep sleep (default 30 min), range 1-120 minutes each
+- **Wake-up**: Press BOOT button or IO14 button to wake from sleep (Light Sleep also supports LED button)
 - **Payment Processing**: Only Screensaver mode can receive payments during power saving
 
 **Technical Notes**:
 - **Screensaver - Backlight Power**: The T-Display-S3's backlight consumes most display power (~150-200mA). Turning it off saves 80-90% while keeping the display controller active for instant wake-up. CPU continues running, payments work normally.
-- **Deep Sleep - Complete Shutdown**: Only RTC memory active, device performs full restart on wake-up (~3-5s), requires complete WiFi reconnection. NO payment processing during sleep. Maximum battery life.
+- **Light Sleep - CPU Paused**: CPU is paused but RAM is retained. Any GPIO can wake the device, including GPIO 44 (LED button). Device restarts after wake-up for clean reinitialization.
+- **Deep Sleep - Complete Shutdown**: Only RTC memory active, device performs full restart on wake-up (~3-5s), requires complete WiFi reconnection. NO payment processing during sleep. Maximum battery life. Only RTC-capable GPIOs (0, 14) can wake the device.
 
 **Use Cases**: Energy saving for installations, battery operation, reducing device heat, extending display lifespan in always-on scenarios
 
