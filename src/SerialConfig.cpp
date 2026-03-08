@@ -133,15 +133,20 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
     serialPrintln("Waiting for commands...");
     serialPrintln("Touch screen or press button to exit.");
     
-    // Send additional CONFIG_MODE_ENTER signals to ensure web installer detects it
-    for (int i = 0; i < 3; i++) {
-        delay(150);
-        serialPrintln("[CONFIG_MODE_ENTER]");
-    }
-
-    // Drain RX once more just before entering command loop
-    while (Serial.available()) Serial.read();
+    // Send one additional CONFIG_MODE_ENTER after a short pause for reliable
+    // detection by the web installer (USB CDC may chunk the first one).
+    // Keep it minimal – a long loop with delays creates a race window where
+    // user commands can arrive and get drained before the command loop starts.
+    delay(100);
+    serialPrintln("[CONFIG_MODE_ENTER]");
     Serial.flush();
+
+    // Drain any stale RX bytes (from other cores) before entering the command
+    // loop.  This must happen AFTER all CONFIG_MODE_ENTER sends are done so
+    // that no user command sent in response to the first ENTER is accidentally
+    // consumed.
+    delay(50);
+    while (Serial.available()) Serial.read();
 
     unsigned long lastActivity = millis(); // Track last serial activity
     const unsigned long inactivityTimeout = 180000; // 180 seconds

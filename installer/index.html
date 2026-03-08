@@ -995,12 +995,17 @@
                     consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 }, 300);
                 
-                // Enable buttons after verification
+                // Enable buttons after a short delay to ensure the ESP32 has
+                // finished its CONFIG_MODE_ENTER sequence and RX drain before
+                // any commands are sent.  Without this delay, a fast Read click
+                // can arrive while the ESP is still draining stale RX bytes.
                 document.getElementById("connect-button").disabled = true;
-                document.getElementById("read-config-button").disabled = false;
-                document.getElementById("write-config-button").disabled = false;
                 document.getElementById("soft-reset-button").disabled = false;
                 document.getElementById("restart-button").disabled = false;
+                setTimeout(() => {
+                    document.getElementById("read-config-button").disabled = false;
+                    document.getElementById("write-config-button").disabled = false;
+                }, 800);
             }
             
             // Check for config mode exit
