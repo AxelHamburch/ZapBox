@@ -182,9 +182,9 @@ const ThemeConfig themeConfigs[] = {
 inline void safeFillScreen(uint16_t color)
 {
   tft.fillScreen(color);
-  // ZAPBOX theme: No delay to prevent display controller corruption
+  // ZAPBOX/BTCORANGE/NAVY-WHITE themes: No delay to prevent display controller corruption
   // Other themes: Small delay for stability
-  if (displayConfig.theme != "zapbox" && displayConfig.theme != "btcorange-black") {
+  if (displayConfig.theme != "zapbox" && displayConfig.theme != "btcorange-black" && displayConfig.theme != "navy-white") {
     delay(5);
   }
 }
@@ -279,12 +279,12 @@ void btctickerScreen()
   // This is especially important when switching from QR screens
   ensureCorrectRotation();
   
-  // ZAPBOX/BTCORANGE theme color inversion fix
-  // Problem: Inverted QR has YELLOW/ORANGE background, ticker has BLACK background
-  // Need careful transition for color inversion (YELLOW/ORANGE -> BLACK)
-  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
-    // Transition from inverted QR (yellow/orange) to ticker (black)
-    tft.fillScreen(themeBackground);  // Clear to black
+  // ZAPBOX/BTCORANGE/NAVY-WHITE theme color inversion fix
+  // Problem: Inverted QR has colored background, ticker has its own background
+  // Need careful transition for color inversion
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black" || displayConfig.theme == "navy-white") {
+    // Transition from inverted QR to ticker background
+    tft.fillScreen(themeBackground);  // Clear to theme background
     ensureCorrectRotation();
     delay(30);
     tft.fillScreen(themeBackground);  // Second clear for stability
@@ -840,11 +840,16 @@ void stepThreeScreen()
 void actionTimeScreen()
 {
   DisplayLock lock;
-  // ZAPBOX theme color inversion fix: Reset display controller with double-clear
+  // Inverted-QR theme color inversion fix: Reset display controller with double-clear
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);
     delay(10);
     tft.fillScreen(TFT_BLACK);
+    delay(5);
+  } else if (displayConfig.theme == "navy-white") {
+    tft.fillScreen(TFT_WHITE);
+    delay(10);
+    tft.fillScreen(TFT_WHITE);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -881,11 +886,16 @@ void actionTimeScreen()
 void nfcPendingScreen()
 {
   DisplayLock lock;
-  // ZAPBOX theme color inversion fix: Reset display controller with double-clear
+  // Inverted-QR theme color inversion fix: Reset display controller with double-clear
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);
     delay(10);
     tft.fillScreen(TFT_BLACK);
+    delay(5);
+  } else if (displayConfig.theme == "navy-white") {
+    tft.fillScreen(TFT_WHITE);
+    delay(10);
+    tft.fillScreen(TFT_WHITE);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -914,11 +924,16 @@ void nfcPendingScreen()
 void nfcNoLuckScreen()
 {
   DisplayLock lock;
-  // ZAPBOX theme color inversion fix
+  // Inverted-QR theme color inversion fix
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);
     delay(10);
     tft.fillScreen(TFT_BLACK);
+    delay(5);
+  } else if (displayConfig.theme == "navy-white") {
+    tft.fillScreen(TFT_WHITE);
+    delay(10);
+    tft.fillScreen(TFT_WHITE);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -954,10 +969,16 @@ void nfcNoLuckScreen()
 void nfcErrorDetailScreen(const char* detail)
 {
   DisplayLock lock;
+  // Inverted-QR theme color inversion fix
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);
     delay(10);
     tft.fillScreen(TFT_BLACK);
+    delay(5);
+  } else if (displayConfig.theme == "navy-white") {
+    tft.fillScreen(TFT_WHITE);
+    delay(10);
+    tft.fillScreen(TFT_WHITE);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -998,11 +1019,16 @@ void nfcErrorDetailScreen(const char* detail)
 void nfcNotSupportedScreen()
 {
   DisplayLock lock;
-  // ZAPBOX theme color inversion fix
+  // Inverted-QR theme color inversion fix
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
     tft.fillScreen(TFT_BLACK);
     delay(10);
     tft.fillScreen(TFT_BLACK);
+    delay(5);
+  } else if (displayConfig.theme == "navy-white") {
+    tft.fillScreen(TFT_WHITE);
+    delay(10);
+    tft.fillScreen(TFT_WHITE);
     delay(5);
   }
   safeFillScreen(themeBackground);
@@ -1199,7 +1225,7 @@ void showProductQRScreen(String label, int pin)
   // This is especially important for themes with color inversion
   ensureCorrectRotation();
   
-  // Select colors; invert for "zapbox" theme only on product QR screens
+  // Select colors; invert for special themes on product QR screens
   uint16_t fg = themeForeground;
   uint16_t bg = themeBackground;
   if (displayConfig.theme == "zapbox") {
@@ -1208,6 +1234,9 @@ void showProductQRScreen(String label, int pin)
   } else if (displayConfig.theme == "btcorange-black") {
     fg = TFT_BLACK;
     bg = 0xFCC0;
+  } else if (displayConfig.theme == "navy-white") {
+    fg = TFT_WHITE;
+    bg = TFT_NAVY;
   }
 
   // Replace currency symbols with text abbreviations for better compatibility
@@ -1258,12 +1287,11 @@ void showProductQRScreen(String label, int pin)
   }
 
   // Now do all display operations - COMPLETE refresh like help screens
-  // ZAPBOX/BTCORANGE theme color inversion fix
-  // Problem: Ticker has BLACK background, inverted QR has YELLOW/ORANGE background
-  // Display controller needs careful transition sequence for this complete color inversion
+  // Inverted-QR theme color transition fix
+  // Display controller needs careful transition sequence for complete color inversion
   // IMPORTANT: Must reset rotation after each fillScreen() to prevent rotation bugs
   if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
-    // Step 1: Clear to BLACK (ensures clean starting point from ticker)
+    // Step 1: Clear to BLACK (ensures clean starting point from black ticker)
     tft.fillScreen(TFT_BLACK);
     ensureCorrectRotation();
     delay(20);
@@ -1277,6 +1305,21 @@ void showProductQRScreen(String label, int pin)
     tft.fillScreen(bg);
     ensureCorrectRotation();
     delay(20);
+  } else if (displayConfig.theme == "navy-white") {
+    // Step 1: Clear to WHITE (ensures clean starting point from white ticker)
+    tft.fillScreen(TFT_WHITE);
+    ensureCorrectRotation();
+    delay(20);
+    
+    // Step 2: Transition to navy background
+    tft.fillScreen(bg);
+    ensureCorrectRotation();
+    delay(30);
+    
+    // Step 3: Confirm with second fill
+    tft.fillScreen(bg);
+    ensureCorrectRotation();
+    delay(20);
   }
   
   safeFillScreen(bg);
@@ -1284,7 +1327,7 @@ void showProductQRScreen(String label, int pin)
   ensureCorrectRotation();
   
   // Draw QR code immediately after screen clear, before anything else
-  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black") {
+  if (displayConfig.theme == "zapbox" || displayConfig.theme == "btcorange-black" || displayConfig.theme == "navy-white") {
     drawQRCodeWithColors(fg, bg);
   } else {
     drawQRCode();
