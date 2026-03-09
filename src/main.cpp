@@ -639,6 +639,9 @@ void configMode()
   esp_log_level_set("ssl_client", ESP_LOG_NONE);
   esp_log_level_set("WiFiSTA", ESP_LOG_NONE);
   esp_log_level_set("WiFiMulti", ESP_LOG_NONE);
+  esp_log_level_set("WiFiGeneric", ESP_LOG_NONE); // Some IDF versions use tag without .cpp
+  esp_log_level_set("wifi_init", ESP_LOG_NONE);
+  esp_log_level_set("phy_init", ESP_LOG_NONE);
 
   // Set CONFIG_MODE state BEFORE WiFi teardown so that any in-progress HTTP
   // requests on Core 1 (e.g. fetchBitcoinData, fetchSwitchConfigurations) can
@@ -661,7 +664,7 @@ void configMode()
 
   // Step 2: Now shut down the radio completely.
   WiFi.mode(WIFI_OFF);
-  delay(100); // Let pending WiFi event callbacks drain
+  delay(500); // Let pending WiFi event callbacks drain completely
 
   // Set CONFIG_MODE state SILENTLY (DeviceState suppresses serial for CONFIG_MODE)
   configModeScreen(); // Draw config screen

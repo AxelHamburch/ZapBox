@@ -119,10 +119,18 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
     
     // CRITICAL: Ensure serial is fully ready (especially after wake from deep sleep)
     // Also wait for setup() on Core 1 to notice CONFIG_MODE and stop writing to Serial.
+    // Additionally, WiFi event callbacks (e.g. ASSOC_LEAVE from WiFi.disconnect())
+    // fire asynchronously on the WiFi task and write to Serial via esp_log — we must
+    // wait long enough for those to complete before we start our own output.
     Serial.flush();
-    delay(500); // Give Core 1 time to see CONFIG_MODE and exit + USB CDC stabilize
+    delay(1500); // Give Core 1 + WiFi event callbacks time to finish + USB CDC stabilize
 
     // Drain any stale bytes that other cores may have written while we waited
+    while (Serial.available()) Serial.read();
+    
+    // Extra flush + drain: catch any late WiFi event log output
+    Serial.flush();
+    delay(100);
     while (Serial.available()) Serial.read();
     
     serialPrintln("");
@@ -133,11 +141,15 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
     serialPrintln("Waiting for commands...");
     serialPrintln("Touch screen or press button to exit.");
     
-    // Send one additional CONFIG_MODE_ENTER after a short pause for reliable
-    // detection by the web installer (USB CDC may chunk the first one).
-    // Keep it minimal – a long loop with delays creates a race window where
-    // user commands can arrive and get drained before the command loop starts.
-    delay(100);
+    // Send additional CONFIG_MODE_ENTER markers after pauses for reliable
+    // detection by the web installer (USB CDC may chunk or interleave the first one).
+    delay(200);
+    serialPrintln("[CONFIG_MODE_ENTER]");
+    Serial.flush();
+    
+    // Third marker after a longer pause — catches edge cases where late
+    // WiFi/ESP-IDF log callbacks corrupted the earlier markers.
+    delay(500);
     serialPrintln("[CONFIG_MODE_ENTER]");
     Serial.flush();
 
