@@ -931,6 +931,7 @@ Electrical design and housing variants, see table.
 | b935750 | Headless | Prototyp Headless - ZapBox without display |
 | b937454 | USB-Power-Hub | Prototyp USB-Power-Hub - Just for voltage distribution |
 | b939002 | Compact | Compact 35° now with NFC cap 🎉 |
+| b939704 | ZapOMat | ZapOMat No.1 |
 
 -> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
@@ -951,6 +952,7 @@ Electrical design and housing variants, see table.
 | e938714 | ZapOMat | Firest ZapOMat design |
 | e938889 | Headless | Update Headless with ZapBox picture |
 | e938897 | Compact | Update Compact with ZapBox picture |
+| e939705 | ZapOMat | ZapOMat No.1 | 
 
 -> Find all versions here: [./assets/electric)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
