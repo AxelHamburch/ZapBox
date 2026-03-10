@@ -1,4 +1,4 @@
-# ZapBox Comact – Bedienungsanleitung
+# ZapBox Compact – Bedienungsanleitung
 
 **Sprache:** Deutsch | **Version:** OI940117
 
