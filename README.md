@@ -877,7 +877,8 @@ ZapBox/
 │   │   ├── e938714-ZapOMat/       # ZapOMat design
 │   │   ├── e938889-Headless/      # Headless update with ZapBox picture
 │   │   ├── e938897-Compact/       # Compact update with ZapBox picture
-│   │   └── e939042-Compact/       # Compact with NFC cap
+│   │   ├── e939042-Compact/       # Compact with NFC cap
+│   │   └── e939705-ZapOMat/       # ZapOMat update
 │   ├── housing/                   # 3D models and housing (FreeCAD)
 │   │   ├── b926837-Compact/       # Prototype compact
 │   │   ├── b928260-Compact/       # Prototype 2 compact
@@ -890,7 +891,17 @@ ZapBox/
 │   │   ├── b935750-Headless/      # Headless variant
 │   │   ├── b937454-USB-Power-Hub/ # USB Power Hub
 │   │   ├── b939002-Compact/       # Compact with NFC cap
+│   │   ├── b939704-ZapOMat/       # ZapOMat housing
+│   │   ├── b940298-Duo/           # Duo update
 │   │   └── fonts/                 # Fonts for housing labels
+│   ├── operating-instructions/    # User manuals (DE/EN)
+│   │   ├── Compact-oi940284-de.md # ZapBox Compact manual (German)
+│   │   ├── Compact-oi940284-en.md # ZapBox Compact manual (English)
+│   │   ├── Duo-oi940285-de.md     # ZapBox Duo manual (German)
+│   │   ├── Duo-oi940285-en.md     # ZapBox Duo manual (English)
+│   │   ├── pic-Compact/           # Images for Compact manual
+│   │   ├── pic-Duo/               # Images for Duo manual
+│   │   └── archive/               # Older manual versions
 │   ├── white-paper/               # Technical documentation
 │   ├── Pinout-T-DISPLAY-S3.jpg    # T-Display-S3 pinout reference
 │   ├── Pinout-T-DISPLAY-S3-TOUCH.png # T-Display-S3 Touch pinout reference
