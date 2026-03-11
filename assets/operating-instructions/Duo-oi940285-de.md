@@ -8,15 +8,13 @@
 
 1. [Übersicht](#übersicht)
 2. [Ansichten](#ansichten)
-3. [Inbetriebnahme](#inbetriebnahme)
-4. [Einrichtung](#einrichtung)
-5. [Schiebeschalter](#schiebeschalter)
-6. [Ausgänge](#ausgänge)
-7. [NFC-Modul (optional)](#nfc-modul-optional)
-8. [Bedienelemente](#bedienelemente)
-9. [Technische Daten](#technische-daten)
-10. [Sicherheitshinweise](#sicherheitshinweise)
-11. [Weiterführende Links](#weiterführende-links)
+3. [Anschlüsse](#anschlüsse)
+4. [Bedienelemente](#bedienelemente)
+5. [Einrichtung und Inbetriebnahme](#einrichtung-und-inbetriebnahme)
+6. [NFC-Modul (optional)](#nfc-modul-optional)
+7. [Technische Daten](#technische-daten)
+8. [Sicherheitshinweise](#sicherheitshinweise)
+9. [Weiterführende Links](#weiterführende-links)
 
 ---
 
@@ -54,36 +52,17 @@ Die **ZapBox Duo** ist ein elektronischer Schalter für Bitcoin-Lightning-Zahlun
 
 ---
 
-## Inbetriebnahme
+## Anschlüsse
 
-### Stromversorgung
+### Eingang - USB-C Buchse zur Spannungsversorgung (5V)
 
 Versorgen Sie das Gerät über den Anschluss **Power IN** mit einem USB-C-Kabel mit **5 V DC (max. 5 A)**.
 
 > **Hinweis:** Der Power-IN-Anschluss ist nicht „intelligent". Einige Ladegeräte oder Powermodule mit USB-C-Ausgang erkennen die ZapBox nicht und liefern keinen Strom. Verwenden Sie in diesem Fall einen **USB-A-Ausgang** der Spannungsversorgung oder eine andere Stromquelle.
 
-### Erster Test (vorkonfiguriertes Gerät)
-
-Ist das Gerät bereits konfiguriert, können Sie sofort einen ersten Test durchführen:
-
-1. Drücken Sie den **LED-Button**, um zwischen den Display-Seiten zu wechseln.
-2. Scannen Sie mit einem Lightning-Wallet den angezeigten **QR-Code**.
-3. Bezahlen Sie die Invoice.
-4. Das Relais sollte hörbar schalten – der Schaltvorgang war erfolgreich.
-
 ---
 
-## Einrichtung
-
-### Web-Installer
-
-Zur Ersteinrichtung und Firmware-Aktualisierung steht der **Web-Installer** zur Verfügung:
-
-**https://installer.zapbox.space/**
-
-Der vollständige Ablauf ist dort beschrieben. Es wird empfohlen, stets die **„Latest"-Firmware** zu flashen, um die ZapBox auf dem neuesten Stand zu halten.
-
-### USB-Datenzugang (versteckte Klappe)
+### Eingang - USB-C Buchse am Mikrocontroller (Datenzugang, hinter rechtem Seitenpanel)
 
 Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit einem Computer oder Laptop:
 
@@ -97,38 +76,13 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 
 > **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller dient ausschließlich zum Flashen neuer Firmware oder zur Übertragung von Konfigurationsparametern. Wenn während des Flashens gleichzeitig Schaltfunktionen ausgelöst werden, kann es zu **Fehlfunktionen oder Beschädigungen des Mikrocontrollers** kommen.
 >
-> Es wird daher dringend empfohlen:
-> - Während des Flashens keine Schaltfunktionen auszulösen, **oder**
+> Es wird daher empfohlen:
+> - Während des Anschlusses keine Schaltfunktionen auszulösen, **oder**
 > - den regulären **Power-IN-Eingang** zusätzlich an dieselbe Spannungsversorgung anzuschließen, damit der Strom für das Leistungsrelais nicht über den Mikrocontroller fließt und diesen überlastet.
 
----
+### Ausgang
 
-## Schiebeschalter
-
-Die ZapBox Duo verfügt über zwei Schiebeschalter.
-
-### Schalter 1 – Dreifach-Schiebeschalter (AUTO / OFF / ON)
-
-| Stellung | Funktion |
-|---|---|
-| **A** (AUTO) | Automatikbetrieb – Normalbetrieb |
-| **0** (OFF) | Spannungsversorgung unterbrochen – Ausgang AUS |
-| **1** (ON) | Ausgang CH2 (Doppel-USB A/C) dauerhaft EIN |
-
-### Schalter 2 – Zweifach-Schiebeschalter (Invert / Normal)
-
-| Stellung | Funktion |
-|---|---|
-| **Normal** | CH2 ist im Ruhezustand spannungslos (0 V). Nach dem Schaltvorgang liegt 5 V an den USB-Buchsen an. |
-| **Inv.** (Invert) | CH2 liegt im Ruhezustand auf 5 V. Nach dem Schaltvorgang wechselt der Ausgang auf 0 V (inverses Schalten). |
-
-> **Hinweis:** Befindet sich der Zweifach-Schalter auf **Inv.** und der Dreifach-Schalter auf **Stellung 1**, ist der Ausgang – anders als im Normalbetrieb – **AUS** statt EIN.
-
----
-
-## Ausgänge
-
-### Kanal 1 (CH1) – Leistungsrelais 30 A
+#### Kanal 1 (CH1) – Leistungsrelais 30 A
 
 Das Leistungsrelais auf Kanal 1 führt die Kontakte **COM / NO / NC** nach außen. Diese sind werkseitig mit einer **Schutzkappe** abgedeckt.
 
@@ -139,9 +93,67 @@ Die Kontakte des Leistungsrelais sind für eine **maximale Strombelastung von 30
 
 Auf der **Oberseite der ZapBox** befindet sich eine kleine transparente Öffnung. Eine LED dahinter zeigt den **EIN-Status des Leistungsrelais** an.
 
-### Kanal 2 (CH2) – Doppel-USB-Buchse (USB-A / USB-C)
+#### Kanal 2 (CH2) – Doppel-USB-Buchse (USB-A / USB-C)
 
 Die Doppel-USB-Buchse wird über einen Relais-Schaltkontakt (CH2) geschaltet. Die **Gesamtbelastung** der Buchsen sollte **3 A nicht überschreiten**.
+
+---
+
+## Bedienelemente
+
+Je nach Version verfügt die ZapBox neben dem LED-Button über zwei kleine **On-board-Mikrotaster**, die direkt mit dem Mikrocontroller verbunden sind. Alle Funktionen sind sowohl über den LED-Button als auch über die Mikrotaster erreichbar. Zusätzlich hat die ZapBox an der Unterseite des Frontpanels einen Reset-Taster und an der Seite zwei Schiebeschalter.
+
+### Funktionsübersicht - Mikrotaster
+
+| Funktion | Mikrotaster | LED-Button |
+|---|---|---|
+| Hilfe-Seite anzeigen | 1× HELP drücken | LED-Button mind. 2 Sek. gedrückt halten |
+| Nächste Seite / Produktwechsel | 1× NEXT drücken | 1× LED-Button kurz drücken |
+| REPORT-Seite anzeigen | 2× HELP drücken | LED-Button 3× schnell hintereinander drücken |
+| Config-Modus aufrufen | NEXT mind. 5 Sek. gedrückt halten | 1× kurz drücken, dann mind. 5 Sek. gedrückt halten |
+
+### Funktionsübersicht - Schiebeschalter
+
+Die ZapBox Duo verfügt über zwei Schiebeschalter.
+
+#### Schalter 1 – Dreifach-Schiebeschalter (AUTO / OFF / ON)
+
+| Stellung | Funktion |
+|---|---|
+| **A** (AUTO) | Automatikbetrieb – Normalbetrieb |
+| **0** (OFF) | Spannungsversorgung unterbrochen – Ausgang AUS |
+| **1** (ON) | Ausgang CH2 (Doppel-USB A/C) dauerhaft EIN (Bei Schalter 2 - Inverse = AUS) |
+
+#### Schalter 2 – Zweifach-Schiebeschalter (standard / invertiert)
+
+| Stellung | Funktion |
+|---|---|
+| **Std.** (Standard) | Der Ausgang ist Ruhezustand spannungslos (0 V). Nach dem Schaltvorgang liegt 5 V an den USB-Buchsen an. |
+| **Inv.** (Inverse) | Der Ausgang liegt im Ruhezustand auf 5 V. Nach dem Schaltvorgang wechselt der Ausgang auf 0 V (inverses Schalten). |
+
+> **Hinweis:** Befindet sich der Zweifach-Schalter auf **Inv.** und der Dreifach-Schalter auf **Stellung 1**, ist der Ausgang – anders als im Normalbetrieb – **AUS** statt EIN.
+
+---
+
+## Einrichtung und Inbetriebnahme
+
+Die ZapBox wird nach der Fertigung getestet und mit der aktuellen Firmware ausgeliefert - sie ist aber nicht parametriert. Die Software wird aktiv weiterentwickelt, daher ist es empfehlenswert, die ZapBox gleich zu Beginn einmal mit der neuesten Firmware zu bespielen und dann eine Parametrierung durchzuführen. Dafür gibt es einen komfortablen **Web-Installer**.
+
+Hier eine Schritt-für-Schritt-Anleitung für die Einrichtung:
+
+1. Öffnet das rechte Seitenpanel der Frontblende, wie oben unter "Eingang - USB-C Buchse am Mikrocontroller" beschrieben.
+2. Schließt die ZapBox an dem USB-C-Port mit einem Kabel an und verbindet es mit einem Computer. 
+3. Öffnet einen Chromium Browser, zum Beispiel Google Chrome, Microsoft Edge, Brave, Vivaldi, Opera oder [Helium](https://helium.computer/).
+4. Ruft die Web-Installer Seite **https://installer.zapbox.space/** auf.
+5. Flasht die aktuellste "Latest" Version, wie unter Punkt 1 des Web-Installer beschrieben.
+6. Nach dem Flashvorgang schließt das kleine Fenster und geht zu Punkt 3 - Load config values. Dort wählt ihr den Button `🔌 Connect`.
+7. Jetzt solltet ihr in dem grünen Feld `✅ Connected` und `✅ Config mode` sehen, vorausgesetzt die ZapBox befindet sich jetzt auch im `SERIAL CONFIG MODE`. Das Display müsste es euch anzeigen. Falls nicht, prüft einmal den Punkt 2 - Prepare connection.
+8. Drei Parameter benötigt die ZapBox: `WiFi SSID` / `WiFi password` / `Device settings string`. Den Device-Settings-String bekommt ihr von eurer LNbits Wallet. Fügt dazu die Erweiterung **Bitcoin Switch** oder **ZapBox** hinzu. Die ZapBox Erweiterung unterstützt auch das NFC-Modul, ansonsten sind sie identisch.
+9. Nachdem alle drei Parameter hinterlegt wurden, müssen dies mit dem Button `🔥 Write Config` einmal gespeichert werden und die ZapBox mit dem Button `🔁 Restart` neu gestartet werden.
+
+Das sollte es auch schon gewesen sein. Die ZapBox wird nach der Initialisierung den QR-Code des Produkts anzeigen und ist bereit für die erste Zahlung und anschließender Aktion am USB-Ausgang. 
+
+Bei Fehler oder Störungen, bitte auf der Web Installer Seite, weiter unten die Kapitel "Error Detection & Report" und "Troubleshoot" beachten. 
 
 ---
 
@@ -152,20 +164,7 @@ Je nach Ausstattung ist auf der **Oberseite der ZapBox** ein NFC-Modul verbaut. 
 - **Boltcards** (NTAG424)
 - **LNURL-Withdraw** von NTAG21x (213 / 215 / 216)
 
----
-
-## Bedienelemente
-
-Je nach Version verfügt die ZapBox neben dem LED-Button über zwei kleine **On-board-Mikrotaster**, die direkt mit dem Mikrocontroller verbunden sind. Alle Funktionen sind sowohl über den LED-Button als auch über die Mikrotaster erreichbar. Die ZapBox hat an der Unterseite auch einen Reset-Taster.
-
-### Funktionsübersicht
-
-| Funktion | Mikrotaster | LED-Button |
-|---|---|---|
-| Hilfe-Seite anzeigen | 1× HELP drücken | LED-Button mind. 2 Sek. gedrückt halten |
-| Nächste Seite / Produktwechsel | 1× NEXT drücken | 1× LED-Button kurz drücken |
-| REPORT-Seite anzeigen | 2× HELP drücken | LED-Button 3× schnell hintereinander drücken |
-| Config-Modus aufrufen | NEXT mind. 5 Sek. gedrückt halten | 1× kurz drücken, dann mind. 5 Sek. gedrückt halten |
+Voraussetzung für die Funktion ist die LNbits [ZapBox Extension](https://github.com/AxelHamburch/zapbox_extension). Sie muss von dem LNbits Server unterstützt werden. 
 
 ---
 
@@ -174,9 +173,9 @@ Je nach Version verfügt die ZapBox neben dem LED-Button über zwei kleine **On-
 | Eigenschaft | Wert |
 |---|---|
 | Versorgungsspannung | 5 V DC über USB-C |
-| Maximaler Eingangsstrom | 3,5 A |
+| Maximaler Eingangsstrom | 5,0 A |
 | CH1 Schaltleistung | max. 30 A |
-| CH2 Ausgangsleistung | max. 3,0 A (gesamt) |
+| CH2 Ausgangsleistung | max. 3,0 A (empfohlen/gesamt) |
 | Display | 1,9" LCD (T-Display-S3) |
 | Kommunikation | Wi-Fi (ESP32-S3) |
 | Zahlungsprotokoll | Bitcoin Lightning Network |
@@ -200,7 +199,8 @@ Je nach Version verfügt die ZapBox neben dem LED-Button über zwei kleine **On-
 | Übersicht aller ZapBox-Modelle | https://zapbox.space/ |
 | Web-Installer, Kurzübersicht & Fehlerbehebung | https://installer.zapbox.space/ |
 | Detaillierte Dokumentation (Parameter & Funktionen) | https://ereignishorizont.xyz/zapbox/ |
-| GitHub-Repository (Software, E-Layouts, 3D-Druckdateien) | https://github.com/AxelHamburch/ZapBox |
+| GitHub-Repository (Software, E-Layouts, 3D-Druckdateien, Bedienungsanleitungen) | https://github.com/AxelHamburch/ZapBox |
+| ZapBox Extension | https://github.com/AxelHamburch/zapbox_extension |
 
 ---
 

@@ -99,8 +99,6 @@ Die ZapBox verfügt über zwei kleine **On-board-Mikrotaster**, die direkt mit d
 | REPORT-Seite anzeigen | 2× HELP drücken | 
 | Config-Modus aufrufen | NEXT mind. 5 Sek. gedrückt halten |
 
----
-
 ### Funktionsübersicht - Schiebeschalter
 
 Die ZapBox Compact verfügt über zwei Schiebeschalter.
@@ -188,6 +186,7 @@ Voraussetzung für die Funktion ist die LNbits [ZapBox Extension](https://github
 | Web-Installer, Kurzübersicht & Fehlerbehebung | https://installer.zapbox.space/ |
 | Detaillierte Dokumentation (Parameter & Funktionen) | https://ereignishorizont.xyz/zapbox/ |
 | GitHub-Repository (Software, E-Layouts, 3D-Druckdateien, Bedienungsanleitungen) | https://github.com/AxelHamburch/ZapBox |
+| ZapBox Extension | https://github.com/AxelHamburch/zapbox_extension |
 
 ---
 

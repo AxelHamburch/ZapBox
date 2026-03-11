@@ -188,6 +188,7 @@ The LNbits [ZapBox Extension](https://github.com/AxelHamburch/zapbox_extension) 
 | Web Installer, quick overview & troubleshooting | https://installer.zapbox.space/ |
 | Detailed documentation (parameters & functions) | https://ereignishorizont.xyz/zapbox/ |
 | GitHub repository (software, schematics, 3D print files, manuals) | https://github.com/AxelHamburch/ZapBox |
+| ZapBox Extension | https://github.com/AxelHamburch/zapbox_extension |
 
 ---
 
