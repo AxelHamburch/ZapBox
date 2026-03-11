@@ -88,6 +88,7 @@ Device String (switchStr)
   - Connected via I2C (shared bus with Touch controller)
   - Supports **Bolt Cards** (NTAG424 DNA) and **NTAG21x (213/215/216) / LNURL tags**
   - Tap-to-pay with automatic card removal detection and payment timeout
+  - Note: The LNbits [ZapBox extension](https://github.com/AxelHamburch/zapbox_extension) is required for the NFC function.
 
 ### ESP32 Dev Module (Headless Version)
 
