@@ -57,13 +57,25 @@ Ist das Gerät bereits konfiguriert, können Sie sofort einen ersten Test durchf
 
 ## Einrichtung
 
+Die ZapBox wird getestet und mit der letzten Firmware geflasht ausgeliefert. Sie ist weder parametriert, noch kann gewährleister werden,  es zwischenzeitig Firmware herausgegeben wurd. Um sicher zu gehen den letzten Stand der Software zu haben und folgen Sie bitte diesen Leitpfaden.
+
+1. Aufruf des Web-Installer: **https://installer.zapbox.space/**
+
+"SERIAL CONFIG MODE"
+
 ### Web-Installer
 
 Zur Ersteinrichtung und Firmware-Aktualisierung steht der **Web-Installer** zur Verfügung:
 
 **https://installer.zapbox.space/**
 
-Der vollständige Ablauf ist dort beschrieben. Es wird empfohlen, stets die **„Latest"-Firmware** zu flashen, um die ZapBox auf dem neuesten Stand zu halten.
+Die letzte Firmware zum Zeitpunkt der Auslieferung ist bereits vorinstalliert. Wird die ZapBox an einen PC/Laptop angeschlossen, startet sie direkt im "Config mode". Jetzt kann man direk zum Punkt "3 Load config values" gehen und einmal den Button Connect anwählen. Die ZapBox verbindet sich mit dem Computer und sollte das auch mit Status ✅ Connected / ✅ Config mode anzeigen. 
+
+Jetzt müssen mindestens die drei Parameter WiFi SSID / WiFi password / Device settings string eingetragen werden. Den Device settings string bekommt ihr in eurem LNbits Account unter der Extension Bitcoin Switch oder ZapBox. Wer die NFC-Funktion nutzen möchte, muss die ZapBox Extension verwenden. Anonsten sind die Funktionen identisch.  
+
+Nach dem die Felder ausgefüllt wurden, muss man einmal den Button "Write Config" wählen, um die Daten auf die ZapBox zu schreiben. Danach einmal den "Restart" Button. Anschließend sollte die ZabBox neu durchstarten und nach ein paas Sekunden den QR-Code anzeigen. 
+
+Es empfiehlt sich die **„Latest"-Firmware** zu flashen, um die ZapBox auf dem neuesten Stand zu halten. Die Daten bleiben erhalten, so lange man keine "Erase Device" anwählt. 
 
 ### USB-Datenzugang (versteckte Klappe)
 
@@ -170,7 +182,7 @@ Die ZapBox verfügt über zwei kleine **On-board-Mikrotaster**, die direkt mit d
 | Übersicht aller ZapBox-Modelle | https://zapbox.space/ |
 | Web-Installer, Kurzübersicht & Fehlerbehebung | https://installer.zapbox.space/ |
 | Detaillierte Dokumentation (Parameter & Funktionen) | https://ereignishorizont.xyz/zapbox/ |
-| GitHub-Repository (Software, E-Layouts, 3D-Druckdateien) | https://github.com/AxelHamburch/ZapBox |
+| GitHub-Repository (Software, E-Layouts, 3D-Druckdateien, Bedienungsanleitungen) | https://github.com/AxelHamburch/ZapBox |
 
 ---
 
