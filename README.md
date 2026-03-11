@@ -685,12 +685,12 @@ ZapBox validates "lnurlw://" prefix in returned data
     ↓
 Display shows "PENDING NFC" screen
     ↓
-ZapBox sends WebSocket event to bitcoinswitch_extension:
+ZapBox sends WebSocket event to zapbox_extension:
   { "event": "lnurlw", "lnurlw": "lnurlw://...", "pin": <activePin> }
     ↓
-bitcoinswitch_extension resolves LNURLW → Lightning invoice → payment detected
+zapbox_extension resolves LNURLW → Lightning invoice → payment detected
     ↓
-bitcoinswitch_extension sends back WS event → ZapBox activates relay / channel
+zapbox_extension sends back WS event → ZapBox activates relay / channel
     ↓
 Display shows "ACTION TIME" → "THANK YOU" → returns to QR screen
 ```
