@@ -931,8 +931,9 @@ Electrical design and housing variants, see table.
 | b932788 | Illuminated Sign | Prototyp ZapBox LED sign for demonstration and testing purposes |
 | b935750 | Headless | Prototyp Headless - ZapBox without display |
 | b937454 | USB-Power-Hub | Prototyp USB-Power-Hub - Just for voltage distribution |
-| b939002 | Compact | Compact 35° now with NFC cap 🎉 |
+| b939002 | Compact | Compact 35° now with NFC cap |
 | b939704 | ZapOMat | ZapOMat No.1 |
+| b940298 | Duo | Update & NFC lid |
 
 -> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 

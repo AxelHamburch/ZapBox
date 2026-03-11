@@ -1,6 +1,22 @@
 # ZapBox Duo – Bedienungsanleitung
 
-**Sprache:** Deutsch | **Version:** OI939600
+**Sprache:** Deutsch | **Version:** oi940285
+
+---
+
+## Inhaltsverzeichnis
+
+1. [Übersicht](#übersicht)
+2. [Ansichten](#ansichten)
+3. [Inbetriebnahme](#inbetriebnahme)
+4. [Einrichtung](#einrichtung)
+5. [Schiebeschalter](#schiebeschalter)
+6. [Ausgänge](#ausgänge)
+7. [NFC-Modul (optional)](#nfc-modul-optional)
+8. [Bedienelemente](#bedienelemente)
+9. [Technische Daten](#technische-daten)
+10. [Sicherheitshinweise](#sicherheitshinweise)
+11. [Weiterführende Links](#weiterführende-links)
 
 ---
 
@@ -140,7 +156,7 @@ Je nach Ausstattung ist auf der **Oberseite der ZapBox** ein NFC-Modul verbaut. 
 
 ## Bedienelemente
 
-Je nach Version verfügt die ZapBox neben dem LED-Button über zwei kleine **On-board-Mikrotaster**, die direkt mit dem Mikrocontroller verbunden sind. Alle Funktionen sind sowohl über den LED-Button als auch über die Mikrotaster erreichbar. Die ZapBox hat an der Unterseite auch einen Reset Taster.
+Je nach Version verfügt die ZapBox neben dem LED-Button über zwei kleine **On-board-Mikrotaster**, die direkt mit dem Mikrocontroller verbunden sind. Alle Funktionen sind sowohl über den LED-Button als auch über die Mikrotaster erreichbar. Die ZapBox hat an der Unterseite auch einen Reset-Taster.
 
 ### Funktionsübersicht
 
@@ -174,8 +190,6 @@ Je nach Version verfügt die ZapBox neben dem LED-Button über zwei kleine **On-
 - Führen Sie keine Arbeiten an den Relaiskontakten unter Last durch.
 - Das Gerät ist nicht für den Einsatz in feuchten oder nassen Umgebungen geeignet.
 - Außerhalb der Reichweite von Kindern aufbewahren.
-
----
 
 ---
 
