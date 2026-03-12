@@ -49,9 +49,9 @@ Die **ZapBox Quattro** ist ein elektronischer Schalter für Bitcoin-Lightning-Za
 
 *Bild 2: Rückansicht*
 
-<img src="pic-Quattro/Quattro-oi-04.webp" alt="Rückansicht" width="67%">
+<img src="pic-Quattro/Quattro-oi-04.webp" alt="Draufsicht" width="67%">
 
-*Bild 2: Draufsicht*
+*Bild 3: Draufsicht*
 
 ---
 
@@ -147,7 +147,7 @@ Voraussetzung für die Funktion ist die LNbits [ZapBox Extension](https://github
 |---|---|
 | Versorgungsspannung | 5 V DC über USB-C |
 | Maximaler Eingangsstrom | 5,0 A |
-| Ausgangsleistung | max. 3,0 A (empfohlen) |
+| Schaltlseitung | max. 10 A |
 | Display | 1,9" LCD (T-Display-S3) |
 | Kommunikation | Wi-Fi (ESP32-S3) |
 | Zahlungsprotokoll | Bitcoin Lightning Network |
