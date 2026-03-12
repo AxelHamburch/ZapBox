@@ -173,6 +173,7 @@ The LNbits [ZapBox Extension](https://github.com/AxelHamburch/zapbox_extension) 
 | Detailed documentation (parameters & functions) | https://ereignishorizont.xyz/zapbox/ |
 | GitHub repository (software, PCB layouts, 3D print files, manuals) | https://github.com/AxelHamburch/ZapBox |
 | ZapBox Extension | https://github.com/AxelHamburch/zapbox_extension |
+| LNbits | https://lnbits.com/ |
 
 ---
 

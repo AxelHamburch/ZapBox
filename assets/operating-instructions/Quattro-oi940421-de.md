@@ -1,4 +1,4 @@
-# ZapBox Compact – Bedienungsanleitung
+# ZapBox Quattro – Bedienungsanleitung
 
 **Sprache:** Deutsch | **Version:** oi940421
 
@@ -173,6 +173,7 @@ Voraussetzung für die Funktion ist die LNbits [ZapBox Extension](https://github
 | Detaillierte Dokumentation (Parameter & Funktionen) | https://ereignishorizont.xyz/zapbox/ |
 | GitHub-Repository (Software, E-Layouts, 3D-Druckdateien, Bedienungsanleitungen) | https://github.com/AxelHamburch/ZapBox |
 | ZapBox Extension | https://github.com/AxelHamburch/zapbox_extension |
+| LNbits | https://lnbits.com/ |
 
 ---
 
