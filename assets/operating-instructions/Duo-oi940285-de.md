@@ -101,9 +101,9 @@ Die Doppel-USB-Buchse wird über einen Relais-Schaltkontakt (CH2) geschaltet. Di
 
 ## Bedienelemente
 
-Je nach Version verfügt die ZapBox neben dem LED-Button über zwei kleine **On-board-Mikrotaster**, die direkt mit dem Mikrocontroller verbunden sind. Alle Funktionen sind sowohl über den LED-Button als auch über die Mikrotaster erreichbar. Zusätzlich hat die ZapBox an der Unterseite des Frontpanels einen Reset-Taster und an der Seite zwei Schiebeschalter.
+Je nach Version verfügt die ZapBox neben dem **LED-Button** über zwei kleine **On-board-Mikrotaster**, die direkt mit dem Mikrocontroller verbunden sind. Alle Funktionen sind sowohl über den LED-Button als auch über die Mikrotaster erreichbar. Zusätzlich hat die ZapBox an der Unterseite des Frontpanels einen Reset-Taster und an der Seite zwei Schiebeschalter.
 
-### Funktionsübersicht - Mikrotaster
+### Funktionsübersicht - Mikrotaster / LED-Button
 
 | Funktion | Mikrotaster | LED-Button |
 |---|---|---|

@@ -101,9 +101,9 @@ The dual USB socket is switched via a relay contact (CH2). The **total load** ac
 
 ## Controls
 
-Depending on the version, the ZapBox features two small **on-board micro buttons** connected directly to the microcontroller, in addition to the LED button. All functions are accessible via both the LED button and the micro buttons. In addition, the ZapBox has a reset button on the underside of the front panel and two slide switches on the side.
+Depending on the version, the ZapBox features two small **on-board micro buttons** connected directly to the microcontroller, in addition to the **LED button**. All functions are accessible via both the LED button and the micro buttons. In addition, the ZapBox has a reset button on the underside of the front panel and two slide switches on the side.
 
-### Function Overview – Micro Buttons
+### Function Overview – Micro Buttons / LED Button
 
 | Function | Micro Button | LED Button |
 |---|---|---|

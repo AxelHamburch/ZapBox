@@ -95,37 +95,16 @@ Die Kontakte der Relais sind für eine **maximale Strombelastung von 10 A** ausg
 
 ## Bedienelemente
 
-Die ZapBox verfügt über zwei kleine **On-board-Mikrotaster**, die direkt mit dem Mikrocontroller verbunden sind. Alle Funktionen sind über die Mikrotaster erreichbar. Zusätzlich hat die ZapBox an der Unterseite des Frontpanels einen Reset Taster und an der Seite zwei Schiebeschalter.
+Je nach Version verfügt die ZapBox neben dem **LED-Button** über zwei kleine **On-board-Mikrotaster**, die direkt mit dem Mikrocontroller verbunden sind. Alle Funktionen sind sowohl über den LED-Button als auch über die Mikrotaster erreichbar. Zusätzlich hat die ZapBox an der Unterseite des Frontpanels einen Reset-Taster und an der Seite zwei Schiebeschalter.
 
-### Funktionsübersicht - Mikrotaster
+### Funktionsübersicht - Mikrotaster / LED-Button
 
-| Funktion | Mikrotaster |
-|---|---|
-| Hilfe-Seite anzeigen | 1× HELP drücken | 
-| Nächste Seite / Produktwechsel | 1× NEXT drücken |
-| REPORT-Seite anzeigen | 2× HELP drücken | 
-| Config-Modus aufrufen | NEXT mind. 5 Sek. gedrückt halten |
-
-### Funktionsübersicht - Schiebeschalter
-
-Die ZapBox Compact verfügt über zwei Schiebeschalter.
-
-#### Schalter 1 – Dreifach-Schiebeschalter (AUTO / OFF / ON)
-
-| Stellung | Funktion |
-|---|---|
-| **A** (AUTO) | Automatikbetrieb – Normalbetrieb |
-| **0** (OFF) | Spannungsversorgung unterbrochen – Ausgang AUS |
-| **1** (ON) | Ausgang dauerhaft EIN (Bei Schalter 2 - Inverse = AUS) |
-
-#### Schalter 2 – Zweifach-Schiebeschalter (standard / invertiert)
-
-| Stellung | Funktion |
-|---|---|
-| **Std.** (Standard) | Der Ausgang ist Ruhezustand spannungslos (0 V). Nach dem Schaltvorgang liegt 5 V an den USB-Buchsen an. |
-| **Inv.** (Inverse) | Der Ausgang liegt im Ruhezustand auf 5 V. Nach dem Schaltvorgang wechselt der Ausgang auf 0 V (inverses Schalten). |
-
-> **Hinweis:** Befindet sich der Zweifach-Schalter auf **Inv.** und der Dreifach-Schalter auf **Stellung 1**, ist der Ausgang – anders als im Normalbetrieb – **AUS** statt EIN.
+| Funktion | Mikrotaster | LED-Button |
+|---|---|---|
+| Hilfe-Seite anzeigen | 1× HELP drücken | LED-Button mind. 2 Sek. gedrückt halten |
+| Nächste Seite / Produktwechsel | 1× NEXT drücken | 1× LED-Button kurz drücken |
+| REPORT-Seite anzeigen | 2× HELP drücken | LED-Button 3× schnell hintereinander drücken |
+| Config-Modus aufrufen | NEXT mind. 5 Sek. gedrückt halten | 1× kurz drücken, dann mind. 5 Sek. gedrückt halten |
 
 ---
 
