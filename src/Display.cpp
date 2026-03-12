@@ -154,6 +154,7 @@ const ThemeConfig themeConfigs[] = {
   {"black-darkcyan", TFT_BLACK, TFT_DARKCYAN},
   {"darkgreen-green", TFT_DARKGREEN, TFT_GREEN},
   {"darkgreen-lightgrey", TFT_DARKGREEN, TFT_LIGHTGREY},
+  {"darkblue-lightgrey", TFT_NAVY, TFT_LIGHTGREY},
   {"red-green", TFT_RED, TFT_GREEN},
   {"black-blue", TFT_BLACK, TFT_BLUE},
   {"orange-brown", TFT_ORANGE, TFT_BROWN},
@@ -905,7 +906,7 @@ void nfcPendingScreen()
     tft.setTextSize(3);
     tft.drawString("PENDING", x + 1, y - 50, GFXFF);
     // NFC in inverted-color box
-    tft.fillRect(15, y + 10, 140, 62, themeForeground);
+    tft.fillRect(15, y + 10, 135, 62, themeForeground);
     tft.setTextColor(themeBackground);
     tft.setTextSize(4);
     tft.drawString("NFC", x + 5, y + 41, GFXFF);
@@ -913,7 +914,7 @@ void nfcPendingScreen()
     tft.setTextSize(4);
     tft.drawString("PENDING", x + 5, y - 25, GFXFF);
     // NFC in inverted-color box
-    tft.fillRect(100, y + 10, 132, 55, themeForeground);
+    tft.fillRect(100, y + 10, 127, 55, themeForeground);
     tft.setTextColor(themeBackground);
     tft.setTextSize(4);
     tft.drawString("NFC", x + 5, y + 37, GFXFF);
