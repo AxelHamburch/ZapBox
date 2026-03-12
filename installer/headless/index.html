@@ -76,7 +76,7 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version-headless" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="../firmware/v940411h/manifest.json">v940411h (Latest - New themes &amp; UI improvements)</option>
+                <option value="../firmware/v940411h/manifest.json">v940411h (Latest - UI improvements⚡)</option>
                 <option value="../firmware/v939873h/manifest.json">v939873h (NFC UX improvements)</option>
                 <option value="../firmware/v939845h/manifest.json">v939845h (Light sleep, split timers &amp; combined power modes)</option>
                 <option value="../firmware/v939756h/manifest.json">v939756h (NFC error details &amp; dynamic font sizing)</option>
@@ -1144,13 +1144,14 @@
             
             // Write new config in chunks to prevent USB CDC RX buffer overflow.
             // ESP32-S3 native USB CDC can drop data when receiving large bursts.
-            const fullCommand = "/file-append config.json " + JSON.stringify(config);
+            // The terminating \n is included in the last chunk (not sent separately)
+            // to prevent readStringUntil('\n') timeouts on the ESP32.
+            const fullCommand = "/file-append config.json " + JSON.stringify(config) + "\n";
             const chunkSize = 128;
             for (let i = 0; i < fullCommand.length; i += chunkSize) {
                 await serial.write(fullCommand.substring(i, Math.min(i + chunkSize, fullCommand.length)));
                 await new Promise(resolve => setTimeout(resolve, 15));
             }
-            await serial.write("\n");
             
             // Wait for ESP32 to finish writing to flash
             await new Promise(resolve => setTimeout(resolve, 500));

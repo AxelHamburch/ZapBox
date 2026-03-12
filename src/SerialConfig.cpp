@@ -117,6 +117,11 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 {
     // WiFi is already OFF (disabled in configMode() before we get here).
     
+    // Increase serial timeout for long config JSON lines (24 fields with URLs = 1300+ bytes).
+    // Browser sends in 128-byte chunks with 15ms gaps; default 1000ms can expire
+    // before the terminating \n arrives, causing truncated reads.
+    Serial.setTimeout(5000);
+    
     // CRITICAL: Ensure serial is fully ready (especially after wake from deep sleep)
     // Also wait for setup() on Core 1 to notice CONFIG_MODE and stop writing to Serial.
     // Additionally, WiFi event callbacks (e.g. ASSOC_LEAVE from WiFi.disconnect())

@@ -1352,13 +1352,14 @@
             
             // Write new config in chunks to prevent USB CDC RX buffer overflow.
             // ESP32-S3 native USB CDC can drop data when receiving large bursts.
-            const fullCommand = "/file-append config.json " + JSON.stringify(config);
+            // The terminating \n is included in the last chunk (not sent separately)
+            // to prevent readStringUntil('\n') timeouts on the ESP32.
+            const fullCommand = "/file-append config.json " + JSON.stringify(config) + "\n";
             const chunkSize = 128;
             for (let i = 0; i < fullCommand.length; i += chunkSize) {
                 await serial.write(fullCommand.substring(i, Math.min(i + chunkSize, fullCommand.length)));
                 await new Promise(resolve => setTimeout(resolve, 15));
             }
-            await serial.write("\n");
             
             // Wait for ESP32 to finish writing to flash
             await new Promise(resolve => setTimeout(resolve, 500));
