@@ -60,9 +60,8 @@ Versorgen Sie das Gerät über den Anschluss **Power IN** mit einem USB-C-Kabel 
 
 Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit einem Computer oder Laptop:
 
-1. An der **Vorderseite links** befindet sich eine kleines Panel links neben den USB-Anschlüssen.
-2. Öffnen Sie das Panel, indem Sie von unten mit einem **schmalen Schraubendreher** das Panel nach rechts wegschieben.
-3. Schließen Sie ein Micro-USB-Kabel an den Mikrocontroller an.
+1. An der **Vorderseite links** befindet sich eine kleines Panel links neben den USB-Anschlüssen. Öffnen Sie das Panel, indem Sie von unten mit einem **schmalen Schraubendreher** das Panel nach rechts wegschieben.
+2. Schließen Sie ein Micro-USB-Kabel an den Mikrocontroller an.
 
 <img src="pic-Headless/Headless-oi-02.webp" alt="Panel öffnen für Datenverbindung" width="67%">
 
@@ -72,11 +71,11 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 
 *Bild 3: Micro USB Port*
 
-> **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller dient ausschließlich zum Flashen neuer Firmware oder zur Übertragung von Konfigurationsparametern. Wenn während des Flashens gleichzeitig Schaltfunktionen ausgelöst werden, kann es zu **Fehlfunktionen oder Beschädigungen des Mikrocontrollers** kommen.
+> **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller ist ausschließlich zum Flashen der Firmware und zur Übertragung von Konfigurationsparametern vorgesehen. Während des Flashvorgangs darf keine Last am Ausgang angeschlossen oder geschaltet werden, da dies zu Fehlfunktionen oder zur **Beschädigung des Mikrocontrollers** führen kann.
 >
 > Es wird daher empfohlen:
-> - Während des Anschlusses keine Schaltfunktionen auszulösen, **oder**
-> - den regulären **Power-IN-Eingang** zusätzlich an dieselbe Spannungsversorgung anzuschließen, damit der Strom für das Leistungsrelais nicht über den Mikrocontroller fließt und diesen überlastet.
+> - während der USB-Verbindung keine Last am Ausgang anzuschließen, oder
+> - den regulären **Power-IN-Eingang** zusätzlich an dieselbe Spannungsversorgung anzuschließen. Dadurch wird sichergestellt, dass der Strom für das Leistungsrelais nicht über den Mikrocontroller fließt und diesen überlastet.
 
 ---
 

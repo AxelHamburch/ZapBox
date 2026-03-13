@@ -72,11 +72,11 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 
 *Bild: Panel öffnen und USB-C-Anschluss für Daten*
 
-> **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller dient ausschließlich zum Flashen neuer Firmware oder zur Übertragung von Konfigurationsparametern. Wenn während des Flashens gleichzeitig Schaltfunktionen ausgelöst werden, kann es zu **Fehlfunktionen oder Beschädigungen des Mikrocontrollers** kommen.
+> **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller ist ausschließlich zum Flashen der Firmware und zur Übertragung von Konfigurationsparametern vorgesehen. Während des Flashvorgangs darf keine Last am Ausgang angeschlossen oder geschaltet werden, da dies zu Fehlfunktionen oder zur **Beschädigung des Mikrocontrollers** führen kann.
 >
 > Es wird daher empfohlen:
-> - Während des Anschlusses keine Schaltfunktionen auszulösen, **oder**
-> - den regulären **Power-IN-Eingang** zusätzlich an dieselbe Spannungsversorgung anzuschließen, damit der Strom für das Leistungsrelais nicht über den Mikrocontroller fließt und diesen überlastet.
+> - während der USB-Verbindung keine Last am Ausgang anzuschließen, oder
+> - den regulären **Power-IN-Eingang** zusätzlich an dieselbe Spannungsversorgung anzuschließen. Dadurch wird sichergestellt, dass der Strom für das Leistungsrelais nicht über den Mikrocontroller fließt und diesen überlastet.
 
 ---
 

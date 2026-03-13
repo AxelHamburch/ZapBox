@@ -77,11 +77,11 @@ To read from or write to the device, connect the ZapBox to a computer or laptop:
 
 *Figure: Opening the panel and USB-C connector for data*
 
-> **Important:** The USB connector on the microcontroller is intended exclusively for flashing new firmware or transferring configuration parameters. If switching functions are triggered while flashing, **malfunctions or damage to the microcontroller** may occur.
+> **Important Notice:** The USB port directly connected to the microcontroller is intended exclusively for flashing firmware and transferring configuration parameters. During the flashing process, no load must be connected to or switched on at the output, as this may lead to **malfunctions or damage to the microcontroller**.
 >
 > It is therefore recommended to:
-> - Avoid triggering switching functions during connection, **or**
-> - Additionally connect the regular **Power IN input** to the same power supply so that current for the power relay does not flow through the microcontroller and overload it.
+> - not connect any load to the output while the USB connection is active, **or**
+> - additionally connect the regular **Power-IN** input to the same power supply. This ensures that the current for the power relay does not flow through the microcontroller and overload it.
 
 ---
 
