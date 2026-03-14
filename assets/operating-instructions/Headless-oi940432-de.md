@@ -74,7 +74,7 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 > **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller ist ausschließlich zum Flashen der Firmware und zur Übertragung von Konfigurationsparametern vorgesehen. Während des Flashvorgangs darf keine Last am Ausgang angeschlossen oder geschaltet werden, da dies zu Fehlfunktionen oder zur **Beschädigung des Mikrocontrollers** führen kann.
 >
 > Es wird daher empfohlen:
-> - während der USB-Verbindung keine Last am Ausgang anzuschließen, oder
+> - während der USB-Verbindung keine Last am Ausgang anzuschließen oder
 > - den regulären **Power-IN-Eingang** zusätzlich an dieselbe Spannungsversorgung anzuschließen. Dadurch wird sichergestellt, dass der Strom für das Leistungsrelais nicht über den Mikrocontroller fließt und diesen überlastet.
 
 ---
@@ -93,17 +93,17 @@ Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließli
 
 | Muster | Bedeutung |
 |---|---|
-| 3× kurz beim Start | Boot abgeschlossen |
+| 3× kurzes Blinken beim Start | Boot abgeschlossen |
 | Schnelles Blinken | Verbindungsaufbau / Initialisierung |
 | Langsames Blinken (1 Hz) | Config-Modus aktiv |
 | Dauerlicht | Betriebsbereit, wartet auf Zahlung |
 | 200 ms an / 800 ms aus | NFC-Zahlung ausstehend (PENDING) |
-| 2× kurz | Zahlung erfolgreich |
-| 3× kurz | NFC-Timeout / Fehler |
-| 1× blinken (500 ms an/aus, 2 s Pause) | Fehlermuster 1: Kein WLAN |
-| 2× blinken (300 ms an/aus, 2 s Pause) | Fehlermuster 2: Kein Internet |
-| 3× blinken (250 ms an/aus, 2 s Pause) | Fehlermuster 3: Server nicht erreichbar |
-| 4× blinken (200 ms an/aus, 2 s Pause) | Fehlermuster 4: WebSocket-Verbindung fehlgeschlagen |
+| 2× kurzes Blinken | Zahlung erfolgreich |
+| 3× kurzes Blinken | NFC-Timeout / Fehler |
+| 1× Blinken (500 ms an/aus, 2 s Pause) | Fehlermuster 1: Kein WLAN |
+| 2× Blinken (300 ms an/aus, 2 s Pause) | Fehlermuster 2: Kein Internet |
+| 3× Blinken (250 ms an/aus, 2 s Pause) | Fehlermuster 3: Server nicht erreichbar |
+| 4× Blinken (200 ms an/aus, 2 s Pause) | Fehlermuster 4: WebSocket-Verbindung fehlgeschlagen |
 
 ### Bedientaster
 
@@ -135,11 +135,11 @@ Hier eine Schritt-für-Schritt-Anleitung für die Einrichtung:
 5. Nach dem Flashvorgang schließt das kleine Fenster und geht zu Punkt 3 - Load config values. Dort wählt ihr den Button `🔌 Connect`.
 6. Jetzt solltet ihr in dem grünen Feld `✅ Connected` und `✅ Config mode` sehen. Der Config-Modus ist aktiv, sobald die **Status-LED langsam blinkt** (ca. 1 Hz). Falls nicht, prüft einmal den Punkt 2 - Prepare connection.
 7. Drei Parameter benötigt die ZapBox: `WiFi SSID` / `WiFi password` / `Device settings string`. Den Device-Settings-String bekommt ihr von eurer LNbits Wallet. Fügt dazu die Erweiterung **Bitcoin Switch** oder **ZapBox** hinzu. Die ZapBox Erweiterung unterstützt auch das NFC-Modul, ansonsten sind sie identisch.
-8. Nachdem alle drei Parameter hinterlegt wurden, müssen diese mit dem Button `🔥 Write Config` einmal gespeichert werden und die ZapBox mit dem Button `🔁 Restart` neu gestartet werden.
+8. Nachdem alle drei Parameter hinterlegt wurden, muss diese mit dem Button `🔥 Write Config` einmal gespeichert werden und die ZapBox mit dem Button `🔁 Restart` neu gestartet werden.
 
 Nach der Initialisierung leuchtet die Status-LED dauerhaft – die ZapBox ist betriebsbereit und wartet auf die erste Zahlung.
 
-Bei Fehler oder Störungen, bitte auf der Web Installer Seite, weiter unten die Kapitel "Error Detection & Report" und "Troubleshoot" beachten. 
+Bei Fehler oder Störungen bitte auf der Web Installer Seite weiter unten die Kapitel "Error Detection & Report" und "Troubleshoot" beachten. 
 
 ---
 
