@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/webp" href="favicon.webp" />
+  <title>Lightbox Galleries</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #111;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    header p {
+      font-size: 1.05rem;
+      color: #aaa;
+      line-height: 1.7;
+    }
+
+    .gallery-links {
+      display: flex;
+      gap: 28px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .gallery-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-decoration: none;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 36px 50px;
+      width: 260px;
+      transition: border-color 0.2s, transform 0.15s, background 0.2s;
+    }
+
+    .gallery-card:hover {
+      background: #202020;
+      border-color: #ff6b35;
+      transform: translateY(-3px);
+    }
+
+    .gallery-card .icon {
+      font-size: 3rem;
+      margin-bottom: 18px;
+    }
+
+    .gallery-card .label {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #eee;
+      margin-bottom: 8px;
+    }
+
+    .gallery-card .sub {
+      font-size: 0.9rem;
+      color: #888;
+      text-align: center;
+    }
+
+    footer {
+      margin-top: 80px;
+      text-align: center;
+      font-size: 0.95rem;
+      color: #666;
+    }
+
+    footer a {
+      color: #ff6b35;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    footer a:hover {
+      color: #ff8555;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Lightbox Galleries</h1>
+    <p>Make your choice.</p>
+  </header>
+
+  <div class="gallery-links">
+    <a class="gallery-card" href="./grit/">
+      <div class="icon">🌿</div>
+      <div class="label">Grit</div>
+      <div class="sub">Granule Dispenser</div>
+    </a>
+    <a class="gallery-card" href="./candy/">
+      <div class="icon">🍬</div>
+      <div class="label">Candy</div>
+      <div class="sub">Candy Dispenser</div>
+    </a>
+  </div>
+
+  <footer>
+    <p>ZapBox revolutionizes Bitcoin Lightning payments for physical vending &amp; access control.<br>
+    Learn more at <a href="https://zapbox.space" target="_blank">zapbox.space</a></p>
+  </footer>
+
+</body>
+</html>
