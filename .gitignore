@@ -6,4 +6,5 @@
 .vscode/sftp.json
 *.backup
 _codeql_detected_source_root
-temp
+.temp
+.lightbox
