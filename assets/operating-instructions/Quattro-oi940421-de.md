@@ -80,14 +80,14 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 > **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller ist ausschließlich zum Flashen der Firmware und zur Übertragung von Konfigurationsparametern vorgesehen. Während des Flashvorgangs darf keine Last am Ausgang angeschlossen oder geschaltet werden, da dies zu Fehlfunktionen oder zur **Beschädigung des Mikrocontrollers** führen kann.
 >
 > Es wird daher empfohlen:
-> - während der USB-Verbindung keine Last am Ausgang anzuschließen, oder
+> - während der USB-Verbindung keine Last am Ausgang anzuschließen oder
 > - den regulären **Power-IN-Eingang** zusätzlich an dieselbe Spannungsversorgung anzuschließen. Dadurch wird sichergestellt, dass der Strom für das Leistungsrelais nicht über den Mikrocontroller fließt und diesen überlastet.
 
 ---
 
 ### Ausgänge CH1-CH4
 
- Der Quattro hat vier Relaisausgänge, die als Schaltkontakte (NO/COM/NC)von Außen erreichbar sind. Um an die Schrauben für die Kontaktlemmen zu kommen, muss man eine schmale Abdeckung heraushebeln. Dazu mit eine kleinen Schlitzschraubendreher jeweils in die zwei Öffnungen oberhalb der Schaltkontakte einführen und die Abdeckung hochdrücken.
+ Der Quattro hat vier Relaisausgänge, die als Schaltkontakte (NO/COM/NC) von Außen erreichbar sind. Um an die Schrauben für die Kontaktlemmen zu kommen, muss man eine schmale Abdeckung heraushebeln. Dazu  einen kleinen Schlitzschraubendreher jeweils in die zwei Öffnungen oberhalb der Schaltkontakte einführen und die Abdeckung hochdrücken.
 
 Die Kontakte der Relais sind für eine **maximale Strombelastung von 10 A** ausgelegt.
 
@@ -122,11 +122,11 @@ Hier eine Schritt-für-Schritt-Anleitung für die Einrichtung:
 6. Nach dem Flashvorgang schließt das kleine Fenster und geht zu Punkt 3 - Load config values. Dort wählt ihr den Button `🔌 Connect`.
 7. Jetzt solltet ihr in dem grünen Feld `✅ Connected` und `✅ Config mode` sehen, vorausgesetzt die ZapBox befindet sich jetzt auch im `SERIAL CONFIG MODE`. Das Display müsste es euch anzeigen. Falls nicht, prüft einmal den Punkt 2 - Prepare connection.
 8. Drei Parameter benötigt die ZapBox: `WiFi SSID` / `WiFi password` / `Device settings string`. Den Device-Settings-String bekommt ihr von eurer LNbits Wallet. Fügt dazu die Erweiterung **Bitcoin Switch** oder **ZapBox** hinzu. Die ZapBox Erweiterung unterstützt auch das NFC-Modul, ansonsten sind sie identisch.
-9. Nachdem alle drei Parameter hinterlegt wurden, müssen dies mit dem Button `🔥 Write Config` einmal gespeichert werden und die ZapBox mit dem Button `🔁 Restart` neu gestartet werden.
+9. Nachdem alle drei Parameter hinterlegt wurden, muss dies mit dem Button `🔥 Write Config` einmal gespeichert werden und die ZapBox mit dem Button `🔁 Restart` neu gestartet werden.
 
 Das sollte es auch schon gewesen sein. Die ZapBox wird nach der Initialisierung den QR-Code des Produkts anzeigen und ist bereit für die erste Zahlung und anschließender Aktion am USB-Ausgang. 
 
-Bei Fehler oder Störungen, bitte auf der Web Installer Seite, weiter unten die Kapitel "Error Detection & Report" und "Troubleshoot" beachten. 
+Bei Fehler oder Störungen bitte auf der Web Installer Seite weiter unten die Kapitel "Error Detection & Report" und "Troubleshoot" beachten. 
 
 ---
 
@@ -147,7 +147,7 @@ Voraussetzung für die Funktion ist die LNbits [ZapBox Extension](https://github
 |---|---|
 | Versorgungsspannung | 5 V DC über USB-C |
 | Maximaler Eingangsstrom | 5,0 A |
-| Schaltlseitung | max. 10 A |
+| Schaltleistung | max. 10 A |
 | Display | 1,9" LCD (T-Display-S3) |
 | Kommunikation | Wi-Fi (ESP32-S3) |
 | Zahlungsprotokoll | Bitcoin Lightning Network |
