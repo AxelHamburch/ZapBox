@@ -1,4 +1,4 @@
-# Lightning Zap⚡Box
+# Lightning - Zap⚡Box
 
 > **Forked from [danielcharrua/satoffee](https://github.com/danielcharrua/satoffee)**  
 > Expanded with many new features and hardware for many new use cases.
