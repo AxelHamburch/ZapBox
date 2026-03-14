@@ -1,6 +1,7 @@
 #include "Utils.h"
 #include "GlobalState.h"
 #include "DeviceState.h"
+#include "Display.h"
 #include "PinConfig.h"
 #include <WebSocketsClient.h>
 
@@ -75,6 +76,7 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
   unsigned long startTime = millis();
   unsigned long elapsed = 0;
   int cycleCount = 0;
+  int lastDisplayedSec = -1;
   
   pinMode(pin, OUTPUT);
   
@@ -118,6 +120,14 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
         }
         return; // Exit special mode immediately
       }
+      // Update countdown timer once per second
+      unsigned long totalElapsed = millis() - startTime;
+      int remaining = (int)((duration_ms - totalElapsed) / 1000);
+      if (remaining < 0) remaining = 0;
+      if (remaining != lastDisplayedSec) {
+        lastDisplayedSec = remaining;
+        updateActionTimeCountdown(remaining);
+      }
       webSocket.loop(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(1)); // Yield to other tasks
     }
@@ -136,6 +146,14 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
       if (shouldStopForLightBarrier(startTime)) {
         Serial.println("[SPECIAL] Light barrier stopped action early (during OFF)");
         return; // Exit special mode immediately
+      }
+      // Update countdown timer once per second
+      unsigned long totalElapsed = millis() - startTime;
+      int remaining = (int)((duration_ms - totalElapsed) / 1000);
+      if (remaining < 0) remaining = 0;
+      if (remaining != lastDisplayedSec) {
+        lastDisplayedSec = remaining;
+        updateActionTimeCountdown(remaining);
       }
       webSocket.loop(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(1)); // Yield to other tasks

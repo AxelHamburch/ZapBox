@@ -857,28 +857,54 @@ void actionTimeScreen()
   tft.setTextColor(themeForeground);
 
   if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
-    // "ACTION" stacked letters in foreground color
-    tft.setTextSize(4);
-    tft.drawString("A", x + 5, y - 105, GFXFF);
-    tft.drawString("C", x + 5, y - 70, GFXFF);
-    tft.drawString("T", x + 5, y - 35, GFXFF);
-    tft.drawString("I", x + 5, y, GFXFF);
-    tft.drawString("O", x + 5, y + 35, GFXFF);
-    tft.drawString("N", x + 5, y + 70, GFXFF);
-    // "TIME" in inverted-color box (same style as PENDING NFC)
-    tft.fillRect(15, y + 82, 140, 48, themeForeground);
+    // "ACTION" on one line, same size as TIME
+    tft.setTextSize(3);
+    tft.drawString("ACTION", x + 3, y - 30, GFXFF);
+    // "TIME" in inverted-color box
+    tft.fillRect(37, y - 5, 100, 43, themeForeground);
     tft.setTextColor(themeBackground);
     tft.setTextSize(3);
-    tft.drawString("TIME", x + 3, y + 105, GFXFF);
+    tft.drawString("TIME", x + 3, y + 17, GFXFF);
   } else {
     // "ACTION" in foreground color
     tft.setTextSize(6);
-    tft.drawString("ACTION", x + 5, y - 15, GFXFF);
+    tft.drawString("ACTION", x + 5, y - 25, GFXFF);
     // "TIME" in inverted-color box (same style as PENDING NFC)
-    tft.fillRect(83, y + 16, 160, 52, themeForeground);
+    tft.fillRect(83, y + 6, 158, 52, themeForeground);
     tft.setTextColor(themeBackground);
     tft.setTextSize(4);
-    tft.drawString("TIME", x + 3, y + 43, GFXFF);
+    tft.drawString("TIME", x + 3, y + 33, GFXFF);
+  }
+}
+
+// Update countdown timer on ACTION TIME screen (partial redraw - only timer area)
+void updateActionTimeCountdown(int remainingSecs)
+{
+  DisplayLock lock;
+  int mins = remainingSecs / 60;
+  int secs = remainingSecs % 60;
+  if (mins > 99) mins = 99;
+
+  char buf[6];
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    // Vertical: "MM:SS" centered below TIME box
+    snprintf(buf, sizeof(buf), "%02d:%02d", mins, secs);
+    tft.setTextSize(2);
+    tft.fillRect(35, y + 38, 100, 28, themeBackground);
+    tft.drawString(buf, x + 3, y + 52, GFXFF);
+  } else {
+    // Horizontal: MM left of TIME box, SS right of TIME box
+    tft.setTextSize(3);
+    snprintf(buf, sizeof(buf), "%02d", mins);
+    tft.fillRect(25, y + 12, 55, 42, themeBackground);
+    tft.drawString(buf, 52, y + 33, GFXFF);
+
+    snprintf(buf, sizeof(buf), "%02d", secs);
+    tft.fillRect(245, y + 12, 55, 42, themeBackground);
+    tft.drawString(buf, 272, y + 33, GFXFF);
   }
 }
 

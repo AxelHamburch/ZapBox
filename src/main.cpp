@@ -2339,6 +2339,7 @@ static void processThresholdPayment(const JsonDocument &doc)
       }
       activityTracking.lastActivityTime = millis();
       actionTimeScreen();
+      updateActionTimeCountdown(duration / 1000);
       executeSpecialMode(pin, duration, specialModeConfig.frequency, specialModeConfig.dutyCycleRatio);
     } else {
       Serial.println("[THRESHOLD] Using standard mode");
@@ -2348,17 +2349,26 @@ static void processThresholdPayment(const JsonDocument &doc)
       }
       activityTracking.lastActivityTime = millis();
       actionTimeScreen();
+      updateActionTimeCountdown(duration / 1000);
       pinMode(pin, OUTPUT);
       digitalWrite(pin, HIGH);
       Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
       
       // CRITICAL: Non-blocking delay that keeps WebSocket alive
       unsigned long startTime = millis();
+      int lastDisplayedSec = -1;
       while (millis() - startTime < duration) {
         // Check light barrier (stop early if triggered after minimum time)
         if (shouldStopForLightBarrier(startTime)) {
           Serial.println("[THRESHOLD] Light barrier stopped action early");
           break;
+        }
+        // Update countdown timer once per second
+        unsigned long elapsed = millis() - startTime;
+        int remaining = (int)((duration - elapsed) / 1000);
+        if (remaining != lastDisplayedSec) {
+          lastDisplayedSec = remaining;
+          updateActionTimeCountdown(remaining);
         }
         webSocket.loop(); // Keep WebSocket connection alive
         vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
@@ -2416,6 +2426,7 @@ static void processNormalPayment(int pin, int duration)
       deviceState.transition(DeviceState::READY);
     }
     actionTimeScreen();
+    updateActionTimeCountdown(duration / 1000);
     executeSpecialMode(pin, duration, specialModeConfig.frequency, specialModeConfig.dutyCycleRatio);
   } else {
     Serial.println("[NORMAL] Using standard mode");
@@ -2425,6 +2436,7 @@ static void processNormalPayment(int pin, int duration)
       deviceState.transition(DeviceState::READY);
     }
     actionTimeScreen();
+    updateActionTimeCountdown(duration / 1000);
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
     Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
@@ -2437,11 +2449,19 @@ static void processNormalPayment(int pin, int duration)
 
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
     unsigned long startTime = millis();
+    int lastDisplayedSec = -1;
     while (millis() - startTime < duration) {
       // Check light barrier (stop early if triggered after minimum time)
       if (shouldStopForLightBarrier(startTime)) {
         Serial.println("[NORMAL] Light barrier stopped action early");
         break;
+      }
+      // Update countdown timer once per second
+      unsigned long elapsed = millis() - startTime;
+      int remaining = (int)((duration - elapsed) / 1000);
+      if (remaining != lastDisplayedSec) {
+        lastDisplayedSec = remaining;
+        updateActionTimeCountdown(remaining);
       }
       webSocket.loop(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
