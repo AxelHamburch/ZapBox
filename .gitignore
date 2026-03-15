@@ -7,4 +7,3 @@
 *.backup
 _codeql_detected_source_root
 temp/
-scripts/
