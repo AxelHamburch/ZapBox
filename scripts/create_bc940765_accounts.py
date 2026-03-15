@@ -2,17 +2,17 @@
 """
 Batch creation of 21 LNbits accounts on 21mio.space
 =====================================================
-Accounts  : bc940765_01 -- bc940765_21
-Password  : bc940765
-Wallet    : bc940765-01/21 -- bc940765-21/21
+Accounts  : bc940762_01 -- bc940762_21
+Password  : bc940762
+Wallet    : bc940762-01/21 -- bc940762-21/21
 Extension : boltcards
 
 Requirements:
     pip install requests
 
 Usage:
-    python3 create_bc940765_accounts.py --user SUPERUSER --password SUPERPASS
-    python3 create_bc940765_accounts.py --user SUPERUSER --password SUPERPASS --dry-run
+    python3 create_bc940762_accounts.py --user SUPERUSER --password SUPERPASS
+    python3 create_bc940762_accounts.py --user SUPERUSER --password SUPERPASS --dry-run
 """
 
 import argparse
@@ -30,8 +30,8 @@ except ImportError:
 # -- Configuration ---------------------------------------------------------------
 
 BASE_URL   = "https://21mio.space"
-PREFIX     = "bc940765"
-PASSWORD   = "bc940765"
+PREFIX     = "bc940762"
+PASSWORD   = "bc940762"
 COUNT      = 21
 EXTENSION  = "boltcards"
 
