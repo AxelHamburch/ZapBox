@@ -85,11 +85,11 @@ def get_user_wallets(session, user_id):
     return resp.json()
 
 
-def rename_wallet(wallet_adminkey, new_name):
-    """Rename a wallet using PATCH /api/v1/wallet with the wallet's own admin key."""
+def rename_wallet(wallet_adminkey, new_name, currency="EUR"):
+    """Rename a wallet and set currency using PATCH /api/v1/wallet."""
     resp = requests.patch(
         f"{BASE_URL}/api/v1/wallet",
-        json={"name": new_name},
+        json={"name": new_name, "currency": currency},
         headers={
             "X-Api-Key":    wallet_adminkey,
             "Content-Type": "application/json",
@@ -155,7 +155,8 @@ def main():
                 "nr": i, "username": username, "password": PASSWORD,
                 "wallet_name": wallet_name, "user_id": "DRY-RUN",
                 "wallet_id": "DRY-RUN", "inkey": "DRY-RUN",
-                "adminkey": "DRY-RUN", "extension": EXTENSION, "status": "dry-run",
+                "adminkey": "DRY-RUN", "extension": EXTENSION,
+                "mobile_url": "DRY-RUN", "status": "dry-run",
             })
             continue
 
@@ -172,6 +173,8 @@ def main():
             # 3. Rename default wallet
             rename_wallet(wallet["adminkey"], wallet_name)
 
+            mobile_url = f"{BASE_URL}/wallet?usr={user_id}&wal={wallet['id']}"
+
             results.append({
                 "nr":          i,
                 "username":    username,
@@ -182,6 +185,7 @@ def main():
                 "inkey":       wallet["inkey"],
                 "adminkey":    wallet["adminkey"],
                 "extension":   EXTENSION,
+                "mobile_url":  mobile_url,
                 "status":      "ok",
             })
             print(f"ok  (user_id: {user_id})")
@@ -220,7 +224,7 @@ def main():
         csv_file = f"accounts_{PREFIX}_{timestamp}.csv"
         fieldnames = ["nr", "username", "password", "wallet_name",
                       "user_id", "wallet_id", "inkey", "adminkey",
-                      "extension", "status"]
+                      "extension", "mobile_url", "status"]
         with open(csv_file, "w", newline="", encoding="utf-8") as fh:
             writer = csv.DictWriter(fh, fieldnames=fieldnames)
             writer.writeheader()
