@@ -32,7 +32,7 @@ except ImportError:
 BASE_URL   = "https://21mio.space"
 PREFIX     = "bc940762"
 PASSWORD   = "bc940762"
-COUNT      = 21
+COUNT      = 2
 EXTENSION  = "boltcards"
 
 # -- API helpers ------------------------------------------------------------------
