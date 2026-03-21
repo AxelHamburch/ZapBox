@@ -107,7 +107,7 @@ extern SpecialModeConfig specialModeConfig;
 // ============================================================================
 
 struct MultiChannelConfig {
-  String mode = "off";        // "off", "duo", "quattro"
+  String mode = "off";        // "off", "duo", "quattro", "servo"
   String btcTickerMode = "off"; // "off", "always", "selecting"
   volatile bool btcTickerActive = false; // volatile for multi-threaded WebSocket access
   volatile int currentProduct = -1;    // -1 = selection screen, 1-4 = product number (volatile for multi-context access)
@@ -126,6 +126,25 @@ struct LightBarrierConfig {
 };
 
 extern LightBarrierConfig lightBarrierConfig;
+
+// ============================================================================
+// SERVO MOTOR CONFIGURATION (Servo multi-channel mode)
+// ============================================================================
+
+struct ServoConfig {
+  int servo1Start = 0;       // Start angle 0-180° (rest position)
+  int servo1End = 0;         // End angle 0-180° (active position)
+  int servo1Duration = 0;    // Sweep duration ms (0 = max speed)
+  int servo2Start = 0;       // Start angle 0-180° (rest position)
+  int servo2End = 0;         // End angle 0-180° (active position)
+  int servo2Duration = 0;    // Sweep duration ms (0 = max speed)
+  bool returnToStart = true; // Return to start angle after relay off
+  // Helper: servo is active if start or end is non-zero
+  bool servo1Active() const { return servo1Start != 0 || servo1End != 0; }
+  bool servo2Active() const { return servo2Start != 0 || servo2End != 0; }
+};
+
+extern ServoConfig servoConfig;
 
 // ============================================================================
 // CHANNEL 4 AMBIENT LIGHT (GPIO 11 on T-Display-S3 only)

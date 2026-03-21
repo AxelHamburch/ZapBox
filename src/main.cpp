@@ -27,6 +27,7 @@
 #include "Utils.h"
 #include "API.h"
 #include "Navigation.h"
+#include "ServoControl.h"
 #include "Log.h"
 
 // NFC Bolt Card reader (optional feature, gated by ENABLE_NFC build flag)
@@ -431,6 +432,47 @@ void readFiles()
 
     // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 
+    // Read servo configuration (indices 24-30, only relevant when multiControl == "servo")
+    if (doc.size() > 24) {
+      auto readInt = [&](int idx, int minVal, int maxVal, int def) -> int {
+        const JsonObject obj = doc[idx];
+        if (!obj.isNull()) {
+          const char *v = obj["value"];
+          if (v != nullptr) {
+            int val = String(v).toInt();
+            if (val < minVal) return minVal;
+            if (val > maxVal) return maxVal;
+            return val;
+          }
+        }
+        return def;
+      };
+      servoConfig.servo1Start    = readInt(24, 0, 180, 0);
+      servoConfig.servo1End      = readInt(25, 0, 180, 0);
+      servoConfig.servo1Duration = readInt(26, 0, 10000, 0);
+      servoConfig.servo2Start    = readInt(27, 0, 180, 0);
+      servoConfig.servo2End      = readInt(28, 0, 180, 0);
+      servoConfig.servo2Duration = readInt(29, 0, 10000, 0);
+      // Index 30: servoReturn ("yes"/"no")
+      const JsonObject r30 = doc[30];
+      if (!r30.isNull()) {
+        const char *v30 = r30["value"];
+        if (v30 != nullptr) {
+          String sr = String(v30);
+          sr.toLowerCase();
+          sr.trim();
+          servoConfig.returnToStart = (sr != "no");
+        }
+      }
+      if (multiChannelConfig.mode == "servo") {
+        LOG_INFO("Config", "=== SERVO CONFIGURATION ===");
+        LOG_INFO("Config", String("Servo 1 (Pin 13): Start=") + String(servoConfig.servo1Start) + " End=" + String(servoConfig.servo1End) + " Duration=" + String(servoConfig.servo1Duration) + "ms" + (servoConfig.servo1Active() ? " [ACTIVE]" : " [inactive]"));
+        LOG_INFO("Config", String("Servo 2 (Pin 10): Start=") + String(servoConfig.servo2Start) + " End=" + String(servoConfig.servo2End) + " Duration=" + String(servoConfig.servo2Duration) + "ms" + (servoConfig.servo2Active() ? " [ACTIVE]" : " [inactive]"));
+        LOG_INFO("Config", String("Return to start: ") + (servoConfig.returnToStart ? "YES" : "NO"));
+        LOG_INFO("Config", "===========================");
+      }
+    }
+
     // Apply predefined mode settings
     if (specialModeConfig.mode == "blink") {
       specialModeConfig.frequency = 1.0;
@@ -451,7 +493,11 @@ void readFiles()
     LOG_INFO("Config", String("Duty Cycle Ratio: ") + String(specialModeConfig.dutyCycleRatio));
 
     // Display Multi-Channel-Control configuration
-    LOG_INFO("Config", String("Multi-Channel-Control Mode: ") + (multiChannelConfig.mode == "off" ? "Single (Pin 12 only)" : (multiChannelConfig.mode == "duo" ? "Duo (Pins 12, 13)" : "Quattro (Pins 12, 13, 10, 11)")));
+    String modeDesc = "Single (Pin 12 only)";
+    if (multiChannelConfig.mode == "duo") modeDesc = "Duo (Pins 12, 13)";
+    else if (multiChannelConfig.mode == "quattro") modeDesc = "Quattro (Pins 12, 13, 10, 11)";
+    else if (multiChannelConfig.mode == "servo") modeDesc = "Servo (2 relay 12/11 + 2 servo 13/10)";
+    LOG_INFO("Config", String("Multi-Channel-Control Mode: ") + modeDesc);
 
     // Display BTC-Ticker configuration
     LOG_INFO("Config", "=== BTC-TICKER CONFIGURATION ===");
@@ -851,6 +897,11 @@ void setup()
     Serial.println("[AMBIENT LIGHT] GPIO 11 initialized (synced with display backlight)");
   }
 
+  // Servo motor initialization (Servo multi-channel mode)
+  if (multiChannelConfig.mode == "servo") {
+    initServos();
+  }
+
 #if !ENABLE_DISPLAY
   // Headless ESP32 Dev: initialize all 10 relay channels to LOW at startup.
   // CH01=GPIO12, CH02=GPIO13, CH03=GPIO14, CH04=GPIO16 (NOT 10/11 – internal flash!)
@@ -1124,6 +1175,11 @@ void setup()
   } else if (multiChannelConfig.mode == "duo") {
     maxProducts = 2;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Duo mode - 2 products available");
+  } else if (multiChannelConfig.mode == "servo") {
+    // Servo mode: Product 1 = Relay 1 (pin 12) + Servo 1 (pin 13)
+    //             Product 2 = Relay 2 (pin 11) + Servo 2 (pin 10)  [only if servo2 configured]
+    maxProducts = servoConfig.servo2Active() ? 2 : 1;
+    SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Servo mode - " + String(maxProducts) + " product(s) available");
   } else {
     maxProducts = 1;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Single mode - 1 product");
@@ -2447,6 +2503,11 @@ static void processNormalPayment(int pin, int duration)
       Serial.println("[RELAY] Pin 13 set HIGH (parallel to Pin 12 in Single mode)");
     }
 
+    // Servo mode: activate paired servo when relay fires
+    if (multiChannelConfig.mode == "servo") {
+      activateServo(pin);
+    }
+
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
     unsigned long startTime = millis();
     int lastDisplayedSec = -1;
@@ -2473,6 +2534,11 @@ static void processNormalPayment(int pin, int duration)
     if (multiChannelConfig.mode == "off" && pin == 12) {
       digitalWrite(13, LOW);
       Serial.println("[RELAY] Pin 13 set LOW (parallel to Pin 12 in Single mode)");
+    }
+
+    // Servo mode: return paired servo to start position
+    if (multiChannelConfig.mode == "servo") {
+      deactivateServo(pin);
     }
   }
 

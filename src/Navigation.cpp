@@ -7,6 +7,7 @@
 #include "UI.h"
 #include "TouchCST816S.h"
 #include "SerialConfig.h"
+#include "ServoControl.h"
 #include <Arduino.h>
 #include "Log.h"
 
@@ -114,19 +115,13 @@ void navigateToNextProduct() {
   // Determine navigation behavior based on multiChannelConfig.btcTickerMode
   if (multiChannelConfig.btcTickerMode == "selecting") {
     // SELECTING mode: After last product, show BTC ticker (which will auto-return to product selection)
-    // Determine max products based on ambient light mode
-    int maxProducts = (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) ? 3 : 
-                      (multiChannelConfig.mode == "quattro") ? 4 : 2;
+    // Determine max products based on mode
+    int maxProducts = 2; // default for duo
+    if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
+    else if (multiChannelConfig.mode == "quattro") maxProducts = 4;
+    else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.servo2Active() ? 2 : 1;
     
-    if (multiChannelConfig.mode == "duo" && multiChannelConfig.currentProduct > 2) {
-      multiChannelConfig.currentProduct = 0; // Reset for next navigation
-      btctickerScreen();
-      multiChannelConfig.btcTickerActive = true;
-      deviceState.transition(DeviceState::BTC_TICKER);
-      productSelectionState.showTime = millis(); // Start timer for auto-return
-      LOG_INFO("Navigation", "SELECTING mode - Showing Bitcoin ticker after last product");
-      return;
-    } else if (multiChannelConfig.mode == "quattro" && multiChannelConfig.currentProduct > maxProducts) {
+    if (multiChannelConfig.currentProduct > maxProducts) {
       multiChannelConfig.currentProduct = 0; // Reset for next navigation
       btctickerScreen();
       multiChannelConfig.btcTickerActive = true;
@@ -137,13 +132,12 @@ void navigateToNextProduct() {
     }
   } else {
     // ALWAYS or OFF mode: Loop back to first product
-    // Determine max products based on ambient light mode
-    int maxProducts = (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) ? 3 : 
-                      (multiChannelConfig.mode == "quattro") ? 4 : 2;
+    int maxProducts = 2; // default for duo
+    if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
+    else if (multiChannelConfig.mode == "quattro") maxProducts = 4;
+    else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.servo2Active() ? 2 : 1;
     
-    if (multiChannelConfig.mode == "duo" && multiChannelConfig.currentProduct > 2) {
-      multiChannelConfig.currentProduct = 1; // Loop back to first product
-    } else if (multiChannelConfig.mode == "quattro" && multiChannelConfig.currentProduct > maxProducts) {
+    if (multiChannelConfig.currentProduct > maxProducts) {
       multiChannelConfig.currentProduct = 1; // Loop back to first product
     }
   }
@@ -166,16 +160,26 @@ void navigateToNextProduct() {
     String label = "";
     int pin = 0;
     
-    // Map product number (1-4) to pin (12, 13, 10, 11)
-    switch(productNum) {
-      case 1: pin = 12; break;
-      case 2: pin = 13; break;
-      case 3: pin = 10; break;
-      case 4: pin = 11; break;
-      default:
-        LOG_WARN("Navigation", String("Invalid product number ") + String(productNum) + String(", defaulting to Pin 12"));
-        pin = 12;
-        break;
+    // Map product number to pin
+    // Servo mode: Product 1 → Pin 12 (Relay 1), Product 2 → Pin 11 (Relay 2)
+    // Standard:   Product 1 → Pin 12, Product 2 → Pin 13, Product 3 → Pin 10, Product 4 → Pin 11
+    if (multiChannelConfig.mode == "servo") {
+      switch(productNum) {
+        case 1: pin = 12; break;  // Relay 1 (+ Servo 1 on pin 13)
+        case 2: pin = 11; break;  // Relay 2 (+ Servo 2 on pin 10)
+        default: pin = 12; break;
+      }
+    } else {
+      switch(productNum) {
+        case 1: pin = 12; break;
+        case 2: pin = 13; break;
+        case 3: pin = 10; break;
+        case 4: pin = 11; break;
+        default:
+          LOG_WARN("Navigation", String("Invalid product number ") + String(productNum) + String(", defaulting to Pin 12"));
+          pin = 12;
+          break;
+      }
     }
     
     // Get label from array, or use fallback

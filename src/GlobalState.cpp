@@ -38,6 +38,9 @@ LightBarrierConfig lightBarrierConfig;
 // Channel 4 Ambient Light
 Channel4AmbientConfig channel4AmbientConfig;
 
+// Servo Motor Configuration
+ServoConfig servoConfig;
+
 // Extension / API Path Configuration
 ExtensionConfig extensionConfig;
 
