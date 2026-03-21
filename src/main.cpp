@@ -1896,11 +1896,16 @@ void loop()
             (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
           // Check if we're on a product screen
           if (multiChannelConfig.currentProduct > 0) {
-            Serial.println("[SCREEN] Timeout reached - returning to product selection screen (OFF mode - Duo/Quattro)");
-            multiChannelConfig.currentProduct = -1;
-            deviceState.transition(DeviceState::PRODUCT_SELECTION);
-            productSelectionScreen();
-            productSelectionState.showTime = 0; // Reset timer
+            // In servo mode with only 1 active product: stay on product 1, no selection screen
+            if (multiChannelConfig.mode == "servo" && !servoConfig.servo2Active()) {
+              productSelectionState.showTime = 0; // Reset timer, stay on product 1
+            } else {
+              Serial.println("[SCREEN] Timeout reached - returning to product selection screen (OFF mode - Duo/Quattro)");
+              multiChannelConfig.currentProduct = -1;
+              deviceState.transition(DeviceState::PRODUCT_SELECTION);
+              productSelectionScreen();
+              productSelectionState.showTime = 0; // Reset timer
+            }
           }
         }
       } else if (multiChannelConfig.btcTickerMode == "selecting") {
@@ -1930,20 +1935,28 @@ void loop()
               if (multiChannelConfig.currentProduct >= 1) {
                 navigateToNextProduct();
               } else {
-                // Fallback: show product selection
-                multiChannelConfig.currentProduct = -1;
-                deviceState.transition(DeviceState::PRODUCT_SELECTION);
-                productSelectionScreen();
+                // Fallback: show product selection (or stay on product 1 for servo single)
+                if (multiChannelConfig.mode == "servo" && !servoConfig.servo2Active()) {
+                  multiChannelConfig.currentProduct = 1;
+                } else {
+                  multiChannelConfig.currentProduct = -1;
+                  deviceState.transition(DeviceState::PRODUCT_SELECTION);
+                  productSelectionScreen();
+                }
               }
               productSelectionState.showTime = 0; // Reset timer
             } else if (multiChannelConfig.currentProduct > 0 && !deviceState.isInState(DeviceState::PRODUCT_SELECTION) && 
                       (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
               // Product showing: Return to product selection after PRODUCT_SELECTION_DELAY
-              Serial.println("[SCREEN] Timeout reached - returning to product selection screen (SELECTING mode - Duo/Quattro)");
-              multiChannelConfig.currentProduct = -1;
-              deviceState.transition(DeviceState::PRODUCT_SELECTION);
-              productSelectionScreen();
-              productSelectionState.showTime = 0; // Reset timer
+              if (multiChannelConfig.mode == "servo" && !servoConfig.servo2Active()) {
+                productSelectionState.showTime = 0; // Reset timer, stay on product 1
+              } else {
+                Serial.println("[SCREEN] Timeout reached - returning to product selection screen (SELECTING mode - Duo/Quattro)");
+                multiChannelConfig.currentProduct = -1;
+                deviceState.transition(DeviceState::PRODUCT_SELECTION);
+                productSelectionScreen();
+                productSelectionState.showTime = 0; // Reset timer
+              }
             }
           }
         }

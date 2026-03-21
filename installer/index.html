@@ -307,13 +307,13 @@
             <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
             
             <div class="input-wrapper">
-                <div>
-                    <label for="multiControl">Multi-Channel Mode</label>
-                    <select name="multiControl" id="multiControl">
+                <div style="grid-column: span 2; display: flex; gap: 20px; align-items: center;">
+                    <label for="multiControl" style="flex: 0 0 20%; margin: 0;">Multi-Channel Mode</label>
+                    <select name="multiControl" id="multiControl" style="flex: 1; margin: 0;">
                         <option value="off" selected>Single (1 channel - default - pin 12 [& 13])</option>
                         <option value="duo">Duo (2 channels - pin 12, 13)</option>
                         <option value="quattro">Quattro & ZapOMat (4 channels - pin 12, 13, 10, 11)</option>
-                        <option value="servo">Servo (4-ch - relay 1 (pin 12) servo 1 (pin 13) &amp; relay 2 (pin 11) servo 2 (pin 10))</option>
+                        <option value="servo">Servo (4-ch - relay 1 / servo 1 (pin 12/13) &amp; relay 2 / servo 2 (pin 11/10))</option>
                     </select>
                 </div>
             </div>
