@@ -2387,7 +2387,13 @@ static void processThresholdPayment(const JsonDocument &doc)
     int pin = lightningConfig.thresholdPin.toInt();
     int duration = lightningConfig.thresholdTime.toInt();
 
-    if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+    // Special mode only applies to Pin 12 (single-channel context).
+    // Skip when: servo mode is active, or channel 4 ambient owns Pin 11.
+    bool useSpecialMode = (specialModeConfig.mode != "standard" && specialModeConfig.mode != "")
+                       && (multiChannelConfig.mode != "servo")
+                       && !(channel4AmbientConfig.enabled && pin == 11);
+
+    if (useSpecialMode) {
       Serial.println("[THRESHOLD] Using special mode: " + specialModeConfig.mode);
       if (deviceState.isInState(DeviceState::SCREENSAVER)) {
         deviceState.transition(DeviceState::READY);
@@ -2474,7 +2480,14 @@ static void processNormalPayment(int pin, int duration)
   // Pause product timeout while ACTION TIME is active
   productSelectionState.showTime = 0;
 
-  if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+  // Special mode only applies to Pin 12 (single-channel context).
+  // Skip when: servo mode is active (pulsing fights servo timing),
+  //            or channel 4 ambient owns Pin 11.
+  bool useSpecialMode = (specialModeConfig.mode != "standard" && specialModeConfig.mode != "")
+                     && (multiChannelConfig.mode != "servo")
+                     && !(channel4AmbientConfig.enabled && pin == 11);
+
+  if (useSpecialMode) {
     Serial.println("[NORMAL] Using special mode: " + specialModeConfig.mode);
     activityTracking.lastActivityTime = millis();
     if (deviceState.isInState(DeviceState::SCREENSAVER)) {
