@@ -130,14 +130,18 @@ void nfcLnurlwReceived(const String &lnurlw)
     LOG_INFO("NFC", "LNURLW received from Bolt Card – sending WS event");
 
     // Determine which relay pin is currently active.
-    // Uses RELAY_CHANNEL_PINS[product-1] so the mapping stays in sync with PinConfig.h.
-    // currentProduct is 1-based; RELAY_CHANNEL_PINS is 0-based.
+    // In servo mode, use productToPin() which skips inactive channels.
+    // Otherwise use RELAY_CHANNEL_PINS[product-1] (standard mapping from PinConfig.h).
     int activePin = RELAY_CHANNEL_PINS[0]; // Default: CH01 / GPIO 12
     if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct > 0)
     {
-        int idx = multiChannelConfig.currentProduct - 1;
-        if (idx >= 0 && idx < RELAY_CHANNEL_MAX) {
-            activePin = RELAY_CHANNEL_PINS[idx];
+        if (multiChannelConfig.mode == "servo") {
+            activePin = servoConfig.productToPin(multiChannelConfig.currentProduct);
+        } else {
+            int idx = multiChannelConfig.currentProduct - 1;
+            if (idx >= 0 && idx < RELAY_CHANNEL_MAX) {
+                activePin = RELAY_CHANNEL_PINS[idx];
+            }
         }
     }
 
