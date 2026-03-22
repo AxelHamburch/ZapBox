@@ -1895,7 +1895,7 @@ void loop()
           // Check if we're on a product screen
           if (multiChannelConfig.currentProduct > 0) {
             // In servo mode with only 1 active product: stay on product 1, no selection screen
-            if (multiChannelConfig.mode == "servo" && !servoConfig.servo2Active()) {
+            if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
               productSelectionState.showTime = 0; // Reset timer, stay on product 1
             } else {
               Serial.println("[SCREEN] Timeout reached - returning to product selection screen (OFF mode - Duo/Quattro)");
@@ -2584,7 +2584,6 @@ static void processNormalPayment(int pin, int duration)
   productSelectionState.showTime = millis();
   // Force QR display (not ticker) after payment in ALWAYS mode
   multiChannelConfig.btcTickerActive = false;
-  ensureQrForPin(12);
 
   // Device is fully ready again – allow next NFC tap.
   // Also reset all NFC screen state so the monitoring block doesn't
@@ -2598,11 +2597,8 @@ static void processNormalPayment(int pin, int duration)
   nfcNotSupportedShown   = false;
   #endif
 
-  if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-    showSpecialModeQRScreen();
-  } else {
-    showQRScreen();
-  }
+  // Restore correct product QR (handles single, multi-channel, servo)
+  redrawQRScreen();
   Serial.println("[NORMAL] Ready for next payment");
 }
 

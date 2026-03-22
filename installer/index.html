@@ -313,7 +313,7 @@
                         <option value="off" selected>Single (1 channel - default - pin 12 [& 13])</option>
                         <option value="duo">Duo (2 channels - pin 12, 13)</option>
                         <option value="quattro">Quattro & ZapOMat (4 channels - pin 12, 13, 10, 11)</option>
-                        <option value="servo">Servo (4-ch - relay 1 / servo 1 (pin 12/13) &amp; relay 2 / servo 2 (pin 11/10))</option>
+                        <option value="servo">Servo (4-ch - relay 1/2 (pin 12/11) &amp; servo 1/2 (pin 13/10))</option>
                     </select>
                 </div>
             </div>
@@ -352,10 +352,11 @@
                     <div>
                         <label for="servoRelayMode">Relay activation</label>
                         <select name="servoRelayMode" id="servoRelayMode" disabled>
-                            <option value="relay1" selected>Relay 1 (Pin 12) active</option>
+                            <option value="relay1" selected>Relay 1 (Pin 12) active (default)</option>
                             <option value="both">Relay 1 (Pin 12) and Relay 2 (Pin 11) active</option>
                             <option value="off">Relays deactive</option>
                         </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Both relays can only be turned off if at least one servo is active.</p>
                     </div>
                 </div>
                 
