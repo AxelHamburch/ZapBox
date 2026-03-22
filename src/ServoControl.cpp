@@ -5,13 +5,10 @@
 #if ENABLE_DISPLAY
 #include <ESP32Servo.h>
 
-static Servo servo1;  // Pin 13, paired with Relay 1 (Pin 12)
-static Servo servo2;  // Pin 10, paired with Relay 2 (Pin 11)
+static Servo servo1;  // Pin 13, positional 0-180°
+static Servo servo2;  // Pin 10, continuous rotation 360°
 static bool servo1Attached = false;
 static bool servo2Attached = false;
-// Toggle state: tracks current position for Return=No mode
-static bool servo1AtEnd = false;
-static bool servo2AtEnd = false;
 
 // Slowly sweep a servo from one angle to another over the given duration.
 // If duration_ms == 0, jump directly to target (native servo speed).
@@ -22,7 +19,6 @@ static void slowSweep(Servo &srv, int fromAngle, int toAngle, int duration_ms) {
     return;
   }
   if (duration_ms <= 0) {
-    // Jump directly - servo moves at its native speed
     srv.write(toAngle);
     return;
   }
@@ -40,66 +36,44 @@ void initServos() {
   if (servoConfig.servo1Active()) {
     servo1.attach(13);
     servo1Attached = true;
-    servo1AtEnd = false;
     servo1.write(servoConfig.servo1Start);
-    LOG_INFO("Servo", String("Servo 1 attached to Pin 13, start position: ") + String(servoConfig.servo1Start) + "°");
+    LOG_INFO("Servo", String("Servo 1 (positional) attached to Pin 13, start: ") + String(servoConfig.servo1Start) + "°");
   }
   if (servoConfig.servo2Active()) {
     servo2.attach(10);
     servo2Attached = true;
-    servo2AtEnd = false;
-    servo2.write(servoConfig.servo2Start);
-    LOG_INFO("Servo", String("Servo 2 attached to Pin 10, start position: ") + String(servoConfig.servo2Start) + "°");
+    servo2.write(90); // 90 = stop for continuous servo
+    LOG_INFO("Servo", String("Servo 2 (continuous) attached to Pin 10, stopped (90)"));
   }
 }
 
-void activateServo(int relayPin) {
-  if (relayPin == 12 && servo1Attached && servoConfig.servo1Active()) {
-    if (servoConfig.returnToStart) {
-      // Return mode: always drive Start → End
-      LOG_INFO("Servo", String("Servo 1: ") + String(servoConfig.servo1Start) + "° → " + String(servoConfig.servo1End) + "°");
-      slowSweep(servo1, servoConfig.servo1Start, servoConfig.servo1End, servoConfig.servo1Duration);
-    } else {
-      // Toggle mode: alternate direction each trigger
-      if (!servo1AtEnd) {
-        LOG_INFO("Servo", String("Servo 1 toggle: ") + String(servoConfig.servo1Start) + "° → " + String(servoConfig.servo1End) + "°");
-        slowSweep(servo1, servoConfig.servo1Start, servoConfig.servo1End, servoConfig.servo1Duration);
-        servo1AtEnd = true;
-      } else {
-        LOG_INFO("Servo", String("Servo 1 toggle: ") + String(servoConfig.servo1End) + "° → " + String(servoConfig.servo1Start) + "°");
-        slowSweep(servo1, servoConfig.servo1End, servoConfig.servo1Start, servoConfig.servo1Duration);
-        servo1AtEnd = false;
-      }
+void activateServo(int servoPin) {
+  if (servoPin == 13 && servo1Attached && servoConfig.servo1Active()) {
+    // Positional servo: sweep Start → End
+    LOG_INFO("Servo", String("Servo 1: ") + String(servoConfig.servo1Start) + "° → " + String(servoConfig.servo1End) + "°");
+    slowSweep(servo1, servoConfig.servo1Start, servoConfig.servo1End, servoConfig.servo1Duration);
+  } else if (servoPin == 10 && servo2Attached && servoConfig.servo2Active()) {
+    // Continuous servo: spin at configured speed for configured duration
+    LOG_INFO("Servo", String("Servo 2: spin at speed ") + String(servoConfig.servo2Speed) + " for " + String(servoConfig.servo2Duration) + "ms");
+    servo2.write(servoConfig.servo2Speed);
+    if (servoConfig.servo2Duration > 0) {
+      vTaskDelay(pdMS_TO_TICKS(servoConfig.servo2Duration));
+      servo2.write(90); // Stop
+      LOG_INFO("Servo", "Servo 2: stopped");
     }
-  } else if (relayPin == 11 && servo2Attached && servoConfig.servo2Active()) {
-    if (servoConfig.returnToStart) {
-      LOG_INFO("Servo", String("Servo 2: ") + String(servoConfig.servo2Start) + "° → " + String(servoConfig.servo2End) + "°");
-      slowSweep(servo2, servoConfig.servo2Start, servoConfig.servo2End, servoConfig.servo2Duration);
-    } else {
-      if (!servo2AtEnd) {
-        LOG_INFO("Servo", String("Servo 2 toggle: ") + String(servoConfig.servo2Start) + "° → " + String(servoConfig.servo2End) + "°");
-        slowSweep(servo2, servoConfig.servo2Start, servoConfig.servo2End, servoConfig.servo2Duration);
-        servo2AtEnd = true;
-      } else {
-        LOG_INFO("Servo", String("Servo 2 toggle: ") + String(servoConfig.servo2End) + "° → " + String(servoConfig.servo2Start) + "°");
-        slowSweep(servo2, servoConfig.servo2End, servoConfig.servo2Start, servoConfig.servo2Duration);
-        servo2AtEnd = false;
-      }
-    }
+    // If duration == 0, servo keeps spinning until deactivateServo() is called
   }
 }
 
-void deactivateServo(int relayPin) {
-  // In toggle mode (returnToStart=false) the servo stays where it is;
-  // direction reverses on next activateServo() call.
-  if (!servoConfig.returnToStart) return;
-  // Return mode: drive back End → Start
-  if (relayPin == 12 && servo1Attached && servoConfig.servo1Active()) {
+void deactivateServo(int servoPin) {
+  if (servoPin == 13 && servo1Attached && servoConfig.servo1Active()) {
+    // Positional servo: return End → Start
     LOG_INFO("Servo", String("Servo 1: returning to ") + String(servoConfig.servo1Start) + "°");
     slowSweep(servo1, servoConfig.servo1End, servoConfig.servo1Start, servoConfig.servo1Duration);
-  } else if (relayPin == 11 && servo2Attached && servoConfig.servo2Active()) {
-    LOG_INFO("Servo", String("Servo 2: returning to ") + String(servoConfig.servo2Start) + "°");
-    slowSweep(servo2, servoConfig.servo2End, servoConfig.servo2Start, servoConfig.servo2Duration);
+  } else if (servoPin == 10 && servo2Attached && servoConfig.servo2Active()) {
+    // Continuous servo: stop
+    servo2.write(90);
+    LOG_INFO("Servo", "Servo 2: stopped");
   }
 }
 
@@ -109,9 +83,9 @@ void detachServos() {
 }
 
 #else
-// Headless build: no servo support (GPIO 10/11 are internal flash on ESP32-WROOM-32)
+// Headless build: no servo support
 void initServos() {}
-void activateServo(int relayPin) { (void)relayPin; }
-void deactivateServo(int relayPin) { (void)relayPin; }
+void activateServo(int servoPin) { (void)servoPin; }
+void deactivateServo(int servoPin) { (void)servoPin; }
 void detachServos() {}
 #endif

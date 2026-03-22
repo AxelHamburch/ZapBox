@@ -346,11 +346,25 @@
             <!-- Servo Configuration (visible always, disabled unless servo mode) -->
             <div id="servoConfigSection" style="opacity: 0.4; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
                 <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">Servo Configuration</p>
+                
+                <!-- Relay activation -->
+                <div class="input-wrapper">
+                    <div>
+                        <label for="servoRelayMode">Relay activation</label>
+                        <select name="servoRelayMode" id="servoRelayMode" disabled>
+                            <option value="relay1" selected>Relay 1 (Pin 12) active</option>
+                            <option value="both">Relay 1 (Pin 12) and Relay 2 (Pin 11) active</option>
+                            <option value="off">Relays deactive</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- SERVO 1 (Pin 13) — positional 0-180° -->
                 <div class="input-wrapper">
                     <div>
                         <label for="servo1Start">Start angle (°)</label>
                         <input type="number" id="servo1Start" name="servo1Start" min="0" max="180" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Servo 1 (Pin 13) — paired with Relay 1 (Pin 12)</p>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Servo 1 (Pin 13) — positional 0–180°</p>
                     </div>
                     <div>
                         <label for="servo1End">End angle (°)</label>
@@ -362,34 +376,23 @@
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = max speed</p>
                     </div>
                 </div>
+                
+                <!-- SERVO 2 (Pin 10) — continuous rotation 360° -->
                 <div class="input-wrapper">
                     <div>
-                        <label for="servo2Start">Start angle (°)</label>
-                        <input type="number" id="servo2Start" name="servo2Start" min="0" max="180" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Servo 2 (Pin 10) — paired with Relay 2 (Pin 11)</p>
+                        <label for="servo2Speed">Speed (0–180)</label>
+                        <input type="number" id="servo2Speed" name="servo2Speed" min="0" max="180" value="0" disabled>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Servo 2 (Pin 10) — continuous 360° · 90 = stop · &lt;90 = CCW · &gt;90 = CW</p>
                     </div>
                     <div>
-                        <label for="servo2End">End angle (°)</label>
-                        <input type="number" id="servo2End" name="servo2End" min="0" max="180" value="0" disabled>
-                    </div>
-                    <div>
-                        <label for="servo2Duration">Sweep duration (ms)</label>
+                        <label for="servo2Duration">Spin duration (ms)</label>
                         <input type="number" id="servo2Duration" name="servo2Duration" min="0" max="10000" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = max speed</p>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = spin until action time ends</p>
                     </div>
                 </div>
-                <div class="input-wrapper" style="margin-top: 10px;">
-                    <div>
-                        <label for="servoReturn">Return to start after relay off</label>
-                        <select name="servoReturn" id="servoReturn" disabled>
-                            <option value="yes" selected>Yes – always return (default)</option>
-                            <option value="no">No – toggle direction each trigger</option>
-                        </select>
-                    </div>
-                </div>
+                
                 <p style="margin: 8px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
-                    Set at least one value other than zero in Servo 1 to enable the function. Relay 1 (Pin 12) is always active and always switches, even without servo configuration. If all values in Servo 2 are zero, Channel 4 (Pin 11) remains available for ambient lighting. If a value is assigned to Servo 2, it and Relay 2 (Pin 11) are available as a second output.<br>
-                    Note: In server mode, the Special Mode setting for the relays is always simply ON/OFF. Flashing or pulsing is not possible.
+                    Each channel (Pin 12, 13, 10, 11) is independent with its own trigger, label, and action time from the server. Servos become active when their values are non-zero. Special Mode (blink, pulse, etc.) works for relays (Pin 12/11) but not for servo pins (Pin 13/10).
                 </p>
             </div>
 
@@ -682,10 +685,9 @@
         const servo1Start = document.getElementById('servo1Start');
         const servo1End = document.getElementById('servo1End');
         const servo1Duration = document.getElementById('servo1Duration');
-        const servo2Start = document.getElementById('servo2Start');
-        const servo2End = document.getElementById('servo2End');
+        const servo2Speed = document.getElementById('servo2Speed');
         const servo2Duration = document.getElementById('servo2Duration');
-        const servoReturn = document.getElementById('servoReturn');
+        const servoRelayMode = document.getElementById('servoRelayMode');
         const servoConfigSection = document.getElementById('servoConfigSection');
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
@@ -810,11 +812,7 @@
                 "value": "0"
             },
             {
-                "name": "servo2Start",
-                "value": "0"
-            },
-            {
-                "name": "servo2End",
+                "name": "servo2Speed",
                 "value": "0"
             },
             {
@@ -822,8 +820,12 @@
                 "value": "0"
             },
             {
-                "name": "servoReturn",
-                "value": "yes"
+                "name": "unused29",
+                "value": ""
+            },
+            {
+                "name": "servoRelayMode",
+                "value": "relay1"
             }
         ]
 
@@ -1270,13 +1272,12 @@
                 if (config[26]) config[26].value = configData[26]?.value || "0";
                 servo1Duration.value = config[26]?.value || "0";
                 if (config[27]) config[27].value = configData[27]?.value || "0";
-                servo2Start.value = config[27]?.value || "0";
+                servo2Speed.value = config[27]?.value || "0";
                 if (config[28]) config[28].value = configData[28]?.value || "0";
-                servo2End.value = config[28]?.value || "0";
-                if (config[29]) config[29].value = configData[29]?.value || "0";
-                servo2Duration.value = config[29]?.value || "0";
-                if (config[30]) config[30].value = configData[30]?.value || "yes";
-                servoReturn.value = config[30]?.value || "yes";
+                servo2Duration.value = config[28]?.value || "0";
+                // Index 29 unused
+                if (config[30]) config[30].value = configData[30]?.value || "relay1";
+                servoRelayMode.value = config[30]?.value || "relay1";
 
                 // Update servo field enabled/disabled state based on multiControl mode
                 updateServoFieldState();
@@ -1421,14 +1422,14 @@
             config[25].value = servo1End.value || "0";
             if (!config[26]) config[26] = { name: "servo1Duration", value: "0" };
             config[26].value = servo1Duration.value || "0";
-            if (!config[27]) config[27] = { name: "servo2Start", value: "0" };
-            config[27].value = servo2Start.value || "0";
-            if (!config[28]) config[28] = { name: "servo2End", value: "0" };
-            config[28].value = servo2End.value || "0";
-            if (!config[29]) config[29] = { name: "servo2Duration", value: "0" };
-            config[29].value = servo2Duration.value || "0";
-            if (!config[30]) config[30] = { name: "servoReturn", value: "yes" };
-            config[30].value = servoReturn.value;
+            if (!config[27]) config[27] = { name: "servo2Speed", value: "0" };
+            config[27].value = servo2Speed.value || "0";
+            if (!config[28]) config[28] = { name: "servo2Duration", value: "0" };
+            config[28].value = servo2Duration.value || "0";
+            if (!config[29]) config[29] = { name: "unused29", value: "" };
+            config[29].value = "";
+            if (!config[30]) config[30] = { name: "servoRelayMode", value: "relay1" };
+            config[30].value = servoRelayMode.value;
 
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -1653,7 +1654,7 @@
         // Servo config field change listeners
         function updateServoFieldState() {
             const isServo = multiControl.value === 'servo';
-            const fields = [servo1Start, servo1End, servo1Duration, servo2Start, servo2End, servo2Duration, servoReturn];
+            const fields = [servo1Start, servo1End, servo1Duration, servo2Speed, servo2Duration, servoRelayMode];
             fields.forEach(el => { el.disabled = !isServo; });
             servoConfigSection.style.opacity = isServo ? '1' : '0.4';
         }
@@ -1672,16 +1673,13 @@
         servo1Duration.addEventListener("input", (event) => {
             config[26].value = event.target.value || "0";
         });
-        servo2Start.addEventListener("input", (event) => {
+        servo2Speed.addEventListener("input", (event) => {
             config[27].value = event.target.value || "0";
         });
-        servo2End.addEventListener("input", (event) => {
+        servo2Duration.addEventListener("input", (event) => {
             config[28].value = event.target.value || "0";
         });
-        servo2Duration.addEventListener("input", (event) => {
-            config[29].value = event.target.value || "0";
-        });
-        servoReturn.addEventListener("change", (event) => {
+        servoRelayMode.addEventListener("change", (event) => {
             config[30].value = event.target.value;
         });
 

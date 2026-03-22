@@ -119,7 +119,7 @@ void navigateToNextProduct() {
     int maxProducts = 2; // default for duo
     if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
     else if (multiChannelConfig.mode == "quattro") maxProducts = 4;
-    else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.servo2Active() ? 2 : 1;
+    else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.activeChannelCount();
     
     if (multiChannelConfig.currentProduct > maxProducts) {
       multiChannelConfig.currentProduct = 0; // Reset for next navigation
@@ -135,7 +135,7 @@ void navigateToNextProduct() {
     int maxProducts = 2; // default for duo
     if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
     else if (multiChannelConfig.mode == "quattro") maxProducts = 4;
-    else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.servo2Active() ? 2 : 1;
+    else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.activeChannelCount();
     
     if (multiChannelConfig.currentProduct > maxProducts) {
       multiChannelConfig.currentProduct = 1; // Loop back to first product
@@ -161,14 +161,10 @@ void navigateToNextProduct() {
     int pin = 0;
     
     // Map product number to pin
-    // Servo mode: Product 1 → Pin 12 (Relay 1), Product 2 → Pin 11 (Relay 2)
+    // Servo mode: dynamic mapping based on active channels (relay1→12, servo1→13, servo2→10, relay2→11)
     // Standard:   Product 1 → Pin 12, Product 2 → Pin 13, Product 3 → Pin 10, Product 4 → Pin 11
     if (multiChannelConfig.mode == "servo") {
-      switch(productNum) {
-        case 1: pin = 12; break;  // Relay 1 (+ Servo 1 on pin 13)
-        case 2: pin = 11; break;  // Relay 2 (+ Servo 2 on pin 10)
-        default: pin = 12; break;
-      }
+      pin = servoConfig.productToPin(productNum);
     } else {
       switch(productNum) {
         case 1: pin = 12; break;

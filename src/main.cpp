@@ -450,10 +450,9 @@ void readFiles()
       servoConfig.servo1Start    = readInt(24, 0, 180, 0);
       servoConfig.servo1End      = readInt(25, 0, 180, 0);
       servoConfig.servo1Duration = readInt(26, 0, 10000, 0);
-      servoConfig.servo2Start    = readInt(27, 0, 180, 0);
-      servoConfig.servo2End      = readInt(28, 0, 180, 0);
-      servoConfig.servo2Duration = readInt(29, 0, 10000, 0);
-      // Index 30: servoReturn ("yes"/"no")
+      servoConfig.servo2Speed    = readInt(27, 0, 180, 0);
+      servoConfig.servo2Duration = readInt(28, 0, 10000, 0);
+      // Index 30: relay activation mode ("relay1"/"both"/"off")
       const JsonObject r30 = doc[30];
       if (!r30.isNull()) {
         const char *v30 = r30["value"];
@@ -461,14 +460,15 @@ void readFiles()
           String sr = String(v30);
           sr.toLowerCase();
           sr.trim();
-          servoConfig.returnToStart = (sr != "no");
+          servoConfig.relayMode = sr;
         }
       }
       if (multiChannelConfig.mode == "servo") {
         LOG_INFO("Config", "=== SERVO CONFIGURATION ===");
-        LOG_INFO("Config", String("Servo 1 (Pin 13): Start=") + String(servoConfig.servo1Start) + " End=" + String(servoConfig.servo1End) + " Duration=" + String(servoConfig.servo1Duration) + "ms" + (servoConfig.servo1Active() ? " [ACTIVE]" : " [inactive]"));
-        LOG_INFO("Config", String("Servo 2 (Pin 10): Start=") + String(servoConfig.servo2Start) + " End=" + String(servoConfig.servo2End) + " Duration=" + String(servoConfig.servo2Duration) + "ms" + (servoConfig.servo2Active() ? " [ACTIVE]" : " [inactive]"));
-        LOG_INFO("Config", String("Return to start: ") + (servoConfig.returnToStart ? "YES" : "NO"));
+        LOG_INFO("Config", String("Servo 1 (Pin 13, positional): Start=") + String(servoConfig.servo1Start) + " End=" + String(servoConfig.servo1End) + " Duration=" + String(servoConfig.servo1Duration) + "ms" + (servoConfig.servo1Active() ? " [ACTIVE]" : " [inactive]"));
+        LOG_INFO("Config", String("Servo 2 (Pin 10, continuous): Speed=") + String(servoConfig.servo2Speed) + " Duration=" + String(servoConfig.servo2Duration) + "ms" + (servoConfig.servo2Active() ? " [ACTIVE]" : " [inactive]"));
+        LOG_INFO("Config", String("Relay mode: ") + servoConfig.relayMode + " (Relay1=" + (servoConfig.relay1Active() ? "ON" : "OFF") + " Relay2=" + (servoConfig.relay2Active() ? "ON" : "OFF") + ")");
+        LOG_INFO("Config", String("Active channels: ") + String(servoConfig.activeChannelCount()));
         LOG_INFO("Config", "===========================");
       }
     }
@@ -1176,10 +1176,8 @@ void setup()
     maxProducts = 2;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Duo mode - 2 products available");
   } else if (multiChannelConfig.mode == "servo") {
-    // Servo mode: Product 1 = Relay 1 (pin 12) + Servo 1 (pin 13)
-    //             Product 2 = Relay 2 (pin 11) + Servo 2 (pin 10)  [only if servo2 configured]
-    maxProducts = servoConfig.servo2Active() ? 2 : 1;
-    SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Servo mode - " + String(maxProducts) + " product(s) available");
+    maxProducts = servoConfig.activeChannelCount();
+    SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Servo mode - " + String(maxProducts) + " channel(s) available");
   } else {
     maxProducts = 1;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Single mode - 1 product");
@@ -1936,7 +1934,7 @@ void loop()
                 navigateToNextProduct();
               } else {
                 // Fallback: show product selection (or stay on product 1 for servo single)
-                if (multiChannelConfig.mode == "servo" && !servoConfig.servo2Active()) {
+                if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
                   multiChannelConfig.currentProduct = 1;
                 } else {
                   multiChannelConfig.currentProduct = -1;
@@ -1948,7 +1946,7 @@ void loop()
             } else if (multiChannelConfig.currentProduct > 0 && !deviceState.isInState(DeviceState::PRODUCT_SELECTION) && 
                       (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
               // Product showing: Return to product selection after PRODUCT_SELECTION_DELAY
-              if (multiChannelConfig.mode == "servo" && !servoConfig.servo2Active()) {
+              if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
                 productSelectionState.showTime = 0; // Reset timer, stay on product 1
               } else {
                 Serial.println("[SCREEN] Timeout reached - returning to product selection screen (SELECTING mode - Duo/Quattro)");
@@ -2493,11 +2491,11 @@ static void processNormalPayment(int pin, int duration)
   // Pause product timeout while ACTION TIME is active
   productSelectionState.showTime = 0;
 
-  // Special mode only applies to Pin 12 (single-channel context).
-  // Skip when: servo mode is active (pulsing fights servo timing),
-  //            or channel 4 ambient owns Pin 11.
+  // Special mode applies to relay pins (12, 11) but NOT servo pins (13, 10).
+  // Skip when: this is a servo pin, or channel 4 ambient owns Pin 11.
+  bool isServoPin = (multiChannelConfig.mode == "servo" && (pin == 13 || pin == 10));
   bool useSpecialMode = (specialModeConfig.mode != "standard" && specialModeConfig.mode != "")
-                     && (multiChannelConfig.mode != "servo")
+                     && !isServoPin
                      && !(channel4AmbientConfig.enabled && pin == 11);
 
   if (useSpecialMode) {
@@ -2519,19 +2517,19 @@ static void processNormalPayment(int pin, int duration)
     }
     actionTimeScreen();
     updateActionTimeCountdown(duration / 1000);
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, HIGH);
-    Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+    // Servo mode: servo pins (13, 10) trigger servo directly, no GPIO relay
+    if (isServoPin) {
+      activateServo(pin);
+    } else {
+      pinMode(pin, OUTPUT);
+      digitalWrite(pin, HIGH);
+      Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+    }
 
     if (multiChannelConfig.mode == "off" && pin == 12) {
       pinMode(13, OUTPUT);
       digitalWrite(13, HIGH);
       Serial.println("[RELAY] Pin 13 set HIGH (parallel to Pin 12 in Single mode)");
-    }
-
-    // Servo mode: activate paired servo when relay fires
-    if (multiChannelConfig.mode == "servo") {
-      activateServo(pin);
     }
 
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
@@ -2554,17 +2552,17 @@ static void processNormalPayment(int pin, int duration)
       vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
     }
 
-    digitalWrite(pin, LOW);
-    Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+    // Servo mode: return servo to rest state; otherwise turn relay off
+    if (isServoPin) {
+      deactivateServo(pin);
+    } else {
+      digitalWrite(pin, LOW);
+      Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+    }
 
     if (multiChannelConfig.mode == "off" && pin == 12) {
       digitalWrite(13, LOW);
       Serial.println("[RELAY] Pin 13 set LOW (parallel to Pin 12 in Single mode)");
-    }
-
-    // Servo mode: return paired servo to start position
-    if (multiChannelConfig.mode == "servo") {
-      deactivateServo(pin);
     }
   }
 

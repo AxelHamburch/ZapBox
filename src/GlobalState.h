@@ -132,16 +132,42 @@ extern LightBarrierConfig lightBarrierConfig;
 // ============================================================================
 
 struct ServoConfig {
+  // Servo 1 — positional 0-180° on Pin 13 (independent channel)
   int servo1Start = 0;       // Start angle 0-180° (rest position)
   int servo1End = 0;         // End angle 0-180° (active position)
   int servo1Duration = 0;    // Sweep duration ms (0 = max speed)
-  int servo2Start = 0;       // Start angle 0-180° (rest position)
-  int servo2End = 0;         // End angle 0-180° (active position)
-  int servo2Duration = 0;    // Sweep duration ms (0 = max speed)
-  bool returnToStart = true; // Return to start angle after relay off
-  // Helper: servo is active if start or end is non-zero
+  // Servo 2 — continuous rotation (360°/multiturn) on Pin 10 (independent channel)
+  int servo2Speed = 0;       // Speed value 0-180 (90=stop, <90=CCW, >90=CW)
+  int servo2Duration = 0;    // Spin duration ms
+  // Relay activation in servo mode
+  String relayMode = "relay1"; // "relay1" (default), "both", "off"
+  // Helper: servo is active if parameters are non-zero
   bool servo1Active() const { return servo1Start != 0 || servo1End != 0; }
-  bool servo2Active() const { return servo2Start != 0 || servo2End != 0; }
+  bool servo2Active() const { return servo2Speed != 0 && servo2Speed != 90; }
+  bool relay1Active() const { return relayMode != "off"; }
+  bool relay2Active() const { return relayMode == "both"; }
+  // Count active channels in servo mode
+  int activeChannelCount() const {
+    int count = 0;
+    if (relay1Active()) count++;
+    if (servo1Active()) count++;
+    if (servo2Active()) count++;
+    if (relay2Active()) count++;
+    return count;
+  }
+  // Map product number (1-based) to pin, skipping inactive channels
+  int productToPin(int product) const {
+    const int pins[] = {12, 13, 10, 11};
+    const bool active[] = {relay1Active(), servo1Active(), servo2Active(), relay2Active()};
+    int count = 0;
+    for (int i = 0; i < 4; i++) {
+      if (active[i]) {
+        count++;
+        if (count == product) return pins[i];
+      }
+    }
+    return 12; // fallback
+  }
 };
 
 extern ServoConfig servoConfig;

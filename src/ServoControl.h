@@ -4,34 +4,36 @@
 /**
  * ServoControl.h - Servo motor control for Servo multi-channel mode
  *
- * Pin assignment:
- *   Pin 12 - Relay 1 (paired with Servo 1)
- *   Pin 13 - Servo 1 (PWM via LEDC)
- *   Pin 10 - Servo 2 (PWM via LEDC)
- *   Pin 11 - Relay 2 (paired with Servo 2)
+ * Pin assignment (each channel independent):
+ *   Pin 12 - Relay 1
+ *   Pin 13 - Servo 1 (positional 0-180°, PWM via LEDC)
+ *   Pin 10 - Servo 2 (continuous rotation 360°, PWM via LEDC)
+ *   Pin 11 - Relay 2
  *
- * Only compiled/active when multiChannelConfig.mode == "servo".
+ * Servos are triggered independently by their own pin from the server.
  */
 
 /**
  * Initialize servo motors based on ServoConfig.
- * Attaches active servos and moves them to their start position.
+ * Attaches active servos and moves them to their start/stop position.
  */
 void initServos();
 
 /**
- * Activate servo paired with the given relay pin.
- * Moves servo from start angle to end angle.
- * @param relayPin  GPIO of the relay being triggered (12 or 11)
+ * Activate the servo on the given pin (13 or 10).
+ * Servo 1 (pin 13): sweeps Start→End angle.
+ * Servo 2 (pin 10): spins at configured speed for configured duration.
+ * @param servoPin  GPIO of the servo being triggered (13 or 10)
  */
-void activateServo(int relayPin);
+void activateServo(int servoPin);
 
 /**
- * Return servo paired with the given relay pin to start position.
- * Only acts if servoConfig.returnToStart is true.
- * @param relayPin  GPIO of the relay being deactivated (12 or 11)
+ * Return the servo on the given pin to its rest state.
+ * Servo 1 (pin 13): sweeps End→Start angle.
+ * Servo 2 (pin 10): stops (write 90).
+ * @param servoPin  GPIO of the servo being deactivated (13 or 10)
  */
-void deactivateServo(int relayPin);
+void deactivateServo(int servoPin);
 
 /**
  * Detach all servos (frees LEDC channels, stops PWM signal).
