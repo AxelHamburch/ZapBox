@@ -170,7 +170,26 @@ void nfcLnurlwReceived(const String &lnurlw)
     extensionConfig.nfcPaymentPending = true;
     extensionConfig.nfcPaymentPendingStart = millis(); // starts the timeout in main.cpp
 
-    int httpCode = http.POST(body);
+    // Retry loop for connection-level failures (negative HTTP codes).
+    // These mean the request never reached the server (SSL timeout, DNS failure,
+    // connection refused), so retrying is safe — no duplicate payment risk.
+    // This covers the common case where the SSL stack isn't fully ready shortly
+    // after boot (first NFC tap fails, second succeeds).
+    const int maxRetries = 2;
+    int httpCode = 0;
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+        if (attempt > 0) {
+            LOG_WARN("NFC", String("Retrying NFC request (attempt ") + String(attempt + 1) + "/" + String(maxRetries + 1) + ")...");
+            http.end();
+            delay(1000); // Wait 1s before retry — let SSL/network stack stabilize
+            http.begin(url);
+            http.addHeader("Content-Type", "application/json");
+            http.setTimeout(15000);
+        }
+        httpCode = http.POST(body);
+        if (httpCode >= 0) break; // Got a server response (success or HTTP error) — stop retrying
+        LOG_WARN("NFC", String("Connection failed (HTTP ") + String(httpCode) + ") on attempt " + String(attempt + 1));
+    }
 
     if (httpCode == 200) {
         // Timer was already started before the POST – do NOT reset it here.
@@ -194,19 +213,27 @@ void nfcLnurlwReceived(const String &lnurlw)
         }
 
         // Decide immediately vs. wait:
-        // HTTP 4xx (400, 404, 422)    → client error, request invalid → terminal
-        // "LNURLW error: …"          → resolve step returned STATUS ERROR → terminal
-        // "LNURLW callback error: …" → callback step returned STATUS ERROR → terminal
-        // "LNURLW resolve failed."   → network error on resolve → keep pending (async possible)
-        // "LNURLW callback failed."  → network error on callback → keep pending (async possible)
+        // Negative HTTP code           → connection never reached server → terminal (retries exhausted)
+        // HTTP 4xx (400, 404, 422)     → client error, request invalid → terminal
+        // "LNURLW error: …"           → resolve step returned STATUS ERROR → terminal
+        // "LNURLW callback error: …"  → callback step returned STATUS ERROR → terminal
+        // "LNURLW resolve failed."    → network error on resolve → keep pending (async possible)
+        // "LNURLW callback failed."   → network error on callback → keep pending (async possible)
         String detailStr = String(extensionConfig.nfcErrorDetail);
-        bool isTerminal = (httpCode >= 400 && httpCode < 500)
+        bool isTerminal = (httpCode < 0) // Connection failure after all retries — server never saw it
+                       || (httpCode >= 400 && httpCode < 500)
                        || detailStr.startsWith("LNURLW error:")
                        || detailStr.startsWith("LNURLW callback error:");
         if (isTerminal) {
             extensionConfig.nfcPaymentPending = false;
             extensionConfig.nfcPaymentFailed  = true;
-            LOG_WARN("NFC", "Terminal LNURLW error – showing NO LUCK immediately");
+            if (httpCode < 0) {
+                String connErr = "Connection failed";
+                connErr.toCharArray(extensionConfig.nfcErrorDetail, sizeof(extensionConfig.nfcErrorDetail));
+                LOG_WARN("NFC", "Connection failed after retries – showing NO LUCK immediately");
+            } else {
+                LOG_WARN("NFC", "Terminal LNURLW error – showing NO LUCK immediately");
+            }
         } else {
             LOG_WARN("NFC", "HTTP error – keeping pending state, waiting for WebSocket paid event or timeout");
         }

@@ -1358,11 +1358,22 @@
             // Clear buffer before sending to avoid parsing stale data
             serialBuffer = "";
             await serial.writeLine("/file-read config.json");
-            // Fallback re-enable after 5s (also re-enabled 3s after parse in tryParseConfig)
+            // Auto-retry once after 2s if first read didn't parse successfully.
+            // USB CDC can drop the first 64-byte chunk after an idle period,
+            // causing the "/file-read" prefix and JSON start to be lost.
+            // The firmware warm-up bytes should prevent this, but retry as safety net.
+            setTimeout(async () => {
+                if (btn.textContent === '⏳ Reading...') {
+                    console.log("Auto-retry: first read may have had USB CDC byte-loss, resending...");
+                    serialBuffer = "";
+                    await serial.writeLine("/file-read config.json");
+                }
+            }, 2000);
+            // Fallback re-enable after 7s (also re-enabled 3s after parse in tryParseConfig)
             setTimeout(() => {
                 btn.disabled = false;
                 btn.textContent = '📖 Read Config';
-            }, 5000);
+            }, 7000);
         }
 
         async function onWriteConfigButtonClick() {

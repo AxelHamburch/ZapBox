@@ -352,8 +352,15 @@ void appendToFile(String path, String data)
 
 void readFile(String path)
 {
-    delay(30); // Extra gap before data payload
-    
+    // Warm up USB CDC output to prevent byte-loss on first transmission
+    // after a period of inactivity (e.g., first /file-read after entering
+    // config mode).  The first 64-byte chunk can be silently dropped when
+    // the USB endpoint resumes after idle; these sacrificial bytes ensure
+    // the actual payload starts on a "warm" endpoint.
+    Serial.print("\n");
+    Serial.flush();
+    delay(50);
+
     File file = FFat.open("/" + path, "r");
     if (file)
     {
