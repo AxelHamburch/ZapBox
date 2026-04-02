@@ -945,6 +945,7 @@ Electrical design and housing variants, see table.
 | b939002 | Compact | Compact 35° now with NFC cap |
 | b939704 | ZapOMat | ZapOMat No.1 |
 | b940298 | Duo | Update & NFC lid |
+| b943400 | Headless | Headless with NFC |
 
 -> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
