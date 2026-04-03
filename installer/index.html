@@ -277,6 +277,111 @@
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
         
+            <div class="input-wrapper">
+                <div style="grid-column: span 2; display: flex; gap: 20px; align-items: center;">
+                    <label for="multiControl" style="flex: 0 0 15%; margin: 0;">ZapBox Mode</label>
+                    <select name="multiControl" id="multiControl" style="flex: 1; margin: 0;">
+                        <option value="off" selected>Compact ( 1 channel - pin 12 [& 13] - default)</option>
+                        <option value="duo">Duo (2 channels - pin 12/13)</option>
+                        <option value="quattro">Quattro & ZapOMat (4 channels - pin 12/13/10/11)</option>
+                        <option value="servo">Servo (4 channels - 2x relay (pin 12/11) &amp; 2x servo (pin 13/10))</option>
+                    </select>
+                </div>
+            </div>
+            
+            <p style="margin-top: 10px; color: #888;"><i><strong>ZapBox Mode:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use NEXT button, touch gestures (swipe ←→) or external button (if available) to navigate between products. Servo mode requires additional settings. See below.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> The Threshold function is only compatible with the default Compact - 1 channel mode.</i></p>
+
+            <p style="margin-top: 10px; color: #888;"><i><strong>To enable the following servo configuration, please select ZapBox Mode Servo</strong> </i></p>
+
+            <!-- Servo Configuration (visible always, disabled unless servo mode) -->
+            <div id="servoConfigSection" style="opacity: 0.4; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
+                <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">Servo Configuration</p>
+                <p style="margin: 0 0 15px 0; color: #888; font-size: 11px;"><i><strong>Up to 4 channels can be controlled.</strong> <br><br>
+                    <strong>Pin 12:</strong> Relay (on/off, standard)<br>
+                    <strong>Pin 13:</strong> 180° servo motor (0–180-degree positioning)<br>
+                    <strong>Pin 10:</strong> 360° servo motor (360-degree multiturn)<br>
+                    <strong>Pin 11:</strong> Relay (on/off, also usable for ambient lighting)<br><br>
+                    The "One for All" function allows all channels to be triggered simultaneously. To do this, you only need to configure pin 12 and, if necessary, a servo. In addition, the channels can also be configured and activated individually. To do this, the pins must be configured in LNbits and the servos must be set up. </i></p>
+                
+                <!-- Relay activation -->
+                <div class="input-wrapper">
+                    <div>
+                        <label for="servoRelayMode">Activation options</label>
+                        <select name="servoRelayMode" id="servoRelayMode" disabled>
+                            <option value="one-for-all" selected>One for All – all channels triggered by Pin 12 (default)</option>
+                            <option value="relay1">Relay 1 (Pin 12) active</option>
+                            <option value="both">Relay 1 (Pin 12) and Relay 2 (Pin 11) active</option>
+                            <option value="off">Relays deactive (Activate at least one servo)</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">The servos are activated by setting a parameter value ≠ 0.</p>
+                    </div>
+                </div>
+                
+                <!-- SERVO 1 (Pin 13) — positional 0-180° -->
+                <div class="input-wrapper">
+                    <div>
+                        <label for="servo1Start">180° Servo - Start angle (°)</label>
+                        <input type="number" id="servo1Start" name="servo1Start" min="0" max="180" value="0" disabled>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Positioning 0°–180° or 180°–0°</p>
+                    </div>
+                    <div>
+                        <label for="servo1End">180° Servo - End angle (°)</label>
+                        <input type="number" id="servo1End" name="servo1End" min="0" max="180" value="0" disabled>
+                    </div>
+                    <div>
+                        <label for="servo1Duration">180° Servo - Sweep duration (ms)</label>
+                        <input type="number" id="servo1Duration" name="servo1Duration" min="0" max="10000" value="0" disabled>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = max speed / 1000 = 1 second for start/stop</p>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <p style="margin: 0; font-size: 11px; color: #bbb; font-style: italic;">Please note that the 180° servo always returns to its starting position after completing the switch function.</p>
+                    </div>
+                </div>
+                
+                <!-- Servo 2 (Pin 10) — continuous rotation 360° -->
+                <div class="input-wrapper">
+                    <div>
+                        <label for="servo2Speed">360° Servo - Speed (0–180)</label>
+                        <input type="number" id="servo2Speed" name="servo2Speed" min="0" max="180" value="0" disabled>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Continuous rotation 360° / 90 = stop / &lt;90 = CCW / &gt;90 = CW</p>
+                    </div>
+                    <div>
+                        <label for="servo2Duration">360° Servo - Spin duration (ms)</label>
+                        <input type="number" id="servo2Duration" name="servo2Duration" min="0" max="10000" value="0" disabled>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = spin until action time ends</p>
+                    </div>
+                </div>
+                
+                <p style="margin: 8px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
+                    Servos become active when their values are non-zero. Special Mode (blink, pulse, etc.) works for relays (Pin 12/11) but not for servo pins (Pin 13/10).
+                </p>
+            </div>
+
+            <div class="input-wrapper">
+                <div>
+                    <label for="lightBarrier">Vending machine with light barrier</label>
+                    <select name="lightBarrier" id="lightBarrier">
+                        <option value="no" selected>No (default)</option>
+                        <option value="yes">Yes - Stop the action</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN light barrier on Pin 2</p>
+                </div>
+                <div>
+                    <label for="channel4Ambient">Channel 4 - Ambient lighting switch</label>
+                    <select name="channel4Ambient" id="channel4Ambient">
+                        <option value="normal" selected>Off (default)</option>
+                        <option value="ambient">Ambient lighting switch (pin 11)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Pin 11 is always ON, except in screensaver mode.</p>
+                </div>
+            </div>
+            
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note on selecting "Vending machine with light barrier":</strong> A trigger from the light barrier stops the action after 2 seconds at the earliest.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note on "Ambient lighting switch":</strong> With pre-selection enabled, channel 4 is switched depending on the display backlight. Whenever the display is on, channel 4 is activated, thus, for example, the lighting for a vending machine. If the display backlight switches off because the screensaver mode is active, channel 4 is also deactivated.</i></p>
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
         <!-- Special Mode Section -->
             <div class="input-wrapper">
                 <div>
@@ -303,101 +408,6 @@
             </div>
             
             <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
-            
-            <!-- Section Separator -->
-            <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
-            
-            <div class="input-wrapper">
-                <div style="grid-column: span 2; display: flex; gap: 20px; align-items: center;">
-                    <label for="multiControl" style="flex: 0 0 20%; margin: 0;">Multi-Channel Mode</label>
-                    <select name="multiControl" id="multiControl" style="flex: 1; margin: 0;">
-                        <option value="off" selected>Single (1 channel - default - pin 12 [& 13])</option>
-                        <option value="duo">Duo (2 channels - pin 12, 13)</option>
-                        <option value="quattro">Quattro & ZapOMat (4 channels - pin 12, 13, 10, 11)</option>
-                        <option value="servo">Servo (4-ch - relay 1/2 (pin 12/11) &amp; servo 1/2 (pin 13/10))</option>
-                    </select>
-                </div>
-            </div>
-            
-            <p style="margin-top: 10px; color: #888;"><i><strong>Multi-Channel-Mode:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use NEXT button, touch gestures (swipe ←→) or external button (if available) to navigate between products.</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note on Multi-Channel Mode:</strong> Not compatible with the Threshold feature. Please disable it.</i></p>
-            
-            <div class="input-wrapper">
-                <div>
-                    <label for="lightBarrier">Vending machine with light barrier</label>
-                    <select name="lightBarrier" id="lightBarrier">
-                        <option value="no" selected>No (default)</option>
-                        <option value="yes">Yes - Stop the action</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN light barrier on GPIO 2</p>
-                </div>
-                <div>
-                    <label for="channel4Ambient">Special function Channel 4</label>
-                    <select name="channel4Ambient" id="channel4Ambient">
-                        <option value="normal" selected>Off (default)</option>
-                        <option value="ambient">Ambient lighting switch</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Channel 4 (as ambient light) is deactivated in screensaver mode.</p>
-                </div>
-            </div>
-            
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note on selecting "Vending machine with light barrier":</strong> A trigger from the light barrier stops the action after 2 seconds at the earliest.</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Note on "Ambient lighting switch":</strong> With pre-selection enabled, channel 4 is switched depending on the display backlight. Whenever the display is on, channel 4 is activated, thus, for example, the lighting for a vending machine. If the display backlight switches off because the screensaver mode is active, channel 4 is also deactivated.</i></p>
-
-            <!-- Servo Configuration (visible always, disabled unless servo mode) -->
-            <div id="servoConfigSection" style="opacity: 0.4; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
-                <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">Servo Configuration</p>
-                <p style="margin: 0 0 15px 0; color: #888; font-size: 11px;"><i><strong>Server configuration:</strong> The Servo configuration option has four channels. Channels 1 and 4 have a relay function; channel 2 is designed for a standard servo motor with 0- and 180-degree angles and fixed end positions; and channel 3 is for a rotary servo (360-degree servo) for continuous rotation. The channels can be selected and controlled separately. The relays are selected via the "Relay activation" field. The servos are automatically activated as soon as a value other than 0 is entered in one of the fields.</i></p>
-                
-                <!-- Relay activation -->
-                <div class="input-wrapper">
-                    <div>
-                        <label for="servoRelayMode">Relay activation</label>
-                        <select name="servoRelayMode" id="servoRelayMode" disabled>
-                            <option value="relay1" selected>Relay 1 (Pin 12) active (default)</option>
-                            <option value="both">Relay 1 (Pin 12) and Relay 2 (Pin 11) active</option>
-                            <option value="off">Relays deactive (Activate at least one servo)</option>
-                        </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Relay 2 is also designated for “Special Function Channel 4.”</p>
-                    </div>
-                </div>
-                
-                <!-- SERVO 1 (Pin 13) — positional 0-180° -->
-                <div class="input-wrapper">
-                    <div>
-                        <label for="servo1Start">Servo 1 - Start angle (°)</label>
-                        <input type="number" id="servo1Start" name="servo1Start" min="0" max="180" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Pin 13 — positional 0–180°</p>
-                    </div>
-                    <div>
-                        <label for="servo1End">Servo 1 - End angle (°)</label>
-                        <input type="number" id="servo1End" name="servo1End" min="0" max="180" value="0" disabled>
-                    </div>
-                    <div>
-                        <label for="servo1Duration">Servo 1 - Sweep duration (ms)</label>
-                        <input type="number" id="servo1Duration" name="servo1Duration" min="0" max="10000" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = max speed</p>
-                    </div>
-                </div>
-                
-                <!-- Servo 2 (Pin 10) — continuous rotation 360° -->
-                <div class="input-wrapper">
-                    <div>
-                        <label for="servo2Speed">Servo 2 - Speed (0–180)</label>
-                        <input type="number" id="servo2Speed" name="servo2Speed" min="0" max="180" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Pin 10 — continuous 360° · 90 = stop · &lt;90 = CCW · &gt;90 = CW</p>
-                    </div>
-                    <div>
-                        <label for="servo2Duration">Servo 2 - Spin duration (ms)</label>
-                        <input type="number" id="servo2Duration" name="servo2Duration" min="0" max="10000" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = spin until action time ends</p>
-                    </div>
-                </div>
-                
-                <p style="margin: 8px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
-                    Each channel (Pin 12, 13, 10, 11) is independent with its own trigger, label, and action time from the server. Servos become active when their values are non-zero. Special Mode (blink, pulse, etc.) works for relays (Pin 12/11) but not for servo pins (Pin 13/10).
-                </p>
-            </div>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
@@ -828,7 +838,7 @@
             },
             {
                 "name": "servoRelayMode",
-                "value": "relay1"
+                "value": "one-for-all"
             }
         ]
 
@@ -1279,8 +1289,8 @@
                 if (config[28]) config[28].value = configData[28]?.value || "0";
                 servo2Duration.value = config[28]?.value || "0";
                 // Index 29 unused
-                if (config[30]) config[30].value = configData[30]?.value || "relay1";
-                servoRelayMode.value = config[30]?.value || "relay1";
+                if (config[30]) config[30].value = configData[30]?.value || "one-for-all";
+                servoRelayMode.value = config[30]?.value || "one-for-all";
 
                 // Update servo field enabled/disabled state based on multiControl mode
                 updateServoFieldState();
@@ -1442,7 +1452,7 @@
             config[28].value = servo2Duration.value || "0";
             if (!config[29]) config[29] = { name: "unused29", value: "" };
             config[29].value = "";
-            if (!config[30]) config[30] = { name: "servoRelayMode", value: "relay1" };
+            if (!config[30]) config[30] = { name: "servoRelayMode", value: "one-for-all" };
             config[30].value = servoRelayMode.value;
 
             // Validate required fields

@@ -467,7 +467,7 @@ void readFiles()
         LOG_INFO("Config", "=== SERVO CONFIGURATION ===");
         LOG_INFO("Config", String("Servo 1 (Pin 13, positional): Start=") + String(servoConfig.servo1Start) + " End=" + String(servoConfig.servo1End) + " Duration=" + String(servoConfig.servo1Duration) + "ms" + (servoConfig.servo1Active() ? " [ACTIVE]" : " [inactive]"));
         LOG_INFO("Config", String("Servo 2 (Pin 10, continuous): Speed=") + String(servoConfig.servo2Speed) + " Duration=" + String(servoConfig.servo2Duration) + "ms" + (servoConfig.servo2Active() ? " [ACTIVE]" : " [inactive]"));
-        LOG_INFO("Config", String("Relay mode: ") + servoConfig.relayMode + " (Relay1=" + (servoConfig.relay1Active() ? "ON" : "OFF") + " Relay2=" + (servoConfig.relay2Active() ? "ON" : "OFF") + ")");
+        LOG_INFO("Config", String("Relay mode: ") + servoConfig.relayMode + " (OneForAll=" + (servoConfig.oneForAll() ? "ON" : "OFF") + " Relay1=" + (servoConfig.relay1Active() ? "ON" : "OFF") + " Relay2=" + (servoConfig.relay2Active() ? "ON" : "OFF") + ")");
         LOG_INFO("Config", String("Active channels: ") + String(servoConfig.activeChannelCount()));
         LOG_INFO("Config", "===========================");
       }
@@ -2472,6 +2472,52 @@ static void processThresholdPayment(const JsonDocument &doc)
   }
 }
 
+// ─── One For All: concurrent activation task ─────────────────────────────────
+// Launched as a FreeRTOS task for each secondary channel (Pin 13, 10, 11) when
+// servoConfig.relayMode == "one-for-all" and Pin 12 is triggered.
+struct OFATaskParams {
+  int pin;
+  int fallbackDuration; // Duration to use when the channel has no own timing
+};
+
+static void oneForAllActivationTask(void* pvParams) {
+  OFATaskParams* p = (OFATaskParams*)pvParams;
+  int pin             = p->pin;
+  int fallback        = p->fallbackDuration;
+  free(p);
+
+  if (pin == 13) {
+    // Servo 1 (positional 0-180°): sweep Start→End using servo1Duration.
+    // If servo1Duration == 0 (instant snap), hold at end for fallback duration.
+    activateServo(13);
+    if (servoConfig.servo1Duration == 0 && fallback > 0) {
+      vTaskDelay(pdMS_TO_TICKS(fallback));
+    }
+    deactivateServo(13);
+
+  } else if (pin == 10) {
+    // Servo 2 (continuous 360°): spin for servo2Duration ms.
+    // If servo2Duration == 0 (indefinite), use fallback duration instead.
+    activateServo(10);
+    if (servoConfig.servo2Duration == 0 && fallback > 0) {
+      vTaskDelay(pdMS_TO_TICKS(fallback));
+      deactivateServo(10); // Stop spinning
+    }
+    // If servo2Duration > 0: activateServo() already stopped the motor internally.
+
+  } else if (pin == 11) {
+    // Relay 2: simple HIGH/LOW for fallback duration
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, HIGH);
+    Serial.printf("[OFA] Pin %d set HIGH\n", pin);
+    vTaskDelay(pdMS_TO_TICKS(fallback));
+    digitalWrite(pin, LOW);
+    Serial.printf("[OFA] Pin %d set LOW\n", pin);
+  }
+
+  vTaskDelete(nullptr);
+}
+
 static void processNormalPayment(int pin, int duration)
 {
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
@@ -2497,6 +2543,44 @@ static void processNormalPayment(int pin, int duration)
   bool useSpecialMode = (specialModeConfig.mode != "standard" && specialModeConfig.mode != "")
                      && !isServoPin
                      && !(channel4AmbientConfig.enabled && pin == 11);
+
+  // ── One For All mode ──────────────────────────────────────────────────────
+  // When Pin 12 fires in OFA mode (servo), launch concurrent activations for
+  // pins 13 (servo1), 10 (servo2), and 11 (relay2, unless ambient-light mode).
+  // Each secondary channel uses its own configured duration as activation time;
+  // if none is configured (== 0), Pin 12's payload duration is used as fallback.
+  if (multiChannelConfig.mode == "servo" && servoConfig.oneForAll() && pin == 12) {
+    Serial.println("[OFA] One For All: launching secondary channel activations");
+    // Pin 13 — Servo 1 (positional)
+    if (servoConfig.servo1Active()) {
+      int d = (servoConfig.servo1Duration > 0) ? servoConfig.servo1Duration : duration;
+      OFATaskParams* params13 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+      if (params13) {
+        params13->pin = 13; params13->fallbackDuration = d;
+        xTaskCreate(oneForAllActivationTask, "ofa_s1", 4096, params13, 2, nullptr);
+        Serial.printf("[OFA] Launched servo1 task (Pin 13, dur=%d ms)\n", d);
+      }
+    }
+    // Pin 10 — Servo 2 (continuous)
+    if (servoConfig.servo2Active()) {
+      int d = (servoConfig.servo2Duration > 0) ? servoConfig.servo2Duration : duration;
+      OFATaskParams* params10 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+      if (params10) {
+        params10->pin = 10; params10->fallbackDuration = d;
+        xTaskCreate(oneForAllActivationTask, "ofa_s2", 4096, params10, 2, nullptr);
+        Serial.printf("[OFA] Launched servo2 task (Pin 10, dur=%d ms)\n", d);
+      }
+    }
+    // Pin 11 — Relay 2 (skip if ambient lighting mode owns Pin 11)
+    if (!channel4AmbientConfig.enabled) {
+      OFATaskParams* params11 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+      if (params11) {
+        params11->pin = 11; params11->fallbackDuration = duration;
+        xTaskCreate(oneForAllActivationTask, "ofa_r2", 2048, params11, 2, nullptr);
+        Serial.printf("[OFA] Launched relay2 task (Pin 11, dur=%d ms)\n", duration);
+      }
+    }
+  }
 
   if (useSpecialMode) {
     Serial.println("[NORMAL] Using special mode: " + specialModeConfig.mode);

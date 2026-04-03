@@ -140,14 +140,18 @@ struct ServoConfig {
   int servo2Speed = 0;       // Speed value 0-180 (90=stop, <90=CCW, >90=CW)
   int servo2Duration = 0;    // Spin duration ms
   // Relay activation in servo mode
-  String relayMode = "relay1"; // "relay1" (default), "both", "off"
+  String relayMode = "one-for-all"; // "one-for-all" (default), "relay1", "both", "off"
   // Helper: servo is active if parameters are non-zero
   bool servo1Active() const { return servo1Start != 0 || servo1End != 0; }
   bool servo2Active() const { return servo2Speed != 0 && servo2Speed != 90; }
   bool relay1Active() const { return relayMode != "off"; }
   bool relay2Active() const { return relayMode == "both"; }
+  // One For All mode: Pin 12 triggers all channels simultaneously
+  bool oneForAll() const { return relayMode == "one-for-all"; }
   // Count active channels in servo mode
+  // In One For All mode always 1 (only Pin 12 QR is shown)
   int activeChannelCount() const {
+    if (oneForAll()) return 1;
     int count = 0;
     if (relay1Active()) count++;
     if (servo1Active()) count++;
@@ -156,7 +160,9 @@ struct ServoConfig {
     return count;
   }
   // Map product number (1-based) to pin, skipping inactive channels
+  // In One For All mode always returns Pin 12
   int productToPin(int product) const {
+    if (oneForAll()) return 12;
     const int pins[] = {12, 13, 10, 11};
     const bool active[] = {relay1Active(), servo1Active(), servo2Active(), relay2Active()};
     int count = 0;
