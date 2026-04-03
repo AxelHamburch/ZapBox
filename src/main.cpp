@@ -68,6 +68,8 @@ byte currentErrorType = 0; // 0=none, 1=WiFi (highest), 2=Internet, 3=Server, 4=
 bool onErrorScreen = false; // Track if error screen is displayed (synchronized with DeviceState)
 unsigned long lastInternetCheck = 0; // Track when we last checked Internet connectivity
 byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures to detect Internet issues
+unsigned long labels404NextRetry = 0; // Next time to retry fetchSwitchLabels() after 404 (0 = not in 404 state)
+byte labels404RetryCount = 0;         // How many label-fetch retries have been attempted after 404
 bool needsQRRedraw = false; // Flag to trigger QR redraw after WiFi recovery
 bool gestureHandledThisTouch = false; // Track if gesture was already handled in current touch session
 unsigned long lastNavigationTime = 0; // Track time of last navigation for timeout-based reset
@@ -2315,11 +2317,30 @@ void loop()
           productSelectionState.showTime = millis();
           deviceState.transition(DeviceState::READY);
         }
+        // Successful recovery — reset 404 retry state
+        labels404NextRetry = 0;
+        labels404RetryCount = 0;
         return;
       }
       // If WebSocket is connected but labels failed to load (404), keep WebSocket unconfirmed
+      // Retry fetchSwitchLabels() every 2 minutes; reboot after 3 failed retries.
       else if (wifiOk && serverOk && websocketOk && !labelsLoadedSuccessfully) {
-        Serial.println("[AUTO-RECOVERY] WebSocket connected but device config invalid (404) - keeping WebSocket unconfirmed");
+        unsigned long now = millis();
+        if (labels404NextRetry == 0) {
+          // First time in 404 state — schedule first retry in 2 minutes
+          labels404NextRetry = now + 120000UL;
+          Serial.println("[AUTO-RECOVERY] Device config invalid (404) - will retry in 2 minutes");
+        } else if (now >= labels404NextRetry) {
+          labels404RetryCount++;
+          if (labels404RetryCount > 3) {
+            Serial.printf("[AUTO-RECOVERY] Label fetch failed %d times after 404 - rebooting\n", labels404RetryCount);
+            delay(500);
+            ESP.restart();
+          }
+          Serial.printf("[AUTO-RECOVERY] Retrying label fetch after 404 (attempt %d/3)...\n", labels404RetryCount);
+          fetchSwitchLabels();
+          labels404NextRetry = now + 120000UL; // Schedule next retry in 2 more minutes
+        }
         // Don't override the websocket = false that was set by fetchSwitchLabels()
         return;
       }
@@ -2487,13 +2508,13 @@ static void oneForAllActivationTask(void* pvParams) {
   free(p);
 
   if (pin == 13) {
-    // Servo 1 (positional 0-180°): sweep Start→End using servo1Duration.
-    // If servo1Duration == 0 (instant snap), hold at end for fallback duration.
-    activateServo(13);
-    if (servoConfig.servo1Duration == 0 && fallback > 0) {
-      vTaskDelay(pdMS_TO_TICKS(fallback));
+    // Servo 1 (positional 0-180°): sweep Start→End, hold at end position
+    // for the remaining action time, then sweep back End→Start.
+    activateServo(13); // sweep to end (takes servo1Duration ms)
+    if (fallback > 0) {
+      vTaskDelay(pdMS_TO_TICKS(fallback)); // hold at end for full action time
     }
-    deactivateServo(13);
+    deactivateServo(13); // sweep back to start
 
   } else if (pin == 10) {
     // Servo 2 (continuous 360°): spin for servo2Duration ms.
@@ -2552,16 +2573,20 @@ static void processNormalPayment(int pin, int duration)
   if (multiChannelConfig.mode == "servo" && servoConfig.oneForAll() && pin == 12) {
     Serial.println("[OFA] One For All: launching secondary channel activations");
     // Pin 13 — Servo 1 (positional)
+    // fallbackDuration = LNbits action time: servo sweeps up, holds for this
+    // duration, then sweeps back. servo1Duration (sweep speed) is used
+    // internally by activateServo()/deactivateServo().
     if (servoConfig.servo1Active()) {
-      int d = (servoConfig.servo1Duration > 0) ? servoConfig.servo1Duration : duration;
       OFATaskParams* params13 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
       if (params13) {
-        params13->pin = 13; params13->fallbackDuration = d;
+        params13->pin = 13; params13->fallbackDuration = duration;
         xTaskCreate(oneForAllActivationTask, "ofa_s1", 4096, params13, 2, nullptr);
-        Serial.printf("[OFA] Launched servo1 task (Pin 13, dur=%d ms)\n", d);
+        Serial.printf("[OFA] Launched servo1 task (Pin 13, hold=%d ms)\n", duration);
       }
     }
     // Pin 10 — Servo 2 (continuous)
+    // If servo2Duration > 0: motor stops itself after that time internally.
+    // If servo2Duration == 0: spin indefinitely, use action time as stop signal.
     if (servoConfig.servo2Active()) {
       int d = (servoConfig.servo2Duration > 0) ? servoConfig.servo2Duration : duration;
       OFATaskParams* params10 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
