@@ -1938,6 +1938,14 @@ void loop()
                 // Fallback: show product selection (or stay on product 1 for servo single)
                 if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
                   multiChannelConfig.currentProduct = 1;
+                  int firstPin = servoConfig.productToPin(1);
+                  int pinIndex = getPinIndex(firstPin);
+                  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                      ? productLabels.labels[pinIndex]
+                      : String("Pin ") + String(firstPin);
+                  ensureQrForPin(firstPin);
+                  showProductQRScreen(label, firstPin);
+                  deviceState.transition(DeviceState::READY);
                 } else {
                   multiChannelConfig.currentProduct = -1;
                   deviceState.transition(DeviceState::PRODUCT_SELECTION);

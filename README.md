@@ -986,6 +986,7 @@ Electrical design and housing variants, see table.
 | b939704 | ZapOMat | ZapOMat No.1 |
 | b940298 | Duo | Update & NFC lid |
 | b943400 | Headless | Headless with NFC |
+| b943614 | Servo | The first one with servo control |
 
 -> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
@@ -1007,6 +1008,7 @@ Electrical design and housing variants, see table.
 | e938889 | Headless | Update Headless with ZapBox picture |
 | e938897 | Compact | Update Compact with ZapBox picture |
 | e939705 | ZapOMat | ZapOMat No.1 | 
+| e943674 | Servo | Start the Servo Story | 
 
 -> Find all versions here: [./assets/electric)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
