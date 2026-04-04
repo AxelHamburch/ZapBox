@@ -107,7 +107,7 @@ extern SpecialModeConfig specialModeConfig;
 // ============================================================================
 
 struct MultiChannelConfig {
-  String mode = "off";        // "off", "duo", "quattro"
+  String mode = "off";        // "off", "duo", "quattro", "servo"
   String btcTickerMode = "off"; // "off", "always", "selecting"
   volatile bool btcTickerActive = false; // volatile for multi-threaded WebSocket access
   volatile int currentProduct = -1;    // -1 = selection screen, 1-4 = product number (volatile for multi-context access)
@@ -126,6 +126,57 @@ struct LightBarrierConfig {
 };
 
 extern LightBarrierConfig lightBarrierConfig;
+
+// ============================================================================
+// SERVO MOTOR CONFIGURATION (Servo multi-channel mode)
+// ============================================================================
+
+struct ServoConfig {
+  // Servo 1 — positional 0-180° on Pin 13 (independent channel)
+  int servo1Start = 0;       // Start angle 0-180° (rest position)
+  int servo1End = 0;         // End angle 0-180° (active position)
+  int servo1Duration = 0;    // Sweep duration ms (0 = max speed)
+  // Servo 2 — continuous rotation (360°/multiturn) on Pin 10 (independent channel)
+  int servo2Speed = 0;       // Speed value 0-180 (90=stop, <90=CCW, >90=CW)
+  int servo2Duration = 0;    // Spin duration ms
+  // Relay activation in servo mode
+  String relayMode = "one-for-all"; // "one-for-all" (default), "relay1", "both", "off"
+  // Helper: servo is active if parameters are non-zero
+  bool servo1Active() const { return servo1Start != 0 || servo1End != 0; }
+  bool servo2Active() const { return servo2Speed != 0 && servo2Speed != 90; }
+  bool relay1Active() const { return relayMode != "off"; }
+  bool relay2Active() const { return relayMode == "both"; }
+  // One For All mode: Pin 12 triggers all channels simultaneously
+  bool oneForAll() const { return relayMode == "one-for-all"; }
+  // Count active channels in servo mode
+  // In One For All mode always 1 (only Pin 12 QR is shown)
+  int activeChannelCount() const {
+    if (oneForAll()) return 1;
+    int count = 0;
+    if (relay1Active()) count++;
+    if (servo1Active()) count++;
+    if (servo2Active()) count++;
+    if (relay2Active()) count++;
+    return count;
+  }
+  // Map product number (1-based) to pin, skipping inactive channels
+  // In One For All mode always returns Pin 12
+  int productToPin(int product) const {
+    if (oneForAll()) return 12;
+    const int pins[] = {12, 13, 10, 11};
+    const bool active[] = {relay1Active(), servo1Active(), servo2Active(), relay2Active()};
+    int count = 0;
+    for (int i = 0; i < 4; i++) {
+      if (active[i]) {
+        count++;
+        if (count == product) return pins[i];
+      }
+    }
+    return 12; // fallback
+  }
+};
+
+extern ServoConfig servoConfig;
 
 // ============================================================================
 // CHANNEL 4 AMBIENT LIGHT (GPIO 11 on T-Display-S3 only)

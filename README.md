@@ -130,10 +130,10 @@ Device String (switchStr)
 | 43 | LED Button (LED) | Output | HIGH=ON | External illuminated button LED (3.3V) |
 | 44 | LED Button (SW) | Input | Pull-up | External button switch (active LOW) |
 | **Relay Channels (Multi-Channel-Control)** |
-| 12 | Relay 1 | Output | - | Single mode default, Duo/Quattro mode 1 |
-| 13 | Relay 2 | Output | - | Duo/Quattro mode 2 |
-| 10 | Relay 3 | Output | - | Quattro mode 3 |
-| 11 | Relay 4 / Ambient | Output | - | Quattro mode 4, or ambient lighting (synced with backlight) |
+| 12 | Relay 1 | Output | - | Single mode default, Duo/Quattro/Servo mode 1 |
+| 13 | Relay 2 / Servo 1 | Output | - | Duo/Quattro mode 2, Servo mode PWM output |
+| 10 | Relay 3 / Servo 2 | Output | - | Quattro mode 3, Servo mode PWM output |
+| 11 | Relay 4 / Ambient | Output | - | Quattro mode 4, Servo mode relay 2, or ambient lighting (synced with backlight) |
 
 **I2C Bus Addresses:**
 - Touch CST816S/CST328: `0x15` or `0x5A`
@@ -211,6 +211,11 @@ Signal (NPN output)    →    GPIO 2
 - **Duo Mode**: Pins 12 and 13
 - **Quattro Mode**: Pins 12, 13, 10, and 11
   - **Special Option**: Pin 11 can be configured as ambient lighting switch (syncs with display backlight)
+- **Servo Mode**: 2 relay channels (Pins 12 and 11) + 2 servo PWM outputs (Pins 13 and 10)
+  - Pin 12 → Relay 1 (controls power to servo 1 circuit)
+  - Pin 13 → Servo 1 PWM signal (paired with Relay 1)
+  - Pin 10 → Servo 2 PWM signal (paired with Relay 2)
+  - Pin 11 → Relay 2 (controls power to servo 2 circuit)
 
 **ESP32 Dev Module (Headless – up to 12 independent channels):**
 
@@ -564,8 +569,9 @@ Set Multi-Channel-Control Mode in Web Installer:
 - `single` (default): Pin 12 only
 - `duo`: Pins 12, 13
 - `quattro`: Pins 12, 13, 10, 11
+- `servo`: Pins 12 (relay 1), 13 (servo 1 PWM), 10 (servo 2 PWM), 11 (relay 2)
 
-**Use Cases**: Vending machines, multi-product payment terminals, flexible product offerings
+**Use Cases**: Vending machines, multi-product payment terminals, flexible product offerings, servo-controlled dispensers and barriers
 
 ##### Special Function Channel 4 - Ambient Lighting Switch
 **Available in Quattro Mode only (T-Display-S3)**
@@ -599,6 +605,39 @@ Set in Web Installer under "Multi-Channel Mode - Quattro":
 - Initial state after boot: HIGH (display active by default)
 
 **Note**: When ambient lighting mode is active, channel 4 cannot be used for payment-controlled switching. The device displays and accepts payments only for channels 1-3.
+
+##### Servo Mode (4-Channel: 2 Relay + 2 Servo)
+**Available on T-Display-S3 only**
+
+Controls up to two servo motors via Bitcoin Lightning payment. Each servo is paired with a relay that can cut power between uses.
+
+**Pin Assignment:**
+| Pin | Function | Description |
+|-----|----------|-------------|
+| 12 | Relay 1 | Cuts power to servo 1 on trigger |
+| 13 | Servo 1 PWM | PWM signal for servo motor 1 (ESP32Servo via LEDC) |
+| 10 | Servo 2 PWM | PWM signal for servo motor 2 (ESP32Servo via LEDC) |
+| 11 | Relay 2 | Cuts power to servo 2 on trigger |
+
+**Servo Configuration (Web Installer):**
+- **Start angle (°)**: Position the servo moves to at startup (0–180°)
+- **End angle (°)**: Position the servo sweeps to on payment trigger (0–180°)
+- **Sweep duration (ms)**: Time for one full sweep; `0` = native servo speed (max speed)
+- **Return to start**: `Yes` — servo always returns after relay-off delay; `No` — toggle mode (alternates direction each trigger)
+
+**Toggle Mode (Return = No):**
+- First trigger: sweeps Start → End, stays at End
+- Next trigger: sweeps End → Start, stays at Start
+- Ideal for latches, barriers, or dispensers where the servo should stay in position
+
+**Servo 2 optional:**
+- If all Servo 2 values are zero, only Servo 1 (Pin 12/13) is active
+- Pin 11 remains available as a regular relay channel (Channel 4)
+
+**Important Notes:**
+- Requires external 5V power supply for the servo (MG996R draws up to 2.5A peak)
+- Special Mode (blink/pulse/strobe) is automatically bypassed in Servo mode — pulsing the relay would interfere with servo timing
+- GPIO 10 and 13 are LEDC-capable on the ESP32-S3 (T-Display-S3 only); not available on headless ESP32 Dev
 
 #### BTC-Ticker with Currency Display
 **Available on all variants**
@@ -848,6 +887,7 @@ ZapBox/
 │   ├── NFCPN532.cpp/h             # PN532 NFC reader driver (I2C, IRQ-based)
 │   ├── TouchCST816S.cpp/h         # Touch display support (CST816S)
 │   ├── SerialConfig.cpp/h         # Serial configuration interface
+│   ├── ServoControl.cpp/h         # Servo motor control (ESP32Servo, LEDC PWM)
 │   └── PinConfig.h                # Hardware pin definitions and GPIO mapping
 ├── include/                       # Additional headers
 │   ├── Log.h                      # Logging utilities
@@ -946,6 +986,7 @@ Electrical design and housing variants, see table.
 | b939704 | ZapOMat | ZapOMat No.1 |
 | b940298 | Duo | Update & NFC lid |
 | b943400 | Headless | Headless with NFC |
+| b943614 | Servo | The first one with servo control |
 
 -> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
@@ -967,6 +1008,7 @@ Electrical design and housing variants, see table.
 | e938889 | Headless | Update Headless with ZapBox picture |
 | e938897 | Compact | Update Compact with ZapBox picture |
 | e939705 | ZapOMat | ZapOMat No.1 | 
+| e943674 | Servo | Start the Servo Story | 
 
 -> Find all versions here: [./assets/electric)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 

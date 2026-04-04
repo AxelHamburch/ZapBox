@@ -349,6 +349,13 @@ void redrawQRScreen() {
 
   // Multi-Channel-Control mode
   if (multiChannelConfig.mode != "off") {
+    // Servo mode with only 1 active product: skip product selection, use product 1 directly
+    if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
+      if (multiChannelConfig.currentProduct == -1 ||
+          (multiChannelConfig.currentProduct == 0 && multiChannelConfig.btcTickerMode == "off")) {
+        multiChannelConfig.currentProduct = 1;
+      }
+    }
     // Behavior depends on btcTickerMode and currentProduct
     if (multiChannelConfig.currentProduct == -1) {
       // Special value: product selection screen
@@ -382,13 +389,18 @@ void redrawQRScreen() {
       String label = "";
       int displayPin = 0;
 
-      // Map product number (1-4) to pin (12, 13, 10, 11)
-      switch (multiChannelConfig.currentProduct) {
-        case 1: displayPin = 12; break;
-        case 2: displayPin = 13; break;
-        case 3: displayPin = 10; break;
-        case 4: displayPin = 11; break;
-        default: displayPin = 12; break;
+      // Map product number (1-4) to pin
+      // Servo mode: dynamic mapping based on active channels
+      if (multiChannelConfig.mode == "servo") {
+        displayPin = servoConfig.productToPin(multiChannelConfig.currentProduct);
+      } else {
+        switch (multiChannelConfig.currentProduct) {
+          case 1: displayPin = 12; break;
+          case 2: displayPin = 13; break;
+          case 3: displayPin = 10; break;
+          case 4: displayPin = 11; break;
+          default: displayPin = 12; break;
+        }
       }
 
       // Get label from array, or use fallback
@@ -476,8 +488,20 @@ void showInitialScreenAfterConnections() {
     return;
   }
 
-  // Multi-Channel-Control (duo/quattro)
-  if (multiChannelConfig.btcTickerMode == "off") {
+  // Multi-Channel-Control (duo/quattro/servo)
+  // In servo mode with only 1 active product: skip product selection, show product 1 directly
+  bool servoSingleProduct = (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1);
+  if (servoSingleProduct && multiChannelConfig.btcTickerMode != "always") {
+    multiChannelConfig.currentProduct = 1;
+    int firstPin = servoConfig.productToPin(1);
+    int pinIndex = getPinIndex(firstPin);
+    String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : String("Pin ") + String(firstPin);
+    ensureQrForPin(firstPin);
+    showProductQRScreen(label, firstPin);
+    multiChannelConfig.btcTickerActive = false;
+    deviceState.transition(DeviceState::READY);
+    productSelectionState.showTime = millis();
+  } else if (multiChannelConfig.btcTickerMode == "off") {
     multiChannelConfig.currentProduct = -1; // product selection
     productSelectionScreen();
     deviceState.transition(DeviceState::PRODUCT_SELECTION);

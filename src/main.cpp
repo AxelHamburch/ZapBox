@@ -27,6 +27,7 @@
 #include "Utils.h"
 #include "API.h"
 #include "Navigation.h"
+#include "ServoControl.h"
 #include "Log.h"
 
 // NFC Bolt Card reader (optional feature, gated by ENABLE_NFC build flag)
@@ -67,6 +68,8 @@ byte currentErrorType = 0; // 0=none, 1=WiFi (highest), 2=Internet, 3=Server, 4=
 bool onErrorScreen = false; // Track if error screen is displayed (synchronized with DeviceState)
 unsigned long lastInternetCheck = 0; // Track when we last checked Internet connectivity
 byte consecutiveWebSocketFailures = 0; // Track consecutive WebSocket failures to detect Internet issues
+unsigned long labels404NextRetry = 0; // Next time to retry fetchSwitchLabels() after 404 (0 = not in 404 state)
+byte labels404RetryCount = 0;         // How many label-fetch retries have been attempted after 404
 bool needsQRRedraw = false; // Flag to trigger QR redraw after WiFi recovery
 bool gestureHandledThisTouch = false; // Track if gesture was already handled in current touch session
 unsigned long lastNavigationTime = 0; // Track time of last navigation for timeout-based reset
@@ -431,6 +434,47 @@ void readFiles()
 
     // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 
+    // Read servo configuration (indices 24-30, only relevant when multiControl == "servo")
+    if (doc.size() > 24) {
+      auto readInt = [&](int idx, int minVal, int maxVal, int def) -> int {
+        const JsonObject obj = doc[idx];
+        if (!obj.isNull()) {
+          const char *v = obj["value"];
+          if (v != nullptr) {
+            int val = String(v).toInt();
+            if (val < minVal) return minVal;
+            if (val > maxVal) return maxVal;
+            return val;
+          }
+        }
+        return def;
+      };
+      servoConfig.servo1Start    = readInt(24, 0, 180, 0);
+      servoConfig.servo1End      = readInt(25, 0, 180, 0);
+      servoConfig.servo1Duration = readInt(26, 0, 10000, 0);
+      servoConfig.servo2Speed    = readInt(27, 0, 180, 0);
+      servoConfig.servo2Duration = readInt(28, 0, 10000, 0);
+      // Index 30: relay activation mode ("relay1"/"both"/"off")
+      const JsonObject r30 = doc[30];
+      if (!r30.isNull()) {
+        const char *v30 = r30["value"];
+        if (v30 != nullptr) {
+          String sr = String(v30);
+          sr.toLowerCase();
+          sr.trim();
+          servoConfig.relayMode = sr;
+        }
+      }
+      if (multiChannelConfig.mode == "servo") {
+        LOG_INFO("Config", "=== SERVO CONFIGURATION ===");
+        LOG_INFO("Config", String("Servo 1 (Pin 13, positional): Start=") + String(servoConfig.servo1Start) + " End=" + String(servoConfig.servo1End) + " Duration=" + String(servoConfig.servo1Duration) + "ms" + (servoConfig.servo1Active() ? " [ACTIVE]" : " [inactive]"));
+        LOG_INFO("Config", String("Servo 2 (Pin 10, continuous): Speed=") + String(servoConfig.servo2Speed) + " Duration=" + String(servoConfig.servo2Duration) + "ms" + (servoConfig.servo2Active() ? " [ACTIVE]" : " [inactive]"));
+        LOG_INFO("Config", String("Relay mode: ") + servoConfig.relayMode + " (OneForAll=" + (servoConfig.oneForAll() ? "ON" : "OFF") + " Relay1=" + (servoConfig.relay1Active() ? "ON" : "OFF") + " Relay2=" + (servoConfig.relay2Active() ? "ON" : "OFF") + ")");
+        LOG_INFO("Config", String("Active channels: ") + String(servoConfig.activeChannelCount()));
+        LOG_INFO("Config", "===========================");
+      }
+    }
+
     // Apply predefined mode settings
     if (specialModeConfig.mode == "blink") {
       specialModeConfig.frequency = 1.0;
@@ -451,7 +495,11 @@ void readFiles()
     LOG_INFO("Config", String("Duty Cycle Ratio: ") + String(specialModeConfig.dutyCycleRatio));
 
     // Display Multi-Channel-Control configuration
-    LOG_INFO("Config", String("Multi-Channel-Control Mode: ") + (multiChannelConfig.mode == "off" ? "Single (Pin 12 only)" : (multiChannelConfig.mode == "duo" ? "Duo (Pins 12, 13)" : "Quattro (Pins 12, 13, 10, 11)")));
+    String modeDesc = "Single (Pin 12 only)";
+    if (multiChannelConfig.mode == "duo") modeDesc = "Duo (Pins 12, 13)";
+    else if (multiChannelConfig.mode == "quattro") modeDesc = "Quattro (Pins 12, 13, 10, 11)";
+    else if (multiChannelConfig.mode == "servo") modeDesc = "Servo (2 relay 12/11 + 2 servo 13/10)";
+    LOG_INFO("Config", String("Multi-Channel-Control Mode: ") + modeDesc);
 
     // Display BTC-Ticker configuration
     LOG_INFO("Config", "=== BTC-TICKER CONFIGURATION ===");
@@ -851,6 +899,11 @@ void setup()
     Serial.println("[AMBIENT LIGHT] GPIO 11 initialized (synced with display backlight)");
   }
 
+  // Servo motor initialization (Servo multi-channel mode)
+  if (multiChannelConfig.mode == "servo") {
+    initServos();
+  }
+
 #if !ENABLE_DISPLAY
   // Headless ESP32 Dev: initialize all 10 relay channels to LOW at startup.
   // CH01=GPIO12, CH02=GPIO13, CH03=GPIO14, CH04=GPIO16 (NOT 10/11 – internal flash!)
@@ -1124,6 +1177,9 @@ void setup()
   } else if (multiChannelConfig.mode == "duo") {
     maxProducts = 2;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Duo mode - 2 products available");
+  } else if (multiChannelConfig.mode == "servo") {
+    maxProducts = servoConfig.activeChannelCount();
+    SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Servo mode - " + String(maxProducts) + " channel(s) available");
   } else {
     maxProducts = 1;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Single mode - 1 product");
@@ -1840,11 +1896,16 @@ void loop()
             (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
           // Check if we're on a product screen
           if (multiChannelConfig.currentProduct > 0) {
-            Serial.println("[SCREEN] Timeout reached - returning to product selection screen (OFF mode - Duo/Quattro)");
-            multiChannelConfig.currentProduct = -1;
-            deviceState.transition(DeviceState::PRODUCT_SELECTION);
-            productSelectionScreen();
-            productSelectionState.showTime = 0; // Reset timer
+            // In servo mode with only 1 active product: stay on product 1, no selection screen
+            if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
+              productSelectionState.showTime = 0; // Reset timer, stay on product 1
+            } else {
+              Serial.println("[SCREEN] Timeout reached - returning to product selection screen (OFF mode - Duo/Quattro)");
+              multiChannelConfig.currentProduct = -1;
+              deviceState.transition(DeviceState::PRODUCT_SELECTION);
+              productSelectionScreen();
+              productSelectionState.showTime = 0; // Reset timer
+            }
           }
         }
       } else if (multiChannelConfig.btcTickerMode == "selecting") {
@@ -1874,20 +1935,36 @@ void loop()
               if (multiChannelConfig.currentProduct >= 1) {
                 navigateToNextProduct();
               } else {
-                // Fallback: show product selection
-                multiChannelConfig.currentProduct = -1;
-                deviceState.transition(DeviceState::PRODUCT_SELECTION);
-                productSelectionScreen();
+                // Fallback: show product selection (or stay on product 1 for servo single)
+                if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
+                  multiChannelConfig.currentProduct = 1;
+                  int firstPin = servoConfig.productToPin(1);
+                  int pinIndex = getPinIndex(firstPin);
+                  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                      ? productLabels.labels[pinIndex]
+                      : String("Pin ") + String(firstPin);
+                  ensureQrForPin(firstPin);
+                  showProductQRScreen(label, firstPin);
+                  deviceState.transition(DeviceState::READY);
+                } else {
+                  multiChannelConfig.currentProduct = -1;
+                  deviceState.transition(DeviceState::PRODUCT_SELECTION);
+                  productSelectionScreen();
+                }
               }
               productSelectionState.showTime = 0; // Reset timer
             } else if (multiChannelConfig.currentProduct > 0 && !deviceState.isInState(DeviceState::PRODUCT_SELECTION) && 
                       (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
               // Product showing: Return to product selection after PRODUCT_SELECTION_DELAY
-              Serial.println("[SCREEN] Timeout reached - returning to product selection screen (SELECTING mode - Duo/Quattro)");
-              multiChannelConfig.currentProduct = -1;
-              deviceState.transition(DeviceState::PRODUCT_SELECTION);
-              productSelectionScreen();
-              productSelectionState.showTime = 0; // Reset timer
+              if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
+                productSelectionState.showTime = 0; // Reset timer, stay on product 1
+              } else {
+                Serial.println("[SCREEN] Timeout reached - returning to product selection screen (SELECTING mode - Duo/Quattro)");
+                multiChannelConfig.currentProduct = -1;
+                deviceState.transition(DeviceState::PRODUCT_SELECTION);
+                productSelectionScreen();
+                productSelectionState.showTime = 0; // Reset timer
+              }
             }
           }
         }
@@ -2248,11 +2325,30 @@ void loop()
           productSelectionState.showTime = millis();
           deviceState.transition(DeviceState::READY);
         }
+        // Successful recovery — reset 404 retry state
+        labels404NextRetry = 0;
+        labels404RetryCount = 0;
         return;
       }
       // If WebSocket is connected but labels failed to load (404), keep WebSocket unconfirmed
+      // Retry fetchSwitchLabels() every 2 minutes; reboot after 3 failed retries.
       else if (wifiOk && serverOk && websocketOk && !labelsLoadedSuccessfully) {
-        Serial.println("[AUTO-RECOVERY] WebSocket connected but device config invalid (404) - keeping WebSocket unconfirmed");
+        unsigned long now = millis();
+        if (labels404NextRetry == 0) {
+          // First time in 404 state — schedule first retry in 2 minutes
+          labels404NextRetry = now + 120000UL;
+          Serial.println("[AUTO-RECOVERY] Device config invalid (404) - will retry in 2 minutes");
+        } else if (now >= labels404NextRetry) {
+          labels404RetryCount++;
+          if (labels404RetryCount > 3) {
+            Serial.printf("[AUTO-RECOVERY] Label fetch failed %d times after 404 - rebooting\n", labels404RetryCount);
+            delay(500);
+            ESP.restart();
+          }
+          Serial.printf("[AUTO-RECOVERY] Retrying label fetch after 404 (attempt %d/3)...\n", labels404RetryCount);
+          fetchSwitchLabels();
+          labels404NextRetry = now + 120000UL; // Schedule next retry in 2 more minutes
+        }
         // Don't override the websocket = false that was set by fetchSwitchLabels()
         return;
       }
@@ -2331,7 +2427,13 @@ static void processThresholdPayment(const JsonDocument &doc)
     int pin = lightningConfig.thresholdPin.toInt();
     int duration = lightningConfig.thresholdTime.toInt();
 
-    if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+    // Special mode only applies to Pin 12 (single-channel context).
+    // Skip when: servo mode is active, or channel 4 ambient owns Pin 11.
+    bool useSpecialMode = (specialModeConfig.mode != "standard" && specialModeConfig.mode != "")
+                       && (multiChannelConfig.mode != "servo")
+                       && !(channel4AmbientConfig.enabled && pin == 11);
+
+    if (useSpecialMode) {
       Serial.println("[THRESHOLD] Using special mode: " + specialModeConfig.mode);
       if (deviceState.isInState(DeviceState::SCREENSAVER)) {
         deviceState.transition(DeviceState::READY);
@@ -2399,6 +2501,52 @@ static void processThresholdPayment(const JsonDocument &doc)
   }
 }
 
+// ─── One For All: concurrent activation task ─────────────────────────────────
+// Launched as a FreeRTOS task for each secondary channel (Pin 13, 10, 11) when
+// servoConfig.relayMode == "one-for-all" and Pin 12 is triggered.
+struct OFATaskParams {
+  int pin;
+  int fallbackDuration; // Duration to use when the channel has no own timing
+};
+
+static void oneForAllActivationTask(void* pvParams) {
+  OFATaskParams* p = (OFATaskParams*)pvParams;
+  int pin             = p->pin;
+  int fallback        = p->fallbackDuration;
+  free(p);
+
+  if (pin == 13) {
+    // Servo 1 (positional 0-180°): sweep Start→End, hold at end position
+    // for the remaining action time, then sweep back End→Start.
+    activateServo(13); // sweep to end (takes servo1Duration ms)
+    if (fallback > 0) {
+      vTaskDelay(pdMS_TO_TICKS(fallback)); // hold at end for full action time
+    }
+    deactivateServo(13); // sweep back to start
+
+  } else if (pin == 10) {
+    // Servo 2 (continuous 360°): spin for servo2Duration ms.
+    // If servo2Duration == 0 (indefinite), use fallback duration instead.
+    activateServo(10);
+    if (servoConfig.servo2Duration == 0 && fallback > 0) {
+      vTaskDelay(pdMS_TO_TICKS(fallback));
+      deactivateServo(10); // Stop spinning
+    }
+    // If servo2Duration > 0: activateServo() already stopped the motor internally.
+
+  } else if (pin == 11) {
+    // Relay 2: simple HIGH/LOW for fallback duration
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, HIGH);
+    Serial.printf("[OFA] Pin %d set HIGH\n", pin);
+    vTaskDelay(pdMS_TO_TICKS(fallback));
+    digitalWrite(pin, LOW);
+    Serial.printf("[OFA] Pin %d set LOW\n", pin);
+  }
+
+  vTaskDelete(nullptr);
+}
+
 static void processNormalPayment(int pin, int duration)
 {
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
@@ -2418,7 +2566,56 @@ static void processNormalPayment(int pin, int duration)
   // Pause product timeout while ACTION TIME is active
   productSelectionState.showTime = 0;
 
-  if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+  // Special mode applies to relay pins (12, 11) but NOT servo pins (13, 10).
+  // Skip when: this is a servo pin, or channel 4 ambient owns Pin 11.
+  bool isServoPin = (multiChannelConfig.mode == "servo" && (pin == 13 || pin == 10));
+  bool useSpecialMode = (specialModeConfig.mode != "standard" && specialModeConfig.mode != "")
+                     && !isServoPin
+                     && !(channel4AmbientConfig.enabled && pin == 11);
+
+  // ── One For All mode ──────────────────────────────────────────────────────
+  // When Pin 12 fires in OFA mode (servo), launch concurrent activations for
+  // pins 13 (servo1), 10 (servo2), and 11 (relay2, unless ambient-light mode).
+  // Each secondary channel uses its own configured duration as activation time;
+  // if none is configured (== 0), Pin 12's payload duration is used as fallback.
+  if (multiChannelConfig.mode == "servo" && servoConfig.oneForAll() && pin == 12) {
+    Serial.println("[OFA] One For All: launching secondary channel activations");
+    // Pin 13 — Servo 1 (positional)
+    // fallbackDuration = LNbits action time: servo sweeps up, holds for this
+    // duration, then sweeps back. servo1Duration (sweep speed) is used
+    // internally by activateServo()/deactivateServo().
+    if (servoConfig.servo1Active()) {
+      OFATaskParams* params13 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+      if (params13) {
+        params13->pin = 13; params13->fallbackDuration = duration;
+        xTaskCreate(oneForAllActivationTask, "ofa_s1", 4096, params13, 2, nullptr);
+        Serial.printf("[OFA] Launched servo1 task (Pin 13, hold=%d ms)\n", duration);
+      }
+    }
+    // Pin 10 — Servo 2 (continuous)
+    // If servo2Duration > 0: motor stops itself after that time internally.
+    // If servo2Duration == 0: spin indefinitely, use action time as stop signal.
+    if (servoConfig.servo2Active()) {
+      int d = (servoConfig.servo2Duration > 0) ? servoConfig.servo2Duration : duration;
+      OFATaskParams* params10 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+      if (params10) {
+        params10->pin = 10; params10->fallbackDuration = d;
+        xTaskCreate(oneForAllActivationTask, "ofa_s2", 4096, params10, 2, nullptr);
+        Serial.printf("[OFA] Launched servo2 task (Pin 10, dur=%d ms)\n", d);
+      }
+    }
+    // Pin 11 — Relay 2 (skip if ambient lighting mode owns Pin 11)
+    if (!channel4AmbientConfig.enabled) {
+      OFATaskParams* params11 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+      if (params11) {
+        params11->pin = 11; params11->fallbackDuration = duration;
+        xTaskCreate(oneForAllActivationTask, "ofa_r2", 2048, params11, 2, nullptr);
+        Serial.printf("[OFA] Launched relay2 task (Pin 11, dur=%d ms)\n", duration);
+      }
+    }
+  }
+
+  if (useSpecialMode) {
     Serial.println("[NORMAL] Using special mode: " + specialModeConfig.mode);
     activityTracking.lastActivityTime = millis();
     if (deviceState.isInState(DeviceState::SCREENSAVER)) {
@@ -2437,9 +2634,14 @@ static void processNormalPayment(int pin, int duration)
     }
     actionTimeScreen();
     updateActionTimeCountdown(duration / 1000);
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, HIGH);
-    Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+    // Servo mode: servo pins (13, 10) trigger servo directly, no GPIO relay
+    if (isServoPin) {
+      activateServo(pin);
+    } else {
+      pinMode(pin, OUTPUT);
+      digitalWrite(pin, HIGH);
+      Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+    }
 
     if (multiChannelConfig.mode == "off" && pin == 12) {
       pinMode(13, OUTPUT);
@@ -2467,8 +2669,13 @@ static void processNormalPayment(int pin, int duration)
       vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
     }
 
-    digitalWrite(pin, LOW);
-    Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+    // Servo mode: return servo to rest state; otherwise turn relay off
+    if (isServoPin) {
+      deactivateServo(pin);
+    } else {
+      digitalWrite(pin, LOW);
+      Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+    }
 
     if (multiChannelConfig.mode == "off" && pin == 12) {
       digitalWrite(13, LOW);
@@ -2494,7 +2701,6 @@ static void processNormalPayment(int pin, int duration)
   productSelectionState.showTime = millis();
   // Force QR display (not ticker) after payment in ALWAYS mode
   multiChannelConfig.btcTickerActive = false;
-  ensureQrForPin(12);
 
   // Device is fully ready again – allow next NFC tap.
   // Also reset all NFC screen state so the monitoring block doesn't
@@ -2508,11 +2714,8 @@ static void processNormalPayment(int pin, int duration)
   nfcNotSupportedShown   = false;
   #endif
 
-  if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-    showSpecialModeQRScreen();
-  } else {
-    showQRScreen();
-  }
+  // Restore correct product QR (handles single, multi-channel, servo)
+  redrawQRScreen();
   Serial.println("[NORMAL] Ready for next payment");
 }
 
