@@ -106,9 +106,10 @@ void fetchSwitchLabels()
         LOG_INFO("LABELS", "No currency in API response – using: " + currency);
       }
       
-      // Clear existing labels (12 channels: 4 shared + 8 headless-only)
+      // Clear existing labels and durations (12 channels: 4 shared + 8 headless-only)
       for (int i = 0; i < 12; i++) {
         productLabels.labels[i] = "";
+        productLabels.durations[i] = 0;
       }
       
       // Extract labels from switches array
@@ -117,12 +118,14 @@ void fetchSwitchLabels()
         int pin = switchObj["pin"];
         const char* labelChar = switchObj["label"];
         String labelStr = (labelChar != nullptr) ? String(labelChar) : "";
+        int pinDuration = switchObj["time"].as<int>(); // Action time in ms (0 if not set)
         
-        // Store label based on pin number using array index (0-11)
+        // Store label and duration based on pin number using array index (0-11)
         int pinIndex = getPinIndex(pin);
         if (pinIndex >= 0 && pinIndex < 12) {
           productLabels.labels[pinIndex] = labelStr;
-          Serial.println("[LABELS] Pin " + String(pin) + " label: " + labelStr);
+          productLabels.durations[pinIndex] = pinDuration;
+          Serial.println("[LABELS] Pin " + String(pin) + " label: " + labelStr + " duration: " + String(pinDuration) + " ms");
         }
       }
       

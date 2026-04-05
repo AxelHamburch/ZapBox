@@ -234,6 +234,7 @@ struct ProductLabels {
   //   index 8=GPIO26(CH09), 9=GPIO27(CH10), 10=GPIO32(CH11), 11=GPIO33(CH12)
   //   indices 4-11 only on esp32dev
   String labels[12] = {"", "", "", "", "", "", "", "", "", "", "", ""};
+  int durations[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Action time per pin in ms (0 = not configured)
   unsigned long lastUpdate = 0;
 };
 

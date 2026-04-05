@@ -2581,36 +2581,41 @@ static void processNormalPayment(int pin, int duration)
   if (multiChannelConfig.mode == "servo" && servoConfig.oneForAll() && pin == 12) {
     Serial.println("[OFA] One For All: launching secondary channel activations");
     // Pin 13 — Servo 1 (positional)
-    // fallbackDuration = LNbits action time: servo sweeps up, holds for this
-    // duration, then sweeps back. servo1Duration (sweep speed) is used
-    // internally by activateServo()/deactivateServo().
+    // Use Pin 13's own configured duration if set; fall back to Pin 12's duration.
     if (servoConfig.servo1Active()) {
+      int d13 = (productLabels.durations[1] > 0) ? productLabels.durations[1] : duration;
       OFATaskParams* params13 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
       if (params13) {
-        params13->pin = 13; params13->fallbackDuration = duration;
+        params13->pin = 13; params13->fallbackDuration = d13;
         xTaskCreate(oneForAllActivationTask, "ofa_s1", 4096, params13, 2, nullptr);
-        Serial.printf("[OFA] Launched servo1 task (Pin 13, hold=%d ms)\n", duration);
+        Serial.printf("[OFA] Launched servo1 task (Pin 13, hold=%d ms%s)\n", d13,
+                      (productLabels.durations[1] > 0) ? " [own]" : " [fallback from Pin 12]");
       }
     }
     // Pin 10 — Servo 2 (continuous)
     // If servo2Duration > 0: motor stops itself after that time internally.
-    // If servo2Duration == 0: spin indefinitely, use action time as stop signal.
+    // If servo2Duration == 0: spin indefinitely — use Pin 10's own configured duration, then fallback.
     if (servoConfig.servo2Active()) {
-      int d = (servoConfig.servo2Duration > 0) ? servoConfig.servo2Duration : duration;
+      int d10 = (servoConfig.servo2Duration > 0) ? servoConfig.servo2Duration
+               : (productLabels.durations[2] > 0) ? productLabels.durations[2]
+               : duration;
       OFATaskParams* params10 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
       if (params10) {
-        params10->pin = 10; params10->fallbackDuration = d;
+        params10->pin = 10; params10->fallbackDuration = d10;
         xTaskCreate(oneForAllActivationTask, "ofa_s2", 4096, params10, 2, nullptr);
-        Serial.printf("[OFA] Launched servo2 task (Pin 10, dur=%d ms)\n", d);
+        Serial.printf("[OFA] Launched servo2 task (Pin 10, dur=%d ms)\n", d10);
       }
     }
     // Pin 11 — Relay 2 (skip if ambient lighting mode owns Pin 11)
+    // Use Pin 11's own configured duration if set; fall back to Pin 12's duration.
     if (!channel4AmbientConfig.enabled) {
+      int d11 = (productLabels.durations[3] > 0) ? productLabels.durations[3] : duration;
       OFATaskParams* params11 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
       if (params11) {
-        params11->pin = 11; params11->fallbackDuration = duration;
+        params11->pin = 11; params11->fallbackDuration = d11;
         xTaskCreate(oneForAllActivationTask, "ofa_r2", 2048, params11, 2, nullptr);
-        Serial.printf("[OFA] Launched relay2 task (Pin 11, dur=%d ms)\n", duration);
+        Serial.printf("[OFA] Launched relay2 task (Pin 11, dur=%d ms%s)\n", d11,
+                      (productLabels.durations[3] > 0) ? " [own]" : " [fallback from Pin 12]");
       }
     }
   }
