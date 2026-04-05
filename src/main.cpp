@@ -2516,11 +2516,13 @@ static void oneForAllActivationTask(void* pvParams) {
   free(p);
 
   if (pin == 13) {
-    // Servo 1 (positional 0-180°): sweep Start→End, hold at end position
-    // for the remaining action time, then sweep back End→Start.
+    // Servo 1 (positional 0-180°): sweep Start→End, hold at end for the
+    // remaining time, then sweep back End→Start.
+    // Hold = max(0, fallback - servo1Duration) so that total active time == fallback.
     activateServo(13); // sweep to end (takes servo1Duration ms)
-    if (fallback > 0) {
-      vTaskDelay(pdMS_TO_TICKS(fallback)); // hold at end for full action time
+    int holdTime = fallback - servoConfig.servo1Duration;
+    if (holdTime > 0) {
+      vTaskDelay(pdMS_TO_TICKS(holdTime)); // hold only the remainder
     }
     deactivateServo(13); // sweep back to start
 
