@@ -118,7 +118,7 @@ void fetchSwitchLabels()
         int pin = switchObj["pin"];
         const char* labelChar = switchObj["label"];
         String labelStr = (labelChar != nullptr) ? String(labelChar) : "";
-        int pinDuration = switchObj["time"].as<int>(); // Action time in ms (0 if not set)
+        int pinDuration = switchObj["duration"].as<int>(); // Action time in ms (0 if not set)
         
         // Store label and duration based on pin number using array index (0-11)
         int pinIndex = getPinIndex(pin);
