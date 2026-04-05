@@ -212,10 +212,11 @@ Signal (NPN output)    →    GPIO 2
 - **Quattro Mode**: Pins 12, 13, 10, and 11
   - **Special Option**: Pin 11 can be configured as ambient lighting switch (syncs with display backlight)
 - **Servo Mode**: 2 relay channels (Pins 12 and 11) + 2 servo PWM outputs (Pins 13 and 10)
-  - Pin 12 → Relay 1 (controls power to servo 1 circuit)
-  - Pin 13 → Servo 1 PWM signal (paired with Relay 1)
-  - Pin 10 → Servo 2 PWM signal (paired with Relay 2)
-  - Pin 11 → Relay 2 (controls power to servo 2 circuit)
+  - Pin 12 → Relay 1 (controls power to servo 1 circuit / primary QR trigger)
+  - Pin 13 → Servo 1 PWM signal (180° servo)
+  - Pin 10 → Servo 2 PWM signal (360° servo)
+  - Pin 11 → Relay 2 (controls power to servo 2 circuit / ambient)
+  - **One for All (OFA)**: Single payment on Pin 12 activates all channels concurrently
 
 **ESP32 Dev Module (Headless – up to 12 independent channels):**
 
@@ -292,6 +293,7 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
 - [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
 - [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
+- [E-Layout-ZapBox-Servo.png](assets/electric/E-Layout-ZapBox-Servo.png)
 
 ### External LED Button (Optional)
 
@@ -569,7 +571,8 @@ Set Multi-Channel-Control Mode in Web Installer:
 - `single` (default): Pin 12 only
 - `duo`: Pins 12, 13
 - `quattro`: Pins 12, 13, 10, 11
-- `servo`: Pins 12 (relay 1), 13 (servo 1 PWM), 10 (servo 2 PWM), 11 (relay 2)
+- `servo`: Pins 12 (relay 1), 13 (180° servo PWM), 10 (360° servo PWM), 11 (relay 2 / ambient)
+- `one-for-all` *(default in Servo mode)*: Single QR on Pin 12 — all 4 channels fire concurrently on payment
 
 **Use Cases**: Vending machines, multi-product payment terminals, flexible product offerings, servo-controlled dispensers and barriers
 
@@ -614,10 +617,25 @@ Controls up to two servo motors via Bitcoin Lightning payment. Each servo is pai
 **Pin Assignment:**
 | Pin | Function | Description |
 |-----|----------|-------------|
-| 12 | Relay 1 | Cuts power to servo 1 on trigger |
-| 13 | Servo 1 PWM | PWM signal for servo motor 1 (ESP32Servo via LEDC) |
-| 10 | Servo 2 PWM | PWM signal for servo motor 2 (ESP32Servo via LEDC) |
-| 11 | Relay 2 | Cuts power to servo 2 on trigger |
+| 12 | Relay 1 | Primary trigger — QR code shown for this channel |
+| 13 | 180° Servo PWM | Sweeps Start→End, holds for action time, returns |
+| 10 | 360° Servo PWM | Spins for configured duration on payment |
+| 11 | Relay 2 / Ambient | Activates for action time duration |
+
+**Activation Modes:**
+
+**One for All (OFA) — Default**
+- A single QR code (Pin 12) is shown to the customer
+- On payment, all four channels activate simultaneously as concurrent FreeRTOS tasks:
+  - **Pin 12** (Relay 1): fires normally per LNbits action time
+  - **Pin 13** (180° Servo): sweeps to end angle, holds for the full action time, then returns to start
+  - **Pin 10** (360° Servo): spins for the configured duration
+  - **Pin 11** (Relay 2): activates for the full action time
+- Ideal for vending machines and dispensers where one payment triggers the complete mechanism
+
+**Independent Channels**
+- Each channel has its own QR code and can be triggered separately
+- Useful for multi-product setups where each item has a different price
 
 **Servo Configuration (Web Installer):**
 - **Start angle (°)**: Position the servo moves to at startup (0–180°)
