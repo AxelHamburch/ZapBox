@@ -65,5 +65,8 @@ PaymentQueue paymentQueue;
 // Activity Tracking for Screensaver
 ActivityTracking activityTracking;
 
+// NFC Mode Configuration
+NfcConfig nfcConfig;
+
 // Utility Constants
 const char* BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";

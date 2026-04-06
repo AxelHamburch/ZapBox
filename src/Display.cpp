@@ -1505,6 +1505,127 @@ void showProductQRScreen(String label, int pin)
   }
 }
 
+// Bolt Card Screen - shown in "both" NFC mode instead of QR code
+// Displays the product name with "Bolt Card" text where QR would be
+void showBoltCardScreen(String label, int pin)
+{
+  DisplayLock lock;
+  ensureCorrectRotation();
+
+  uint16_t fg = themeForeground;
+  uint16_t bg = themeBackground;
+
+  // Replace currency symbols (same as showProductQRScreen)
+  label.replace("€", "EUR");
+  label.replace("$", "USD");
+  label.replace("£", "GBP");
+  label.replace("¥", "YEN");
+  label.replace("₿", "BTC");
+  label.replace("₹", "INR");
+  label.replace("₽", "RUB");
+  label.replace("¢", "ct");
+
+  // Parse label into words (same logic as showProductQRScreen)
+  String words[3] = {"", "", ""};
+  int wordCount = 0;
+  int firstSpace = label.indexOf(' ');
+  if (firstSpace == -1) {
+    words[0] = label;
+    wordCount = 1;
+  } else {
+    words[0] = label.substring(0, firstSpace);
+    wordCount = 1;
+    int secondSpace = label.indexOf(' ', firstSpace + 1);
+    if (secondSpace == -1) {
+      words[1] = label.substring(firstSpace + 1);
+      wordCount = 2;
+    } else {
+      words[1] = label.substring(firstSpace + 1, secondSpace);
+      words[2] = label.substring(secondSpace + 1);
+      wordCount = 3;
+    }
+  }
+  if (wordCount == 0 || words[0].length() == 0) {
+    words[0] = "Pin " + String(pin);
+    wordCount = 1;
+  }
+
+  safeFillScreen(bg);
+  ensureCorrectRotation();
+
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    // Vertical: "Bolt Card" in the upper area where QR would be
+    // NFC card icon area (where QR normally goes)
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(fg);
+    tft.setTextSize(3);
+    tft.drawString("BOLT", x, 50, GFXFF);
+    tft.drawString("CARD", x, 80, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("Tap NFC", x, 120, GFXFF);
+
+    // Product name box (same position as QR screen)
+    int boxY = (displayConfig.orientation == "vi") ? 175 : 168;
+    tft.fillRect(15, boxY, 140, 132, fg);
+    ensureCorrectRotation();
+
+    tft.setTextColor(bg);
+    tft.setTextDatum(ML_DATUM);
+    int startY = y + 40;
+    if (wordCount == 1) {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
+      tft.drawString(words[0], x - 58, startY + 30, GFXFF);
+    } else if (wordCount == 2) {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
+      tft.drawString(words[0], x - 58, startY + 15, GFXFF);
+      tft.setTextSize(words[1].length() >= 7 ? 2 : 3);
+      tft.drawString(words[1], x - 58, startY + 45, GFXFF);
+    } else {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
+      tft.drawString(words[0], x - 58, startY, GFXFF);
+      tft.setTextSize(words[1].length() >= 7 ? 2 : 3);
+      tft.drawString(words[1], x - 58, startY + 30, GFXFF);
+      tft.setTextSize(2);
+      tft.drawString(words[2], x - 58, startY + 60, GFXFF);
+    }
+  } else {
+    // Horizontal: "Bolt Card" in the left area where QR would be
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(fg);
+    tft.setTextSize(3);
+    tft.drawString("BOLT", 80, y - 15, GFXFF);
+    tft.drawString("CARD", 80, y + 15, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("Tap NFC", 80, y + 45, GFXFF);
+
+    // Product name box (same position as QR screen)
+    int boxX = (displayConfig.orientation == "hi") ? 171 : 163;
+    tft.fillRect(boxX, 18, 137, 135, fg);
+    ensureCorrectRotation();
+
+    tft.setTextColor(bg);
+    tft.setTextDatum(ML_DATUM);
+    int startY = y - 30;
+    int textOffset = (displayConfig.orientation == "hi") ? 25 : 17;
+    if (wordCount == 1) {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
+      tft.drawString(words[0], x + textOffset, startY + 30, GFXFF);
+    } else if (wordCount == 2) {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
+      tft.drawString(words[0], x + textOffset, startY + 15, GFXFF);
+      tft.setTextSize(words[1].length() >= 7 ? 2 : 3);
+      tft.drawString(words[1], x + textOffset, startY + 45, GFXFF);
+    } else {
+      tft.setTextSize(words[0].length() >= 7 ? 2 : 3);
+      tft.drawString(words[0], x + textOffset, startY, GFXFF);
+      tft.setTextSize(words[1].length() >= 7 ? 2 : 3);
+      tft.drawString(words[1], x + textOffset, startY + 30, GFXFF);
+      tft.setTextSize(2);
+      tft.drawString(words[2], x + textOffset, startY + 60, GFXFF);
+    }
+  }
+}
+
 // Product Selection Screen - shown after 5 seconds of QR screen
 void productSelectionScreen()
 {

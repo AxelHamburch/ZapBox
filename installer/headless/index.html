@@ -280,7 +280,16 @@
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
         <!-- NFC Bolt Card Section -->
-            <p style="margin-top: 10px;"><strong>NFC Bolt Card support</strong></p>
+            <div class="input-wrapper">
+                <div>
+                    <label for="nfcMode">NFC mode - NFC options and support</label>
+                    <select name="nfcMode" id="nfcMode">
+                        <option value="emulation" selected>NFC card emulation for mobile phones (default)</option>
+                        <option value="boltcard">NFC Bolt Cards support only</option>
+                        <option value="off">NFC off</option>
+                    </select>
+                </div>
+            </div>
             <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server – no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
             <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
             <a href="../assets/NFC-Module-PN532.webp" target="_blank">
@@ -564,6 +573,34 @@
             {
                 "name": "deepSleepTime",
                 "value": "30"
+            },
+            {
+                "name": "servo1Start",
+                "value": "0"
+            },
+            {
+                "name": "servo1End",
+                "value": "0"
+            },
+            {
+                "name": "servo1Duration",
+                "value": "0"
+            },
+            {
+                "name": "servo2Speed",
+                "value": "0"
+            },
+            {
+                "name": "servo2Duration",
+                "value": "0"
+            },
+            {
+                "name": "nfcMode",
+                "value": "emulation"
+            },
+            {
+                "name": "servoRelayMode",
+                "value": "one-for-all"
             }
         ]
 
@@ -952,6 +989,10 @@
                 if (config[22]) config[22].value = configData[22]?.value || "normal"; // channel4Ambient
                 if (config[23]) config[23].value = configData[23]?.value || "30"; // deepSleepTime
 
+                // Index 29: NFC mode
+                if (config[29]) config[29].value = configData[29]?.value || "emulation";
+                nfcMode.value = config[29]?.value || "emulation";
+
                 // Fill form fields (only supported ones for headless)
                 ssid.value = config[0].value;
                 wifiPassword.value = config[1].value;
@@ -1098,6 +1139,26 @@
             // deepSleepTime (index 23) - not used in headless, hardcoded default
             if (!config[23]) config[23] = { name: "deepSleepTime", value: "30" };
             config[23].value = "30";
+
+            // Servo configuration (indices 24-28) - not used in headless, hardcoded defaults
+            if (!config[24]) config[24] = { name: "servo1Start", value: "0" };
+            config[24].value = "0";
+            if (!config[25]) config[25] = { name: "servo1End", value: "0" };
+            config[25].value = "0";
+            if (!config[26]) config[26] = { name: "servo1Duration", value: "0" };
+            config[26].value = "0";
+            if (!config[27]) config[27] = { name: "servo2Speed", value: "0" };
+            config[27].value = "0";
+            if (!config[28]) config[28] = { name: "servo2Duration", value: "0" };
+            config[28].value = "0";
+
+            // NFC mode (index 29)
+            if (!config[29]) config[29] = { name: "nfcMode", value: "emulation" };
+            config[29].value = nfcMode.value || "emulation";
+
+            // Servo relay mode (index 30) - not used in headless, hardcoded default
+            if (!config[30]) config[30] = { name: "servoRelayMode", value: "one-for-all" };
+            config[30].value = "one-for-all";
 
             // Validate required fields
             const ssidValue = config[0].value.trim();

@@ -35,7 +35,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 ## How it Works
 
 1. **QR Code Display**: The integrated display of the T-Display-S3 shows a QR code with the LNURL for scanning *(T-Display-S3 only)*
-2. **Lightning Payment**: After scanning and paying the invoice, the payment is sent to the LNbits server — or tap an **NFC Bolt Card / NTAG21x tag** on the PN532 reader for contactless payment
+2. **Lightning Payment**: After scanning and paying the invoice, the payment is sent to the LNbits server — or tap an **NFC Bolt Card / NTAG21x tag** on the PN532 reader for contactless payment — or hold a **smartphone** near the PN532 to read the LNURLp via **NFC Card Emulation**
 3. **WebSocket Trigger**: The LNbits server sends a signal via WebSocket to the ESP32 microcontroller
 4. **Relay Switching**: The ESP32 activates the relay, which turns on the USB output for a specified period (with optional special modes like blinking, pulsing, or strobing)
 5. **Confirmation**: The display shows that the payment has been received and the relay has been switched *(T-Display-S3 only)*
@@ -783,6 +783,67 @@ build_flags =
   -DENABLE_NFC_TEST=0   ; set to 1 for hardware test (no server needed)
 ```
 
+---
+
+#### NFC Card Emulation (LNURLp via NFC)
+
+> **Optional feature** — activated via build flag `ENABLE_NFC=1`. Requires a PN532 NFC module.
+
+The ZapBox can act as an **NFC tag** so that smartphones can read the LNURLp payment link by simply tapping their phone on the PN532 module — no QR code scanning needed.
+
+The PN532 switches from Reader Mode (reading Bolt Cards) to **Target Mode** (emulating an ISO 14443-4 Type 4 Tag). The phone's NFC reader detects the ZapBox as a standard NDEF tag containing a `lightning:LNURL...` URI.
+
+**How it Works**:
+```
+Smartphone (Initiator)          ZapBox + PN532 (Target)
+─────────────────────           ──────────────────────────
+NFC field ON          ────►     PN532 Target Mode (passive, no field)
+                                IRQ fires → phone detected
+ISO 14443-4 activation ◄──►     RATS/ATS exchange (handled by PN532)
+SELECT NDEF App       ────►     Response: OK (9000)
+SELECT CC file        ────►     Response: Capability Container
+READ CC               ────►     Response: 15 bytes (NDEF file mapping)
+SELECT NDEF file      ────►     Response: OK (9000)
+READ BINARY (chunks)  ────►     Response: NDEF URI record
+                                  "lightning:LNURL1DP68GURN..."
+Phone opens wallet    ◄────     Payment flow starts automatically
+```
+
+**Key Features**:
+- **Zero interaction required** — customer just taps their phone
+- **Automatic NDEF update** — the LNURL payload updates whenever the QR code changes (product selection, channel switch)
+- **ISO 14443-4 / ISO-DEP** compliant — works with all modern Android and iOS NFC readers
+- **Coexists with Reader Mode** — NFC mode is configurable per device (reader, emulation, or both)
+- **No additional hardware** — uses the same PN532 module and wiring as Bolt Card reading
+- **Raw I2C communication** — bypasses the Adafruit library for precise timing control required by ISO-DEP frame deadlines
+
+**NDEF Payload**:
+```
+NDEF URI Record:
+  TNF:     0x01 (Well-known)
+  Type:    "U" (URI)
+  Prefix:  0x00 (no prefix)
+  Payload: "lightning:LNURL1DP68GURN8GHJ7V33..."
+```
+
+**Supported Phones**:
+- Android: Any phone with NFC (Phoenix, Wallet of Satoshi, Zeus, etc.)
+- iOS: iPhone 7 and later (NFC tag reading via NDEF)
+
+**NFC Mode Configuration** (Web Installer):
+- `reader` — Bolt Card / NTAG21x reading only (default)
+- `emulation` — Card Emulation only (LNURLp via NFC)
+- `both` — Alternates between Reader and Emulation modes
+
+**Implementation Notes**:
+- Uses PN532 `TgInitAsTarget` command with SAK=0x20 (ISO-DEP only)
+- IRQ-based phone detection — no I2C polling during idle wait
+- APDU exchange handles the full NFC Forum Type 4 Tag command set (SELECT, READ BINARY)
+- FreeRTOS task on Core 0, priority 1, 8192 byte stack
+- NDEF payload supports URIs up to ~900 bytes (sufficient for all LNURL encodings)
+
+---
+
 **Hardware Test Mode (`ENABLE_NFC_TEST=1`)**:
 
 To verify the hardware without a running bitcoinswitch_extension server:
@@ -902,6 +963,7 @@ ZapBox/
 │   ├── UI.cpp/h                   # User interface components and rendering
 │   ├── Utils.cpp/h                # Utility functions (string, math, helpers)
 │   ├── NFCBoltCard.cpp/h          # Bolt Card (NTAG424 DNA) authentication and LNURLW
+│   ├── NFCCardEmulation.cpp/h     # NFC Card Emulation (PN532 Target Mode, LNURLp via NFC)
 │   ├── NFCPN532.cpp/h             # PN532 NFC reader driver (I2C, IRQ-based)
 │   ├── TouchCST816S.cpp/h         # Touch display support (CST816S)
 │   ├── SerialConfig.cpp/h         # Serial configuration interface

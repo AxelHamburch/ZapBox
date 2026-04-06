@@ -512,7 +512,17 @@
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
         <!-- NFC Bolt Card Section -->
-            <p style="margin-top: 10px;"><strong>NFC Bolt Card support</strong></p>
+            <div class="input-wrapper">
+                <div>
+                    <label for="nfcMode">NFC mode - NFC options and support</label>
+                    <select name="nfcMode" id="nfcMode">
+                        <option value="emulation" selected>NFC card emulation for mobile phones (default)</option>
+                        <option value="boltcard">NFC Bolt Cards support only</option>
+                        <option value="both">Both, selectable via a button</option>
+                        <option value="off">NFC off</option>
+                    </select>
+                </div>
+            </div>
             <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server – no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
             <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
             <a href="./assets/NFC-Module-PN532.webp" target="_blank">
@@ -835,8 +845,8 @@
                 "value": "0"
             },
             {
-                "name": "unused29",
-                "value": ""
+                "name": "nfcMode",
+                "value": "emulation"
             },
             {
                 "name": "servoRelayMode",
@@ -1290,7 +1300,9 @@
                 servo2Speed.value = config[27]?.value || "0";
                 if (config[28]) config[28].value = configData[28]?.value || "0";
                 servo2Duration.value = config[28]?.value || "0";
-                // Index 29 unused
+                // Index 29: NFC mode
+                if (config[29]) config[29].value = configData[29]?.value || "emulation";
+                nfcMode.value = config[29]?.value || "emulation";
                 if (config[30]) config[30].value = configData[30]?.value || "one-for-all";
                 servoRelayMode.value = config[30]?.value || "one-for-all";
 
@@ -1452,8 +1464,8 @@
             config[27].value = servo2Speed.value || "0";
             if (!config[28]) config[28] = { name: "servo2Duration", value: "0" };
             config[28].value = servo2Duration.value || "0";
-            if (!config[29]) config[29] = { name: "unused29", value: "" };
-            config[29].value = "";
+            if (!config[29]) config[29] = { name: "nfcMode", value: "emulation" };
+            config[29].value = nfcMode.value || "emulation";
             if (!config[30]) config[30] = { name: "servoRelayMode", value: "one-for-all" };
             config[30].value = servoRelayMode.value;
 

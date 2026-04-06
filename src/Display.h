@@ -36,6 +36,7 @@ void showQRScreen();
 void showThresholdQRScreen();
 void showSpecialModeQRScreen();
 void showProductQRScreen(String label, int pin);
+void showBoltCardScreen(String label, int pin);
 void productSelectionScreen();
 void activateScreensaver(String mode);
 void deactivateScreensaver();
@@ -78,6 +79,7 @@ inline void showQRScreen() {}
 inline void showThresholdQRScreen() {}
 inline void showSpecialModeQRScreen() {}
 inline void showProductQRScreen(String, int) {}
+inline void showBoltCardScreen(String, int) {}
 inline void productSelectionScreen() {}
 inline void activateScreensaver(String) {}
 inline void deactivateScreensaver() {}

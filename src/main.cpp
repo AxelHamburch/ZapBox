@@ -30,9 +30,10 @@
 #include "ServoControl.h"
 #include "Log.h"
 
-// NFC Bolt Card reader (optional feature, gated by ENABLE_NFC build flag)
+// NFC modules (optional feature, gated by ENABLE_NFC build flag)
 #ifdef ENABLE_NFC
 #include "NFCBoltCard.h"
+#include "NFCCardEmulation.h"
 #endif
 
 #define FORMAT_ON_FAIL true
@@ -474,6 +475,25 @@ void readFiles()
         LOG_INFO("Config", "===========================");
       }
     }
+
+    // Read NFC mode configuration (index 29, replaces unused29)
+    const JsonObject maRoot29 = doc[29];
+    if (!maRoot29.isNull()) {
+      const char *maRoot29Char = maRoot29["value"];
+      if (maRoot29Char != nullptr) {
+        nfcConfig.mode = String(maRoot29Char);
+        nfcConfig.mode.toLowerCase();
+        nfcConfig.mode.trim();
+      }
+    }
+    // Headless: "both" requires a display – fall back to "emulation"
+    #if !ENABLE_DISPLAY
+    if (nfcConfig.mode == "both") {
+      LOG_WARN("Config", "NFC mode 'both' requires display – falling back to 'emulation'");
+      nfcConfig.mode = "emulation";
+    }
+    #endif
+    LOG_INFO("Config", "NFC mode: " + nfcConfig.mode);
 
     // Apply predefined mode settings
     if (specialModeConfig.mode == "blink") {
@@ -927,12 +947,31 @@ void setup()
     Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
   }
 
-  // NFC Bolt Card reader (optional, activated via -DENABLE_NFC=1 in platformio.ini)
+  // NFC module (optional, activated via -DENABLE_NFC=1 in platformio.ini)
   // Must run AFTER touch.begin() because Wire.begin(GPIO17, GPIO18) must have been
   // called first (PN532 shares the same I2C bus as the touch controller).
 #ifdef ENABLE_NFC
-  if (!nfcBoltCardInit()) {
-    Serial.println("[NFC] Bolt Card reader not found or disabled - normal operation unaffected");
+  if (nfcConfig.mode == "off") {
+    Serial.println("[NFC] NFC disabled by configuration");
+  } else if (nfcConfig.mode == "boltcard") {
+    if (!nfcBoltCardInit()) {
+      Serial.println("[NFC] Bolt Card reader not found - normal operation unaffected");
+    }
+  } else if (nfcConfig.mode == "emulation") {
+    if (!nfcCardEmulationInit()) {
+      Serial.println("[NFC] Card emulation init failed - normal operation unaffected");
+    }
+  } else if (nfcConfig.mode == "both") {
+    // "both" mode: start in emulation (QR screen is shown first)
+    if (!nfcCardEmulationInit()) {
+      Serial.println("[NFC] Card emulation init failed - trying bolt card only");
+      nfcConfig.mode = "boltcard";
+      nfcBoltCardInit();
+    }
+  } else {
+    Serial.println("[NFC] Unknown NFC mode '" + nfcConfig.mode + "' - defaulting to emulation");
+    nfcConfig.mode = "emulation";
+    nfcCardEmulationInit();
   }
 #endif
 

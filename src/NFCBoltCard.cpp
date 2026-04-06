@@ -182,6 +182,7 @@ static String readNdefUri()
 
 // Note: s_nfc is forward-declared before the helper functions above.
 static TaskHandle_t    s_taskHandle = nullptr;
+static volatile bool   s_boltcardRunning = false;
 
 // ─── Card-removal helper ─────────────────────────────────────────────────────
 
@@ -248,7 +249,7 @@ static void nfc_task_code(void *pvParams)
 
     LOG_INFO("NFC", "Bolt Card task started – waiting for cards");
 
-    while (true)
+    while (s_boltcardRunning)
     {
         // Block until a card is detected (up to 30 s per attempt).
         bool found = s_nfc->readPassiveTargetID(
@@ -397,6 +398,10 @@ static void nfc_task_code(void *pvParams)
         nfcLnurlwReceived(lnurlw);
         waitForCardRemoval();
     }
+
+    LOG_INFO("NFC", "Bolt Card task ending");
+    s_taskHandle = nullptr;
+    vTaskDelete(nullptr);
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -466,6 +471,8 @@ bool nfcBoltCardInit()
 
     // Create NFC task BEFORE attaching the interrupt so s_taskHandle is valid
     // when the ISR first fires.
+    s_boltcardRunning = true;
+    nfcConfig.boltcardActive = true;
     BaseType_t res = xTaskCreatePinnedToCore(
         nfc_task_code,
         "NFCBoltCard",
@@ -481,6 +488,8 @@ bool nfcBoltCardInit()
         LOG_ERROR("NFC", "Failed to create NFC FreeRTOS task");
         delete s_nfc;
         s_nfc = nullptr;
+        s_boltcardRunning = false;
+        nfcConfig.boltcardActive = false;
         return false;
     }
 
@@ -489,6 +498,31 @@ bool nfcBoltCardInit()
 
     LOG_INFO("NFC", "✓ Bolt Card reader ready");
     return true;
+}
+
+void nfcBoltCardStop()
+{
+    LOG_INFO("NFC", "Stopping Bolt Card reader...");
+    s_boltcardRunning = false;
+    nfcConfig.boltcardActive = false;
+
+    // Wait for task to finish (with timeout — readPassiveTargetID can block up to 30s)
+    for (int i = 0; i < 50 && s_taskHandle != nullptr; i++) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    if (s_taskHandle != nullptr) {
+        LOG_WARN("NFC", "Bolt Card task did not exit cleanly — deleting");
+        vTaskDelete(s_taskHandle);
+        s_taskHandle = nullptr;
+    }
+
+    if (s_nfc) {
+        delete s_nfc;
+        s_nfc = nullptr;
+    }
+
+    LOG_INFO("NFC", "Bolt Card reader stopped");
 }
 
 #endif // ENABLE_NFC

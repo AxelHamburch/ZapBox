@@ -373,6 +373,21 @@ struct PaymentQueue {
 extern PaymentQueue paymentQueue;
 
 // ============================================================================
+// NFC MODE CONFIGURATION
+// ============================================================================
+
+struct NfcConfig {
+  String mode = "emulation";  // "emulation" (card emulation for phones, default)
+                               // "boltcard" (Bolt Card reader only)
+                               // "both"     (emulation on QR screen, boltcard via button)
+                               // "off"      (NFC disabled)
+  volatile bool emulationActive = false;  // True when card emulation task is running
+  volatile bool boltcardActive = false;   // True when bolt card reader task is running
+};
+
+extern NfcConfig nfcConfig;
+
+// ============================================================================
 // ACTIVITY TRACKING FOR SCREENSAVER
 // ============================================================================
 

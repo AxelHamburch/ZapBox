@@ -11,6 +11,11 @@
 #include <Arduino.h>
 #include "Log.h"
 
+#ifdef ENABLE_NFC
+#include "NFCCardEmulation.h"
+#include "NFCBoltCard.h"
+#endif
+
 // External references to main.cpp
 extern StateManager deviceState;
 extern MultiChannelConfig multiChannelConfig;
@@ -26,6 +31,27 @@ extern unsigned long configModeStartTime;
 
 // External constants
 extern unsigned long TOUCH_DOUBLE_CLICK_MS;
+
+// NFC "both" mode state: tracks whether showing Bolt Card view vs QR view
+static bool showingBoltCardView = false;
+
+#ifdef ENABLE_NFC
+/**
+ * Switch NFC mode between emulation and bolt card reader.
+ * Used in "both" mode when toggling between QR and Bolt Card screens.
+ */
+static void switchToBoltCard() {
+  nfcCardEmulationStop();
+  vTaskDelay(pdMS_TO_TICKS(100));
+  nfcBoltCardInit();
+}
+
+static void switchToEmulation() {
+  nfcBoltCardStop();
+  vTaskDelay(pdMS_TO_TICKS(100));
+  nfcCardEmulationInit();
+}
+#endif
 
 // External function declarations from main.cpp
 extern void showHelp();
@@ -51,6 +77,84 @@ void navigateToNextProduct() {
   }
   
   LOG_INFO("Navigation", "Navigate button pressed");
+  
+#ifdef ENABLE_NFC
+  // NFC "both" mode: toggle between QR+emulation and BoltCard+reader
+  if (nfcConfig.mode == "both") {
+    if (!showingBoltCardView) {
+      // Currently showing QR (emulation) → switch to Bolt Card (reader)
+      LOG_INFO("Navigation", "NFC both mode: switching to Bolt Card view");
+      showingBoltCardView = true;
+      switchToBoltCard();
+      
+      // Get current product label and pin for Bolt Card screen
+      int pin = 12; // default single mode pin
+      String label = "";
+      if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
+        if (multiChannelConfig.mode == "servo") {
+          pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
+        } else {
+          switch(multiChannelConfig.currentProduct) {
+            case 1: pin = 12; break;
+            case 2: pin = 13; break;
+            case 3: pin = 10; break;
+            case 4: pin = 11; break;
+            default: pin = 12; break;
+          }
+        }
+      }
+      int pinIndex = getPinIndex(pin);
+      if (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) {
+        label = productLabels.labels[pinIndex];
+      } else {
+        label = "Pin " + String(pin);
+      }
+      showBoltCardScreen(label, pin);
+      productSelectionState.showTime = millis();
+      return;
+    } else {
+      // Currently showing Bolt Card (reader) → switch back to QR (emulation)
+      LOG_INFO("Navigation", "NFC both mode: switching to QR view");
+      showingBoltCardView = false;
+      switchToEmulation();
+      
+      // Restore QR screen for current product
+      int pin = 12;
+      if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
+        if (multiChannelConfig.mode == "servo") {
+          pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
+        } else {
+          switch(multiChannelConfig.currentProduct) {
+            case 1: pin = 12; break;
+            case 2: pin = 13; break;
+            case 3: pin = 10; break;
+            case 4: pin = 11; break;
+            default: pin = 12; break;
+          }
+        }
+      }
+      ensureQrForPin(pin);
+      if (multiChannelConfig.mode == "off") {
+        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+          showSpecialModeQRScreen();
+        } else {
+          showQRScreen();
+        }
+      } else {
+        String label = "";
+        int pinIndex = getPinIndex(pin);
+        if (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) {
+          label = productLabels.labels[pinIndex];
+        } else {
+          label = "Pin " + String(pin);
+        }
+        showProductQRScreen(label, pin);
+      }
+      productSelectionState.showTime = millis();
+      return;
+    }
+  }
+#endif
   
   if (multiChannelConfig.mode == "off") {
     // Single mode behavior depends on multiChannelConfig.btcTickerMode

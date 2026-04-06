@@ -56,6 +56,14 @@
 bool nfcBoltCardInit();
 
 /**
+ * @brief Stop the NFC Bolt Card reader and release PN532.
+ *
+ * Deletes the FreeRTOS task and frees the PN532 instance.
+ * Used by "both" mode to switch between card reading and card emulation.
+ */
+void nfcBoltCardStop();
+
+/**
  * @brief Callback invoked by the NFC task when a valid LNURLW is read.
  *
  * Implemented in Network.cpp. Sends the appropriate WebSocket event to the
