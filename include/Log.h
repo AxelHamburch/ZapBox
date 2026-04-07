@@ -24,6 +24,11 @@ namespace Log {
 #define LOG_LEVEL Log::INFO
 #endif
 
+// Numeric version of LOG_LEVEL for preprocessor use (enum values can't be used in #if)
+#ifndef LOG_LEVEL_NUM
+#define LOG_LEVEL_NUM 2  // 0=ERROR, 1=WARN, 2=INFO, 3=DEBUG — must match LOG_LEVEL
+#endif
+
   inline const char* levelName(Level lvl) {
     switch (lvl) {
       case ERROR: return "ERROR";
@@ -63,9 +68,15 @@ namespace Log {
 }
 
 // Convenience macros
+// LOG_DEBUG short-circuits at preprocessor level: if LOG_LEVEL < DEBUG,
+// the macro expands to nothing — zero String construction overhead.
 #define LOG_ERROR(TAG, MSG) Log::print(Log::ERROR, TAG, String(MSG))
 #define LOG_WARN(TAG, MSG)  Log::print(Log::WARN,  TAG, String(MSG))
 #define LOG_INFO(TAG, MSG)  Log::print(Log::INFO,  TAG, String(MSG))
+#if LOG_ENABLE && (LOG_LEVEL_NUM >= 3)
 #define LOG_DEBUG(TAG, MSG) Log::print(Log::DEBUG, TAG, String(MSG))
+#else
+#define LOG_DEBUG(TAG, MSG) ((void)0)
+#endif
 
 #endif // LOG_HELPER_H

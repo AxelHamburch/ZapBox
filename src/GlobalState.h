@@ -377,12 +377,13 @@ extern PaymentQueue paymentQueue;
 // ============================================================================
 
 struct NfcConfig {
-  String mode = "emulation";  // "emulation" (card emulation for phones, default)
-                               // "boltcard" (Bolt Card reader only)
-                               // "both"     (emulation on QR screen, boltcard via button)
-                               // "off"      (NFC disabled)
+  String mode = "boltcard";   // "boltcard"  (Bolt Card reader only, default)
+                               // "emulation" (card emulation for phones)
+                               // "both"      (emulation on QR screen, boltcard via button)
+                               // "off"       (NFC disabled)
   volatile bool emulationActive = false;  // True when card emulation task is running
   volatile bool boltcardActive = false;   // True when bolt card reader task is running
+  volatile bool nfcSessionActive = false; // True during active APDU exchange (suppresses internet checks)
 };
 
 extern NfcConfig nfcConfig;

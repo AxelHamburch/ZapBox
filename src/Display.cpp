@@ -1559,10 +1559,10 @@ void showBoltCardScreen(String label, int pin)
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(fg);
     tft.setTextSize(3);
-    tft.drawString("BOLT", x, 50, GFXFF);
-    tft.drawString("CARD", x, 80, GFXFF);
+    tft.drawString("BOLT", x, 20, GFXFF);
+    tft.drawString("CARD", x, 50, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("Tap NFC", x, 120, GFXFF);
+    tft.drawString("Tap NFC", x, 90, GFXFF);
 
     // Product name box (same position as QR screen)
     int boxY = (displayConfig.orientation == "vi") ? 175 : 168;
@@ -1593,10 +1593,10 @@ void showBoltCardScreen(String label, int pin)
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(fg);
     tft.setTextSize(3);
-    tft.drawString("BOLT", 80, y - 15, GFXFF);
-    tft.drawString("CARD", 80, y + 15, GFXFF);
+    tft.drawString("BOLT", 80, y - 28, GFXFF);
+    tft.drawString("CARD", 80, y + 2, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("Tap NFC", 80, y + 45, GFXFF);
+    tft.drawString("Tap NFC", 80, y + 32, GFXFF);
 
     // Product name box (same position as QR screen)
     int boxX = (displayConfig.orientation == "hi") ? 171 : 163;

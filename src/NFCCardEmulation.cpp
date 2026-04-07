@@ -286,9 +286,65 @@ static void pn532RecoverBus()
 {
     LOG_INFO("NFC", "Recovering I2C bus...");
     Wire.end();
-    delay(50);
-    Wire.begin(18, 17);
     delay(10);
+
+    // Manual bus recovery: clock SCL 9 times to release stuck SDA.
+    // Standard I2C recovery protocol — if the PN532 holds SDA low
+    // mid-byte (Error 263 / ESP_ERR_TIMEOUT), clocking SCL lets it
+    // finish the pending byte and release the bus.
+    pinMode(PIN_IIC_SCL, OUTPUT);
+    pinMode(PIN_IIC_SDA, INPUT_PULLUP);
+    for (int i = 0; i < 9; i++) {
+        digitalWrite(PIN_IIC_SCL, LOW);
+        delayMicroseconds(5);
+        digitalWrite(PIN_IIC_SCL, HIGH);
+        delayMicroseconds(5);
+        if (digitalRead(PIN_IIC_SDA)) break;  // SDA released
+    }
+    // Generate STOP condition: SDA LOW→HIGH while SCL HIGH
+    pinMode(PIN_IIC_SDA, OUTPUT);
+    digitalWrite(PIN_IIC_SDA, LOW);
+    delayMicroseconds(5);
+    digitalWrite(PIN_IIC_SCL, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(PIN_IIC_SDA, HIGH);
+    delayMicroseconds(5);
+
+    delay(50);
+    Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL, 400000);
+    delay(10);
+}
+
+/**
+ * Full PN532 re-initialization after persistent I2C errors (Error 263 loop).
+ *
+ * Called after multiple consecutive fast failures where the PN532 is completely
+ * unresponsive on I2C. Re-reads firmware version (which resets PN532 internal
+ * state machine) and reconfigures SAM for target mode.
+ *
+ * @return true if PN532 recovered, false if still unresponsive
+ */
+static bool pn532FullReinit()
+{
+    LOG_WARN("NFC", "Full PN532 re-initialization...");
+    pn532RecoverBus();
+    delay(100);
+
+    if (!s_emulNfc) return false;
+
+    uint32_t ver = s_emulNfc->getFirmwareVersion();
+    if (!ver) {
+        LOG_ERROR("NFC", "PN532 firmware read failed during reinit");
+        return false;
+    }
+
+    if (!s_emulNfc->SAMConfig()) {
+        LOG_ERROR("NFC", "SAMConfig failed during reinit");
+        return false;
+    }
+
+    LOG_INFO("NFC", "PN532 re-initialized successfully");
+    return true;
 }
 
 /**
@@ -424,6 +480,39 @@ static bool getDataTargetIRQ(uint8_t *cmd, uint8_t *cmdLen, uint16_t timeout_ms 
         return false;
     }
 
+    // Error 0x13: "data format does not match Tg command specification".
+    // Some phones (WoS/Android) send PPS (Protocol Parameter Selection) or
+    // WTX (Waiting Time Extension) after RATS/ATS before the first I-Block.
+    // The PN532 can't parse these as valid ISO-DEP I-Blocks → error 0x13.
+    // Retry TgGetData: the PPS/WTX is consumed, next frame should be the
+    // actual SELECT APDU as a valid I-Block.
+    if (frame[7] == 0x13) {
+        LOG_INFO("NFC", "error 0x13 (PPS/WTX?) — retrying TgGetData");
+        for (int retry = 0; retry < 2; retry++) {
+            frameLen = 0;
+            if (!pn532TransactIRQ(tgGetData, 1, frame, &frameLen, 32, timeout_ms)) {
+                return false;
+            }
+            if (frameLen >= 9 && frame[5] == 0xD5 && frame[6] == 0x87 && frame[7] == 0x00) {
+                // Success! Extract data and return.
+                uint8_t dataLen = frame[3] - 3;
+                if (dataLen > 60) dataLen = 60;
+                if (dataLen > 0 && (uint8_t)(8 + dataLen) <= frameLen) {
+                    memcpy(cmd, frame + 8, dataLen);
+                }
+                *cmdLen = dataLen;
+                LOG_INFO("NFC", String("error 0x13 recovered after ") + String(retry + 1) + " retry");
+                return true;
+            }
+            if (frameLen >= 8 && frame[7] == 0x13) {
+                LOG_INFO("NFC", String("error 0x13 retry ") + String(retry + 1) + " — still 0x13");
+                continue;  // Try again
+            }
+            // Different error — fall through to normal error handling
+            break;
+        }
+    }
+
     // Check error status byte
     if (frame[7] != 0x00) {
         LOG_INFO("NFC", String("getDataTargetIRQ: error status 0x") + String(frame[7], HEX));
@@ -483,20 +572,23 @@ static bool asTargetIRQ(uint16_t timeout_ms = 0)
     // is UNRELIABLE on clones — do NOT reject based on it. Just proceed
     // with APDU exchange; if it's truly NFC-DEP, TgGetData will fail
     // immediately and we'll cleanly exit the session.
+    // IMPORTANT: These are the EXACT parameters that produced 100% Phoenix
+    // success (6/6 payments). Do NOT change without regression testing.
+    // LEN_Gt=1 + Gt=[0x00] is needed for this PN532 clone's internal
+    // state machine — removing it caused regressions (40% Phoenix success).
     static const uint8_t target[] = {
         0x8C,             // INIT AS TARGET
         0x00,             // MODE: passive, all speeds, PICC + DEP
         0x08, 0x00,       // SENS_RES (ATQA)
         0xdc, 0x44, 0x20, // NFCID1T (3-byte UID)
-        0x20,             // SEL_RES (SAK: 0x20 = ISO-DEP only in NFC Forum spec)
+        0x20,             // SEL_RES (SAK: 0x20 = ISO-DEP in NFC Forum spec)
         0x01, 0xfe,       // NFCID2T (Felica, starts with 01fe)
         0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
         0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7, // PAD
         0xff, 0xff,                                         // SYSTEM CODE
         0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44,
-        0x33, 0x22, 0x11, 0x01, 0x00,                       // NFCID3t
-        0x0d, 0x52, 0x46, 0x49, 0x44, 0x49, 0x4f,
-        0x74, 0x20, 0x50, 0x4e, 0x35, 0x33, 0x32            // HISTORICAL BYTES
+        0x33, 0x22, 0x11, 0x01, 0x00,                       // NFCID3t + LEN_Gt=1 + Gt=[0x00]
+        0x01, 0x80                                           // LEN_Tk = 1, Tk = [0x80]
     };
 
     uint8_t frame[70];
@@ -512,7 +604,21 @@ static bool asTargetIRQ(uint16_t timeout_ms = 0)
     for (uint8_t i = 0; i + 2 < frameLen; i++) {
         if (frame[i] == 0xD5 && frame[i + 1] == 0x8D) {
             uint8_t mode = frame[i + 2];
-            LOG_INFO("NFC", String("TgInitAsTarget: mode=0x") + String(mode, HEX));
+            // Log mode + first initiator command bytes for protocol diagnosis.
+            // ISO-DEP: initiator sends RATS (starts with E0 xx).
+            // NFC-DEP: initiator sends ATR_REQ (starts with D4 00).
+            String info = String("TgInitAsTarget: mode=0x") + String(mode, HEX);
+            uint8_t extraStart = i + 3;
+            uint8_t extraBytes = (frameLen > extraStart) ? frameLen - extraStart : 0;
+            if (extraBytes > 8) extraBytes = 8;
+            if (extraBytes > 0) {
+                info += " init=";
+                for (uint8_t j = 0; j < extraBytes; j++) {
+                    if (frame[extraStart + j] < 0x10) info += "0";
+                    info += String(frame[extraStart + j], HEX);
+                }
+            }
+            LOG_INFO("NFC", info);
             return true;
         }
     }
@@ -550,6 +656,7 @@ static void emulation_task_code(void *pvParams)
     LOG_INFO("NFC", "Card emulation task started");
 
     uint8_t consecutiveFastFails = 0;  // Track repeated fast-fail retries
+    uint8_t consecutiveI2CErrors = 0;  // Track I2C bus lockup (Error 263)
 
     while (s_emulRunning)
     {
@@ -577,29 +684,50 @@ static void emulation_task_code(void *pvParams)
 
         // Enter Target Mode — wait for phone using IRQ (no I2C polling)
         LOG_DEBUG("NFC", "Entering Target Mode (waiting for phone)...");
+        unsigned long targetStart = millis();
         if (!asTargetIRQ(2000)) {
+            // Distinguish I2C errors from normal timeouts:
+            // Normal "no phone" timeout takes ~2000ms. I2C failures (Error 263,
+            // NACK, ACK-not-ready) return in <100ms because the write/ACK phase
+            // fails immediately and there's no IRQ wait.
+            unsigned long elapsed = millis() - targetStart;
+            if (elapsed < 100) {
+                consecutiveI2CErrors++;
+                if (consecutiveI2CErrors >= 5) {
+                    LOG_WARN("NFC", String("I2C errors x") + String(consecutiveI2CErrors) +
+                                    " — full PN532 reinit");
+                    pn532FullReinit();
+                    consecutiveI2CErrors = 0;
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                    continue;
+                }
+            } else {
+                consecutiveI2CErrors = 0;  // Normal timeout, not I2C error
+            }
             // No phone within 2 seconds — retry (I2C bus was idle the whole time)
             vTaskDelay(pdMS_TO_TICKS(50));
             continue;
         }
+        consecutiveI2CErrors = 0;  // Successful connection resets counter
 
         LOG_INFO("NFC", "Phone connected — processing APDUs");
-        // Minimal delay for RATS/ATS — PN532 handles this internally.
-        // The successful payment session used 30ms. Shorter is better:
-        // the phone may time out if we wait too long before TgGetData.
-        vTaskDelay(pdMS_TO_TICKS(20));
+        // Minimal delay for RATS/ATS \u2014 first APDU is already in PN532 buffer.
+        // Shorter = better: less time for RF link to degrade.
+        vTaskDelay(pdMS_TO_TICKS(5));
         SelectedFile selectedFile = SEL_NONE;
         bool sessionActive = true;
         uint8_t apduCount = 0;  // Track APDUs exchanged in this session
+        bool ndefFullyRead = false;  // Set when phone reads all NDEF data
+        nfcConfig.nfcSessionActive = true;  // Suppress internet checks during APDU exchange
 
-        // First APDU: use short timeout (300ms).
-        // If the phone connected via NFC-DEP (P2P) instead of ISO-DEP,
-        // no APDU will arrive. Fail fast so we can re-enter TgInitAsTarget
-        // and catch the next attempt (which may be ISO-DEP).
-        // This PN532 clone reports mode=0x08 for ALL connections, so we
-        // can't distinguish ISO-DEP from NFC-DEP via mode byte.
+        // First APDU: use moderate timeout (800ms).
+        // Wallets using react-native-nfc-manager (Zeus) need ~500ms for the
+        // JavaScript bridge to issue the first SELECT APDU. Native wallets
+        // (Phoenix) are faster (~50ms). If no APDU arrives within 800ms,
+        // this was likely an NFC-DEP (P2P) connection — fail fast and retry.
         cmdLen = 0;
-        if (!getDataTargetIRQ(cmdBuf, &cmdLen, 300)) {
+        if (!getDataTargetIRQ(cmdBuf, &cmdLen, 800)) {
+            nfcConfig.nfcSessionActive = false;  // Allow internet checks again
             consecutiveFastFails++;
             if (consecutiveFastFails >= 3) {
                 // Phone is on the field but not sending APDUs.
@@ -610,7 +738,7 @@ static void emulation_task_code(void *pvParams)
                 vTaskDelay(pdMS_TO_TICKS(3000));
                 consecutiveFastFails = 0;
             } else {
-                LOG_INFO("NFC", "First APDU not received (300ms) — retrying Target Mode");
+                LOG_INFO("NFC", "First APDU not received (800ms) — retrying Target Mode");
             }
             continue;
         }
@@ -629,16 +757,10 @@ static void emulation_task_code(void *pvParams)
 
         first_apdu_received:
             apduCount++;
-            // Log received APDU (hex dump, first 16 bytes max)
-            {
-                String hex = "";
-                for (uint8_t i = 0; i < cmdLen && i < 16; i++) {
-                    if (cmdBuf[i] < 0x10) hex += "0";
-                    hex += String(cmdBuf[i], HEX);
-                    hex += " ";
-                }
-                LOG_INFO("NFC", String("APDU rx (") + String(cmdLen) + "): " + hex);
-            }
+            // Log APDU count + length only — skip hex dump to minimize
+            // time between receiving APDU and sending response.
+            // Every ms of I2C/logging delay increases RF CRC error risk.
+            LOG_DEBUG("NFC", String("APDU #") + String(apduCount) + " len=" + String(cmdLen));
 
             if (cmdLen < 4) {
                 // Malformed APDU — ignore
@@ -657,7 +779,7 @@ static void emulation_task_code(void *pvParams)
                 if (p1 == 0x04 && lc == 7) {
                     // SELECT by AID — check for NDEF application
                     if (memcmp(cmdBuf + 5, NDEF_APP_SELECT, 7) == 0) {
-                        LOG_INFO("NFC", "APDU: SELECT NDEF App -> 9000");
+                        LOG_DEBUG("NFC", "APDU: SELECT NDEF App -> 9000");
                         selectedFile = SEL_NONE;
                         sendOK();
                         continue;
@@ -668,15 +790,15 @@ static void emulation_task_code(void *pvParams)
                     // SELECT by File ID
                     uint16_t fileId = ((uint16_t)cmdBuf[5] << 8) | cmdBuf[6];
                     if (fileId == 0xE103) {
-                        LOG_INFO("NFC", "APDU: SELECT CC -> 9000");
+                        LOG_DEBUG("NFC", "APDU: SELECT CC -> 9000");
                         selectedFile = SEL_CC;
                         sendOK();
                     } else if (fileId == 0xE104) {
-                        LOG_INFO("NFC", "APDU: SELECT NDEF -> 9000");
+                        LOG_DEBUG("NFC", "APDU: SELECT NDEF -> 9000");
                         selectedFile = SEL_NDEF;
                         sendOK();
                     } else {
-                        LOG_INFO("NFC", String("APDU: SELECT unknown 0x") + String(fileId, HEX));
+                        LOG_DEBUG("NFC", String("APDU: SELECT unknown 0x") + String(fileId, HEX));
                         sendFileNotFound();
                     }
                     continue;
@@ -694,7 +816,7 @@ static void emulation_task_code(void *pvParams)
                 if (le == 0) le = 255;  // Le=0 means 256 bytes, limit to 255
 
                 if (selectedFile == SEL_CC) {
-                    LOG_INFO("NFC", String("APDU: READ CC off=") + String(offset) + " len=" + String(le));
+                    LOG_DEBUG("NFC", String("APDU: READ CC off=") + String(offset) + " len=" + String(le));
                     uint16_t avail = sizeof(CC_FILE) - offset;
                     if (offset >= sizeof(CC_FILE)) {
                         sendOK();  // Past end of file
@@ -703,7 +825,7 @@ static void emulation_task_code(void *pvParams)
                         sendDataOK(CC_FILE + offset, readLen);
                     }
                 } else if (selectedFile == SEL_NDEF) {
-                    LOG_INFO("NFC", String("APDU: READ NDEF off=") + String(offset) + " len=" + String(le));
+                    LOG_DEBUG("NFC", String("APDU: READ NDEF off=") + String(offset) + " len=" + String(le));
                     if (ndefLen == 0) {
                         // No NDEF data available yet
                         sendOK();
@@ -714,6 +836,13 @@ static void emulation_task_code(void *pvParams)
                         } else {
                             uint8_t readLen = (le < avail) ? le : avail;
                             sendDataOK(ndefBuf + offset, readLen);
+                            // Track whether phone has read all NDEF data.
+                            // Different wallets use different Le values:
+                            //   Phoenix: Le=0x3B (59 bytes) → multiple reads
+                            //   WoS:    Le=0xFF (255 bytes) → single read
+                            if (offset + readLen >= ndefLen) {
+                                ndefFullyRead = true;
+                            }
                         }
                     }
                 } else {
@@ -732,26 +861,32 @@ static void emulation_task_code(void *pvParams)
             sendOK();
         }
 
-        // Reset PN532 and recover I2C bus before re-entering target mode
-        pn532RecoverBus();
-        pn532SAMConfigRaw();
-        // Expected APDUs for a complete NDEF read:
-        //   4 setup (SELECT App, SELECT CC, READ CC, SELECT NDEF)
-        // + 1 READ NDEF length (2 bytes)
-        // + ceil(ndefLen / 59) READ NDEF data chunks
-        // Phone max read per APDU is 59 bytes (Le=0x3B).
-        uint8_t expectedApdus = 4 + 1 + ((ndefLen + 58) / 59);
-        if (apduCount > 0 && apduCount < expectedApdus) {
-            // Phone started ISO-DEP NDEF reading but disconnected mid-session.
-            // Stay out of Target Mode for 2s so phone's NFC stack detects
-            // "tag gone" and resets — prevents pointless reconnect loops.
-            LOG_INFO("NFC", String("Session incomplete: ") + String(apduCount) +
-                            "/" + String(expectedApdus) +
-                            " APDUs — cooldown 2s for phone NFC reset");
-            vTaskDelay(pdMS_TO_TICKS(2000));
+        // Session ended — allow internet checks and prepare for next phone.
+        nfcConfig.nfcSessionActive = false;
+
+        if (ndefFullyRead) {
+            // Phone read all NDEF data — complete session regardless of APDU count.
+            // Different wallets need different numbers of APDUs for the same data
+            // (Phoenix: Le=59→7 APDUs, WoS: Le=255→6 APDUs). Track actual data
+            // read instead of estimating from APDU count.
+            LOG_INFO("NFC", String("NDEF fully read (") + String(apduCount) +
+                            " APDUs) — returning to Target Mode");
+            vTaskDelay(pdMS_TO_TICKS(100));
+        } else if (apduCount == 0) {
+            // I2C error before any APDU exchange — recover bus
+            pn532RecoverBus();
+            vTaskDelay(pdMS_TO_TICKS(100));
         } else {
-            LOG_INFO("NFC", "Phone disconnected — returning to Target Mode");
-            vTaskDelay(pdMS_TO_TICKS(200));
+            // Phone started NDEF read but disconnected before reading all data.
+            // Error 0x02 (CRC), 0x29 (DESELECT), or RF loss mid-session.
+            // Recover bus so next TgInitAsTarget starts clean, then cooldown
+            // so phone detects "tag gone" and resets its NFC stack.
+            pn532RecoverBus();
+            uint16_t cooldownMs = (apduCount <= 1) ? 200 : (apduCount <= 2) ? 500 : 2000;
+            LOG_INFO("NFC", String("Session incomplete: ") + String(apduCount) +
+                            " APDUs, NDEF not fully read — cooldown " +
+                            String(cooldownMs) + "ms");
+            vTaskDelay(pdMS_TO_TICKS(cooldownMs));
         }
     }
 
@@ -770,7 +905,41 @@ bool nfcCardEmulationInit()
 
     // Headless: Wire may not be initialized yet
     #if !ENABLE_DISPLAY
-    Wire.begin(18, 17);
+    Wire.begin(18, 17, 400000);  // 400kHz for faster NFC APDU exchange
+    #else
+    // Display variant: Touch controller already called Wire.begin() at 100kHz.
+    // Increase to 400kHz — PN532 supports it, and faster I2C means faster
+    // APDU round-trips which reduces RF CRC errors on the PN532 clone.
+    Wire.setClock(400000);
+    #endif
+
+    // Bus recovery before probe: if the PN532 held SDA low during a previous
+    // unclean shutdown (Error 263 / Error 5), the I2C bus is stuck.
+    // Clock SCL 9 times to let the PN532 finish and release SDA.
+    Wire.end();
+    delay(10);
+    pinMode(PIN_IIC_SCL, OUTPUT);
+    pinMode(PIN_IIC_SDA, INPUT_PULLUP);
+    for (int i = 0; i < 9; i++) {
+        digitalWrite(PIN_IIC_SCL, LOW);
+        delayMicroseconds(5);
+        digitalWrite(PIN_IIC_SCL, HIGH);
+        delayMicroseconds(5);
+        if (digitalRead(PIN_IIC_SDA)) break;
+    }
+    // STOP condition: SDA LOW→HIGH while SCL HIGH
+    pinMode(PIN_IIC_SDA, OUTPUT);
+    digitalWrite(PIN_IIC_SDA, LOW);
+    delayMicroseconds(5);
+    digitalWrite(PIN_IIC_SCL, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(PIN_IIC_SDA, HIGH);
+    delayMicroseconds(5);
+    delay(10);
+    #if !ENABLE_DISPLAY
+    Wire.begin(18, 17, 400000);
+    #else
+    Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL, 400000);
     #endif
 
     // I2C probe with retries — PN532 may need time after power-on or bus reset
@@ -832,9 +1001,9 @@ bool nfcCardEmulationInit()
         "NFCEmulation",
         8192,
         nullptr,
-        1,              // Priority 1 – equal to other peripheral tasks
+        5,              // Priority 5 – above app tasks, below WiFi (23)
         &s_emulTaskHandle,
-        0               // Core 0
+        1               // Core 1 – away from WiFi ISRs (Core 0)
     );
 
     if (res != pdTRUE || s_emulTaskHandle == nullptr) {

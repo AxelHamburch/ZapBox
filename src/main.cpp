@@ -486,11 +486,11 @@ void readFiles()
         nfcConfig.mode.trim();
       }
     }
-    // Headless: "both" requires a display – fall back to "emulation"
+    // Headless: "both" requires a display – fall back to "boltcard"
     #if !ENABLE_DISPLAY
     if (nfcConfig.mode == "both") {
-      LOG_WARN("Config", "NFC mode 'both' requires display – falling back to 'emulation'");
-      nfcConfig.mode = "emulation";
+      LOG_WARN("Config", "NFC mode 'both' requires display – falling back to 'boltcard'");
+      nfcConfig.mode = "boltcard";
     }
     #endif
     LOG_INFO("Config", "NFC mode: " + nfcConfig.mode);
@@ -969,9 +969,9 @@ void setup()
       nfcBoltCardInit();
     }
   } else {
-    Serial.println("[NFC] Unknown NFC mode '" + nfcConfig.mode + "' - defaulting to emulation");
-    nfcConfig.mode = "emulation";
-    nfcCardEmulationInit();
+    Serial.println("[NFC] Unknown NFC mode '" + nfcConfig.mode + "' - defaulting to boltcard");
+    nfcConfig.mode = "boltcard";
+    nfcBoltCardInit();
   }
 #endif
 
@@ -2041,6 +2041,9 @@ void loop()
       if (WiFi.status() != WL_CONNECTED) {
         Serial.println("[INTERNET] Skipping Internet check - WiFi is down");
         lastInternetCheck = millis();
+      } else if (nfcConfig.nfcSessionActive) {
+        // Defer: NFC is exchanging APDUs — HTTP activity on Core 0 disrupts I2C timing
+        Serial.println("[INTERNET] Deferred - NFC session active");
       } else if (WiFi.status() == WL_CONNECTED) {
         bool hasInternet = checkInternetConnectivity();
         if (!hasInternet) {
@@ -2369,24 +2372,32 @@ void loop()
         labels404RetryCount = 0;
         return;
       }
-      // If WebSocket is connected but labels failed to load (404), keep WebSocket unconfirmed
-      // Retry fetchSwitchLabels() every 2 minutes; reboot after 3 failed retries.
+      // If WebSocket is connected but labels failed to load, retry.
+      // For transient errors (timeout, 500), retry quickly (15s).
+      // For config errors (404), retry slowly (2 min) — device may not exist.
       else if (wifiOk && serverOk && websocketOk && !labelsLoadedSuccessfully) {
         unsigned long now = millis();
+        unsigned long retryInterval = labelsValidationAttempted ? 15000UL : 120000UL;
         if (labels404NextRetry == 0) {
-          // First time in 404 state — schedule first retry in 2 minutes
-          labels404NextRetry = now + 120000UL;
-          Serial.println("[AUTO-RECOVERY] Device config invalid (404) - will retry in 2 minutes");
+          // First time — schedule retry
+          labels404NextRetry = now + retryInterval;
+          if (retryInterval < 60000) {
+            Serial.println("[AUTO-RECOVERY] Label fetch failed (transient) - will retry in 15s");
+          } else {
+            Serial.println("[AUTO-RECOVERY] Device config invalid (404) - will retry in 2 minutes");
+          }
         } else if (now >= labels404NextRetry) {
           labels404RetryCount++;
-          if (labels404RetryCount > 3) {
-            Serial.printf("[AUTO-RECOVERY] Label fetch failed %d times after 404 - rebooting\n", labels404RetryCount);
+          if (labels404RetryCount > 6) {
+            Serial.printf("[AUTO-RECOVERY] Label fetch failed %d times - rebooting\n", labels404RetryCount);
             delay(500);
             ESP.restart();
           }
-          Serial.printf("[AUTO-RECOVERY] Retrying label fetch after 404 (attempt %d/3)...\n", labels404RetryCount);
+          Serial.printf("[AUTO-RECOVERY] Retrying label fetch (attempt %d/6)...\n", labels404RetryCount);
           fetchSwitchLabels();
-          labels404NextRetry = now + 120000UL; // Schedule next retry in 2 more minutes
+          // After retry: if still failing, use same interval strategy
+          retryInterval = labelsLoadedSuccessfully ? 0 : (labelsValidationAttempted ? 15000UL : 120000UL);
+          labels404NextRetry = now + retryInterval;
         }
         // Don't override the websocket = false that was set by fetchSwitchLabels()
         return;

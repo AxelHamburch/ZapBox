@@ -32,8 +32,8 @@ extern unsigned long configModeStartTime;
 // External constants
 extern unsigned long TOUCH_DOUBLE_CLICK_MS;
 
-// NFC "both" mode state: tracks whether showing Bolt Card view vs QR view
-static bool showingBoltCardView = false;
+// NFC "both" mode state: 0=QR, 1=BoltCard, 2=Ticker
+static int bothModeScreen = 0;
 
 #ifdef ENABLE_NFC
 /**
@@ -44,12 +44,6 @@ static void switchToBoltCard() {
   nfcCardEmulationStop();
   vTaskDelay(pdMS_TO_TICKS(100));
   nfcBoltCardInit();
-}
-
-static void switchToEmulation() {
-  nfcBoltCardStop();
-  vTaskDelay(pdMS_TO_TICKS(100));
-  nfcCardEmulationInit();
 }
 #endif
 
@@ -79,12 +73,12 @@ void navigateToNextProduct() {
   LOG_INFO("Navigation", "Navigate button pressed");
   
 #ifdef ENABLE_NFC
-  // NFC "both" mode: toggle between QR+emulation and BoltCard+reader
+  // NFC "both" mode: cycle through QR → Bolt Card → Ticker → QR
   if (nfcConfig.mode == "both") {
-    if (!showingBoltCardView) {
-      // Currently showing QR (emulation) → switch to Bolt Card (reader)
+    if (bothModeScreen == 0) {
+      // QR (emulation) → Bolt Card (reader)
       LOG_INFO("Navigation", "NFC both mode: switching to Bolt Card view");
-      showingBoltCardView = true;
+      bothModeScreen = 1;
       switchToBoltCard();
       
       // Get current product label and pin for Bolt Card screen
@@ -112,11 +106,21 @@ void navigateToNextProduct() {
       showBoltCardScreen(label, pin);
       productSelectionState.showTime = millis();
       return;
+    } else if (bothModeScreen == 1) {
+      // Bolt Card → Ticker (stop reader, show ticker)
+      LOG_INFO("Navigation", "NFC both mode: switching to Ticker view");
+      bothModeScreen = 2;
+      nfcBoltCardStop();
+      btctickerScreen();
+      multiChannelConfig.btcTickerActive = true;
+      productSelectionState.showTime = millis(); // Start timer for auto-return
+      return;
     } else {
-      // Currently showing Bolt Card (reader) → switch back to QR (emulation)
+      // Ticker → QR (start emulation again)
       LOG_INFO("Navigation", "NFC both mode: switching to QR view");
-      showingBoltCardView = false;
-      switchToEmulation();
+      bothModeScreen = 0;
+      multiChannelConfig.btcTickerActive = false;
+      nfcCardEmulationInit();
       
       // Restore QR screen for current product
       int pin = 12;

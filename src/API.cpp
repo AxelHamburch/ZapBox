@@ -169,9 +169,13 @@ void fetchSwitchLabels()
     }
     // Other HTTP errors (500, timeout, etc.) - could be temporary
     else if (httpCode < 0) {
-      Serial.println("[LABELS] Connection error - could not reach server");
+      Serial.println("[LABELS] Connection error - could not reach server (will retry soon)");
+      labelsValidationAttempted = true; // Mark as attempted so startup doesn't hang
+      labelsLoadedSuccessfully = false;
     } else if (httpCode >= 500) {
       Serial.println("[LABELS] Server error - may be temporary, will retry");
+      labelsValidationAttempted = true;
+      labelsLoadedSuccessfully = false;
     }
   }
   

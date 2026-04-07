@@ -251,9 +251,10 @@ static void nfc_task_code(void *pvParams)
 
     while (s_boltcardRunning)
     {
-        // Block until a card is detected (up to 30 s per attempt).
+        // Block until a card is detected (1 s per attempt, short timeout
+        // so the task can exit quickly when nfcBoltCardStop() is called).
         bool found = s_nfc->readPassiveTargetID(
-            PN532_MIFARE_ISO14443A, uid, &uidLength, 30000);
+            PN532_MIFARE_ISO14443A, uid, &uidLength, 1000);
 
         if (!found)
         {
