@@ -340,8 +340,8 @@ static bool pn532TransactIRQ(const uint8_t *cmd, uint8_t cmdlen,
     // Step 4: Wait for response via IRQ pin — NO I2C POLLING.
     // For TgGetData/TgSetData with pre-buffered data, IRQ is already LOW.
     // For TgInitAsTarget, this waits for a phone (seconds).
-    // No IRQ settle delay needed — we go straight to the IRQ check.
-    // If IRQ is stale LOW, the read below will verify via RDY byte.
+    // NO delay after ACK — the delay(3)/RDY-poll version broke APDU exchange.
+    // The working version (successful payment) had zero delay here.
     unsigned long start = millis();
     while (digitalRead(PIN_NFC_IRQ) != LOW) {
         if (!s_emulRunning) return false;
@@ -349,10 +349,9 @@ static bool pn532TransactIRQ(const uint8_t *cmd, uint8_t cmdlen,
         vTaskDelay(pdMS_TO_TICKS(pollIntervalMs));
     }
 
-    // Step 5: IRQ LOW — read response immediately.
-    // Matching the Adafruit library: delay(2) then read.
-    // No RDY polling loop — it added 3-75ms latency per call,
-    // causing the phone's ISO 14443-4 FWT to exhaust after ~4 APDUs.
+    // Step 5: IRQ LOW — brief settle then read.
+    // NO RDY polling loop — each Wire.requestFrom may disturb the PN532
+    // clone's I2C state. The working version just did delay(2) then read.
     delay(2);
 
     uint8_t actualRead = (readLen > 0 && readLen <= 64) ? readLen : 32;
@@ -395,13 +394,13 @@ static bool pn532TransactIRQ(const uint8_t *cmd, uint8_t cmdlen,
  * @param cmdLen  Output: number of APDU bytes
  * @return true if APDU received, false if phone disconnected or timeout
  */
-static bool getDataTargetIRQ(uint8_t *cmd, uint8_t *cmdLen)
+static bool getDataTargetIRQ(uint8_t *cmd, uint8_t *cmdLen, uint16_t timeout_ms = 1000)
 {
     uint8_t tgGetData[] = {0x86};  // TgGetData command
     uint8_t frame[70];
     uint8_t frameLen = 0;
 
-    if (!pn532TransactIRQ(tgGetData, 1, frame, &frameLen, 32, 1000)) {
+    if (!pn532TransactIRQ(tgGetData, 1, frame, &frameLen, 32, timeout_ms)) {
         return false;
     }
 
@@ -464,14 +463,21 @@ static bool setDataTargetIRQ(const uint8_t *cmd, uint8_t cmdlen)
  */
 static bool asTargetIRQ(uint16_t timeout_ms = 0)
 {
-    // TgInitAsTarget command payload
+    // TgInitAsTarget command payload — ORIGINAL parameters that produced
+    // successful ISO-DEP APDU exchanges on this PN532 clone (v50, fw 1.6).
+    //
+    // IMPORTANT: This PN532 clone reports mode=0x08 in the response even
+    // when the phone actually activated ISO-DEP (RATS/ATS). The mode byte
+    // is UNRELIABLE on clones — do NOT reject based on it. Just proceed
+    // with APDU exchange; if it's truly NFC-DEP, TgGetData will fail
+    // immediately and we'll cleanly exit the session.
     static const uint8_t target[] = {
         0x8C,             // INIT AS TARGET
-        0x00,             // MODE: passive only, all speeds
+        0x00,             // MODE: passive, all speeds, PICC + DEP
         0x08, 0x00,       // SENS_RES (ATQA)
         0xdc, 0x44, 0x20, // NFCID1T (3-byte UID)
-        0x20,             // SEL_RES (SAK: 0x20 = ISO 14443-4/ISO-DEP only, NO NFC-DEP)
-        0x01, 0xfe,       // NFCID2T (Felica, must start with 01fe)
+        0x20,             // SEL_RES (SAK: 0x20 = ISO-DEP only in NFC Forum spec)
+        0x01, 0xfe,       // NFCID2T (Felica, starts with 01fe)
         0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
         0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7, // PAD
         0xff, 0xff,                                         // SYSTEM CODE
@@ -485,16 +491,18 @@ static bool asTargetIRQ(uint16_t timeout_ms = 0)
     uint8_t frameLen = 0;
 
     if (!pn532TransactIRQ(target, sizeof(target), frame, &frameLen, 32, timeout_ms, 50)) {
-        // Timeout or failure — just return false.
-        // Do NOT call SAMConfig here: the PN532 auto-aborts the pending
-        // TgInitAsTarget when it receives the next command. SAMConfig
-        // during idle was causing Error -1 (fixed-size reads on stale data).
         return false;
     }
 
-    // Validate TgInitAsTarget response: D5 8D
-    for (uint8_t i = 0; i + 1 < frameLen; i++) {
-        if (frame[i] == 0xD5 && frame[i + 1] == 0x8D) return true;
+    // Validate TgInitAsTarget response: D5 8D [MODE]
+    // Log mode for diagnostics only — do NOT reject based on mode byte.
+    // PN532 clones report mode=0x08 even for ISO-DEP connections.
+    for (uint8_t i = 0; i + 2 < frameLen; i++) {
+        if (frame[i] == 0xD5 && frame[i + 1] == 0x8D) {
+            uint8_t mode = frame[i + 2];
+            LOG_INFO("NFC", String("TgInitAsTarget: mode=0x") + String(mode, HEX));
+            return true;
+        }
     }
 
     LOG_DEBUG("NFC", "asTargetIRQ: invalid response");
@@ -562,11 +570,25 @@ static void emulation_task_code(void *pvParams)
         }
 
         LOG_INFO("NFC", "Phone connected — processing APDUs");
-        // Wait for ISO 14443-4 activation (RATS/ATS) to complete.
-        // The PN532 handles RATS/ATS internally after TgInitAsTarget.
-        vTaskDelay(pdMS_TO_TICKS(30));
+        // Minimal delay for RATS/ATS — PN532 handles this internally.
+        // The successful payment session used 30ms. Shorter is better:
+        // the phone may time out if we wait too long before TgGetData.
+        vTaskDelay(pdMS_TO_TICKS(20));
         SelectedFile selectedFile = SEL_NONE;
         bool sessionActive = true;
+
+        // First APDU: use short timeout (300ms).
+        // If the phone connected via NFC-DEP (P2P) instead of ISO-DEP,
+        // no APDU will arrive. Fail fast so we can re-enter TgInitAsTarget
+        // and catch the next attempt (which may be ISO-DEP).
+        // This PN532 clone reports mode=0x08 for ALL connections, so we
+        // can't distinguish ISO-DEP from NFC-DEP via mode byte.
+        cmdLen = 0;
+        if (!getDataTargetIRQ(cmdBuf, &cmdLen, 300)) {
+            LOG_INFO("NFC", "First APDU not received (300ms) — retrying Target Mode");
+            continue;  // Skip bus recovery, re-enter TgInitAsTarget directly
+        }
+        goto first_apdu_received;
 
         // APDU exchange loop — process commands from the phone
         while (sessionActive && s_emulRunning)
@@ -578,6 +600,7 @@ static void emulation_task_code(void *pvParams)
                 break;
             }
 
+        first_apdu_received:
             // Log received APDU (hex dump, first 16 bytes max)
             {
                 String hex = "";
