@@ -362,6 +362,18 @@ static bool pn532TransactIRQ(const uint8_t *cmd, uint8_t cmdlen,
         raw[readCount++] = Wire.read();
     }
 
+    // I2C retry: if first read failed (Error -1 / NACK), try once more.
+    // The PN532 data is still in its buffer — a brief pause often clears
+    // the bus glitch. This saves sessions that would otherwise abort.
+    if (readCount < 8 || raw[0] != PN532_I2C_READY) {
+        delay(2);
+        readCount = 0;
+        Wire.requestFrom((uint8_t)PN532_I2C_ADDRESS, actualRead);
+        while (Wire.available() && readCount < actualRead) {
+            raw[readCount++] = Wire.read();
+        }
+    }
+
     // Validate: RDY byte must be 0x01
     if (readCount < 8 || raw[0] != PN532_I2C_READY) {
         LOG_INFO("NFC", String("pn532TransactIRQ: bad, cnt=") + String(readCount) +
@@ -537,6 +549,8 @@ static void emulation_task_code(void *pvParams)
 
     LOG_INFO("NFC", "Card emulation task started");
 
+    uint8_t consecutiveFastFails = 0;  // Track repeated fast-fail retries
+
     while (s_emulRunning)
     {
         // Only emulate when device is in a payment-ready state
@@ -576,6 +590,7 @@ static void emulation_task_code(void *pvParams)
         vTaskDelay(pdMS_TO_TICKS(20));
         SelectedFile selectedFile = SEL_NONE;
         bool sessionActive = true;
+        uint8_t apduCount = 0;  // Track APDUs exchanged in this session
 
         // First APDU: use short timeout (300ms).
         // If the phone connected via NFC-DEP (P2P) instead of ISO-DEP,
@@ -585,9 +600,21 @@ static void emulation_task_code(void *pvParams)
         // can't distinguish ISO-DEP from NFC-DEP via mode byte.
         cmdLen = 0;
         if (!getDataTargetIRQ(cmdBuf, &cmdLen, 300)) {
-            LOG_INFO("NFC", "First APDU not received (300ms) — retrying Target Mode");
-            continue;  // Skip bus recovery, re-enter TgInitAsTarget directly
+            consecutiveFastFails++;
+            if (consecutiveFastFails >= 3) {
+                // Phone is on the field but not sending APDUs.
+                // Wait 3s so phone detects "tag gone" and resets NFC stack.
+                LOG_INFO("NFC", String("Fast-fail x") + String(consecutiveFastFails) +
+                                " — cooldown 3s for phone NFC reset");
+                pn532RecoverBus();
+                vTaskDelay(pdMS_TO_TICKS(3000));
+                consecutiveFastFails = 0;
+            } else {
+                LOG_INFO("NFC", "First APDU not received (300ms) — retrying Target Mode");
+            }
+            continue;
         }
+        consecutiveFastFails = 0;  // Successful APDU resets counter
         goto first_apdu_received;
 
         // APDU exchange loop — process commands from the phone
@@ -601,6 +628,7 @@ static void emulation_task_code(void *pvParams)
             }
 
         first_apdu_received:
+            apduCount++;
             // Log received APDU (hex dump, first 16 bytes max)
             {
                 String hex = "";
@@ -707,8 +735,24 @@ static void emulation_task_code(void *pvParams)
         // Reset PN532 and recover I2C bus before re-entering target mode
         pn532RecoverBus();
         pn532SAMConfigRaw();
-        LOG_INFO("NFC", "Phone disconnected — returning to Target Mode");
-        vTaskDelay(pdMS_TO_TICKS(200));  // Brief pause before re-entering Target Mode
+        // Expected APDUs for a complete NDEF read:
+        //   4 setup (SELECT App, SELECT CC, READ CC, SELECT NDEF)
+        // + 1 READ NDEF length (2 bytes)
+        // + ceil(ndefLen / 59) READ NDEF data chunks
+        // Phone max read per APDU is 59 bytes (Le=0x3B).
+        uint8_t expectedApdus = 4 + 1 + ((ndefLen + 58) / 59);
+        if (apduCount > 0 && apduCount < expectedApdus) {
+            // Phone started ISO-DEP NDEF reading but disconnected mid-session.
+            // Stay out of Target Mode for 2s so phone's NFC stack detects
+            // "tag gone" and resets — prevents pointless reconnect loops.
+            LOG_INFO("NFC", String("Session incomplete: ") + String(apduCount) +
+                            "/" + String(expectedApdus) +
+                            " APDUs — cooldown 2s for phone NFC reset");
+            vTaskDelay(pdMS_TO_TICKS(2000));
+        } else {
+            LOG_INFO("NFC", "Phone disconnected — returning to Target Mode");
+            vTaskDelay(pdMS_TO_TICKS(200));
+        }
     }
 
     LOG_INFO("NFC", "Card emulation task ending");
