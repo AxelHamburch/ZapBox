@@ -368,9 +368,10 @@ void readFiles()
         lightBarrierSetting.toLowerCase();
         lightBarrierSetting.trim();
         lightBarrierConfig.mode = lightBarrierSetting;
-        lightBarrierConfig.enabled = (lightBarrierSetting == "yes");
+        lightBarrierConfig.enabled    = (lightBarrierSetting == "yes");
+        lightBarrierConfig.monitoring = (lightBarrierSetting == "monitor");
       }
-      LOG_INFO("Config", String("Light barrier: ") + (lightBarrierConfig.enabled ? "ENABLED" : "DISABLED"));
+      LOG_INFO("Config", String("Light barrier: ") + (lightBarrierConfig.enabled ? "STOP mode" : lightBarrierConfig.monitoring ? "MONITOR mode" : "DISABLED"));
     }
 
     // Read currency configuration (index 20)
@@ -884,7 +885,7 @@ void setup()
   
   // Vending machine light barrier (NPN on GPIO 2)
   #ifdef PIN_LIGHT_BARRIER
-  if (lightBarrierConfig.enabled) {
+  if (lightBarrierConfig.isActive()) {
     pinMode(PIN_LIGHT_BARRIER, INPUT_PULLUP);  // NPN light barrier with pull-up
     Serial.println("[LIGHT BARRIER] GPIO 2 initialized (NPN sensor, active LOW)");
   }
@@ -2452,6 +2453,31 @@ inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
   return false;
 }
 
+// Helper function: Check for product blockage after payment (monitor mode only).
+// If PIN_LIGHT_BARRIER is still LOW after payment, the product exit is blocked.
+// Shows the blocked screen, sets lightBarrierConfig.blocked, and waits until clear.
+static void checkProductBlockage() {
+  #ifdef PIN_LIGHT_BARRIER
+  if (!lightBarrierConfig.monitoring) return; // Only active in "monitor" mode
+
+  bool isBlocked = (digitalRead(PIN_LIGHT_BARRIER) == LOW);
+  if (!isBlocked) return; // Path is clear — nothing to do
+
+  Serial.println("[LIGHT BARRIER] Product blockage detected — waiting for clearance");
+  lightBarrierConfig.blocked = true;
+  productBlockedScreen();
+
+  // Wait until the light barrier clears (product removed by customer or operator)
+  while (digitalRead(PIN_LIGHT_BARRIER) == LOW) {
+    webSocket.loop();
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+
+  lightBarrierConfig.blocked = false;
+  Serial.println("[LIGHT BARRIER] Product blockage cleared — ready for next payment");
+  #endif
+}
+
 static void processThresholdPayment(const JsonDocument &doc)
 {
   JsonVariantConst payment = doc["payment"];
@@ -2539,6 +2565,9 @@ static void processThresholdPayment(const JsonDocument &doc)
       webSocket.loop(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
     }
+
+    // Monitor mode: block next payment until product path is clear
+    checkProductBlockage();
     
     // Reset timer AFTER thank you screen so full PRODUCT_TIMEOUT runs from now
     productSelectionState.showTime = millis();
@@ -2753,6 +2782,9 @@ static void processNormalPayment(int pin, int duration)
     webSocket.loop(); // Keep WebSocket connection alive
     vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
   }
+
+  // Monitor mode: block next payment until product path is clear
+  checkProductBlockage();
   
   // Reset timer AFTER thank you screen so full PRODUCT_TIMEOUT runs from now
   productSelectionState.showTime = millis();

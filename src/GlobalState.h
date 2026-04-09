@@ -120,9 +120,12 @@ extern MultiChannelConfig multiChannelConfig;
 // ============================================================================
 
 struct LightBarrierConfig {
-  String mode = "no";  // "no" (disabled), "yes" (stop action on trigger)
-  bool enabled = false; // Parsed boolean for easy checking
+  String mode = "no";  // "no" (disabled), "yes" (stop action on trigger), "monitor" (block next payment)
+  bool enabled = false;    // true when mode == "yes"
+  bool monitoring = false; // true when mode == "monitor"
+  bool blocked = false;    // runtime: product output currently blocked
   unsigned long minActionTime = 2000; // Minimum 2 seconds before light barrier can stop action
+  bool isActive() const { return enabled || monitoring; }
 };
 
 extern LightBarrierConfig lightBarrierConfig;

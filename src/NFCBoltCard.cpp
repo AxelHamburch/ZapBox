@@ -281,11 +281,13 @@ static void nfc_task_code(void *pvParams)
                 curState == DeviceState::PRODUCT_SELECTION||
                 curState == DeviceState::BTC_TICKER      ||
                 curState == DeviceState::SCREENSAVER     ||
-                tickerShowing)
+                tickerShowing                            ||
+                lightBarrierConfig.blocked)
             {
                 LOG_WARN("NFC", String("Card tap ignored – device not ready (state: ") +
                                     deviceState.getDeviceStateName(curState) +
-                                    String(", ticker: ") + String(tickerShowing) + String(")"));
+                                    String(", ticker: ") + String(tickerShowing) +
+                                    String(", blocked: ") + String(lightBarrierConfig.blocked) + String(")"));
                 // For PRODUCT_SELECTION, BTC_TICKER and SCREENSAVER the device
                 // can quickly transition to READY while the card is still on
                 // the reader.  Without waiting for removal the card would be
@@ -293,7 +295,8 @@ static void nfc_task_code(void *pvParams)
                 if (curState == DeviceState::PRODUCT_SELECTION ||
                     curState == DeviceState::BTC_TICKER       ||
                     curState == DeviceState::SCREENSAVER      ||
-                    tickerShowing)
+                    tickerShowing                             ||
+                    lightBarrierConfig.blocked)
                 {
                     waitForCardRemoval();
                 }
