@@ -1067,6 +1067,7 @@ Electrical design and housing variants, see table.
 | b940298 | Duo | Update & NFC lid |
 | b943400 | Headless | Headless with NFC |
 | b943614 | Servo | The first one with servo control |
+| b944177 | Headless | Mounting plate with snap-fit connection |
 
 -> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
