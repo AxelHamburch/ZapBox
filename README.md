@@ -187,7 +187,11 @@ Device String (switchStr)
 
 **Feature:** Optical item detection for vending machines via infrared light barrier.
 
-**Use Cases:** This allows automated systems to detect the end of the conveying cycle, as the product has fallen through the light barrier. The conveying cycle is thus terminated prematurely.
+**Two operating modes:**
+
+- **Stop the advance** (`yes`): The conveying cycle is terminated early as soon as the product falls through the light barrier. This stops the mechanism as soon as the item is detected.
+
+- **Monitoring Product Blockage** (`monitor`): After each payment the device checks whether the product exit path is clear. If the light barrier is still active (product blocked), the display shows a warning screen ("PRODUCT BLOCKED – Remove the product") and all further payments are locked — NFC taps and QR payments are refused — until the path is physically cleared. Once the sensor goes inactive again, payment is re-enabled automatically.
 
 **Hardware:** NPN phototransistor light barrier module (3-wire, active LOW)
 - **Pin Assignment**: GPIO 2 (T-Display-S3 only)

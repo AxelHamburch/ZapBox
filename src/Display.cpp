@@ -1148,6 +1148,28 @@ void thankYouScreen()
   }
 }
 
+// Product output blocked — shown after payment when light barrier detects no product dispensed
+void productBlockedScreen()
+{
+  DisplayLock lock;
+  safeFillScreen(0xFBE0); // Warm amber background
+  tft.setTextDatum(MC_DATUM);
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_BLACK);
+    tft.drawString("PRODUCT", x, y - 40, GFXFF);
+    tft.drawString("BLOCKED", x, y - 10, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("Remove the product", x, y + 30, GFXFF);
+  } else {
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_BLACK);
+    tft.drawString("PRODUCT BLOCKED", x + 10, y - 20, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("Remove the product", x + 10, y + 15, GFXFF);
+  }
+}
+
 // Show QR for ZAP action - uses product label from backend if available
 void showQRScreen()
 {

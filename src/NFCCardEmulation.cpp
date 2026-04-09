@@ -664,7 +664,7 @@ static void emulation_task_code(void *pvParams)
         {
             DeviceState curState = deviceState.getState();
             bool tickerShowing = multiChannelConfig.btcTickerActive;
-            if (curState != DeviceState::READY || tickerShowing)
+            if (curState != DeviceState::READY || tickerShowing || lightBarrierConfig.blocked)
             {
                 vTaskDelay(pdMS_TO_TICKS(200));
                 continue;
