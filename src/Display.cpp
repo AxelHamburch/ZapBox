@@ -1164,7 +1164,7 @@ void productBlockedScreen()
   } else {
     tft.setTextSize(2);
     tft.setTextColor(TFT_BLACK);
-    tft.drawString("PRODUCT BLOCKED", x + 10, y - 20, GFXFF);
+    tft.drawString("PRODUCT IN THE EJECTOR", x + 10, y - 20, GFXFF);
     tft.setTextSize(2);
     tft.drawString("Remove the product", x + 10, y + 15, GFXFF);
   }
