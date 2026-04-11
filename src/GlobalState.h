@@ -123,10 +123,11 @@ extern MultiChannelConfig multiChannelConfig;
 
 struct LightBarrierConfig {
   // Sensor 1 — GPIO 2 (T-Display-S3) or GPIO 22 (headless)
-  String mode = "no";  // "no" (disabled), "yes" (stop action on trigger), "monitor" (block next payment), "level" (level monitoring)
+  String mode = "no";  // "no" (disabled), "yes" (stop action on trigger), "monitor" (block next payment), "level" (level monitoring), "relay" (relay output synced with pin 12)
   bool enabled = false;         // true when mode == "yes"
   bool monitoring = false;      // true when mode == "monitor"
   bool levelMonitoring = false; // true when mode == "level"
+  bool relayOutput = false;     // true when mode == "relay" (headless: GPIO acts as relay output, synced with pin 12)
   bool blocked = false;         // runtime: product output currently blocked (monitor mode)
   bool binEmpty = false;        // runtime: supply bin is empty (level monitoring mode)
   unsigned long minActionTime = 2000; // Minimum 2 seconds before light barrier can stop action
@@ -136,6 +137,7 @@ struct LightBarrierConfig {
   bool enabled2 = false;
   bool monitoring2 = false;
   bool levelMonitoring2 = false;
+  bool relayOutput2 = false;    // true when mode2 == "relay"
   bool blocked2 = false;
   bool binEmpty2 = false;
 

@@ -87,6 +87,14 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     Serial.println("[SPECIAL] Pin 13 will be controlled in parallel to Pin 12 (Single mode)");
   }
   
+  // Relay output mode: GPIO 22/23 switch together with Pin 12 (headless only)
+  #if !ENABLE_DISPLAY
+  bool relayOut1 = (pin == 12 && lightBarrierConfig.relayOutput);
+  bool relayOut2 = (pin == 12 && lightBarrierConfig.relayOutput2);
+  if (relayOut1) Serial.println("[SPECIAL] GPIO 22 will be controlled in parallel to Pin 12 (relay output)");
+  if (relayOut2) Serial.println("[SPECIAL] GPIO 23 will be controlled in parallel to Pin 12 (relay output)");
+  #endif
+  
   // Execute cycles until duration is reached
   while (elapsed < duration_ms) {
     // Check for config mode interrupt
@@ -96,6 +104,10 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
       if (parallelPin13) {
         digitalWrite(13, LOW);
       }
+      #if !ENABLE_DISPLAY
+      if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
+      if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
+      #endif
       break;
     }
     
@@ -106,6 +118,10 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     if (parallelPin13) {
       digitalWrite(13, HIGH);
     }
+    #if !ENABLE_DISPLAY
+    if (relayOut1) digitalWrite(PIN_SENSOR_1, HIGH);
+    if (relayOut2) digitalWrite(PIN_SENSOR_2, HIGH);
+    #endif
     Serial.printf("[SPECIAL] Cycle %d: Pin HIGH\n", cycleCount);
     
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
@@ -118,6 +134,10 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
         if (parallelPin13) {
           digitalWrite(13, LOW);
         }
+        #if !ENABLE_DISPLAY
+        if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
+        if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
+        #endif
         return; // Exit special mode immediately
       }
       // Update countdown timer once per second
@@ -137,6 +157,10 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     if (parallelPin13) {
       digitalWrite(13, LOW);
     }
+    #if !ENABLE_DISPLAY
+    if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
+    if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
+    #endif
     Serial.printf("[SPECIAL] Cycle %d: Pin LOW\n", cycleCount);
     
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
@@ -167,5 +191,9 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
   if (parallelPin13) {
     digitalWrite(13, LOW);
   }
+  #if !ENABLE_DISPLAY
+  if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
+  if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
+  #endif
   Serial.printf("[SPECIAL] Completed %d cycles in %lu ms\n", cycleCount, elapsed);
 }

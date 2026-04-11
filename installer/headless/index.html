@@ -199,8 +199,8 @@
                     <label for="zapboxMode">ZapBox Mode</label>
                     <select name="zapboxMode" id="zapboxMode">
                         <option value="off" selected>Relay function (default)</option>
-                        <option value="servo180">180° Servo</option>
-                        <option value="servo360">360° Servo</option>
+                        <option value="servo180">180° Servo (0°-180°)</option>
+                        <option value="servo360">360° Servo (360° rotation)</option>
                     </select>
                     <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Select the configuration for pin 12</p>
                 </div>
@@ -291,9 +291,10 @@
                     <label for="vendingSensor1">Sensor 1 — GPIO 22</label>
                     <select name="vendingSensor1" id="vendingSensor1">
                         <option value="no" selected>No function (default)</option>
-                        <option value="yes">Stop the advance</option>
-                        <option value="monitor">Monitoring product blockage</option>
+                        <option value="yes">Stop the advance (Product ejected, slide stopped)</option>
+                        <option value="monitor">Monitoring product blockage (Remove product to resume)</option>
                         <option value="level">Level monitoring (empty bin)</option>
+                        <option value="relay">Use as relay output (Switches via pin 12)</option>
                     </select>
                     <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for sensor input on GPIO 22</p>
                 </div>
@@ -301,9 +302,10 @@
                     <label for="vendingSensor2">Sensor 2 — GPIO 23</label>
                     <select name="vendingSensor2" id="vendingSensor2">
                         <option value="no" selected>No function (default)</option>
-                        <option value="yes">Stop the advance</option>
-                        <option value="monitor">Monitoring product blockage</option>
+                        <option value="yes">Stop the advance (Product ejected, slide stopped)</option>
+                        <option value="monitor">Monitoring product blockage (Remove product to resume)</option>
                         <option value="level">Level monitoring (empty bin)</option>
+                        <option value="relay">Use as relay output (Switches via pin 12)</option>
                     </select>
                     <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for sensor input on GPIO 23</p>
                 </div>
@@ -314,6 +316,7 @@
                 <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Stop the advance</strong></td><td>Stops the relay action when the sensor detects a product (LOW signal). Minimum action time of 2 seconds before the sensor can trigger.</td></tr>
                 <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Monitoring product blockage</strong></td><td>After a payment, checks if the product exit is blocked (sensor LOW). Blocks further payments until the path is cleared.</td></tr>
                 <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Level monitoring</strong></td><td>Continuously monitors the supply bin fill level. When the sensor goes HIGH (no product detected), the bin is considered empty and payments are blocked until restocked.</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Relay output</strong></td><td>External relays can be connected to GPIO 22 and 23. They will always switch together with GPIO 12, regardless of whether Relay or Servo function is selected.</td></tr>
             </table>
 
             <p style="margin-top: 14px; color: #888;"><i><strong>⚠ Important:</strong> When a sensor function is active on GPIO 22 or GPIO 23, those GPIOs are configured as <strong>INPUT_PULLUP</strong> and are no longer available as relay output channels (CH06/CH07). Make sure your LNbits switch configuration does not use these GPIOs when sensor features are active.</i></p>

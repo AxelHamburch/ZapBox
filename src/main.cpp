@@ -371,11 +371,12 @@ void readFiles()
         lightBarrierConfig.enabled         = (lightBarrierSetting == "yes");
         lightBarrierConfig.monitoring      = (lightBarrierSetting == "monitor");
         lightBarrierConfig.levelMonitoring = (lightBarrierSetting == "level");
+        lightBarrierConfig.relayOutput     = (lightBarrierSetting == "relay");
       }
       #if ENABLE_DISPLAY
       LOG_INFO("Config", String("Light barrier (GPIO 2): ") + (lightBarrierConfig.enabled ? "STOP mode" : lightBarrierConfig.monitoring ? "MONITOR mode" : lightBarrierConfig.levelMonitoring ? "LEVEL MONITORING mode" : "DISABLED"));
       #else
-      LOG_INFO("Config", String("Sensor 1 (GPIO 22): ") + (lightBarrierConfig.enabled ? "STOP mode" : lightBarrierConfig.monitoring ? "MONITOR mode" : lightBarrierConfig.levelMonitoring ? "LEVEL MONITORING mode" : "DISABLED"));
+      LOG_INFO("Config", String("Sensor 1 (GPIO 22): ") + (lightBarrierConfig.enabled ? "STOP mode" : lightBarrierConfig.monitoring ? "MONITOR mode" : lightBarrierConfig.levelMonitoring ? "LEVEL MONITORING mode" : lightBarrierConfig.relayOutput ? "RELAY OUTPUT mode" : "DISABLED"));
       #endif
     }
 
@@ -392,8 +393,9 @@ void readFiles()
         lightBarrierConfig.enabled2         = (sensor2Setting == "yes");
         lightBarrierConfig.monitoring2      = (sensor2Setting == "monitor");
         lightBarrierConfig.levelMonitoring2 = (sensor2Setting == "level");
+        lightBarrierConfig.relayOutput2     = (sensor2Setting == "relay");
       }
-      LOG_INFO("Config", String("Sensor 2 (GPIO 23): ") + (lightBarrierConfig.enabled2 ? "STOP mode" : lightBarrierConfig.monitoring2 ? "MONITOR mode" : lightBarrierConfig.levelMonitoring2 ? "LEVEL MONITORING mode" : "DISABLED"));
+      LOG_INFO("Config", String("Sensor 2 (GPIO 23): ") + (lightBarrierConfig.enabled2 ? "STOP mode" : lightBarrierConfig.monitoring2 ? "MONITOR mode" : lightBarrierConfig.levelMonitoring2 ? "LEVEL MONITORING mode" : lightBarrierConfig.relayOutput2 ? "RELAY OUTPUT mode" : "DISABLED"));
     }
     #endif
 
@@ -917,18 +919,7 @@ void setup()
   #endif
 
   // Vending machine sensor inputs (headless only — GPIO 22/23)
-  #ifdef PIN_SENSOR_1
-  if (lightBarrierConfig.isActive()) {
-    pinMode(PIN_SENSOR_1, INPUT_PULLUP);
-    Serial.println("[SENSOR] GPIO 22 initialized (sensor 1, active LOW)");
-  }
-  #endif
-  #ifdef PIN_SENSOR_2
-  if (lightBarrierConfig.isActive2()) {
-    pinMode(PIN_SENSOR_2, INPUT_PULLUP);
-    Serial.println("[SENSOR] GPIO 23 initialized (sensor 2, active LOW)");
-  }
-  #endif
+  // NOTE: Moved AFTER readFiles() — see sensor/relay-output init below
 
   // Boot indicator: Blink LEDs 3 times quickly to show device is starting
   for (int i = 0; i < 3; i++) {
@@ -965,19 +956,52 @@ void setup()
   }
 
 #if !ENABLE_DISPLAY
+  // Vending machine sensor / relay-output init (headless — GPIO 22/23)
+  // MUST be AFTER readFiles() because lightBarrierConfig is set during config parsing
+  #ifdef PIN_SENSOR_1
+  if (lightBarrierConfig.isActive()) {
+    pinMode(PIN_SENSOR_1, INPUT_PULLUP);
+    Serial.println("[SENSOR] GPIO 22 initialized (sensor 1, active LOW)");
+  } else if (lightBarrierConfig.relayOutput) {
+    pinMode(PIN_SENSOR_1, OUTPUT);
+    digitalWrite(PIN_SENSOR_1, LOW);
+    Serial.println("[RELAY] GPIO 22 initialized (relay output, synced with Pin 12)");
+  }
+  #endif
+  #ifdef PIN_SENSOR_2
+  if (lightBarrierConfig.isActive2()) {
+    pinMode(PIN_SENSOR_2, INPUT_PULLUP);
+    Serial.println("[SENSOR] GPIO 23 initialized (sensor 2, active LOW)");
+  } else if (lightBarrierConfig.relayOutput2) {
+    pinMode(PIN_SENSOR_2, OUTPUT);
+    digitalWrite(PIN_SENSOR_2, LOW);
+    Serial.println("[RELAY] GPIO 23 initialized (relay output, synced with Pin 12)");
+  }
+  #endif
+
   // Headless ESP32 Dev: initialize all 10 relay channels to LOW at startup.
   // CH01=GPIO12, CH02=GPIO13, CH03=GPIO14, CH04=GPIO16 (NOT 10/11 – internal flash!)
   // CH05-CH10: GPIO 19, 22, 23, 25, 26, 27  |  CH11=GPIO32, CH12=GPIO33
   for (int i = 0; i < RELAY_CHANNEL_MAX; i++) {
+    int p = RELAY_CHANNEL_PINS[i];
     // Skip Pin 12 when it's used as a servo (servo180/servo360 mode)
-    if ((multiChannelConfig.mode == "servo180" || multiChannelConfig.mode == "servo360") && RELAY_CHANNEL_PINS[i] == 12) {
+    if ((multiChannelConfig.mode == "servo180" || multiChannelConfig.mode == "servo360") && p == 12) {
       Serial.println("[RELAY] Skipping GPIO 12 (used as servo)");
       continue;
     }
-    pinMode(RELAY_CHANNEL_PINS[i], OUTPUT);
-    digitalWrite(RELAY_CHANNEL_PINS[i], LOW);
+    // Skip GPIO 22/23 when configured as sensor input or relay output (already initialized above)
+    if ((lightBarrierConfig.isActive() || lightBarrierConfig.relayOutput) && p == PIN_SENSOR_1) {
+      Serial.printf("[RELAY] Skipping GPIO %d (configured as sensor/relay-output)\n", p);
+      continue;
+    }
+    if ((lightBarrierConfig.isActive2() || lightBarrierConfig.relayOutput2) && p == PIN_SENSOR_2) {
+      Serial.printf("[RELAY] Skipping GPIO %d (configured as sensor/relay-output)\n", p);
+      continue;
+    }
+    pinMode(p, OUTPUT);
+    digitalWrite(p, LOW);
   }
-  Serial.println("[RELAY] All 10 relay channels initialized (GPIOs 12,13,10,11,19,22,23,25,26,27)");
+  Serial.println("[RELAY] Relay channels initialized");
 #endif
 
   initDisplayMutex(); // MUST be called before any display function (thread-safe SPI)
@@ -2890,6 +2914,20 @@ static void processNormalPayment(int pin, int duration)
       Serial.println("[RELAY] Pin 13 set HIGH (parallel to Pin 12 in Single mode)");
     }
 
+    // Relay output mode: GPIO 22/23 switch together with Pin 12
+    #if !ENABLE_DISPLAY
+    if (pin == 12) {
+      if (lightBarrierConfig.relayOutput) {
+        digitalWrite(PIN_SENSOR_1, HIGH);
+        Serial.println("[RELAY] GPIO 22 set HIGH (relay output, synced with Pin 12)");
+      }
+      if (lightBarrierConfig.relayOutput2) {
+        digitalWrite(PIN_SENSOR_2, HIGH);
+        Serial.println("[RELAY] GPIO 23 set HIGH (relay output, synced with Pin 12)");
+      }
+    }
+    #endif
+
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
     unsigned long startTime = millis();
     int lastDisplayedSec = -1;
@@ -2922,6 +2960,20 @@ static void processNormalPayment(int pin, int duration)
       digitalWrite(13, LOW);
       Serial.println("[RELAY] Pin 13 set LOW (parallel to Pin 12 in Single mode)");
     }
+
+    // Relay output mode: GPIO 22/23 switch off together with Pin 12
+    #if !ENABLE_DISPLAY
+    if (pin == 12) {
+      if (lightBarrierConfig.relayOutput) {
+        digitalWrite(PIN_SENSOR_1, LOW);
+        Serial.println("[RELAY] GPIO 22 set LOW (relay output, synced with Pin 12)");
+      }
+      if (lightBarrierConfig.relayOutput2) {
+        digitalWrite(PIN_SENSOR_2, LOW);
+        Serial.println("[RELAY] GPIO 23 set LOW (relay output, synced with Pin 12)");
+      }
+    }
+    #endif
   }
 
   thankYouScreen();
