@@ -32,6 +32,7 @@ void nfcNotSupportedScreen();
 void nfcErrorDetailScreen(const char* detail);
 void thankYouScreen();
 void productBlockedScreen();
+void supplyBinEmptyScreen();
 void drawQRCode();
 void showQRScreen();
 void showThresholdQRScreen();
@@ -76,6 +77,7 @@ inline void nfcNotSupportedScreen() {}
 inline void nfcErrorDetailScreen(const char*) {}
 inline void thankYouScreen() {}
 inline void productBlockedScreen() {}
+inline void supplyBinEmptyScreen() {}
 inline void drawQRCode() {}
 inline void showQRScreen() {}
 inline void showThresholdQRScreen() {}

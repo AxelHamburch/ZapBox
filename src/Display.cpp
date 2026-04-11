@@ -1170,6 +1170,28 @@ void productBlockedScreen()
   }
 }
 
+// Supply bin empty — shown when level sensor (pin 2 HIGH) indicates empty bin
+void supplyBinEmptyScreen()
+{
+  DisplayLock lock;
+  safeFillScreen(0xFBE0); // Warm amber background
+  tft.setTextDatum(MC_DATUM);
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_BLACK);
+    tft.drawString("SUPPLY BIN", x, y - 40, GFXFF);
+    tft.drawString("IS EMPTY", x, y - 10, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("Please restock it", x, y + 30, GFXFF);
+  } else {
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_BLACK);
+    tft.drawString("THE SUPPLY BIN IS EMPTY", x, y - 20, GFXFF);
+    tft.setTextSize(2);
+    tft.drawString("Please restock it", x, y + 15, GFXFF);
+  }
+}
+
 // Show QR for ZAP action - uses product label from backend if available
 void showQRScreen()
 {

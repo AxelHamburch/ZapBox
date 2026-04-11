@@ -129,6 +129,12 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     LOG_INFO("NFC", "LNURLW received from Bolt Card – sending WS event");
 
+    // Block NFC payments when supply bin is empty (level monitoring mode)
+    if (lightBarrierConfig.binEmpty) {
+        LOG_WARN("NFC", "NFC tap blocked — supply bin is empty (level monitoring)");
+        return;
+    }
+
     // Determine which relay pin is currently active.
     // In servo mode, use productToPin() which skips inactive channels.
     // Otherwise use RELAY_CHANNEL_PINS[product-1] (standard mapping from PinConfig.h).

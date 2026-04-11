@@ -368,10 +368,11 @@ void readFiles()
         lightBarrierSetting.toLowerCase();
         lightBarrierSetting.trim();
         lightBarrierConfig.mode = lightBarrierSetting;
-        lightBarrierConfig.enabled    = (lightBarrierSetting == "yes");
-        lightBarrierConfig.monitoring = (lightBarrierSetting == "monitor");
+        lightBarrierConfig.enabled         = (lightBarrierSetting == "yes");
+        lightBarrierConfig.monitoring      = (lightBarrierSetting == "monitor");
+        lightBarrierConfig.levelMonitoring = (lightBarrierSetting == "level");
       }
-      LOG_INFO("Config", String("Light barrier: ") + (lightBarrierConfig.enabled ? "STOP mode" : lightBarrierConfig.monitoring ? "MONITOR mode" : "DISABLED"));
+      LOG_INFO("Config", String("Light barrier: ") + (lightBarrierConfig.enabled ? "STOP mode" : lightBarrierConfig.monitoring ? "MONITOR mode" : lightBarrierConfig.levelMonitoring ? "LEVEL MONITORING mode" : "DISABLED"));
     }
 
     // Read currency configuration (index 20)
@@ -2407,15 +2408,37 @@ void loop()
       lastWiFiCheck = millis();
     }
     
+    // ── Level monitoring: continuous bin-empty check (PIN 2 HIGH = empty) ────
+    #ifdef PIN_LIGHT_BARRIER
+    if (lightBarrierConfig.levelMonitoring) {
+      bool pinIsLow = (digitalRead(PIN_LIGHT_BARRIER) == LOW);
+      if (!pinIsLow && !lightBarrierConfig.binEmpty) {
+        lightBarrierConfig.binEmpty = true;
+        supplyBinEmptyScreen();
+        Serial.println("[LEVEL MONITOR] Bin empty detected — payments blocked");
+      } else if (pinIsLow && lightBarrierConfig.binEmpty) {
+        lightBarrierConfig.binEmpty = false;
+        Serial.println("[LEVEL MONITOR] Bin restocked — payments re-enabled");
+        redrawQRScreen();
+      }
+    }
+    #endif
+
     // Process payments from queue
     if (paymentQueue.hasPending() && !paymentQueue.processing) {
-      paymentQueue.processing = true;
-      String payloadStr = paymentQueue.dequeue();
-      if (payloadStr.length() > 0) {
-        Serial.printf("[QUEUE] Processing payment from queue. Remaining: %d\n", paymentQueue.size());
-        processPaymentEvent(payloadStr);
+      // Block payment activation while supply bin is empty (level monitoring mode)
+      if (lightBarrierConfig.binEmpty) {
+        Serial.println("[LEVEL MONITOR] Payment skipped — supply bin is empty");
+        vTaskDelay(pdMS_TO_TICKS(500));
+      } else {
+        paymentQueue.processing = true;
+        String payloadStr = paymentQueue.dequeue();
+        if (payloadStr.length() > 0) {
+          Serial.printf("[QUEUE] Processing payment from queue. Remaining: %d\n", paymentQueue.size());
+          processPaymentEvent(payloadStr);
+        }
+        paymentQueue.processing = false;
       }
-      paymentQueue.processing = false;
     }
 
     // CRITICAL: Yield to other tasks to prevent tight loop
