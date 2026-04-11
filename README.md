@@ -147,9 +147,9 @@ Device String (switchStr)
 | 0 | BOOT Button | Input | Pull-up | Wake from sleep / Config mode |
 | 14 | HELP Button | Input | Pull-up | Help/Report mode |
 | 2 | Onboard LED | Output | HIGH=ON | Additional status LED (not used as sensor on headless) |
-| **Vending Sensors (Optional)** |
-| 22 | Sensor 1 | Input | Pull-up | Vending sensor input (when configured, replaces CH06) |
-| 23 | Sensor 2 | Input | Pull-up | Vending sensor input (when configured, replaces CH07) |
+| **Vending Sensors / Relay Output (Optional)** |
+| 22 | Sensor 1 / Relay Out | Input or Output | Pull-up / HIGH | Vending sensor input or relay output synced with Pin 12 (when configured, replaces CH06) |
+| 23 | Sensor 2 / Relay Out | Input or Output | Pull-up / HIGH | Vending sensor input or relay output synced with Pin 12 (when configured, replaces CH07) |
 | **LEDs & Status** |
 | 21 | Status LED | Output | HIGH=ON | Status indication (RTC-capable) |
 | **I2C (Optional)** |
@@ -223,10 +223,12 @@ Signal (NPN output)    →    GPIO 2
 
 - **Level monitoring** (`level`): Continuously monitors the supply bin fill level. When the sensor goes HIGH (no product), the bin is considered empty and payments are blocked until restocked.
 
+- **Relay output** (`relay`): Configures the GPIO as an additional relay output that switches in parallel with Pin 12 (CH01). Works with all ZapBox Modes (Relay, 180° Servo, 360° Servo) and Special Modes. Useful for driving additional relays, indicator lights, or secondary actuators synced with the main output.
+
 **Payment blocking behavior:** When a sensor condition blocks payments, the LED blinks very fast (10 Hz, 50 ms ON/OFF), the WebSocket connection is disconnected (LNbits server rejects static QR payments), and NFC Bolt Card taps are blocked. Once cleared, the WebSocket auto-reconnects and normal operation resumes.
 
 **Pin Assignment**: GPIO 22 (Sensor 1) and GPIO 23 (Sensor 2)
-- ⚠️ When a sensor function is active on GPIO 22 or 23, those GPIOs are no longer available as relay channels (CH06/CH07).
+- ⚠️ When a sensor or relay output function is active on GPIO 22 or 23, those GPIOs are no longer available as relay channels (CH06/CH07).
 
 ### Relay Control Pins
 
@@ -248,15 +250,24 @@ Signal (NPN output)    →    GPIO 2
 > Instead, the active GPIO is determined directly by the switch configuration in LNbits.
 > Simply assign the desired GPIO pin to each switch in the LNbits extension.
 
+**ZapBox Mode (Pin 12 / CH01):**
+Pin 12 can be configured to operate in one of three modes:
+- **Relay (default)**: Standard digital relay output (HIGH/LOW)
+- **180° Servo**: Positional servo on Pin 12 — sweeps between configurable start and end angles
+- **360° Servo**: Continuous rotation servo on Pin 12 — runs at configurable speed for set duration
+
+Servo parameters (angle start/end, speed, duration) are configured via the Web Installer.
+When servo mode is active, Pin 12 is reserved for the servo and skipped in the relay channel list.
+
 | Channel | GPIO | Note |
 |---------|------|------|
-| CH01 | 12 | Default / single-mode |
+| CH01 | 12 | Default / single-mode (or Servo in 180°/360° ZapBox Mode) |
 | CH02 | 13 | |
 | CH03 | 14 | ⚠️ GPIO 10 = internal flash on WROOM-32! |
 | CH04 | 16 | ⚠️ GPIO 11 = internal flash on WROOM-32! |
 | CH05 | 19 | |
-| CH06 | 22 | |
-| CH07 | 23 | |
+| CH06 | 22 | ⚠️ reserved when Sensor 1 or Relay Output active |
+| CH07 | 23 | ⚠️ reserved when Sensor 2 or Relay Output active |
 | CH08 | 25 | |
 | CH09 | 26 | |
 | CH10 | 27 | |
