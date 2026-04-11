@@ -372,8 +372,30 @@ void readFiles()
         lightBarrierConfig.monitoring      = (lightBarrierSetting == "monitor");
         lightBarrierConfig.levelMonitoring = (lightBarrierSetting == "level");
       }
-      LOG_INFO("Config", String("Light barrier: ") + (lightBarrierConfig.enabled ? "STOP mode" : lightBarrierConfig.monitoring ? "MONITOR mode" : lightBarrierConfig.levelMonitoring ? "LEVEL MONITORING mode" : "DISABLED"));
+      #if ENABLE_DISPLAY
+      LOG_INFO("Config", String("Light barrier (GPIO 2): ") + (lightBarrierConfig.enabled ? "STOP mode" : lightBarrierConfig.monitoring ? "MONITOR mode" : lightBarrierConfig.levelMonitoring ? "LEVEL MONITORING mode" : "DISABLED"));
+      #else
+      LOG_INFO("Config", String("Sensor 1 (GPIO 22): ") + (lightBarrierConfig.enabled ? "STOP mode" : lightBarrierConfig.monitoring ? "MONITOR mode" : lightBarrierConfig.levelMonitoring ? "LEVEL MONITORING mode" : "DISABLED"));
+      #endif
     }
+
+    // Read sensor 2 configuration (index 31, headless only — GPIO 23)
+    #if !ENABLE_DISPLAY
+    const JsonObject maRoot31 = doc[31];
+    if (!maRoot31.isNull()) {
+      const char *maRoot31Char = maRoot31["value"];
+      if (maRoot31Char != nullptr) {
+        String sensor2Setting = String(maRoot31Char);
+        sensor2Setting.toLowerCase();
+        sensor2Setting.trim();
+        lightBarrierConfig.mode2 = sensor2Setting;
+        lightBarrierConfig.enabled2         = (sensor2Setting == "yes");
+        lightBarrierConfig.monitoring2      = (sensor2Setting == "monitor");
+        lightBarrierConfig.levelMonitoring2 = (sensor2Setting == "level");
+      }
+      LOG_INFO("Config", String("Sensor 2 (GPIO 23): ") + (lightBarrierConfig.enabled2 ? "STOP mode" : lightBarrierConfig.monitoring2 ? "MONITOR mode" : lightBarrierConfig.levelMonitoring2 ? "LEVEL MONITORING mode" : "DISABLED"));
+    }
+    #endif
 
     // Read currency configuration (index 20)
     const JsonObject maRoot20 = doc[20];
@@ -889,6 +911,20 @@ void setup()
   if (lightBarrierConfig.isActive()) {
     pinMode(PIN_LIGHT_BARRIER, INPUT_PULLUP);  // NPN light barrier with pull-up
     Serial.println("[LIGHT BARRIER] GPIO 2 initialized (NPN sensor, active LOW)");
+  }
+  #endif
+
+  // Vending machine sensor inputs (headless only — GPIO 22/23)
+  #ifdef PIN_SENSOR_1
+  if (lightBarrierConfig.isActive()) {
+    pinMode(PIN_SENSOR_1, INPUT_PULLUP);
+    Serial.println("[SENSOR] GPIO 22 initialized (sensor 1, active LOW)");
+  }
+  #endif
+  #ifdef PIN_SENSOR_2
+  if (lightBarrierConfig.isActive2()) {
+    pinMode(PIN_SENSOR_2, INPUT_PULLUP);
+    Serial.println("[SENSOR] GPIO 23 initialized (sensor 2, active LOW)");
   }
   #endif
 
@@ -2015,7 +2051,31 @@ void loop()
     // Power saving checks (screensaver/deep sleep)
     handlePowerSavingChecks();
     
+    // ── Headless: WebSocket disconnect/reconnect based on sensor blocking ────
+    // When any sensor condition blocks payments, disconnect WebSocket so the
+    // LNbits server rejects static QR code payments (no active connection = no payout).
+    // When sensors clear, resume webSocket.loop() to auto-reconnect.
+    #if !ENABLE_DISPLAY
+    {
+      static bool sensorWsDisconnected = false;
+      if (lightBarrierConfig.isAnyBlocking()) {
+        if (!sensorWsDisconnected) {
+          webSocket.disconnect();
+          sensorWsDisconnected = true;
+          Serial.println("[SENSOR] WebSocket disconnected — server will reject QR payments");
+        }
+        // Skip webSocket.loop() while sensors are blocking
+      } else {
+        if (sensorWsDisconnected) {
+          sensorWsDisconnected = false;
+          Serial.println("[SENSOR] Sensors cleared — WebSocket reconnecting");
+        }
+        webSocket.loop();
+      }
+    }
+    #else
     webSocket.loop();
+    #endif
     loopCount++;
     
     // Update LED status regularly to reflect current network state
@@ -2424,11 +2484,57 @@ void loop()
     }
     #endif
 
+    // ── Headless vending sensors: dual-sensor monitoring (GPIO 22 / GPIO 23) ────
+    #ifdef PIN_SENSOR_1
+    if (lightBarrierConfig.levelMonitoring) {
+      bool pinIsLow = (digitalRead(PIN_SENSOR_1) == LOW);
+      if (!pinIsLow && !lightBarrierConfig.binEmpty) {
+        lightBarrierConfig.binEmpty = true;
+        Serial.println("[SENSOR 1] Bin empty detected (GPIO 22) — payments blocked");
+      } else if (pinIsLow && lightBarrierConfig.binEmpty) {
+        lightBarrierConfig.binEmpty = false;
+        Serial.println("[SENSOR 1] Bin restocked (GPIO 22) — payments re-enabled");
+      }
+    }
+    if (lightBarrierConfig.monitoring) {
+      bool pinIsLow = (digitalRead(PIN_SENSOR_1) == LOW);
+      if (pinIsLow && !lightBarrierConfig.blocked) {
+        lightBarrierConfig.blocked = true;
+        Serial.println("[SENSOR 1] Product blockage detected (GPIO 22) — payments blocked");
+      } else if (!pinIsLow && lightBarrierConfig.blocked) {
+        lightBarrierConfig.blocked = false;
+        Serial.println("[SENSOR 1] Product blockage cleared (GPIO 22) — payments re-enabled");
+      }
+    }
+    #endif
+    #ifdef PIN_SENSOR_2
+    if (lightBarrierConfig.levelMonitoring2) {
+      bool pinIsLow = (digitalRead(PIN_SENSOR_2) == LOW);
+      if (!pinIsLow && !lightBarrierConfig.binEmpty2) {
+        lightBarrierConfig.binEmpty2 = true;
+        Serial.println("[SENSOR 2] Bin empty detected (GPIO 23) — payments blocked");
+      } else if (pinIsLow && lightBarrierConfig.binEmpty2) {
+        lightBarrierConfig.binEmpty2 = false;
+        Serial.println("[SENSOR 2] Bin restocked (GPIO 23) — payments re-enabled");
+      }
+    }
+    if (lightBarrierConfig.monitoring2) {
+      bool pinIsLow = (digitalRead(PIN_SENSOR_2) == LOW);
+      if (pinIsLow && !lightBarrierConfig.blocked2) {
+        lightBarrierConfig.blocked2 = true;
+        Serial.println("[SENSOR 2] Product blockage detected (GPIO 23) — payments blocked");
+      } else if (!pinIsLow && lightBarrierConfig.blocked2) {
+        lightBarrierConfig.blocked2 = false;
+        Serial.println("[SENSOR 2] Product blockage cleared (GPIO 23) — payments re-enabled");
+      }
+    }
+    #endif
+
     // Process payments from queue
     if (paymentQueue.hasPending() && !paymentQueue.processing) {
-      // Block payment activation while supply bin is empty (level monitoring mode)
-      if (lightBarrierConfig.binEmpty) {
-        Serial.println("[LEVEL MONITOR] Payment skipped — supply bin is empty");
+      // Block payment activation while any sensor condition is active
+      if (lightBarrierConfig.isAnyBlocking()) {
+        Serial.println("[SENSOR] Payment skipped — sensor blocking active");
         vTaskDelay(pdMS_TO_TICKS(500));
       } else {
         paymentQueue.processing = true;
@@ -2451,25 +2557,39 @@ void loop()
 
 // --- Punkt 3: Modularized payment handling ---
 
-// Helper function: Check if light barrier should stop the action
-// Returns true if light barrier is active AND minimum action time has passed
+// Helper function: Check if light barrier / sensor should stop the action
+// Returns true if sensor is in "stop" mode AND minimum action time has passed
 inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
-  #ifdef PIN_LIGHT_BARRIER
-  if (!lightBarrierConfig.enabled) {
-    return false; // Light barrier disabled
-  }
-  
   // Check if minimum action time has passed (2 seconds)
   unsigned long elapsed = millis() - actionStartTime;
   if (elapsed < lightBarrierConfig.minActionTime) {
     return false; // Too early to stop
   }
-  
-  // Check if light barrier is triggered (NPN active = LOW)
-  bool lightBarrierActive = (digitalRead(PIN_LIGHT_BARRIER) == LOW);
-  if (lightBarrierActive) {
-    Serial.printf("[LIGHT BARRIER] Triggered after %lu ms - stopping action!\n", elapsed);
-    return true;
+
+  #ifdef PIN_LIGHT_BARRIER
+  if (lightBarrierConfig.enabled) {
+    bool lightBarrierActive = (digitalRead(PIN_LIGHT_BARRIER) == LOW);
+    if (lightBarrierActive) {
+      Serial.printf("[LIGHT BARRIER] Triggered after %lu ms - stopping action!\n", elapsed);
+      return true;
+    }
+  }
+  #endif
+
+  #ifdef PIN_SENSOR_1
+  if (lightBarrierConfig.enabled) {
+    if (digitalRead(PIN_SENSOR_1) == LOW) {
+      Serial.printf("[SENSOR 1] Triggered after %lu ms - stopping action!\n", elapsed);
+      return true;
+    }
+  }
+  #endif
+  #ifdef PIN_SENSOR_2
+  if (lightBarrierConfig.enabled2) {
+    if (digitalRead(PIN_SENSOR_2) == LOW) {
+      Serial.printf("[SENSOR 2] Triggered after %lu ms - stopping action!\n", elapsed);
+      return true;
+    }
   }
   #endif
   
@@ -2477,7 +2597,7 @@ inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
 }
 
 // Helper function: Check for product blockage after payment (monitor mode only).
-// If PIN_LIGHT_BARRIER is still LOW after payment, the product exit is blocked.
+// If sensor is still LOW after payment, the product exit is blocked.
 // Shows the blocked screen, sets lightBarrierConfig.blocked, and waits until clear.
 static void checkProductBlockage() {
   #ifdef PIN_LIGHT_BARRIER
@@ -2499,6 +2619,10 @@ static void checkProductBlockage() {
   lightBarrierConfig.blocked = false;
   Serial.println("[LIGHT BARRIER] Product blockage cleared — ready for next payment");
   #endif
+
+  // Headless sensors: blockage is handled in the main loop (continuous monitoring)
+  // because headless has no display for a "blocked screen" — the LED fast blink
+  // and WebSocket disconnect already signal the blockage state.
 }
 
 static void processThresholdPayment(const JsonDocument &doc)

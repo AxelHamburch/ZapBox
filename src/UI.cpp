@@ -225,6 +225,22 @@ void updateReadyLed() {
     return; // Exit early during initialization blink
   }
   
+  // Sensor blocking: very fast blink (10Hz = 50ms ON / 50ms OFF)
+  // Indicates vending sensor is blocking payments (higher priority than network errors)
+  if (lightBarrierConfig.isAnyBlocking()) {
+    static unsigned long lastSensorBlinkTime = 0;
+    static bool sensorBlinkState = false;
+    if (millis() - lastSensorBlinkTime > 50) { // 50ms = 10Hz very fast blink
+      sensorBlinkState = !sensorBlinkState;
+      digitalWrite(PIN_LED_BUTTON_LED, sensorBlinkState ? HIGH : LOW);
+      #ifdef PIN_ONBOARD_LED
+      digitalWrite(PIN_ONBOARD_LED, sensorBlinkState ? HIGH : LOW);
+      #endif
+      lastSensorBlinkTime = millis();
+    }
+    return; // Exit early during sensor blocking
+  }
+  
   // Error state blink patterns (headless only)
   // Check for network errors and show specific blink patterns:
   // - NO WIFI: 1 blink (1000ms on, 2000ms pause)

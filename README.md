@@ -146,7 +146,10 @@ Device String (switchStr)
 | **User Input** |
 | 0 | BOOT Button | Input | Pull-up | Wake from sleep / Config mode |
 | 14 | HELP Button | Input | Pull-up | Help/Report mode |
-| 2 | Light Barrier | Input | Pull-up | Optional NPN light barrier (not used in headless) |
+| 2 | Onboard LED | Output | HIGH=ON | Additional status LED (not used as sensor on headless) |
+| **Vending Sensors (Optional)** |
+| 22 | Sensor 1 | Input | Pull-up | Vending sensor input (when configured, replaces CH06) |
+| 23 | Sensor 2 | Input | Pull-up | Vending sensor input (when configured, replaces CH07) |
 | **LEDs & Status** |
 | 21 | Status LED | Output | HIGH=ON | Status indication (RTC-capable) |
 | **I2C (Optional)** |
@@ -161,8 +164,8 @@ Device String (switchStr)
 | 14 | Relay 3 (CH03) | Output | - | Quattro mode 3 (⚠️ NOT GPIO 10/11 – internal flash!) |
 | 16 | Relay 4 (CH04) | Output | - | Quattro mode 4 |
 | 19 | Relay 5 (CH05) | Output | - | Headless extended channel |
-| 22 | Relay 6 (CH06) | Output | - | Headless extended channel |
-| 23 | Relay 7 (CH07) | Output | - | Headless extended channel |
+| 22 | Relay 6 (CH06) | Output | - | Headless extended channel (⚠️ reserved when Sensor 1 active) |
+| 23 | Relay 7 (CH07) | Output | - | Headless extended channel (⚠️ reserved when Sensor 2 active) |
 | 25 | Relay 8 (CH08) | Output | - | Headless extended channel |
 | 26 | Relay 9 (CH09) | Output | - | Headless extended channel |
 | 27 | Relay 10 (CH10) | Output | - | Headless extended channel |
@@ -176,7 +179,7 @@ Device String (switchStr)
 | Display | LCD (170x320) | None (Headless) |
 | Touch | CST816S/CST328 | N/A |
 | External LED Button | Supported (GPIO 43/44) | N/A |
-| Light Barrier | Supported (GPIO 2) | Available but not typically used |
+| Light Barrier | Supported (GPIO 2) | Dual sensors (GPIO 22/23) |
 | Status Indication | Display + LED | LED only (GPIO 21 and onboard LED GPIO 2) |
 | NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 4, 17, 18) |
 | Power Consumption | ~150-250mA | Lower (no display overhead) |
@@ -207,6 +210,23 @@ Light Barrier Module    →    T-Display-S3    →    GND
 GND                    →    GND
 Signal (NPN output)    →    GPIO 2
 ```
+
+### Vending Machine Sensors — Headless (Optional)
+
+**Feature:** Two independent sensor inputs for headless vending machine operation on GPIO 22 and GPIO 23.
+
+**Three operating modes per sensor:**
+
+- **Stop the advance** (`yes`): Stops the relay action when the sensor detects a product (LOW signal). Minimum 2-second action time before the sensor can trigger.
+
+- **Monitoring product blockage** (`monitor`): Continuously monitors whether the product exit is blocked (sensor LOW = blocked). Blocks further payments until cleared.
+
+- **Level monitoring** (`level`): Continuously monitors the supply bin fill level. When the sensor goes HIGH (no product), the bin is considered empty and payments are blocked until restocked.
+
+**Payment blocking behavior:** When a sensor condition blocks payments, the LED blinks very fast (10 Hz, 50 ms ON/OFF), the WebSocket connection is disconnected (LNbits server rejects static QR payments), and NFC Bolt Card taps are blocked. Once cleared, the WebSocket auto-reconnects and normal operation resumes.
+
+**Pin Assignment**: GPIO 22 (Sensor 1) and GPIO 23 (Sensor 2)
+- ⚠️ When a sensor function is active on GPIO 22 or 23, those GPIOs are no longer available as relay channels (CH06/CH07).
 
 ### Relay Control Pins
 
@@ -362,6 +382,7 @@ LED Cathode (-)        →    Resistor (220Ω) →    GND
 - **200ms ON / 800ms OFF blink**: NFC payment pending – waiting for invoice settlement via WebSocket
 - **2× Fast Blink (100ms ON/OFF) + Solid ON**: NFC payment confirmed – 2 quick confirmation flashes, then LED stays ON while relay fires
 - **3× Fast Blink (100ms ON/OFF) + Solid ON**: NFC timeout (60s) or HTTP error – "NO LUCK" visual feedback, then returns to ready state
+- **Very Fast Blink (10Hz, 50ms ON/OFF)**: Vending sensor blocking – one or more sensors are triggering a payment block (bin empty, product blocked, or stop active). WebSocket is disconnected.
 - **Error Blink Patterns** (with 2 second pause between sequences):
   - **1 Blink** (500ms on, 500ms off): NO WIFI - WiFi connection lost or not established
   - **2 Blinks** (300ms on/off each): NO INTERNET - WiFi connected but no internet access
@@ -395,6 +416,7 @@ For example: If WiFi is disconnected, the LED will show 1 blink (WiFi error) eve
 | **Asymmetric Blink** | 200ms ON / 800ms OFF | **NFC PENDING** | NFC payment initiated, waiting for invoice settlement |
 | **2× Fast Blink** | 100ms ON/OFF × 2, then solid | **NFC SUCCESS** | Payment confirmed – 2 quick flashes, relay fires, LED stays ON |
 | **3× Fast Blink** | 100ms ON/OFF × 3, then solid | **NFC NO LUCK** | 60s timeout or HTTP error – returns to ready state |
+| **Very Fast Continuous** | 50ms on/off (10Hz) | **SENSOR BLOCKING** | Vending sensor active – payments blocked, WebSocket disconnected |
 | **1 Blink + Pause** | 500ms on/off, 2s pause | **NO WIFI** | WiFi connection lost or failed to connect |
 | **2 Blinks + Pause** | 300ms on/off/on/off, 2s pause | **NO INTERNET** | WiFi connected, but no internet gateway access |
 | **3 Blinks + Pause** | 250ms each, 2s pause | **NO SERVER** | Internet connected, LNbits server unreachable |

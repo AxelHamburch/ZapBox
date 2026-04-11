@@ -33,6 +33,10 @@
 // Vending machine light barrier (T-Display-S3 only)
 #if ENABLE_DISPLAY
   #define PIN_LIGHT_BARRIER 2  // NPN light barrier input (INPUT_PULLUP, active LOW)
+#else
+  // Vending machine sensor inputs (ESP32 Dev headless only)
+  #define PIN_SENSOR_1 22  // Sensor input 1 (INPUT_PULLUP, active LOW)
+  #define PIN_SENSOR_2 23  // Sensor input 2 (INPUT_PULLUP, active LOW)
 #endif
 
 // I2C Bus (shared: Touch + NFC)
@@ -135,6 +139,7 @@
 //   T-Display-S3 : GPIO 1=NFC-IRQ, 10-13=Relay(CH01-04), 43/44=LED-Button (not RTC-capable)
 //   ESP32 Dev    : GPIO 4=NFC-IRQ, 12/13/14/16/19/22/23/25/26/27/32/33=Relay (CH01-12)
 //                  21=LED, 2=OnboardLED
+//                  22/23 = Vending sensor inputs (when configured, not available as relay)
 //                  ⚠ GPIO 6-11 = internal SPI flash on WROOM-32, NOT usable as output!
 //                  Remaining free (output-capable): GPIO 5, 15
 // ─────────────────────────────────────────────────────────────

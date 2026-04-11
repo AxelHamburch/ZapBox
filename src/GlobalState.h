@@ -116,10 +116,13 @@ struct MultiChannelConfig {
 extern MultiChannelConfig multiChannelConfig;
 
 // ============================================================================
-// VENDING MACHINE LIGHT BARRIER (GPIO 2)
+// VENDING MACHINE SENSOR INPUTS
+// T-Display-S3: Single sensor on GPIO 2
+// ESP32 Dev Headless: Two sensors on GPIO 22 and GPIO 23
 // ============================================================================
 
 struct LightBarrierConfig {
+  // Sensor 1 — GPIO 2 (T-Display-S3) or GPIO 22 (headless)
   String mode = "no";  // "no" (disabled), "yes" (stop action on trigger), "monitor" (block next payment), "level" (level monitoring)
   bool enabled = false;         // true when mode == "yes"
   bool monitoring = false;      // true when mode == "monitor"
@@ -127,7 +130,20 @@ struct LightBarrierConfig {
   bool blocked = false;         // runtime: product output currently blocked (monitor mode)
   bool binEmpty = false;        // runtime: supply bin is empty (level monitoring mode)
   unsigned long minActionTime = 2000; // Minimum 2 seconds before light barrier can stop action
+
+  // Sensor 2 — GPIO 23 (headless only)
+  String mode2 = "no";
+  bool enabled2 = false;
+  bool monitoring2 = false;
+  bool levelMonitoring2 = false;
+  bool blocked2 = false;
+  bool binEmpty2 = false;
+
   bool isActive() const { return enabled || monitoring || levelMonitoring; }
+  bool isActive2() const { return enabled2 || monitoring2 || levelMonitoring2; }
+  bool isAnyActive() const { return isActive() || isActive2(); }
+  // True when any sensor condition blocks payments
+  bool isAnyBlocking() const { return blocked || blocked2 || binEmpty || binEmpty2; }
 };
 
 extern LightBarrierConfig lightBarrierConfig;

@@ -233,8 +233,8 @@
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH03</strong></td><td>GPIO 14</td><td></td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH04</strong></td><td>GPIO 16</td><td></td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH05</strong></td><td>GPIO 19</td><td></td></tr>
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH06</strong></td><td>GPIO 22</td><td></td></tr>
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH07</strong></td><td>GPIO 23</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH06</strong></td><td>GPIO 22</td><td style="padding-left: 16px; color: #aaa;">(reserved when Sensor 1 is active)</td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH07</strong></td><td>GPIO 23</td><td style="padding-left: 16px; color: #aaa;">(reserved when Sensor 2 is active)</td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH08</strong></td><td>GPIO 25</td><td></td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH09</strong></td><td>GPIO 26</td><td></td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH10</strong></td><td>GPIO 27</td><td></td></tr>
@@ -297,6 +297,47 @@
             <a href="../assets/NFC-Module-PN532.webp" target="_blank">
                 <img class="center-img" src="../assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" />
             </a>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+        <!-- Vending Machine Sensors Section -->
+            <p style="margin-top: 10px;"><strong>Special features for vending machines</strong></p>
+            <p style="margin-top: 10px; color: #888;"><i>The headless ZapBox supports two independent sensor inputs for vending machine operation.
+            Each sensor can be configured separately with one of four operating modes. Sensors use <strong>INPUT_PULLUP</strong> (active LOW — connect sensor signal to GND when triggered).</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>When a sensor blocks payments:</strong> The onboard LED blinks very fast (10 Hz), the WebSocket connection to the LNbits server is disconnected so the server rejects any static QR code payments, and NFC Bolt Card taps are blocked. As soon as the sensor condition clears, the WebSocket reconnects automatically and normal operation resumes.</i></p>
+
+            <div class="input-wrapper">
+                <div>
+                    <label for="vendingSensor1">Sensor 1 — GPIO 22</label>
+                    <select name="vendingSensor1" id="vendingSensor1">
+                        <option value="no" selected>No function (default)</option>
+                        <option value="yes">Stop the advance</option>
+                        <option value="monitor">Monitoring product blockage</option>
+                        <option value="level">Level monitoring (empty bin)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for sensor input on GPIO 22</p>
+                </div>
+                <div>
+                    <label for="vendingSensor2">Sensor 2 — GPIO 23</label>
+                    <select name="vendingSensor2" id="vendingSensor2">
+                        <option value="no" selected>No function (default)</option>
+                        <option value="yes">Stop the advance</option>
+                        <option value="monitor">Monitoring product blockage</option>
+                        <option value="level">Level monitoring (empty bin)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for sensor input on GPIO 23</p>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>Operating modes explained:</strong></i></p>
+            <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Stop the advance</strong></td><td>Stops the relay action when the sensor detects a product (LOW signal). Minimum action time of 2 seconds before the sensor can trigger.</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Monitoring product blockage</strong></td><td>After a payment, checks if the product exit is blocked (sensor LOW). Blocks further payments until the path is cleared.</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Level monitoring</strong></td><td>Continuously monitors the supply bin fill level. When the sensor goes HIGH (no product detected), the bin is considered empty and payments are blocked until restocked.</td></tr>
+            </table>
+
+            <p style="margin-top: 14px; color: #888;"><i><strong>⚠ Important:</strong> When a sensor function is active on GPIO 22 or GPIO 23, those GPIOs are configured as <strong>INPUT_PULLUP</strong> and are no longer available as relay output channels (CH06/CH07). Make sure your LNbits switch configuration does not use these GPIOs when sensor features are active.</i></p>
         </div>
 
         <!-- Error Detection Section -->
@@ -608,6 +649,10 @@
             {
                 "name": "servoRelayMode",
                 "value": "one-for-all"
+            },
+            {
+                "name": "vendingSensor2",
+                "value": "no"
             }
         ]
 
@@ -1000,6 +1045,9 @@
                 if (config[29]) config[29].value = configData[29]?.value || "emulation";
                 nfcMode.value = config[29]?.value || "emulation";
 
+                // Index 31: Vending sensor 2 (GPIO 23)
+                if (config[31]) config[31].value = configData[31]?.value || "no";
+
                 // Fill form fields (only supported ones for headless)
                 ssid.value = config[0].value;
                 wifiPassword.value = config[1].value;
@@ -1012,6 +1060,10 @@
                 specialMode.value = config[11].value;
                 frequency.value = config[12].value;
                 dutyCycleRatio.value = config[13].value;
+
+                // Vending sensor dropdowns
+                document.getElementById('vendingSensor1').value = config[19].value || "no";
+                document.getElementById('vendingSensor2').value = config[31]?.value || "no";
 
                 // Show/hide custom fields based on loaded special mode
                 if (specialMode.value === 'custom') {
@@ -1130,7 +1182,7 @@
             config[16].value = "5"; // Default activation time
             config[17].value = "off"; // Multi-Channel disabled for headless
             config[18].value = "off"; // BTC Ticker off for headless
-            config[19].value = "no"; // Light Barrier disabled for headless
+            config[19].value = document.getElementById('vendingSensor1').value || "no"; // Vending Sensor 1 (GPIO 22)
             config[20].value = "USD"; // Default currency
             
             // Ensure config[21] exists for external button
@@ -1166,6 +1218,10 @@
             // Servo relay mode (index 30) - not used in headless, hardcoded default
             if (!config[30]) config[30] = { name: "servoRelayMode", value: "one-for-all" };
             config[30].value = "one-for-all";
+
+            // Vending sensor 2 (index 31) - GPIO 23
+            if (!config[31]) config[31] = { name: "vendingSensor2", value: "no" };
+            config[31].value = document.getElementById('vendingSensor2').value || "no";
 
             // Validate required fields
             const ssidValue = config[0].value.trim();
