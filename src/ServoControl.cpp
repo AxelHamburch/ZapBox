@@ -1,12 +1,10 @@
 #include "ServoControl.h"
 #include "GlobalState.h"
 #include "Log.h"
-
-#if ENABLE_DISPLAY
 #include <ESP32Servo.h>
 
-static Servo servo1;  // Pin 13, positional 0-180°
-static Servo servo2;  // Pin 10, continuous rotation 360°
+static Servo servo1;  // Display: Pin 13 positional | Headless: Pin 12 (servo180)
+static Servo servo2;  // Display: Pin 10 continuous  | Headless: Pin 12 (servo360)
 static bool servo1Attached = false;
 static bool servo2Attached = false;
 
@@ -33,6 +31,8 @@ static void slowSweep(Servo &srv, int fromAngle, int toAngle, int duration_ms) {
 }
 
 void initServos() {
+#if ENABLE_DISPLAY
+  // Display version: servo1 on Pin 13, servo2 on Pin 10
   if (servoConfig.servo1Active()) {
     servo1.attach(13);
     servo1Attached = true;
@@ -45,35 +45,65 @@ void initServos() {
     servo2.write(90); // 90 = stop for continuous servo
     LOG_INFO("Servo", String("Servo 2 (continuous) attached to Pin 10, stopped (90)"));
   }
+#else
+  // Headless version: servo on Pin 12 (single-pin mode)
+  if (multiChannelConfig.mode == "servo180" && servoConfig.servo1Active()) {
+    servo1.attach(12);
+    servo1Attached = true;
+    servo1.write(servoConfig.servo1Start);
+    LOG_INFO("Servo", String("180° Servo attached to Pin 12, start: ") + String(servoConfig.servo1Start) + "°");
+  } else if (multiChannelConfig.mode == "servo360" && servoConfig.servo2Active()) {
+    servo2.attach(12);
+    servo2Attached = true;
+    servo2.write(90); // 90 = stop for continuous servo
+    LOG_INFO("Servo", "360° Servo attached to Pin 12, stopped (90)");
+  }
+#endif
 }
 
 void activateServo(int servoPin) {
+#if ENABLE_DISPLAY
   if (servoPin == 13 && servo1Attached && servoConfig.servo1Active()) {
+#else
+  if (servoPin == 12 && servo1Attached && servoConfig.servo1Active()) {
+#endif
     // Positional servo: sweep Start → End
-    LOG_INFO("Servo", String("Servo 1: ") + String(servoConfig.servo1Start) + "° → " + String(servoConfig.servo1End) + "°");
+    LOG_INFO("Servo", String("180° Servo: ") + String(servoConfig.servo1Start) + "° → " + String(servoConfig.servo1End) + "°");
     slowSweep(servo1, servoConfig.servo1Start, servoConfig.servo1End, servoConfig.servo1Duration);
+#if ENABLE_DISPLAY
   } else if (servoPin == 10 && servo2Attached && servoConfig.servo2Active()) {
+#else
+  } else if (servoPin == 12 && servo2Attached && servoConfig.servo2Active()) {
+#endif
     // Continuous servo: spin at configured speed for configured duration
-    LOG_INFO("Servo", String("Servo 2: spin at speed ") + String(servoConfig.servo2Speed) + " for " + String(servoConfig.servo2Duration) + "ms");
+    LOG_INFO("Servo", String("360° Servo: spin at speed ") + String(servoConfig.servo2Speed) + " for " + String(servoConfig.servo2Duration) + "ms");
     servo2.write(servoConfig.servo2Speed);
     if (servoConfig.servo2Duration > 0) {
       vTaskDelay(pdMS_TO_TICKS(servoConfig.servo2Duration));
       servo2.write(90); // Stop
-      LOG_INFO("Servo", "Servo 2: stopped");
+      LOG_INFO("Servo", "360° Servo: stopped");
     }
     // If duration == 0, servo keeps spinning until deactivateServo() is called
   }
 }
 
 void deactivateServo(int servoPin) {
+#if ENABLE_DISPLAY
   if (servoPin == 13 && servo1Attached && servoConfig.servo1Active()) {
+#else
+  if (servoPin == 12 && servo1Attached && servoConfig.servo1Active()) {
+#endif
     // Positional servo: return End → Start
-    LOG_INFO("Servo", String("Servo 1: returning to ") + String(servoConfig.servo1Start) + "°");
+    LOG_INFO("Servo", String("180° Servo: returning to ") + String(servoConfig.servo1Start) + "°");
     slowSweep(servo1, servoConfig.servo1End, servoConfig.servo1Start, servoConfig.servo1Duration);
+#if ENABLE_DISPLAY
   } else if (servoPin == 10 && servo2Attached && servoConfig.servo2Active()) {
+#else
+  } else if (servoPin == 12 && servo2Attached && servoConfig.servo2Active()) {
+#endif
     // Continuous servo: stop
     servo2.write(90);
-    LOG_INFO("Servo", "Servo 2: stopped");
+    LOG_INFO("Servo", "360° Servo: stopped");
   }
 }
 
@@ -81,11 +111,3 @@ void detachServos() {
   if (servo1Attached) { servo1.detach(); servo1Attached = false; }
   if (servo2Attached) { servo2.detach(); servo2Attached = false; }
 }
-
-#else
-// Headless build: no servo support
-void initServos() {}
-void activateServo(int servoPin) { (void)servoPin; }
-void deactivateServo(int servoPin) { (void)servoPin; }
-void detachServos() {}
-#endif

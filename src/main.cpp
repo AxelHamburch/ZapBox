@@ -543,7 +543,9 @@ void readFiles()
     if (multiChannelConfig.mode == "duo") modeDesc = "Duo (Pins 12, 13)";
     else if (multiChannelConfig.mode == "quattro") modeDesc = "Quattro (Pins 12, 13, 10, 11)";
     else if (multiChannelConfig.mode == "servo") modeDesc = "Servo (2 relay 12/11 + 2 servo 13/10)";
-    LOG_INFO("Config", String("Multi-Channel-Control Mode: ") + modeDesc);
+    else if (multiChannelConfig.mode == "servo180") modeDesc = "180° Servo (Pin 12)";
+    else if (multiChannelConfig.mode == "servo360") modeDesc = "360° Servo (Pin 12)";
+    LOG_INFO("Config", String("ZapBox Mode: ") + modeDesc);
 
     // Display BTC-Ticker configuration
     LOG_INFO("Config", "=== BTC-TICKER CONFIGURATION ===");
@@ -957,8 +959,8 @@ void setup()
     Serial.println("[AMBIENT LIGHT] GPIO 11 initialized (synced with display backlight)");
   }
 
-  // Servo motor initialization (Servo multi-channel mode)
-  if (multiChannelConfig.mode == "servo") {
+  // Servo motor initialization (Servo multi-channel mode or headless servo mode)
+  if (multiChannelConfig.mode == "servo" || multiChannelConfig.mode == "servo180" || multiChannelConfig.mode == "servo360") {
     initServos();
   }
 
@@ -967,6 +969,11 @@ void setup()
   // CH01=GPIO12, CH02=GPIO13, CH03=GPIO14, CH04=GPIO16 (NOT 10/11 – internal flash!)
   // CH05-CH10: GPIO 19, 22, 23, 25, 26, 27  |  CH11=GPIO32, CH12=GPIO33
   for (int i = 0; i < RELAY_CHANNEL_MAX; i++) {
+    // Skip Pin 12 when it's used as a servo (servo180/servo360 mode)
+    if ((multiChannelConfig.mode == "servo180" || multiChannelConfig.mode == "servo360") && RELAY_CHANNEL_PINS[i] == 12) {
+      Serial.println("[RELAY] Skipping GPIO 12 (used as servo)");
+      continue;
+    }
     pinMode(RELAY_CHANNEL_PINS[i], OUTPUT);
     digitalWrite(RELAY_CHANNEL_PINS[i], LOW);
   }
@@ -2796,7 +2803,8 @@ static void processNormalPayment(int pin, int duration)
 
   // Special mode applies to relay pins (12, 11) but NOT servo pins (13, 10).
   // Skip when: this is a servo pin, or channel 4 ambient owns Pin 11.
-  bool isServoPin = (multiChannelConfig.mode == "servo" && (pin == 13 || pin == 10));
+  bool isServoPin = (multiChannelConfig.mode == "servo" && (pin == 13 || pin == 10))
+                 || ((multiChannelConfig.mode == "servo180" || multiChannelConfig.mode == "servo360") && pin == 12);
   bool useSpecialMode = (specialModeConfig.mode != "standard" && specialModeConfig.mode != "")
                      && !isServoPin
                      && !(channel4AmbientConfig.enabled && pin == 11);

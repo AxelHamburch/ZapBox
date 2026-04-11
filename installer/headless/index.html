@@ -193,6 +193,61 @@
                 <hr style="flex: 1; border: none; border-top: 1px solid #888; margin: 0;">
             </div>
         
+        <!-- ZapBox Mode Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="zapboxMode">ZapBox Mode</label>
+                    <select name="zapboxMode" id="zapboxMode">
+                        <option value="off" selected>Relay function (default)</option>
+                        <option value="servo180">180° Servo</option>
+                        <option value="servo360">360° Servo</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">The settings refer to pin 12</p>
+                </div>
+            </div>
+
+            <!-- 180° Servo Configuration (hidden by default) -->
+            <div id="servo180Section" style="display: none; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
+                <div class="input-wrapper">
+                    <div>
+                        <label for="servo1Start">180° Servo - Start angle (°)</label>
+                        <input type="number" id="servo1Start" name="servo1Start" min="0" max="180" value="0">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Positioning 0°–180° or 180°–0°</p>
+                    </div>
+                    <div>
+                        <label for="servo1End">180° Servo - End angle (°)</label>
+                        <input type="number" id="servo1End" name="servo1End" min="0" max="180" value="0">
+                    </div>
+                    <div>
+                        <label for="servo1Duration">180° Servo - Sweep duration (ms)</label>
+                        <input type="number" id="servo1Duration" name="servo1Duration" min="0" max="10000" value="0">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = max speed / 1000 = 1 second for start/stop</p>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <p style="margin: 0; font-size: 11px; color: #bbb; font-style: italic;">Please note that the 180° servo always returns to its starting position after completing the switch function.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 360° Servo Configuration (hidden by default) -->
+            <div id="servo360Section" style="display: none; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
+                <div class="input-wrapper">
+                    <div>
+                        <label for="servo2Speed">360° Servo - Speed (0–180)</label>
+                        <input type="number" id="servo2Speed" name="servo2Speed" min="0" max="180" value="0">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Continuous rotation 360° / 90 = stop / &lt;90 = CCW / &gt;90 = CW</p>
+                    </div>
+                    <div>
+                        <label for="servo2Duration">360° Servo - Spin duration (ms)</label>
+                        <input type="number" id="servo2Duration" name="servo2Duration" min="0" max="10000" value="0">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = spin until action time ends</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Separator -->
+            <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
+
         <!-- Special Mode Section -->
             <div class="input-wrapper">
                 <div>
@@ -513,6 +568,25 @@
         const thresholdPin = document.getElementById('thresholdPin');
         const thresholdTime = document.getElementById('thresholdTime');
         const thresholdLnurl = document.getElementById('thresholdLnurl');
+        const zapboxMode = document.getElementById('zapboxMode');
+        const servo180Section = document.getElementById('servo180Section');
+        const servo360Section = document.getElementById('servo360Section');
+        const servo1Start = document.getElementById('servo1Start');
+        const servo1End = document.getElementById('servo1End');
+        const servo1Duration = document.getElementById('servo1Duration');
+        const servo2Speed = document.getElementById('servo2Speed');
+        const servo2Duration = document.getElementById('servo2Duration');
+        
+        // Show/hide servo configuration sections based on ZapBox Mode
+        function updateZapboxModeFields() {
+            const mode = zapboxMode.value;
+            servo180Section.style.display = (mode === 'servo180') ? 'block' : 'none';
+            servo360Section.style.display = (mode === 'servo360') ? 'block' : 'none';
+        }
+        zapboxMode.addEventListener('change', function() {
+            updateZapboxModeFields();
+            config[17].value = zapboxMode.value;
+        });
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
@@ -1045,6 +1119,13 @@
                 if (config[29]) config[29].value = configData[29]?.value || "emulation";
                 nfcMode.value = config[29]?.value || "emulation";
 
+                // Index 24-28: Servo configuration
+                if (config[24]) config[24].value = configData[24]?.value || "0";
+                if (config[25]) config[25].value = configData[25]?.value || "0";
+                if (config[26]) config[26].value = configData[26]?.value || "0";
+                if (config[27]) config[27].value = configData[27]?.value || "0";
+                if (config[28]) config[28].value = configData[28]?.value || "0";
+
                 // Index 31: Vending sensor 2 (GPIO 23)
                 if (config[31]) config[31].value = configData[31]?.value || "no";
 
@@ -1060,6 +1141,15 @@
                 specialMode.value = config[11].value;
                 frequency.value = config[12].value;
                 dutyCycleRatio.value = config[13].value;
+
+                // ZapBox Mode dropdown and servo fields
+                zapboxMode.value = config[17].value || "off";
+                servo1Start.value = config[24]?.value || "0";
+                servo1End.value = config[25]?.value || "0";
+                servo1Duration.value = config[26]?.value || "0";
+                servo2Speed.value = config[27]?.value || "0";
+                servo2Duration.value = config[28]?.value || "0";
+                updateZapboxModeFields();
 
                 // Vending sensor dropdowns
                 document.getElementById('vendingSensor1').value = config[19].value || "no";
@@ -1180,7 +1270,7 @@
             config[14].value = "off"; // Screensaver disabled for headless
             config[15].value = "off"; // Deep Sleep disabled for headless
             config[16].value = "5"; // Default activation time
-            config[17].value = "off"; // Multi-Channel disabled for headless
+            config[17].value = zapboxMode.value || "off"; // ZapBox Mode (relay/servo180/servo360)
             config[18].value = "off"; // BTC Ticker off for headless
             config[19].value = document.getElementById('vendingSensor1').value || "no"; // Vending Sensor 1 (GPIO 22)
             config[20].value = "USD"; // Default currency
@@ -1199,17 +1289,17 @@
             if (!config[23]) config[23] = { name: "deepSleepTime", value: "30" };
             config[23].value = "30";
 
-            // Servo configuration (indices 24-28) - not used in headless, hardcoded defaults
+            // Servo configuration (indices 24-28) - values from ZapBox Mode servo fields
             if (!config[24]) config[24] = { name: "servo1Start", value: "0" };
-            config[24].value = "0";
+            config[24].value = servo1Start.value || "0";
             if (!config[25]) config[25] = { name: "servo1End", value: "0" };
-            config[25].value = "0";
+            config[25].value = servo1End.value || "0";
             if (!config[26]) config[26] = { name: "servo1Duration", value: "0" };
-            config[26].value = "0";
+            config[26].value = servo1Duration.value || "0";
             if (!config[27]) config[27] = { name: "servo2Speed", value: "0" };
-            config[27].value = "0";
+            config[27].value = servo2Speed.value || "0";
             if (!config[28]) config[28] = { name: "servo2Duration", value: "0" };
-            config[28].value = "0";
+            config[28].value = servo2Duration.value || "0";
 
             // NFC mode (index 29)
             if (!config[29]) config[29] = { name: "nfcMode", value: "emulation" };
@@ -1400,6 +1490,22 @@
 
         thresholdLnurl.addEventListener("input", (event) => {
             config[10].value = event.target.value;
+        });
+
+        servo1Start.addEventListener("input", (event) => {
+            config[24].value = event.target.value || "0";
+        });
+        servo1End.addEventListener("input", (event) => {
+            config[25].value = event.target.value || "0";
+        });
+        servo1Duration.addEventListener("input", (event) => {
+            config[26].value = event.target.value || "0";
+        });
+        servo2Speed.addEventListener("input", (event) => {
+            config[27].value = event.target.value || "0";
+        });
+        servo2Duration.addEventListener("input", (event) => {
+            config[28].value = event.target.value || "0";
         });
 
         // Help modal functionality
