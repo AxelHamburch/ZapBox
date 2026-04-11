@@ -1157,10 +1157,11 @@ void productBlockedScreen()
   if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
     tft.setTextSize(2);
     tft.setTextColor(TFT_BLACK);
-    tft.drawString("PRODUCT", x, y - 40, GFXFF);
-    tft.drawString("BLOCKED", x, y - 10, GFXFF);
+    tft.drawString("PRODUCT", x, y - 55, GFXFF);
+    tft.drawString("BLOCKED", x, y - 25, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("Remove the product", x, y + 30, GFXFF);
+    tft.drawString("Remove", x, y + 20, GFXFF);
+    tft.drawString("the product", x, y + 50, GFXFF);
   } else {
     tft.setTextSize(2);
     tft.setTextColor(TFT_BLACK);
@@ -1179,10 +1180,11 @@ void supplyBinEmptyScreen()
   if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
     tft.setTextSize(2);
     tft.setTextColor(TFT_BLACK);
-    tft.drawString("SUPPLY BIN", x, y - 40, GFXFF);
-    tft.drawString("IS EMPTY", x, y - 10, GFXFF);
+    tft.drawString("SUPPLY BIN", x, y - 55, GFXFF);
+    tft.drawString("IS EMPTY", x, y - 25, GFXFF);
     tft.setTextSize(2);
-    tft.drawString("Please restock it", x, y + 30, GFXFF);
+    tft.drawString("Please", x, y + 20, GFXFF);
+    tft.drawString("restock it", x, y + 50, GFXFF);
   } else {
     tft.setTextSize(2);
     tft.setTextColor(TFT_BLACK);

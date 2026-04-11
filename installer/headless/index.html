@@ -202,7 +202,7 @@
                         <option value="servo180">180° Servo</option>
                         <option value="servo360">360° Servo</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">The settings refer to pin 12</p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Select the configuration for pin 12</p>
                 </div>
             </div>
 
@@ -227,6 +227,7 @@
                         <p style="margin: 0; font-size: 11px; color: #bbb; font-style: italic;">Please note that the 180° servo always returns to its starting position after completing the switch function.</p>
                     </div>
                 </div>
+                <p style="margin: 8px 0 0 0; font-size: 11px; color: #888; font-style: italic;">The servo become active when their values are non-zero. Special Mode (blink, pulse, etc.) works only for Relay function.</p>
             </div>
 
             <!-- 360° Servo Configuration (hidden by default) -->
@@ -243,6 +244,7 @@
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = spin until action time ends</p>
                     </div>
                 </div>
+                <p style="margin: 8px 0 0 0; font-size: 11px; color: #888; font-style: italic;">The servo become active when their values are non-zero. Special Mode (blink, pulse, etc.) works only for Relay function.</p>
             </div>
 
             <!-- Section Separator -->
@@ -274,7 +276,48 @@
             </div>
             
             <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
-            
+
+            <!-- Section Separator -->
+            <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
+
+        <!-- Vending Machine Sensors Section -->
+            <p style="margin-top: 10px;"><strong>Special features for vending machines</strong></p>
+            <p style="margin-top: 10px; color: #888;"><i>The headless ZapBox supports two independent sensor inputs for vending machine operation.
+            Each sensor can be configured separately with one of four operating modes. Sensors use <strong>INPUT_PULLUP</strong> (active LOW — connect sensor signal to GND when triggered).</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>When a sensor blocks payments:</strong> The onboard LED blinks very fast (10 Hz), the WebSocket connection to the LNbits server is disconnected so the server rejects any static QR code payments, and NFC Bolt Card taps are blocked. As soon as the sensor condition clears, the WebSocket reconnects automatically and normal operation resumes.</i></p>
+
+            <div class="input-wrapper">
+                <div>
+                    <label for="vendingSensor1">Sensor 1 — GPIO 22</label>
+                    <select name="vendingSensor1" id="vendingSensor1">
+                        <option value="no" selected>No function (default)</option>
+                        <option value="yes">Stop the advance</option>
+                        <option value="monitor">Monitoring product blockage</option>
+                        <option value="level">Level monitoring (empty bin)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for sensor input on GPIO 22</p>
+                </div>
+                <div>
+                    <label for="vendingSensor2">Sensor 2 — GPIO 23</label>
+                    <select name="vendingSensor2" id="vendingSensor2">
+                        <option value="no" selected>No function (default)</option>
+                        <option value="yes">Stop the advance</option>
+                        <option value="monitor">Monitoring product blockage</option>
+                        <option value="level">Level monitoring (empty bin)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for sensor input on GPIO 23</p>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>Operating modes explained:</strong></i></p>
+            <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Stop the advance</strong></td><td>Stops the relay action when the sensor detects a product (LOW signal). Minimum action time of 2 seconds before the sensor can trigger.</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Monitoring product blockage</strong></td><td>After a payment, checks if the product exit is blocked (sensor LOW). Blocks further payments until the path is cleared.</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Level monitoring</strong></td><td>Continuously monitors the supply bin fill level. When the sensor goes HIGH (no product detected), the bin is considered empty and payments are blocked until restocked.</td></tr>
+            </table>
+
+            <p style="margin-top: 14px; color: #888;"><i><strong>⚠ Important:</strong> When a sensor function is active on GPIO 22 or GPIO 23, those GPIOs are configured as <strong>INPUT_PULLUP</strong> and are no longer available as relay output channels (CH06/CH07). Make sure your LNbits switch configuration does not use these GPIOs when sensor features are active.</i></p>
+
             <!-- Section Separator -->
             <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
 
@@ -340,8 +383,8 @@
                 <div>
                     <label for="nfcMode">NFC mode - NFC options and support</label>
                     <select name="nfcMode" id="nfcMode">
-                        <option value="emulation" selected>NFC card emulation for mobile phones (default)</option>
-                        <option value="boltcard">NFC Bolt Cards support only</option>
+                        <option value="emulation">NFC card emulation for mobile phones</option>
+                        <option value="boltcard" selected>NFC Bolt Cards support only (default)</option>
                         <option value="off">NFC off</option>
                     </select>
                 </div>
@@ -353,46 +396,6 @@
                 <img class="center-img" src="../assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" />
             </a>
 
-        <!-- Section Separator -->
-        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
-
-        <!-- Vending Machine Sensors Section -->
-            <p style="margin-top: 10px;"><strong>Special features for vending machines</strong></p>
-            <p style="margin-top: 10px; color: #888;"><i>The headless ZapBox supports two independent sensor inputs for vending machine operation.
-            Each sensor can be configured separately with one of four operating modes. Sensors use <strong>INPUT_PULLUP</strong> (active LOW — connect sensor signal to GND when triggered).</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>When a sensor blocks payments:</strong> The onboard LED blinks very fast (10 Hz), the WebSocket connection to the LNbits server is disconnected so the server rejects any static QR code payments, and NFC Bolt Card taps are blocked. As soon as the sensor condition clears, the WebSocket reconnects automatically and normal operation resumes.</i></p>
-
-            <div class="input-wrapper">
-                <div>
-                    <label for="vendingSensor1">Sensor 1 — GPIO 22</label>
-                    <select name="vendingSensor1" id="vendingSensor1">
-                        <option value="no" selected>No function (default)</option>
-                        <option value="yes">Stop the advance</option>
-                        <option value="monitor">Monitoring product blockage</option>
-                        <option value="level">Level monitoring (empty bin)</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for sensor input on GPIO 22</p>
-                </div>
-                <div>
-                    <label for="vendingSensor2">Sensor 2 — GPIO 23</label>
-                    <select name="vendingSensor2" id="vendingSensor2">
-                        <option value="no" selected>No function (default)</option>
-                        <option value="yes">Stop the advance</option>
-                        <option value="monitor">Monitoring product blockage</option>
-                        <option value="level">Level monitoring (empty bin)</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for sensor input on GPIO 23</p>
-                </div>
-            </div>
-
-            <p style="margin-top: 20px; color: #888;"><i><strong>Operating modes explained:</strong></i></p>
-            <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
-                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Stop the advance</strong></td><td>Stops the relay action when the sensor detects a product (LOW signal). Minimum action time of 2 seconds before the sensor can trigger.</td></tr>
-                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Monitoring product blockage</strong></td><td>After a payment, checks if the product exit is blocked (sensor LOW). Blocks further payments until the path is cleared.</td></tr>
-                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Level monitoring</strong></td><td>Continuously monitors the supply bin fill level. When the sensor goes HIGH (no product detected), the bin is considered empty and payments are blocked until restocked.</td></tr>
-            </table>
-
-            <p style="margin-top: 14px; color: #888;"><i><strong>⚠ Important:</strong> When a sensor function is active on GPIO 22 or GPIO 23, those GPIOs are configured as <strong>INPUT_PULLUP</strong> and are no longer available as relay output channels (CH06/CH07). Make sure your LNbits switch configuration does not use these GPIOs when sensor features are active.</i></p>
         </div>
 
         <!-- Error Detection Section -->
