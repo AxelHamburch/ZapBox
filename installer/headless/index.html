@@ -77,7 +77,7 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version-headless" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="../firmware/v944600h/manifest.json">v944600h (Latest - Vending sensors, servo modes &amp; relay output 🏪⚙️)</option>
+                <option value="../firmware/v944600h/manifest.json">v944600h (Latest - Servo and sensors 🏪⚙️)</option>
                 <option value="../firmware/v944368h/manifest.json">v944368h (NFC card emulation &amp; Bolt Card improvements ⚡)</option>
                 <option value="../firmware/v943679h/manifest.json">v943679h (404 auto-retry ⚙️)</option>
                 <option value="../firmware/v940411h/manifest.json">v940411h (UI improvements⚡)</option>
@@ -330,8 +330,8 @@
             <p style="margin-top: 10px; color: #888;"><i>The headless ZapBox supports up to <strong>12 independent relay channels</strong>. Each channel maps to a GPIO output that can switch a relay, solenoid, or any other 3.3 V-driven load.</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Available GPIO channels:</strong></i></p>
             <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH01</strong></td><td>GPIO 12</td><td style="padding-left: 16px; color: #aaa;">(default / single-mode)</td></tr>
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH02</strong></td><td>GPIO 13</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH01</strong></td><td>GPIO 12</td><td style="padding-left: 16px; color: #aaa;">(default)</td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH02</strong></td><td>GPIO 13</td><td style="padding-left: 16px; color: #aaa;">(always switches together with GPIO 12 – LED indicator)</td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH03</strong></td><td>GPIO 14</td><td></td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH04</strong></td><td>GPIO 16</td><td></td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH05</strong></td><td>GPIO 19</td><td></td></tr>
@@ -343,7 +343,8 @@
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH11</strong></td><td>GPIO 32</td><td></td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>CH12</strong></td><td>GPIO 33</td><td></td></tr>
             </table>
-            <p style="margin-top: 14px; color: #888;"><i>No additional configuration is needed on the device. Simply assign the desired GPIO to each switch in your <strong>LNbits extension</strong> (zapbox / bitcoinswitch). The device will activate exactly the GPIO returned in the "paid" event – all 12 channels are ready at boot.</i></p>
+            <p style="margin-top: 14px; color: #888;"><i>Each channel is configured independently in your <strong>LNbits extension</strong> (zapbox / bitcoinswitch) – each switch gets its own QR code and amount. The device activates exactly the GPIO returned in the "paid" event – all channels are ready at boot. No additional configuration on the device is needed.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note on GPIO 13:</strong> GPIO 13 always switches together with GPIO 12 and can be used as a <strong>status LED</strong> to visually signal each activation. GPIOs 22 and 23 are reserved as relay outputs as long as no sensor function is configured on them.</i></p>
 
             <!-- Section Separator -->
             <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">

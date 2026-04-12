@@ -719,6 +719,11 @@ void showHelp()
 
 void configMode()
 {
+  // Print entry timestamp BEFORE suppressing logs so it always appears in serial output.
+  // This lets us measure the exact delay from button press to configMode() invocation.
+  Serial.printf("[CONFIG] configMode() called at %lu ms – entering config mode\n", millis());
+  Serial.printf("[CONFIG] WiFi teardown will take ~2.7 s (delays: 2000+200+500 ms)\n");
+
   // Suppress ALL Log output globally FIRST - before WiFi.disconnect() triggers
   // async callbacks (e.g. WebSocket Disconnected) that write via LOG_INFO.
   Log::suppressed = true;
@@ -751,7 +756,13 @@ void configMode()
   // finishes in <2s, so 2 seconds is enough for most cases.  Even if the
   // request is still in flight, the graceful WiFi.disconnect(false) below
   // will send TCP RST and trigger a clean HTTP error instead of a crash.
+  // Headless (ENABLE_DISPLAY=0): ENABLE_BITCOIN_DATA=0 → no HTTPS on Core 1,
+  // so 300 ms is enough to let WebSocket / other tasks notice CONFIG_MODE.
+#if ENABLE_DISPLAY
   delay(2000);
+#else
+  delay(300);
+#endif
 
   // Step 1: Graceful WiFi disconnect (sends TCP FIN/RST to active sockets).
   // Using false = don't kill the radio yet, just close connections cleanly.
@@ -763,6 +774,7 @@ void configMode()
   delay(500); // Let pending WiFi event callbacks drain completely
 
   // Set CONFIG_MODE state SILENTLY (DeviceState suppresses serial for CONFIG_MODE)
+  Serial.printf("[CONFIG] Config screen now shown at %lu ms\n", millis());
   configModeScreen(); // Draw config screen
   configModeStartTime = millis();
   updateReadyLed();
@@ -863,6 +875,21 @@ void Task1code(void *pvParameters)
     // Skip during CONFIG_MODE: WiFi radio may be OFF and serial config handles everything
     if (!deviceState.isInState(DeviceState::CONFIG_MODE)) {
       checkWiFiStatus();
+    }
+
+    // Direct GPIO monitoring for BOOT button – independent of OneButton timing
+    // Logs exact press/release timestamps for diagnosing config-mode trigger delay
+    {
+      static bool lastBootState = HIGH;
+      bool curBootState = (digitalRead(PIN_BUTTON_1) == LOW) ? LOW : HIGH;
+      if (curBootState != lastBootState) {
+        if (curBootState == LOW) {
+          Serial.printf("[BUTTON] Boot button PRESSED  at %lu ms (hold 3 s for config mode)\n", millis());
+        } else {
+          Serial.printf("[BUTTON] Boot button RELEASED at %lu ms\n", millis());
+        }
+        lastBootState = curBootState;
+      }
     }
 
     leftButton.tick();
@@ -1045,7 +1072,7 @@ void setup()
 #endif
 
   // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
-  leftButton.setPressMs(3000); // 3 seconds for config mode (documented as 5 sec for users)
+  leftButton.setPressMs(3000); // 3 s hold triggers config mode internally; WiFi teardown adds ~2.7 s → config screen appears after ~5.7 s total (documented as "hold 5 seconds")
   leftButton.setDebounceMs(50); // 50ms debounce - fast response
   leftButton.attachClick(onNextButtonClick); // Single click = Navigate products OR exit config mode
   leftButton.attachLongPressStart(configMode); // Long press = Config mode
@@ -2901,6 +2928,14 @@ static void processNormalPayment(int pin, int duration)
     updateActionTimeCountdown(duration / 1000);
     // Servo mode: servo pins (13, 10) trigger servo directly, no GPIO relay
     if (isServoPin) {
+      // Headless servo mode (servo180/servo360): activate GPIO 13 as LED indicator
+      #if !ENABLE_DISPLAY
+      if (pin == 12) {
+        pinMode(PIN_RELAY_CH02, OUTPUT);
+        digitalWrite(PIN_RELAY_CH02, HIGH);
+        Serial.println("[RELAY] Pin 13 set HIGH (LED indicator, synced with Pin 12)");
+      }
+      #endif
       activateServo(pin);
     } else {
       pinMode(pin, OUTPUT);
@@ -2951,6 +2986,13 @@ static void processNormalPayment(int pin, int duration)
     // Servo mode: return servo to rest state; otherwise turn relay off
     if (isServoPin) {
       deactivateServo(pin);
+      // Headless servo mode (servo180/servo360): deactivate GPIO 13 LED indicator
+      #if !ENABLE_DISPLAY
+      if (pin == 12) {
+        digitalWrite(PIN_RELAY_CH02, LOW);
+        Serial.println("[RELAY] Pin 13 set LOW (LED indicator, synced with Pin 12)");
+      }
+      #endif
     } else {
       digitalWrite(pin, LOW);
       Serial.printf("[RELAY] Pin %d set LOW\n", pin);

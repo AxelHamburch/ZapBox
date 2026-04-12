@@ -128,7 +128,15 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
     // fire asynchronously on the WiFi task and write to Serial via esp_log — we must
     // wait long enough for those to complete before we start our own output.
     Serial.flush();
-    delay(1500); // Give Core 1 + WiFi event callbacks time to finish + USB CDC stabilize
+    // T-Display-S3 uses native USB CDC → needs longer stabilisation to prevent
+    // the browser's Web Serial buffer from dropping bytes.
+    // Headless ESP32 uses hardware UART (USB-UART bridge) → no CDC buffering,
+    // and WiFi teardown already waited 500 ms before we get here.
+#if ENABLE_DISPLAY
+    delay(1500); // USB CDC stabilisation for T-Display-S3
+#else
+    delay(100);  // UART: just let WiFi event callbacks drain
+#endif
 
     // Drain any stale bytes that other cores may have written while we waited
     while (Serial.available()) Serial.read();
@@ -170,8 +178,13 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 
 #if !ENABLE_DISPLAY
     // LED blink state for config mode (headless version only)
+    // Start with LED ON so the first blink is visible immediately
+    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    #ifdef PIN_ONBOARD_LED
+    digitalWrite(PIN_ONBOARD_LED, HIGH);
+    #endif
     unsigned long lastConfigBlinkTime = millis();
-    bool configBlinkState = false;
+    bool configBlinkState = true; // Already ON
 #endif
 
     while (true)
