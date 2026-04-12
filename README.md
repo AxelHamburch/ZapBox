@@ -329,6 +329,7 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
 - [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
 - [E-Layout-ZapBox-Servo.png](assets/electric/E-Layout-ZapBox-Servo.png)
+- [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
 
 ### External LED Button (Optional)
 
@@ -1105,6 +1106,7 @@ Electrical design and housing variants, see table.
 | b943400 | Headless | Headless with NFC |
 | b943614 | Servo | The first one with servo control |
 | b944177 | Headless | Mounting plate with snap-fit connection |
+| b944666 | Headless Servo | First powerfull Headless Servo |
 
 -> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
@@ -1126,7 +1128,9 @@ Electrical design and housing variants, see table.
 | e938889 | Headless | Update Headless with ZapBox picture |
 | e938897 | Compact | Update Compact with ZapBox picture |
 | e939705 | ZapOMat | ZapOMat No.1 | 
+| e940540 | Headless | Update | 
 | e943674 | Servo | Start the Servo Story | 
+| e944644 | Headless Servo | First powerfull Headless Servo | 
 
 -> Find all versions here: [./assets/electric)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
