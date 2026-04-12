@@ -271,14 +271,24 @@ static void nfc_task_code(void *pvParams)
         // btcTickerActive covers single mode where the device state stays
         // READY while the ticker is displayed – the user cannot see the
         // product/QR, so NFC must be blocked there as well.
+        //
+        // Headless (ENABLE_DISPLAY=0): PRODUCT_SELECTION is the operational
+        // "ready" state for single-channel mode – there is no display to
+        // show a product selection screen, so NFC must be accepted there.
+        // GPIO 12 is always the NFC target in headless mode.
         {
             DeviceState curState = deviceState.getState();
             bool tickerShowing = multiChannelConfig.btcTickerActive;
+#if ENABLE_DISPLAY
+            bool blockForProductSelection = (curState == DeviceState::PRODUCT_SELECTION);
+#else
+            bool blockForProductSelection = false; // Headless: PRODUCT_SELECTION = ready
+#endif
             if (curState == DeviceState::INITIALIZING    ||
                 curState == DeviceState::CONNECTING_WIFI  ||
                 curState == DeviceState::ERROR_CRITICAL   ||
                 curState == DeviceState::ERROR_RECOVERABLE||
-                curState == DeviceState::PRODUCT_SELECTION||
+                blockForProductSelection                  ||
                 curState == DeviceState::BTC_TICKER      ||
                 curState == DeviceState::SCREENSAVER     ||
                 tickerShowing                            ||
@@ -288,14 +298,14 @@ static void nfc_task_code(void *pvParams)
                                     deviceState.getDeviceStateName(curState) +
                                     String(", ticker: ") + String(tickerShowing) +
                                     String(", blocked: ") + String(lightBarrierConfig.blocked) + String(")"));
-                // For PRODUCT_SELECTION, BTC_TICKER and SCREENSAVER the device
-                // can quickly transition to READY while the card is still on
-                // the reader.  Without waiting for removal the card would be
-                // detected again immediately in the next loop iteration.
-                if (curState == DeviceState::PRODUCT_SELECTION ||
-                    curState == DeviceState::BTC_TICKER       ||
-                    curState == DeviceState::SCREENSAVER      ||
-                    tickerShowing                             ||
+                // For PRODUCT_SELECTION (display only), BTC_TICKER and SCREENSAVER
+                // the device can quickly transition to READY while the card is
+                // still on the reader. Without waiting for removal the card
+                // would be detected again immediately in the next loop iteration.
+                if (blockForProductSelection              ||
+                    curState == DeviceState::BTC_TICKER  ||
+                    curState == DeviceState::SCREENSAVER ||
+                    tickerShowing                        ||
                     lightBarrierConfig.blocked)
                 {
                     waitForCardRemoval();
