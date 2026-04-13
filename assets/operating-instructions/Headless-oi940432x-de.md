@@ -87,7 +87,7 @@ Die USB-Buchse wird über einen Relais-Schaltkontakt geschaltet. Die **Gesamtbel
 
 ## Bedienelemente
 
-Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließlich über die **Status-LED** und **Action-LED** signalisiert.
+Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließlich über die **Status-LED** (GPIO 21 (extern) / GPIO 2 (onboard)) und **Action-LED** (GPIO 13) signalisiert.
 
 ### Status-LED – Blinkmuster
 
@@ -97,6 +97,7 @@ Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließli
 | Schnelles Blinken | Verbindungsaufbau / Initialisierung |
 | Langsames Blinken (1 Hz) | Config-Modus aktiv |
 | Dauerlicht | Betriebsbereit, wartet auf Zahlung |
+| Kurzes Ausschalten (300 ms) | Aktion gestartet – Relais/Servo ausgelöst |
 | 200 ms an / 800 ms aus | NFC-Zahlung ausstehend (PENDING) |
 | 2× kurzes Blinken | Zahlung erfolgreich |
 | 3× kurzes Blinken | NFC-Timeout / Fehler |

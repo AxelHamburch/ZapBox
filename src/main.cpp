@@ -2961,6 +2961,18 @@ static void processNormalPayment(int pin, int duration)
         Serial.println("[RELAY] GPIO 23 set HIGH (relay output, synced with Pin 12)");
       }
     }
+
+    // Action start indicator: briefly turn off status LEDs for 300ms so the
+    // onboard LED (GPIO 2) signals that the relay/action has just fired.
+    digitalWrite(PIN_LED_BUTTON_LED, LOW);
+    #ifdef PIN_ONBOARD_LED
+    digitalWrite(PIN_ONBOARD_LED, LOW);
+    #endif
+    delay(300);
+    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    #ifdef PIN_ONBOARD_LED
+    digitalWrite(PIN_ONBOARD_LED, HIGH);
+    #endif
     #endif
 
     // CRITICAL: Non-blocking delay that keeps WebSocket alive

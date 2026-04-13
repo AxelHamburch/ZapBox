@@ -181,6 +181,7 @@ Device String (switchStr)
 | External LED Button | Supported (GPIO 43/44) | N/A |
 | Light Barrier | Supported (GPIO 2) | Dual sensors (GPIO 22/23) |
 | Status Indication | Display + LED | LED only (GPIO 21 and onboard LED GPIO 2) |
+| Action LED | N/A | GPIO 13 (ACTION LED – reserved, always switches with GPIO 12) |
 | NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 4, 17, 18) |
 | Power Consumption | ~150-250mA | Lower (no display overhead) |
 | Configuration Method | Web Installer + Serial | Web Installer + Serial |
@@ -404,6 +405,7 @@ LED Cathode (-)        →    Resistor (220Ω) →    GND
 - **Fast Blink (5Hz, 200ms)**: During startup and initialization (INITIALIZING, CONNECTING_WIFI states)
 - **Slow Blink (1Hz, 1000ms)**: Config mode active - device waiting for configuration
 - **Solid ON**: Device is ready to receive payments
+- **300ms OFF (brief dip)**: Action started – onboard LED (GPIO 2) briefly goes OFF when the relay/servo fires, then returns to solid ON. Visible confirmation that an action has been triggered.
 - **200ms ON / 800ms OFF blink**: NFC payment pending – waiting for invoice settlement via WebSocket
 - **2× Fast Blink (100ms ON/OFF) + Solid ON**: NFC payment confirmed – 2 quick confirmation flashes, then LED stays ON while relay fires
 - **3× Fast Blink (100ms ON/OFF) + Solid ON**: NFC timeout (60s) or HTTP error – "NO LUCK" visual feedback, then returns to ready state
@@ -438,6 +440,7 @@ For example: If WiFi is disconnected, the LED will show 1 blink (WiFi error) eve
 | **Fast Continuous** | 200ms on/off (5Hz) | **INITIALIZING** | System startup, WiFi connecting |
 | **Slow Continuous** | 1000ms on/off (1Hz) | **CONFIG MODE** | Configuration interface active, waiting for settings |
 | **Solid ON** | Continuous light | **READY** | All systems operational, ready for payments |
+| **Brief OFF (300ms)** | 300ms OFF then back to solid | **ACTION START** | Relay/servo fired – onboard LED dips briefly to confirm action started |
 | **Asymmetric Blink** | 200ms ON / 800ms OFF | **NFC PENDING** | NFC payment initiated, waiting for invoice settlement |
 | **2× Fast Blink** | 100ms ON/OFF × 2, then solid | **NFC SUCCESS** | Payment confirmed – 2 quick flashes, relay fires, LED stays ON |
 | **3× Fast Blink** | 100ms ON/OFF × 3, then solid | **NFC NO LUCK** | 60s timeout or HTTP error – returns to ready state |
