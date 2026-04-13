@@ -1,6 +1,6 @@
-# ZapBox Headless – Bedienungsanleitung
+# ZapBox Headless Servo – Bedienungsanleitung
 
-**Sprache:** Deutsch | **Version:** oi944920
+**Sprache:** Deutsch | **Version:** oi944935
 
 ---
 
