@@ -318,6 +318,19 @@ The PN532 chip initializes automatically on power-up.
 - Call `nfc.begin()` after Touch initialization
 - Use `nfc.readPassiveTargetID()` to read card UIDs
 
+### Operating Instructions
+
+See the operating instructions as PDF:
+
+- [Compact-de.pdf](assets/operating-instructions/Compact-de.pdf)
+- [Compact-en.pdf](assets/operating-instructions/Compact-en.pdf)
+- [Duo-de.pdf](assets/operating-instructions/Duo-de.pdf)
+- [Duo-en.pdf](assets/operating-instructions/Duo-en.pdf)
+- [Headless-de.pdf](assets/operating-instructions/Headless-de.pdf)
+- [Headless-en.pdf](assets/operating-instructions/Headless-en.pdf)
+- [Quattro-de.pdf](assets/operating-instructions/Quattro-de.pdf)
+- [Quattro-en.pdf](assets/operating-instructions/Quattro-en.pdf)
+
 ### Electrical Layout
 
 See the complete wiring diagram:
