@@ -121,6 +121,14 @@ Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließli
 | **0** (OFF) | Spannungsversorgung unterbrochen – Ausgang AUS |
 | **1** (ON) | Ausgang (USB-C) dauerhaft EIN |
 
+### Montagehalterung mit Schnapp-Arretierung
+
+<img src="pic-Headless/Headless-oi-mount.webp" alt="Lösen einer Montagehalter einer Headless mit NFC-Modul" width="100%">
+
+*Bild 4: Lösen einer Montagehalter einer Headless mit NFC-Modul*
+
+> **Hinweis:** Die ZapBox ist auf der Montagehalterung nur aufgeschoben und mit einem Schnappverschluss arretiert. Die Arretierung kann man mit einem flachen Schraubendreher lösen. Dazu den Schraubendreher vorsichtig in den Schlitz einschieben, leicht anheben und dabei den oberen Teil der ZapBox in Richtung des Schraubendrehers schieben. Die Verbindung sollte sich lösen und die ZapBox kann von der Montageplatte durch anheben gelöst werden.
+
 ---
 
 ## Einrichtung und Inbetriebnahme
