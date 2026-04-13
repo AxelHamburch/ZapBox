@@ -22,6 +22,9 @@
 
 Die **ZapBox Headless** ist ein elektronischer Schalter für Bitcoin-Lightning-Zahlungen ohne Display. Mit einer Zahlung über das Lightning-Netzwerk lässt sich ein Ausgang schalten – ideal für eingebettete Anwendungen, verdeckte Installationen, Maschinenbau und überall dort, wo kein Display benötigt wird.
 
+Die ZapBox Headless Servo verfügt über einen Steckverbinder zum Anschluss externer Relais mit 5-V-Ansteuerung sowie digitaler Servomotoren. Unterstützt werden sowohl 180°-Servomotoren für Positionierungsaufgaben als auch 360°-Servomotoren für kontinuierliche Rotationsanwendungen.
+Zusätzlich stehen auf der Steckverbinder zwei universelle Anschlüsse für Aktoren und Sensoren zur Verfügung. Die Konfiguration und Parametrierung erfolgt über den Web Installer.
+
 Der Betriebszustand wird ausschließlich über eine **Status-LED** angezeigt. Eine zweite **Action-LED** zeigt die Schaltfunktion an.
 
 ### Grundausstattung
@@ -30,17 +33,16 @@ Der Betriebszustand wird ausschließlich über eine **Status-LED** angezeigt. Ei
 |---|---|
 | Mikrocontroller | ESP32 Dev Module (kein Display) |
 | Eingang | USB-C (Power IN) |
-| Ausgang | USB-C (Power OUT) |
+| Ausgang | 5-polige Steckverbinder (15EDG 3,81 mm) |
 | Statusanzeige | Status-LED mit Blinkmustern und Action-LED als Rückmeldung |
 | Bedienelement | Mikrotaster für BOOT (Config-Modus) und Reset |
-| Schalter | 3-poliger Schiebeschalter (AUTO / OFF / ON) |
 | Option NFC-Modul | Für Bolt Cards (NTAG424 DNA) und Standard NTAG213/215/216 (mit LNURL-withdraw) |
 
 ---
 
 ## Ansichten
 
-<img src="pic-Headless/Headless-oi-01.webp" alt="Frontansicht-Draufsicht" width="67%">
+<img src="pic-Headless-Servo/Headless-Servo-oi-01.webp" alt="Frontansicht-Draufsicht" width="67%">
 
 *Bild 1: Frontansicht / Draufsicht*
 
@@ -63,13 +65,9 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 1. An der **Vorderseite links** befindet sich eine kleines Panel links neben den USB-Anschlüssen. Öffnen Sie das Panel, indem Sie von unten mit einem **schmalen Schraubendreher** das Panel nach rechts wegschieben.
 2. Schließen Sie ein Micro-USB-Kabel an den Mikrocontroller an.
 
-<img src="pic-Headless/Headless-oi-02.webp" alt="Panel öffnen für Datenverbindung" width="67%">
+<img src="pic-Headless-Servo/Headless-Servo-oi-02.webp" alt="Panel öffnen für Datenverbindung mit Micro USB-Port" width="100%">
 
-*Bild 2: Panel öffnen für Datenverbindung*
-
-<img src="pic-Headless/Headless-oi-03.webp" alt="Micro USB Port" width="67%">
-
-*Bild 3: Micro USB Port*
+*Bild 2: Panel öffnen für Datenverbindung mit Micro USB-Port*
 
 > **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller ist ausschließlich zum Flashen der Firmware und zur Übertragung von Konfigurationsparametern vorgesehen. Während des Flashvorgangs darf keine Last am Ausgang angeschlossen oder geschaltet werden, da dies zu Fehlfunktionen oder zur **Beschädigung des Mikrocontrollers** führen kann.
 >
@@ -79,9 +77,20 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 
 ---
 
-### Ausgang - USB-C-Buchse (geschaltete 5V Spannung)
+### Ausgang - 5-poliger Steckverbinder
 
-Die USB-Buchse wird über einen Relais-Schaltkontakt geschaltet. Die **Gesamtbelastung** der Buchsen sollte **3 A nicht überschreiten**.
+**Klemmenbelegung:**
+| Klemme | Funktion | Anschlussoption | Verwendung |
+|------|----------|-----------|---------------|
+| 1 | 5V | Ausgang (Eingang möglich) | Spannungsversorgung für den Servo, etc. |
+| 2 | GND | Ausgang (Eingang möglich) | Masseanschluss für den Servo, etc. |
+| 3 | Relais oder Servomotor | Output | 3,3V Servo- bzw. Relaissteuersignal |
+| 4 | Sensor / Aktor 1 | Eingang oder Ausgang | Sensor oder Aktor 1 |
+| 5 | Sensor / Aktor 2 | Eingang oder Ausgang | Sensor oder Aktor 2 |
+
+Die ZapBox kann entweder über den USB-C-Anschluss mit einer 5-V-Versorgungsspannung oder über die Klemmen 1 und 2 betrieben werden.
+Für die Klemmen 3 bis 5 stehen optionale Funktionen zur Verfügung, die über den Web Installer eingestellt und parametriert werden müssen. Weitere Informationen hierzu finden sich unter „Optional Settings and Functions – ZapBox Mode“ bzw. „Special Features for Vending Machines“ im Web Installer.
+Standardmäßig ist der Ausgang für Klemme 3 auf „Relay“ eingestellt, während die Klemmen 4 und 5 auf „No function“ gesetzt sind.
 
 ---
 
@@ -113,19 +122,11 @@ Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließli
 | Config-Modus aufrufen | BOOT-Taster mind. 5 Sek. gedrückt halten |
 | Neustart | Reset-Taster |
 
-### Dreifach-Schiebeschalter (AUTO / OFF / ON)
-
-| Stellung | Funktion |
-|---|---|
-| **A** (AUTO) | Automatikbetrieb – Normalbetrieb |
-| **0** (OFF) | Spannungsversorgung unterbrochen – Ausgang AUS |
-| **1** (ON) | Ausgang (USB-C) dauerhaft EIN |
-
 ### Montagehalterung mit Schnapp-Arretierung
 
-<img src="pic-Headless/Headless-oi-mount.webp" alt="Lösen einer Montagehalter einer Headless mit NFC-Modul" width="100%">
+<img src="pic-Headless-Servo/Headless-Servo-oi-mount.webp" alt="Lösen einer Montagehalter einer Headless mit NFC-Modul" width="100%">
 
-*Bild 4: Lösen einer Montagehalter einer Headless mit NFC-Modul*
+*Bild 3: Lösen einer Montagehalter einer Headless mit NFC-Modul*
 
 > **Hinweis:** Die ZapBox ist auf der Montagehalterung nur aufgeschoben und mit einem Schnappverschluss arretiert. Die Arretierung kann man mit einem flachen Schraubendreher lösen. Dazu den Schraubendreher vorsichtig in den Schlitz einschieben, leicht anheben und dabei den oberen Teil der ZapBox in Richtung des Schraubendrehers schieben. Die Verbindung sollte sich lösen und die ZapBox kann von der Montageplatte durch anheben gelöst werden.
 
