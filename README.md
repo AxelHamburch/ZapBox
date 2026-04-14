@@ -328,7 +328,7 @@ Current user manuals are available in Markdown format for online viewing and as 
 | **Compact** | [de.md](assets/operating-instructions/Compact-oi-de.md) / [en.md](assets/operating-instructions/Compact-oi-en.md) | [de.pdf](assets/operating-instructions/Compact-oi-de.pdf) / [en.pdf](assets/operating-instructions/Compact-oi-en.pdf) |
 | **Duo** | [de.md](assets/operating-instructions/Duo-oi-de.md) / [en.md](assets/operating-instructions/Duo-oi-en.md) | [de.pdf](assets/operating-instructions/Duo-oi-de.pdf) / [en.pdf](assets/operating-instructions/Duo-oi-en.pdf) |
 | **Headless** | [de.md](assets/operating-instructions/Headless-oi-de.md) / [en.md](assets/operating-instructions/Headless-oi-en.md) | [de.pdf](assets/operating-instructions/Headless-oi-de.pdf) / [en.pdf](assets/operating-instructions/Headless-oi-en.pdf) |
-| **Headless Servo** | [de.md](assets/operating-instructions/Headless-Servo-oi944935-de.md) / [en.md](assets/operating-instructions/Headless-Servo-oi944935-en.md) | |
+| **Headless Servo** | [de.md](assets/operating-instructions/Headless-Servo-oi944935-de.md) / [en.md](assets/operating-instructions/Headless-Servo-oi944935-en.md) | [de.pdf](assets/operating-instructions/Headless-Servo-oi944935-de.pdf) / [en.pdf](assets/operating-instructions/Headless-Servo-oi944935-en.pdf) |
 | **Quattro** | [de.md](assets/operating-instructions/Quattro-oi-de.md) / [en.md](assets/operating-instructions/Quattro-oi-en.md) | [de.pdf](assets/operating-instructions/Quattro-oi-de.pdf) / [en.pdf](assets/operating-instructions/Quattro-oi-en.pdf) |
 
 For the archive and development, see [here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions).
