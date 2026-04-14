@@ -323,14 +323,14 @@ The PN532 chip initializes automatically on power-up.
 
 See the operating instructions as PDF:
 
-- [Compact-de.pdf](assets/operating-instructions/Compact-de.pdf)
-- [Compact-en.pdf](assets/operating-instructions/Compact-en.pdf)
-- [Duo-de.pdf](assets/operating-instructions/Duo-de.pdf)
-- [Duo-en.pdf](assets/operating-instructions/Duo-en.pdf)
-- [Headless-de.pdf](assets/operating-instructions/Headless-de.pdf)
-- [Headless-en.pdf](assets/operating-instructions/Headless-en.pdf)
-- [Quattro-de.pdf](assets/operating-instructions/Quattro-de.pdf)
-- [Quattro-en.pdf](assets/operating-instructions/Quattro-en.pdf)
+- [Compact-de.pdf](assets/operating-instructions/Compact-oi-de.pdf)
+- [Compact-en.pdf](assets/operating-instructions/Compact-oi-en.pdf)
+- [Duo-de.pdf](assets/operating-instructions/Duo-oi-de.pdf)
+- [Duo-en.pdf](assets/operating-instructions/Duo-oi-en.pdf)
+- [Headless-de.pdf](assets/operating-instructions/Headless-oi-de.pdf)
+- [Headless-en.pdf](assets/operating-instructions/Headless-oi-en.pdf)
+- [Quattro-de.pdf](assets/operating-instructions/Quattro-oi-de.pdf)
+- [Quattro-en.pdf](assets/operating-instructions/Quattro-oi-en.pdf)
 
 See the entire selection [here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions)
 
