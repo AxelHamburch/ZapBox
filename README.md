@@ -321,18 +321,20 @@ The PN532 chip initializes automatically on power-up.
 
 ### Operating Instructions
 
-See the operating instructions as PDF:
+Current user manuals are available in Markdown format for online viewing and as PDFs for download.
 
-- [Compact-de.pdf](assets/operating-instructions/Compact-oi-de.pdf)
-- [Compact-en.pdf](assets/operating-instructions/Compact-oi-en.pdf)
-- [Duo-de.pdf](assets/operating-instructions/Duo-oi-de.pdf)
-- [Duo-en.pdf](assets/operating-instructions/Duo-oi-en.pdf)
-- [Headless-de.pdf](assets/operating-instructions/Headless-oi-de.pdf)
-- [Headless-en.pdf](assets/operating-instructions/Headless-oi-en.pdf)
-- [Quattro-de.pdf](assets/operating-instructions/Quattro-oi-de.pdf)
-- [Quattro-en.pdf](assets/operating-instructions/Quattro-oi-en.pdf)
+| | Markdown | PDF |
+|---|----------|-----|
+| Compact (Deutsch) | [Compact-oi-de.md](assets/operating-instructions/Compact-oi-de.md) | [Compact-oi-de.pdf](assets/operating-instructions/Compact-oi-de.pdf) |
+| Compact (English) | [Compact-oi-en.md](assets/operating-instructions/Compact-oi-en.md) | [Compact-oi-en.pdf](assets/operating-instructions/Compact-oi-en.pdf) |
+| Duo (Deutsch) | [Duo-oi-de.md](assets/operating-instructions/Duo-oi-de.md) | [Duo-oi-de.pdf](assets/operating-instructions/Duo-oi-de.pdf) |
+| Duo (English) | [Duo-oi-en.md](assets/operating-instructions/Duo-oi-en.md) | [Duo-oi-en.pdf](assets/operating-instructions/Duo-oi-en.pdf) |
+| Headless (Deutsch) | [Headless-oi-de.md](assets/operating-instructions/Headless-oi-de.md) | [Headless-oi-de.pdf](assets/operating-instructions/Headless-oi-de.pdf) |
+| Headless (English) | [Headless-oi-en.md](assets/operating-instructions/Headless-oi-en.md) | [Headless-oi-en.pdf](assets/operating-instructions/Headless-oi-en.pdf) |
+| Quattro (Deutsch) | [Quattro-oi-de.md](assets/operating-instructions/Quattro-oi-de.md) | [Quattro-oi-de.pdf](assets/operating-instructions/Quattro-oi-de.pdf) |
+| Quattro (English) | [Quattro-oi-en.md](assets/operating-instructions/Quattro-oi-en.md) | [Quattro-oi-en.pdf](assets/operating-instructions/Quattro-oi-en.pdf) |
 
-See the entire selection [here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions)
+For the archive and development, see [here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions).
 
 ### Electrical Layout
 
