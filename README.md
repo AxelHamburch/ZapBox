@@ -332,6 +332,8 @@ See the operating instructions as PDF:
 - [Quattro-de.pdf](assets/operating-instructions/Quattro-de.pdf)
 - [Quattro-en.pdf](assets/operating-instructions/Quattro-en.pdf)
 
+See the entire selection [here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions)
+
 ### Electrical Layout
 
 See the complete wiring diagram:
