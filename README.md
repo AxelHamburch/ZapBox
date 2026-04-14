@@ -341,10 +341,14 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
 - [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
 - [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
-- [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
+- [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
 - [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
 - [E-Layout-ZapBox-Servo.png](assets/electric/E-Layout-ZapBox-Servo.png)
-- [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
+
+Miscellaneous:
+
+- [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
+
 
 ### External LED Button (Optional)
 
