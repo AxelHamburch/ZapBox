@@ -325,14 +325,11 @@ Current user manuals are available in Markdown format for online viewing and as 
 
 | | Markdown | PDF |
 |---|----------|-----|
-| Compact (Deutsch) | [Compact-oi-de.md](assets/operating-instructions/Compact-oi-de.md) | [Compact-oi-de.pdf](assets/operating-instructions/Compact-oi-de.pdf) |
-| Compact (English) | [Compact-oi-en.md](assets/operating-instructions/Compact-oi-en.md) | [Compact-oi-en.pdf](assets/operating-instructions/Compact-oi-en.pdf) |
-| Duo (Deutsch) | [Duo-oi-de.md](assets/operating-instructions/Duo-oi-de.md) | [Duo-oi-de.pdf](assets/operating-instructions/Duo-oi-de.pdf) |
-| Duo (English) | [Duo-oi-en.md](assets/operating-instructions/Duo-oi-en.md) | [Duo-oi-en.pdf](assets/operating-instructions/Duo-oi-en.pdf) |
-| Headless (Deutsch) | [Headless-oi-de.md](assets/operating-instructions/Headless-oi-de.md) | [Headless-oi-de.pdf](assets/operating-instructions/Headless-oi-de.pdf) |
-| Headless (English) | [Headless-oi-en.md](assets/operating-instructions/Headless-oi-en.md) | [Headless-oi-en.pdf](assets/operating-instructions/Headless-oi-en.pdf) |
-| Quattro (Deutsch) | [Quattro-oi-de.md](assets/operating-instructions/Quattro-oi-de.md) | [Quattro-oi-de.pdf](assets/operating-instructions/Quattro-oi-de.pdf) |
-| Quattro (English) | [Quattro-oi-en.md](assets/operating-instructions/Quattro-oi-en.md) | [Quattro-oi-en.pdf](assets/operating-instructions/Quattro-oi-en.pdf) |
+| **Compact** | [de.md](assets/operating-instructions/Compact-oi-de.md) / [en.md](assets/operating-instructions/Compact-oi-en.md) | [de.pdf](assets/operating-instructions/Compact-oi-de.pdf) / [en.pdf](assets/operating-instructions/Compact-oi-en.pdf) |
+| **Duo** | [de.md](assets/operating-instructions/Duo-oi-de.md) / [en.md](assets/operating-instructions/Duo-oi-en.md) | [de.pdf](assets/operating-instructions/Duo-oi-de.pdf) / [en.pdf](assets/operating-instructions/Duo-oi-en.pdf) |
+| **Headless** | [de.md](assets/operating-instructions/Headless-oi-de.md) / [en.md](assets/operating-instructions/Headless-oi-en.md) | [de.pdf](assets/operating-instructions/Headless-oi-de.pdf) / [en.pdf](assets/operating-instructions/Headless-oi-en.pdf) |
+| **Headless Servo** | [de.md](assets/operating-instructions/Headless-Servo-oi944935-de.md) / [en.md](assets/operating-instructions/Headless-Servo-oi944935-en.md) | |
+| **Quattro** | [de.md](assets/operating-instructions/Quattro-oi-de.md) / [en.md](assets/operating-instructions/Quattro-oi-en.md) | [de.pdf](assets/operating-instructions/Quattro-oi-de.pdf) / [en.pdf](assets/operating-instructions/Quattro-oi-en.pdf) |
 
 For the archive and development, see [here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions).
 
