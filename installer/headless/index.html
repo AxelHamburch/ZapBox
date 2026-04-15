@@ -401,6 +401,21 @@
                 <img class="center-img" src="../assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" />
             </a>
 
+            <!-- Print Config -->
+            <hr style="margin: 40px 0 20px 0; border: none; border-top: 1px solid #888;">
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 10px;">
+                <span style="font-weight: 600; white-space: nowrap;">Save your settings:</span>
+                <button onclick="printConfig()" style="padding: 10px 18px; font-size: 15px; background: #f7931a; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">🖨️ Print Config</button>
+                <div>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: normal; margin-bottom: 8px;">
+                        <input type="checkbox" id="print-wifi" style="display: inline-block; width: auto; margin: 0; padding: 0; flex-shrink: 0;"> Print WiFi data
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: normal;">
+                        <input type="checkbox" id="print-device-string" style="display: inline-block; width: auto; margin: 0; padding: 0; flex-shrink: 0;"> Print Device settings string
+                    </label>
+                </div>
+            </div>
+
         </div>
 
         <!-- Error Detection Section -->
@@ -1516,6 +1531,127 @@
         servo2Duration.addEventListener("input", (event) => {
             config[28].value = event.target.value || "0";
         });
+
+        // Print Config functionality
+        function printConfig() {
+            const printWifi = document.getElementById('print-wifi').checked;
+            const printDeviceString = document.getElementById('print-device-string').checked;
+
+            function selText(id) {
+                const el = document.getElementById(id);
+                return el ? el.options[el.selectedIndex].text : '';
+            }
+            function inputVal(id) {
+                const el = document.getElementById(id);
+                return el ? (el.value.trim() || '') : '';
+            }
+
+            const installerTitle = 'ZAPBOX&#x26A1;&#xFE0F; WEB INSTALLER (Headless)';
+            const installerUrl = window.location.href;
+
+            const fwSel = document.getElementById('firmware-version-headless');
+            const fwSelected = fwSel ? fwSel.options[fwSel.selectedIndex].text : '';
+            const fwLatest = fwSel ? fwSel.options[0].text : '';
+
+            const now = new Date();
+            const ts = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+            const zapboxModeVal = document.getElementById('zapboxMode').value;
+            const specialModeVal = document.getElementById('specialMode').value;
+            const thresholdKeyVal = inputVal('thresholdKey');
+            const hiddenLabel = '<span style="color:#aaa;font-style:italic;font-weight:normal;">&#8212; (not selected for printing)</span>';
+
+            function row(label, value) {
+                return '<tr><td class="lbl">' + label + '</td><td class="val">' + (value !== '' ? value : '<span style="color:#aaa;">&#8212;</span>') + '</td></tr>';
+            }
+            function section(title, rows) {
+                return '<h3 class="sec">' + title + '</h3><table class="pt"><tbody>' + rows + '</tbody></table>';
+            }
+
+            let sections = '';
+
+            sections += section('WiFi &amp; Device',
+                row('WiFi SSID', printWifi ? (inputVal('ssid') || '&#8212;') : hiddenLabel) +
+                row('WiFi Password', printWifi ? (inputVal('wifiPassword') || '&#8212;') : hiddenLabel) +
+                row('Device Settings String', printDeviceString ? (inputVal('socket') || '&#8212;') : hiddenLabel)
+            );
+
+            sections += section('ZapBox Mode',
+                row('ZapBox Mode', selText('zapboxMode'))
+            );
+
+            if (zapboxModeVal === 'servo180') {
+                sections += section('180&deg; Servo Configuration',
+                    row('Start Angle (&deg;)', inputVal('servo1Start')) +
+                    row('End Angle (&deg;)', inputVal('servo1End')) +
+                    row('Sweep Duration (ms)', inputVal('servo1Duration'))
+                );
+            } else if (zapboxModeVal === 'servo360') {
+                sections += section('360&deg; Servo Configuration',
+                    row('Speed (0&ndash;180)', inputVal('servo2Speed')) +
+                    row('Spin Duration (ms)', inputVal('servo2Duration'))
+                );
+            }
+
+            let specialRows = row('Special Mode', selText('specialMode'));
+            if (specialModeVal === 'custom') {
+                specialRows += row('Frequency (Hz)', inputVal('frequency'));
+                specialRows += row('Duty Cycle Ratio', inputVal('dutyCycleRatio'));
+            }
+            sections += section('Special Mode', specialRows);
+
+            sections += section('Vending Machine Sensors',
+                row('Sensor / Actuator 1', selText('vendingSensor1')) +
+                row('Sensor / Actuator 2', selText('vendingSensor2'))
+            );
+
+            if (thresholdKeyVal) {
+                sections += section('Threshold Mode',
+                    row('Wallet Invoice/Read Key', thresholdKeyVal) +
+                    row('Threshold Value (satoshi)', inputVal('thresholdAmount')) +
+                    row('GPIO Pin', inputVal('thresholdPin')) +
+                    row('Control Time (ms)', inputVal('thresholdTime')) +
+                    row('LNURL / Lightning Address', inputVal('thresholdLnurl'))
+                );
+            }
+
+            sections += section('NFC',
+                row('NFC Mode', selText('nfcMode'))
+            );
+
+            const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
+                '<title>ZapBox Config &ndash; ' + ts + '</title>' +
+                '<style>' +
+                'body{font-family:Arial,sans-serif;font-size:13px;color:#222;margin:30px;max-width:800px;}' +
+                '.hdr{border-bottom:2px solid #f7931a;padding-bottom:12px;margin-bottom:20px;}' +
+                '.hdr h1{font-size:20px;margin:0 0 4px 0;}' +
+                '.hdr .url{color:#555;font-size:12px;margin:2px 0;}' +
+                '.hdr .fw{color:#333;font-size:12px;margin:5px 0 0 0;}' +
+                '.params-title{font-size:16px;font-weight:bold;margin:22px 0 6px 0;border-bottom:2px solid #f7931a;padding-bottom:4px;}' +
+                'h3.sec{font-size:13px;font-weight:bold;margin:18px 0 0 0;padding:4px 8px;background:#f0f0f0;border-left:3px solid #f7931a;}' +
+                'table.pt{width:100%;border-collapse:collapse;margin-bottom:2px;}' +
+                'table.pt td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:top;}' +
+                'td.lbl{width:42%;color:#555;font-size:12px;}' +
+                'td.val{font-weight:bold;font-size:12px;word-break:break-all;}' +
+                '.ftr{margin-top:30px;border-top:1px solid #ccc;padding-top:8px;color:#888;font-size:11px;}' +
+                '@media print{body{margin:12mm;}h3.sec{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}' +
+                '</style></head><body>' +
+                '<div class="hdr">' +
+                '<h1>' + installerTitle + '</h1>' +
+                '<div class="fw"><strong>Firmware selected:</strong> ' + fwSelected + '</div>' +
+                '</div>' +
+                '<div class="params-title">Parameter Overview</div>' +
+                sections +
+                '<div class="ftr">Created: ' + ts + ' &middot; ZapBox Web Installer &middot; ' + installerUrl + '</div>' +
+                '</body></html>';
+
+            const newWin = window.open('', '_blank');
+            if (newWin) {
+                newWin.document.write(html);
+                newWin.document.close();
+            }
+        }
 
         // Help modal functionality
         const helpLink = document.getElementById('help-device-string-link');
