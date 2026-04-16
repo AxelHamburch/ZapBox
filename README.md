@@ -1152,7 +1152,8 @@ Electrical design and housing variants, see table.
 | e939705 | ZapOMat | ZapOMat No.1 | 
 | e940540 | Headless | Update | 
 | e943674 | Servo | Start the Servo Story | 
-| e944644 | Headless Servo | First powerfull Headless Servo | 
+| e944644 | Headless Servo | First powerfull Headless Servo | e945370
+| e945370 | ZapOMat | Update with wide-range voltage input |
 
 -> Find all versions here: [./assets/electric)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
