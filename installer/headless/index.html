@@ -177,18 +177,31 @@
             </div>
         </div>
 
-        <div class="debug-console" id="consoleDebug"></div>
-        
-        <!-- Visual Separator
-        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
-        -->
+        <div class="debug-console" id="consoleDebug" style="margin-top: 20px; margin-bottom: 20px;"></div>
 
-        <p style="text-align: center; font-size: 18px; margin-top: 20px;"><strong>Congratulations on configuring your own ZapBox! 🎉</strong></p>
-
-        <p><i><strong>Note:</strong> You can see the logs from the device in the black terminal window when you are connected. Below you will find additional optional functions and settings.</i></p>
+        <!-- Export & Save Section -->
+        <div style="background-color: #E8E8E8; padding: 20px; margin: 20px -20px; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+                <span style="font-weight: 600; white-space: nowrap;">Export log files:</span>
+                <button onclick="printLogs()" style="padding: 10px 18px; font-size: 15px; background: #f7931a; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">🖨️ Print Logs</button>
+                <button onclick="downloadLogs()" style="padding: 10px 18px; font-size: 15px; background: #555; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">💾 Download .txt</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <span style="font-weight: 600; white-space: nowrap;">Save your settings:</span>
+                <button onclick="printConfig()" style="padding: 10px 18px; font-size: 15px; background: #f7931a; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">🖨️ Print Config</button>
+                <div>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: normal; margin-bottom: 8px;">
+                        <input type="checkbox" id="print-wifi" style="display: inline-block; width: auto; margin: 0; padding: 0; flex-shrink: 0;"> Print WiFi data
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: normal;">
+                        <input type="checkbox" id="print-device-string" style="display: inline-block; width: auto; margin: 0; padding: 0; flex-shrink: 0;"> Print Device settings string
+                    </label>
+                </div>
+            </div>
+        </div>
 
         <!-- Optional settings and functions Section -->
-        <div style="background-color: #FFE5CC; padding: 30px 20px; margin: 50px -20px 0 -20px;">
+        <div style="background-color: #FFE5CC; padding: 30px 20px; margin: 15px -20px 0 -20px; border-radius: 8px 8px 0 0;">
             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
                 <h3 style="margin: 0; color: #000; font-weight: bold; white-space: nowrap;">Optional settings and functions</h3>
                 <hr style="flex: 1; border: none; border-top: 1px solid #888; margin: 0;">
@@ -401,21 +414,6 @@
                 <img class="center-img" src="../assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" />
             </a>
 
-            <!-- Print Config -->
-            <hr style="margin: 40px 0 20px 0; border: none; border-top: 1px solid #888;">
-            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 10px;">
-                <span style="font-weight: 600; white-space: nowrap;">Save your settings:</span>
-                <button onclick="printConfig()" style="padding: 10px 18px; font-size: 15px; background: #f7931a; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">🖨️ Print Config</button>
-                <div>
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: normal; margin-bottom: 8px;">
-                        <input type="checkbox" id="print-wifi" style="display: inline-block; width: auto; margin: 0; padding: 0; flex-shrink: 0;"> Print WiFi data
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: normal;">
-                        <input type="checkbox" id="print-device-string" style="display: inline-block; width: auto; margin: 0; padding: 0; flex-shrink: 0;"> Print Device settings string
-                    </label>
-                </div>
-            </div>
-
         </div>
 
         <!-- Error Detection Section -->
@@ -515,7 +513,7 @@
         </div>
 
         <!-- Troubleshoot Section -->
-        <div style="background-color: #CCE5FF; padding: 30px 20px; margin: 0 -20px;">
+        <div style="background-color: #CCE5FF; padding: 30px 20px; margin: 0 -20px; border-radius: 0 0 8px 8px;">
         <h2 id="troubleshoot">Troubleshoot</h2>
 
         <h3 id="mostimportant">Connection problems:</h3>
@@ -573,7 +571,7 @@
         <hr>
 
         <footer>
-            <p>Built on the shoulders of giants by <a href="https://njump.to/npub1yynthqj2zv663t0v8jtmtnwm34ak2fwe6zys043weqlnxgyuw7qqnk23ds" target="_blank" rel="noopener noreferrer">@axelhamburch</a> | <a href="https://github.com/AxelHamburch/ZapBox" target="_blank" rel="noopener noreferrer">Github repo</a></p>
+            <p>Built on the shoulders of giants by <a href="https://njump.to/npub1yynthqj2zv663t0v8jtmtnwm34ak2fwe6zys043weqlnxgyuw7qqnk23ds" target="_blank" rel="noopener noreferrer">@axelhamburch</a> | <a href="https://github.com/AxelHamburch/ZapBox" target="_blank" rel="noopener noreferrer">Github repo</a> | <a href="https://zapbox.space/" target="_blank" rel="noopener noreferrer">zapbox.space</a></p>
         </footer>
     </div>
 
@@ -1651,6 +1649,58 @@
                 newWin.document.write(html);
                 newWin.document.close();
             }
+        }
+
+        // Export Log Files functionality
+        function printLogs() {
+            const installerTitle = 'ZAPBOX\u26A1 WEB INSTALLER (Headless)';
+            const ts = new Date().toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' });
+            const url = window.location.href;
+            const logEl = document.getElementById('consoleDebug');
+            const logHtml = (logEl && logEl.innerHTML.trim()) ? logEl.innerHTML : '<span style="color:#888">(no logs)</span>';
+
+            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + installerTitle + ' \u2013 Log Export</title>' +
+                '<style>' +
+                'body{background:#1a1a1a;color:#e0e0e0;font-family:monospace;font-size:13px;margin:0;padding:20px;}' +
+                '.log-header{background:#2a2a2a;border-bottom:2px solid #f7931a;padding:16px 24px;margin:-20px -20px 20px -20px;}' +
+                '.log-header h1{margin:0 0 4px 0;font-size:18px;color:#f7931a;}' +
+                '.log-header .sub{color:#aaa;font-size:12px;}' +
+                '.log-box{background:#000;color:#d0d0d0;padding:16px;border-radius:6px;white-space:pre-wrap;word-break:break-all;line-height:1.5;}' +
+                '.log-footer{margin-top:16px;padding-top:10px;border-top:1px solid #444;color:#666;font-size:11px;}' +
+                '@media print{' +
+                'body{background:#fff !important;color:#111 !important;}' +
+                '.log-header{background:#f0f0f0 !important;border-bottom-color:#f7931a !important;}' +
+                '.log-header h1{color:#f7931a !important;}' +
+                '.log-header .sub{color:#555 !important;}' +
+                '.log-box{background:#f8f8f8 !important;color:#222 !important;border:1px solid #ddd;}' +
+                '.log-footer{color:#999 !important;border-top-color:#ccc !important;}' +
+                '}' +
+                '</style></head><body>' +
+                '<div class="log-header"><h1>' + installerTitle + '</h1><div class="sub">Serial Log Export</div></div>' +
+                '<div class="log-box">' + logHtml + '</div>' +
+                '<div class="log-footer">Created: ' + ts + ' \u00B7 ZapBox Web Installer \u00B7 ' + url + '</div>' +
+                '</body></html>';
+
+            const newWin = window.open('', '_blank');
+            if (newWin) {
+                newWin.document.write(html);
+                newWin.document.close();
+            }
+        }
+
+        function downloadLogs() {
+            const logEl = document.getElementById('consoleDebug');
+            const text = (logEl && logEl.innerText.trim()) ? logEl.innerText : '(no logs)';
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const filename = 'zapbox-log-' + ts + '.txt';
+            const blob = new Blob([text], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
         }
 
         // Help modal functionality
