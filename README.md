@@ -1130,7 +1130,7 @@ Electrical design and housing variants, see table.
 | b944666 | Headless Servo | First powerfull Headless Servo |
 | b945188 | ZapOMat | Add mounting plate and wide-range voltage input |
 
--> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
+-> Find all versions here: [./assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
 ### Electrical layout / circuit diagram (Inkscape)
 
@@ -1155,7 +1155,7 @@ Electrical design and housing variants, see table.
 | e944644 | Headless Servo | First powerfull Headless Servo | e945370
 | e945370 | ZapOMat | Update with wide-range voltage input |
 
--> Find all versions here: [./assets/electric](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
+-> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
 ## Acknowledgement
 
