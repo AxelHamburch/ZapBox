@@ -1128,6 +1128,7 @@ Electrical design and housing variants, see table.
 | b943614 | Servo | The first one with servo control |
 | b944177 | Headless | Mounting plate with snap-fit connection |
 | b944666 | Headless Servo | First powerfull Headless Servo |
+| b945188 | ZapOMat | Add mounting plate and wide-range voltage input |
 
 -> Find all versions here: [./assets/housing)](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
