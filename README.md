@@ -1162,8 +1162,8 @@ Electrical design and housing variants, see table.
 
 Templates for quality assurance protocols to ensure ZapBox quality.
 
-- [Initial Review (German)](assets/QA/initial-review-qa945642-de.md) — [PDF](assets/QA/initial-review-qa945642-de.pdf)
-- [Initial Review (English)](assets/QA/initial-review-qa945642-en.md) — [PDF](assets/QA/initial-review-qa945642-en.pdf)
+- [Initial Review (German)](assets/QA/initial-review-de.md) — [PDF](assets/QA/initial-review-de.pdf)
+- [Initial Review (English)](assets/QA/initial-review-en.md) — [PDF](assets/QA/initial-review-en.pdf)
 
 For the archive and development, [see here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/QA).
 
