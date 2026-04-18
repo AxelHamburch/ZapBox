@@ -31,12 +31,14 @@ Für den industriellen Einsatz und komfortablen Anschluss kann die ZapOMat, alte
 | Komponente | Beschreibung |
 |---|---|
 | Mikrocontroller | T-Display-S3 mit 1,9" LCD-Display |
-| Frontpanel | Wahlweise mit 35° oder 90° Display Front (90° auch zum Einbau erhältlich) |
-| Eingang | USB-C (Power IN) |
-| Ausgänge CH1-CH4 | Vier Relaisausgänge, Schaltkontakte (NO/COM/NC) extern geführt |
+| Frontpanel | Wahlweise mit 35° oder 90° Display Front (90° auch Einbau erhältlich) |
+| Spannungsversorgung | USB-C (5V) und Weitbereichseingang DC 6V-36V (Hohlbuchse 5,5*2,1 mm) |
+| Eingänge / Ausgänge | 16-polige Steckverbinder (15EDGWC-3,81mm) |
+| Ausgänge | 4 Relaisausgänge CH1-CH4 - Schaltkontakte (NO/COM/NC) |
+| Eingang | 1 Sensoreingang |
+| Interface | Anschluss für externes NFC-Modul |
 | Bedienelement | LED-Button (volle ZapBox-Funktionalität) |
-| Schalter 1 | 3-poliger Schiebeschalter (AUTO / OFF / ON) |
-| Schalter 2 | 2-poliger Schiebeschalter (Invert Output) |
+| Option Schalter 1 | 3-poliger Schiebeschalter (AUTO / OFF / ON) |
 | Option BTC-Ticker | Aktivierbar über den Web Installer |
 | Option Boardtaster | Zwei On-board-Mikrotaster |
 | Option NFC-Modul | Für Bolt Cards (NTAG424 DNA) und Standard NTAG213/215/216 (mit LNURL-withdraw) |
@@ -63,7 +65,13 @@ Für den industriellen Einsatz und komfortablen Anschluss kann die ZapOMat, alte
 
 ### Eingang - USB-C Buchse zur Spannungsversorgung (5V)
 
-Versorgen Sie das Gerät über den Anschluss **Power IN** mit einem USB-C-Kabel mit **5 V DC (max. 5 A)**.
+Versorgen Sie das Gerät über den Anschluss **Power IN** mit einem USB-C-Kabel mit **5 V DC (max. 3 A)**. Die 5V kann an der Klemme 1 (5V) und 2 (GND) der Steckleiste abgegriffen werden.
+
+> **Hinweis:** Der Power-IN-Anschluss ist nicht „intelligent". Einige Ladegeräte oder Powermodule mit USB-C-Ausgang erkennen die ZapBox nicht und liefern keinen Strom. Verwenden Sie in diesem Fall einen **USB-A-Ausgang** der Spannungsversorgung oder eine andere Stromquelle.
+
+### Eingang - Hohlbuchse 5,5*2,1 mm für DC-Netzeile 6V-36V
+
+Der ZapOMat verfügt über Anschluss für Standard Hohlstecker 5,5*2,1 mm. Die Spannung 6V-36V wird durch einen Step-Down Wandler automatisch auf die benötigte 5V gewandelt. Sie kann über den USB-Anschluss und den Klemmen 1 und 2 abgegriffen werden. Es 
 
 > **Hinweis:** Der Power-IN-Anschluss ist nicht „intelligent". Einige Ladegeräte oder Powermodule mit USB-C-Ausgang erkennen die ZapBox nicht und liefern keinen Strom. Verwenden Sie in diesem Fall einen **USB-A-Ausgang** der Spannungsversorgung oder eine andere Stromquelle.
 

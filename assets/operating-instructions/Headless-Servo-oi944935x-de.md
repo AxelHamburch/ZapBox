@@ -33,8 +33,8 @@ Der Betriebszustand wird ausschließlich über eine **Status-LED** angezeigt. Ei
 | Komponente | Beschreibung |
 |---|---|
 | Mikrocontroller | ESP32 Dev Module (kein Display) |
-| Eingang | USB-C (Power IN) |
-| Ausgang | 5-polige Steckverbinder (15EDG 3,81 mm) |
+| Spannungseingang | USB-C (Power IN) |
+| Eingänge / Ausgänge | 5-polige Steckverbinder (15EDG 3,81 mm) |
 | Statusanzeige | Status-LED mit Blinkmustern und Action-LED als Rückmeldung |
 | Bedienelement | Mikrotaster für BOOT (Config-Modus) und Reset |
 | Option NFC-Modul | Für Bolt Cards (NTAG424 DNA) und Standard NTAG213/215/216 (mit LNURL-withdraw) |

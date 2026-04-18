@@ -2788,6 +2788,10 @@ static void processThresholdPayment(const JsonDocument &doc)
 // ─── One For All: concurrent activation task ─────────────────────────────────
 // Launched as a FreeRTOS task for each secondary channel (Pin 13, 10, 11) when
 // servoConfig.relayMode == "one-for-all" and Pin 12 is triggered.
+
+// Flag set to true by the light barrier to stop all OFA secondary tasks early.
+static volatile bool g_ofaStop = false;
+
 struct OFATaskParams {
   int pin;
   int fallbackDuration; // Duration to use when the channel has no own timing
@@ -2806,7 +2810,14 @@ static void oneForAllActivationTask(void* pvParams) {
     activateServo(13); // sweep to end (takes servo1Duration ms)
     int holdTime = fallback - servoConfig.servo1Duration;
     if (holdTime > 0) {
-      vTaskDelay(pdMS_TO_TICKS(holdTime)); // hold only the remainder
+      // Poll g_ofaStop so the light barrier can cut the hold short.
+      unsigned long t0 = millis();
+      while (!g_ofaStop && (millis() - t0 < (unsigned long)holdTime)) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
+      if (g_ofaStop) {
+        Serial.println("[OFA] Pin 13 (servo1): stopped early by light barrier");
+      }
     }
     deactivateServo(13); // sweep back to start
 
@@ -2815,7 +2826,14 @@ static void oneForAllActivationTask(void* pvParams) {
     // If servo2Duration == 0 (indefinite), use fallback duration instead.
     activateServo(10);
     if (servoConfig.servo2Duration == 0 && fallback > 0) {
-      vTaskDelay(pdMS_TO_TICKS(fallback));
+      // Poll g_ofaStop so the light barrier can stop the motor early.
+      unsigned long t0 = millis();
+      while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
+      if (g_ofaStop) {
+        Serial.println("[OFA] Pin 10 (servo2): stopped early by light barrier");
+      }
       deactivateServo(10); // Stop spinning
     }
     // If servo2Duration > 0: activateServo() already stopped the motor internally.
@@ -2825,7 +2843,14 @@ static void oneForAllActivationTask(void* pvParams) {
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
     Serial.printf("[OFA] Pin %d set HIGH\n", pin);
-    vTaskDelay(pdMS_TO_TICKS(fallback));
+    // Poll g_ofaStop so the light barrier can cut the relay short.
+    unsigned long t0 = millis();
+    while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    if (g_ofaStop) {
+      Serial.printf("[OFA] Pin %d: stopped early by light barrier\n", pin);
+    }
     digitalWrite(pin, LOW);
     Serial.printf("[OFA] Pin %d set LOW\n", pin);
   }
@@ -2836,6 +2861,10 @@ static void oneForAllActivationTask(void* pvParams) {
 static void processNormalPayment(int pin, int duration)
 {
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
+
+  // Reset OFA stop flag so secondary tasks from any previous payment don't
+  // carry over into this activation.
+  g_ofaStop = false;
 
 #if !ENABLE_DISPLAY
   // Whitelist check: only fire pins that are registered relay channels
@@ -2982,6 +3011,7 @@ static void processNormalPayment(int pin, int duration)
       // Check light barrier (stop early if triggered after minimum time)
       if (shouldStopForLightBarrier(startTime)) {
         Serial.println("[NORMAL] Light barrier stopped action early");
+        g_ofaStop = true; // Signal OFA secondary tasks to stop too
         break;
       }
       // Update countdown timer once per second

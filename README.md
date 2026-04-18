@@ -27,6 +27,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 - [PlatformIO Project](#platformio-project)
 - [Compatibility](#compatibility)
 - [Versioning](#versioning)
+- [Quality Assurance](#quality-assurance)
 - [Acknowledgement](#acknowledgement)
 - [Support](#support)
 
@@ -1156,6 +1157,15 @@ Electrical design and housing variants, see table.
 | e945370 | ZapOMat | Update with wide-range voltage input |
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
+
+## Quality Assurance
+
+Templates for quality assurance protocols to ensure ZapBox quality.
+
+- [Initial Review (German)](assets/QA/initial-review-qa945642-de.md) — [PDF](assets/QA/initial-review-qa945642-de.pdf)
+- [Initial Review (English)](assets/QA/initial-review-qa945642-en.md) — [PDF](assets/QA/initial-review-qa945642-en.pdf)
+
+For the archive and development, [see here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/QA).
 
 ## Acknowledgement
 
