@@ -514,8 +514,8 @@ void readFiles()
     }
     // Headless: "both" requires a display – fall back to "boltcard"
     #if !ENABLE_DISPLAY
-    if (nfcConfig.mode == "both") {
-      LOG_WARN("Config", "NFC mode 'both' requires display – falling back to 'boltcard'");
+    if (nfcConfig.mode == "both" || nfcConfig.mode == "both-boltcard") {
+      LOG_WARN("Config", "NFC mode 'both'/'both-boltcard' requires display – falling back to 'boltcard'");
       nfcConfig.mode = "boltcard";
     }
     #endif
@@ -1063,6 +1063,13 @@ void setup()
       Serial.println("[NFC] Card emulation init failed - trying bolt card only");
       nfcConfig.mode = "boltcard";
       nfcBoltCardInit();
+    }
+  } else if (nfcConfig.mode == "both-boltcard") {
+    // "both-boltcard" mode: start BoltCard reader (BoltCard screen shown first)
+    if (!nfcBoltCardInit()) {
+      Serial.println("[NFC] Bolt Card reader init failed - trying emulation only");
+      nfcConfig.mode = "emulation";
+      nfcCardEmulationInit();
     }
   } else {
     Serial.println("[NFC] Unknown NFC mode '" + nfcConfig.mode + "' - defaulting to boltcard");
@@ -3092,6 +3099,9 @@ static void processNormalPayment(int pin, int duration)
   nfcNoLuckScreenShown   = false;
   nfcErrorDetailShown    = false;
   nfcNotSupportedShown   = false;
+  // In "both" mode: stop BoltCard reader and restore NFC card emulation
+  // before the QR screen is redrawn, so the default state is correct.
+  resetBothModeToQR();
   #endif
 
   // Restore correct product QR (handles single, multi-channel, servo)

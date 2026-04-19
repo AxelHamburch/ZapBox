@@ -354,6 +354,30 @@ void updateReadyLed() {
  * Handles threshold mode, multi-channel mode with ticker, and product selection.
  */
 void redrawQRScreen() {
+  // In "both-boltcard" mode, the default screen is BoltCard (no QR code)
+  if (nfcConfig.mode == "both-boltcard") {
+    int displayPin = 12;
+    if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
+      if (multiChannelConfig.mode == "servo") {
+        displayPin = servoConfig.productToPin(multiChannelConfig.currentProduct);
+      } else {
+        switch (multiChannelConfig.currentProduct) {
+          case 1: displayPin = 12; break;
+          case 2: displayPin = 13; break;
+          case 3: displayPin = 10; break;
+          case 4: displayPin = 11; break;
+          default: displayPin = 12; break;
+        }
+      }
+    }
+    int pinIndex = getPinIndex(displayPin);
+    String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                   ? productLabels.labels[pinIndex] : "Pin " + String(displayPin);
+    showBoltCardScreen(label, displayPin);
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
   LOG_DEBUG("Display", "Redrawing QR screen...");
 
   // Threshold mode
@@ -490,9 +514,14 @@ void showInitialScreenAfterConnections() {
       multiChannelConfig.btcTickerActive = true;
       productSelectionState.showTime = millis();
     } else {
-      // SELECTING or OFF: show normal/special QR
+      // SELECTING or OFF: show normal/special QR (or BoltCard screen in both-boltcard mode)
       ensureQrForPin(12);
-      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+      if (nfcConfig.mode == "both-boltcard") {
+        int pinIndex = getPinIndex(12);
+        String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                       ? productLabels.labels[pinIndex] : "READY 4 ZAP ACTION";
+        showBoltCardScreen(label, 12);
+      } else if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
         showSpecialModeQRScreen();
       } else {
         showQRScreen();
@@ -513,7 +542,11 @@ void showInitialScreenAfterConnections() {
     int pinIndex = getPinIndex(firstPin);
     String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : String("Pin ") + String(firstPin);
     ensureQrForPin(firstPin);
-    showProductQRScreen(label, firstPin);
+    if (nfcConfig.mode == "both-boltcard") {
+      showBoltCardScreen(label, firstPin);
+    } else {
+      showProductQRScreen(label, firstPin);
+    }
     multiChannelConfig.btcTickerActive = false;
     deviceState.transition(DeviceState::READY);
     productSelectionState.showTime = millis();

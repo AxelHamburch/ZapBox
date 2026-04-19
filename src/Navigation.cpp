@@ -45,6 +45,44 @@ static void switchToBoltCard() {
   vTaskDelay(pdMS_TO_TICKS(100));
   nfcBoltCardInit();
 }
+
+/**
+ * Reset "both" NFC mode back to QR + card emulation state.
+ * Called after a payment completes so the device returns to the default
+ * emulation screen instead of staying in BoltCard reader mode.
+ */
+void resetBothModeToQR() {
+  if (nfcConfig.mode != "both" && nfcConfig.mode != "both-boltcard") return;
+  if (bothModeScreen == 0) return; // Already on default screen
+
+  if (nfcConfig.mode == "both") {
+    LOG_INFO("Navigation", "NFC both mode: resetting to QR + emulation after payment");
+    if (bothModeScreen == 1) {
+      // BoltCard reader was active – stop it and restart emulation
+      nfcBoltCardStop();
+      vTaskDelay(pdMS_TO_TICKS(100));
+      nfcCardEmulationInit();
+    } else if (bothModeScreen == 2) {
+      // Ticker was shown while in both mode – just restart emulation
+      nfcCardEmulationInit();
+      multiChannelConfig.btcTickerActive = false;
+    }
+  } else { // "both-boltcard"
+    LOG_INFO("Navigation", "NFC both-boltcard mode: resetting to BoltCard screen after payment");
+    if (bothModeScreen == 1) {
+      // Phone emulation was active – stop it and restart BoltCard reader
+      nfcCardEmulationStop();
+      vTaskDelay(pdMS_TO_TICKS(100));
+      nfcBoltCardInit();
+    } else if (bothModeScreen == 2) {
+      // Ticker was shown – just restart BoltCard reader
+      nfcBoltCardInit();
+      multiChannelConfig.btcTickerActive = false;
+    }
+  }
+
+  bothModeScreen = 0;
+}
 #endif
 
 // External function declarations from main.cpp
@@ -154,6 +192,79 @@ void navigateToNextProduct() {
         }
         showProductQRScreen(label, pin);
       }
+      productSelectionState.showTime = millis();
+      return;
+    }
+  }
+
+  // NFC "both-boltcard" mode: cycle through BoltCard → Mobile Phone → Ticker → BoltCard
+  if (nfcConfig.mode == "both-boltcard") {
+    if (bothModeScreen == 0) {
+      // BoltCard (reader) → Mobile Phone (emulation)
+      LOG_INFO("Navigation", "NFC both-boltcard mode: switching to Mobile Phone view");
+      bothModeScreen = 1;
+      nfcBoltCardStop();
+      vTaskDelay(pdMS_TO_TICKS(100));
+      nfcCardEmulationInit();
+
+      int pin = 12;
+      String label = "";
+      if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
+        if (multiChannelConfig.mode == "servo") {
+          pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
+        } else {
+          switch(multiChannelConfig.currentProduct) {
+            case 1: pin = 12; break;
+            case 2: pin = 13; break;
+            case 3: pin = 10; break;
+            case 4: pin = 11; break;
+            default: pin = 12; break;
+          }
+        }
+      }
+      int pinIndex = getPinIndex(pin);
+      if (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) {
+        label = productLabels.labels[pinIndex];
+      } else {
+        label = "Pin " + String(pin);
+      }
+      showMobilePhoneScreen(label, pin);
+      productSelectionState.showTime = millis();
+      return;
+    } else if (bothModeScreen == 1) {
+      // Mobile Phone → Ticker (stop emulation)
+      LOG_INFO("Navigation", "NFC both-boltcard mode: switching to Ticker view");
+      bothModeScreen = 2;
+      nfcCardEmulationStop();
+      btctickerScreen();
+      multiChannelConfig.btcTickerActive = true;
+      productSelectionState.showTime = millis();
+      return;
+    } else {
+      // Ticker → BoltCard (start reader again)
+      LOG_INFO("Navigation", "NFC both-boltcard mode: switching to BoltCard view");
+      bothModeScreen = 0;
+      multiChannelConfig.btcTickerActive = false;
+      nfcBoltCardInit();
+
+      int pin = 12;
+      if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
+        if (multiChannelConfig.mode == "servo") {
+          pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
+        } else {
+          switch(multiChannelConfig.currentProduct) {
+            case 1: pin = 12; break;
+            case 2: pin = 13; break;
+            case 3: pin = 10; break;
+            case 4: pin = 11; break;
+            default: pin = 12; break;
+          }
+        }
+      }
+      int pinIndex = getPinIndex(pin);
+      String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                     ? productLabels.labels[pinIndex] : "Pin " + String(pin);
+      showBoltCardScreen(label, pin);
       productSelectionState.showTime = millis();
       return;
     }

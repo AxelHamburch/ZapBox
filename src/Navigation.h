@@ -26,4 +26,13 @@ void handleTouchButton();
  */
 void navigateToNextProduct();
 
+#ifdef ENABLE_NFC
+/**
+ * Reset NFC "both" mode back to QR + card emulation.
+ * Call this after a payment completes so the device stops the BoltCard
+ * reader (if active) and restarts NFC card emulation.
+ */
+void resetBothModeToQR();
+#endif
+
 #endif // NAVIGATION_H
