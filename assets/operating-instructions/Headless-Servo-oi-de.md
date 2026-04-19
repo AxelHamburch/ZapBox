@@ -21,10 +21,10 @@
 
 ## Übersicht
 
-Die **ZapBox Headless** ist ein elektronischer Schalter für Bitcoin-Lightning-Zahlungen ohne Display. Mit einer Zahlung über das Lightning-Netzwerk lässt sich ein Ausgang schalten – ideal für eingebettete Anwendungen, verdeckte Installationen, Maschinenbau und überall dort, wo kein Display benötigt wird.
+Die **ZapBox Headless Servo** ist ein elektronischer Schalter für Bitcoin-Lightning-Zahlungen ohne Display. Mit einer Zahlung über das Lightning-Netzwerk lässt sich ein Ausgang schalten – ideal für eingebettete Anwendungen, verdeckte Installationen, Maschinenbau und überall dort, wo kein Display benötigt wird.
 
 Die ZapBox Headless Servo verfügt über einen Steckverbinder zum Anschluss externer Relais mit 5-V-Ansteuerung sowie digitaler Servomotoren. Unterstützt werden sowohl 180°-Servomotoren für Positionierungsaufgaben als auch 360°-Servomotoren für kontinuierliche Rotationsanwendungen.
-Zusätzlich stehen auf der Steckverbinder zwei universelle Anschlüsse für Aktoren und Sensoren zur Verfügung. Die Konfiguration und Parametrierung erfolgt über den Web Installer.
+Zusätzlich stehen auf der Steckverbindung zwei universelle Anschlüsse für Aktoren und Sensoren zur Verfügung. Die Konfiguration und Parametrierung erfolgt über den Web Installer.
 
 Der Betriebszustand wird ausschließlich über eine **Status-LED** angezeigt. Eine zweite **Action-LED** zeigt die Schaltfunktion an.
 
@@ -127,7 +127,7 @@ Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließli
 
 <img src="pic-Headless-Servo/Headless-Servo-oi-mount.webp" alt="Lösen einer Montagehalter einer Headless mit NFC-Modul" width="100%">
 
-*Bild 3: Lösen einer Montagehalter einer Headless mit NFC-Modul*
+*Bild 3: Lösen der Montagehalterung einer Headless mit NFC-Modul*
 
 > **Hinweis:** Die ZapBox ist auf der Montagehalterung nur aufgeschoben und mit einem Schnappverschluss arretiert. Die Arretierung kann mit einem flachen Schraubendreher gelöst werden. Dazu den Schraubendreher vorsichtig in den Schlitz einschieben, leicht anheben und dabei den oberen Teil der ZapBox in Richtung des Schraubendrehers drücken. Die Verbindung sollte sich lösen und die ZapBox kann von der Montageplatte durch anheben getrennt werden.
 
