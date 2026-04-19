@@ -1009,90 +1009,52 @@ This project is configured for PlatformIO and based on the Arduino framework for
 
 ```
 ZapBox/
-├── src/                           # Main application source code
-│   ├── main.cpp                   # Entry point and main loop
-│   ├── API.cpp/h                  # LNbits API integration (labels, BTC ticker)
-│   ├── Display.cpp/h              # Display rendering and theme management
-│   ├── DisplayStubs.cpp           # Display stubs for headless mode
-│   ├── GlobalState.cpp/h          # Global application state management
-│   ├── DeviceState.h              # Device state definitions
-│   ├── Input.cpp/h                # Input handling (buttons, touch)
-│   ├── Navigation.cpp/h           # Navigation logic and screen management
-│   ├── Network.cpp/h              # WiFi and network connectivity
-│   ├── Payment.cpp/h              # Payment processing, LNURL/Bech32 encoding, relay control
-│   ├── UI.cpp/h                   # User interface components and rendering
-│   ├── Utils.cpp/h                # Utility functions (string, math, helpers)
-│   ├── NFCBoltCard.cpp/h          # Bolt Card (NTAG424 DNA) authentication and LNURLW
-│   ├── NFCCardEmulation.cpp/h     # NFC Card Emulation (PN532 Target Mode, LNURLp via NFC)
-│   ├── NFCPN532.cpp/h             # PN532 NFC reader driver (I2C, IRQ-based)
-│   ├── TouchCST816S.cpp/h         # Touch display support (CST816S)
+├── src/                           # Firmware source code (C++)
+│   ├── main.cpp                   # Entry point and main event loop
+│   ├── API.cpp/h                  # LNbits API & Bitcoin ticker integration
+│   ├── Display.cpp/h              # Display rendering & theme management
+│   ├── GlobalState.cpp/h          # Global state & configuration
+│   ├── Input.cpp/h                # Button & touch input handling
+│   ├── Navigation.cpp/h           # Screen navigation logic
+│   ├── Network.cpp/h              # WiFi & WebSocket connectivity
+│   ├── Payment.cpp/h              # Payment processing & LNURL encoding
+│   ├── UI.cpp/h                   # UI components & rendering
+│   ├── NFCPN532.cpp/h             # PN532 NFC reader driver
+│   ├── NFCBoltCard.cpp/h          # Bolt Card LNURLW authentication
+│   ├── NFCCardEmulation.cpp/h     # NFC Card Emulation (target mode)
+│   ├── ServoControl.cpp/h         # Servo motor control
+│   ├── TouchCST816S.cpp/h         # Touch display driver
 │   ├── SerialConfig.cpp/h         # Serial configuration interface
-│   ├── ServoControl.cpp/h         # Servo motor control (ESP32Servo, LEDC PWM)
-│   └── PinConfig.h                # Hardware pin definitions and GPIO mapping
+│   └── PinConfig.h                # Hardware pin definitions
 ├── include/                       # Additional headers
-│   ├── Log.h                      # Logging utilities
-│   └── README                     # Include documentation
-├── lib/                           # External library configurations
-│   ├── README                     # Library documentation
-│   └── TFT_eSPI_Setup/            # TFT_eSPI display driver configuration
-├── installer/                     # Web-based firmware installer & configurator
-│   ├── index.html                 # Console interface and configuration UI
-│   ├── extensions.json            # Extension version manifest
-│   ├── extensions-how-to-release.md # Extension release instructions
-│   ├── assets/                    # Installer CSS, JavaScript, images
-│   ├── firmware/                  # Firmware binaries and release manifests
-│   └── headless/                  # Headless device firmware
+│   └── Log.h                      # Logging utilities
+├── lib/                           # External library configs
+│   └── TFT_eSPI_Setup/            # TFT_eSPI display driver setup
+├── installer/                     # Web-based installer & configurator
+│   ├── index.html                 # Configuration UI
+│   ├── extensions.json            # Extension manifest
+│   └── firmware/                  # Firmware binaries & manifests
 ├── assets/
+│   ├── QA/                        # Quality assurance protocols
+│   │   ├── initial-review-qa945642-*.md  # Initial review templates (DE/EN)
+│   │   └── initial-review-qa945642-*.pdf # Printable PDFs
 │   ├── electric/                  # Electrical schematics (Inkscape)
-│   │   ├── e926834-Compact/       # Prototype compact
-│   │   ├── e928304-Compact/       # Prototype 2 compact
-│   │   ├── e928556-Compact/       # Sample device compact
-│   │   ├── e931557-Duo/           # First Duo variant
-│   │   ├── e932547-Quattro/       # First Quattro variant
-│   │   ├── e932714-Duo/           # Duo update
-│   │   ├── e935776-Headless/      # Headless variant
-│   │   ├── e936954-Quattro/       # Quattro update (button cable & light barrier)
-│   │   ├── e937540-Duo/           # Duo update
-│   │   ├── e937544-USB-Power-Hub/ # USB Power Hub
-│   │   ├── e938714-ZapOMat/       # ZapOMat design
-│   │   ├── e938889-Headless/      # Headless update with ZapBox picture
-│   │   ├── e938897-Compact/       # Compact update with ZapBox picture
-│   │   ├── e939042-Compact/       # Compact with NFC cap
-│   │   └── e939705-ZapOMat/       # ZapOMat update
-│   ├── housing/                   # 3D models and housing (FreeCAD)
-│   │   ├── b926837-Compact/       # Prototype compact
-│   │   ├── b928260-Compact/       # Prototype 2 compact
-│   │   ├── b928555-Compact/       # Sample device compact
-│   │   ├── b930595-Compact/       # Optimization, separate label
-│   │   ├── b931760-Duo/           # Prototype Duo
-│   │   ├── b932506-Compact/       # Adapter system, 90° front
-│   │   ├── b932595-Duo&Quattro/   # Duo & Quattro, 90° and 35° fronts
-│   │   ├── b932788-IlluminatedSign/ # LED sign for demo/testing
-│   │   ├── b935750-Headless/      # Headless variant
-│   │   ├── b937454-USB-Power-Hub/ # USB Power Hub
-│   │   ├── b939002-Compact/       # Compact with NFC cap
-│   │   ├── b939704-ZapOMat/       # ZapOMat housing
-│   │   ├── b940298-Duo/           # Duo update
-│   │   └── fonts/                 # Fonts for housing labels
+│   │   └── e*.* / versions/       # Schematic files by version
+│   ├── housing/                   # 3D models & housing (FreeCAD)
+│   │   ├── b*.*/versions/         # Housing files by version
+│   │   └── fonts/                 # Label fonts
+│   ├── bolt-cards/                # Bolt Card designs & documentation
 │   ├── operating-instructions/    # User manuals (DE/EN)
-│   │   ├── Compact-oi940284-de.md # ZapBox Compact manual (German)
-│   │   ├── Compact-oi940284-en.md # ZapBox Compact manual (English)
-│   │   ├── Duo-oi940285-de.md     # ZapBox Duo manual (German)
-│   │   ├── Duo-oi940285-en.md     # ZapBox Duo manual (English)
-│   │   ├── pic-Compact/           # Images for Compact manual
-│   │   ├── pic-Duo/               # Images for Duo manual
-│   │   └── archive/               # Older manual versions
+│   │   ├── *.md                   # Manual markdown files
+│   │   └── archive/               # Older versions
 │   ├── white-paper/               # Technical documentation
-│   ├── Pinout-T-DISPLAY-S3.jpg    # T-Display-S3 pinout reference
-│   ├── Pinout-T-DISPLAY-S3-TOUCH.png # T-Display-S3 Touch pinout reference
-│   └── lightning-address.png      # Lightning address QR code
-├── temp/                          # Temporary files
-├── platformio.ini                 # PlatformIO build configuration
-├── partitions_4mb.csv             # ESP32 partition table (4 MB devices)
-├── partitions_16mb.csv            # ESP32 partition table (16 MB devices)
-├── FIRMWARE.md                    # Firmware development and release documentation
+│   └── *.png / *.jpg              # Reference images & diagrams
+├── platformio.ini                 # Build configuration
+├── partitions_4mb.csv             # ESP32 partition table (4MB)
+├── partitions_16mb.csv            # ESP32 partition table (16MB)
+├── FIRMWARE.md                    # Firmware development guide
 ├── LICENSE                        # Open source license
-├── README.md                      # Main project documentation
+├── README.md                      # This file
 └── .gitignore                     # Git ignore rules
 ```
 
