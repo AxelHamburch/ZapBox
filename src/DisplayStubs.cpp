@@ -35,6 +35,7 @@ void showThresholdQRScreen() {}
 void showSpecialModeQRScreen() {}
 void showProductQRScreen(String, int) {}
 void showBoltCardScreen(String, int) {}
+void showMobilePhoneScreen(String, int) {}
 void productSelectionScreen() {}
 void activateScreensaver(String) {}
 void deactivateScreensaver() {}
