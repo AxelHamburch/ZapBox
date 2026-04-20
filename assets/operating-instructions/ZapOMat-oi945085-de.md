@@ -38,10 +38,10 @@ Für den industriellen Einsatz und komfortablen Anschluss kann die ZapOMat, alte
 | Eingang | 1 Sensoreingang |
 | Interface | Anschluss für externes NFC-Modul |
 | Bedienelement | LED-Button (volle ZapBox-Funktionalität) |
-| Option Schalter 1 | 3-poliger Schiebeschalter (AUTO / OFF / ON) |
 | Option BTC-Ticker | Aktivierbar über den Web Installer |
 | Option Boardtaster | Zwei On-board-Mikrotaster |
 | Option NFC-Modul | Für Bolt Cards (NTAG424 DNA) und Standard NTAG213/215/216 (mit LNURL-withdraw) |
+| Option 3-poliger Schalter | Schiebeschalter (AUTO / OFF / ON) |
 
 ---
 
@@ -61,21 +61,82 @@ Für den industriellen Einsatz und komfortablen Anschluss kann die ZapOMat, alte
 
 ---
 
-## Anschlüsse
+## Spannungsversorgung
 
-### Eingang - USB-C Buchse zur Spannungsversorgung (5V)
+Die ZapBox ZapOMat verfügt über einen USB-C-Anschluss sowie über eine DC-Hohlsteckerbuchse (5,5 × 2,1 mm) für gängige DC-Netzteile.
 
-Versorgen Sie das Gerät über den Anschluss **Power IN** mit einem USB-C-Kabel mit **5 V DC (max. 3 A)**. Die 5V kann an der Klemme 1 (5V) und 2 (GND) der Steckleiste abgegriffen werden.
+Die DC-Buchse ist als Weitbereichseingang für Spannungen von 6 V bis 36 V ausgelegt. Die Eingangsspannung wird intern über einen Step-Down-Converter auf 5 V geregelt. Der Spannungswandler kann im Dauerbetrieb bis zu 1 A liefern. Die Wärmeentwicklung ist dabei zu beachten ⚠️. Kurzzeitig sind auch 2 A möglich, in sehr kurzen Lastspitzen bis zu 2,5 A.
 
-> **Hinweis:** Der Power-IN-Anschluss ist nicht „intelligent". Einige Ladegeräte oder Powermodule mit USB-C-Ausgang erkennen die ZapBox nicht und liefern keinen Strom. Verwenden Sie in diesem Fall einen **USB-A-Ausgang** der Spannungsversorgung oder eine andere Stromquelle.
+Wird dauerhaft eine Leistungsabgabe von mehr als 1 A benötigt, wird empfohlen, den USB-C-Power-Anschluss mit einem separaten 5-V-Netzteil zu verwenden. In diesem Fall sind für die Summe aller Verbraucher bis zu 3 A möglich.
 
-### Eingang - Hohlbuchse 5,5*2,1 mm für DC-Netzeile 6V-36V
+Da einzelne Verbraucher, wie z. B. LED-Streifen, hohe Ströme (> 1 A) aufnehmen können, ist auch eine kombinierte Einspeisung möglich. Beispielsweise kann die ZapBox über die DC-Buchse mit 12 V versorgt werden und gleichzeitig den Relaiskontakt am Ausgang 4 mit dieser Spannung speisen. Der interne Spannungswandler versorgt dabei das System sowie die Relaisausgänge 1–3 mit 5 V, während eine 12-V-LED-Leiste am Ausgang 4 direkt mit 12 V betrieben wird. Dadurch wird die Belastung des internen Spannungswandlers reduziert.
 
-Der ZapOMat verfügt über Anschluss für Standard Hohlstecker 5,5*2,1 mm. Die Spannung 6V-36V wird durch einen Step-Down Wandler automatisch auf die benötigte 5V gewandelt. Sie kann über den USB-Anschluss und den Klemmen 1 und 2 abgegriffen werden. Es 
+Zusätzlich kann neben der DC-Versorgung (6 V–36 V) ein 5-V-Netzteil mit maximal 3 A am USB-C-Power-Anschluss angeschlossen werden.
+Der gleichzeitige Betrieb beider Versorgungen ist möglich, jedoch sind Unterschiede der 5-V-Spannungen zu beachten, um gegenseitige Beeinflussung oder Rückspeisung der Netzteile zu vermeiden.
 
-> **Hinweis:** Der Power-IN-Anschluss ist nicht „intelligent". Einige Ladegeräte oder Powermodule mit USB-C-Ausgang erkennen die ZapBox nicht und liefern keinen Strom. Verwenden Sie in diesem Fall einen **USB-A-Ausgang** der Spannungsversorgung oder eine andere Stromquelle.
+### Spannungseingang USB-C Buchse (5V) 
+
+Die ZapBox kann über den USB-C-Anschluss **Power** mit **5 V DC (max. 3 A)** versorgt werden. Über diesen Anschluss können die 5 V ebenfalls abgegriffen werden, wenn die Spannungsversorgung über die DC-Hohlsteckerbuchse erfolgt.
+
+> **Hinweis:** Der USB-Power-Anschluss unterstützt keine automatische USB-C-Leistungsanforderung (kein USB-C Power Delivery). Einige USB-C-Ladegeräte oder Powermodule erkennen die ZapBox daher nicht als Verbraucher und liefern keinen Strom. Verwenden Sie in diesem Fall einen **USB-A-Ausgang** der Spannungsversorgung oder eine alternative 5-V-Stromquelle. Die maximale Stromstärke darf 3 A nicht überschreiten.
+
+### Spannungseingang DC-Hohlsteckerbuchse (6 V–36 V)
+
+Die DC-Buchse ist für Hohlstecker des Typs 5,5 × 2,1 mm ausgelegt und eignet sich für gängige Netzteile, z. B. mit 12 V oder 24 V Ausgangsspannung.
+
+Intern besteht die Möglichkeit, die Eingangsspannung abzugreifen und auf die Steckerleiste zu verdrahten, um die Ausgangskanäle direkt mit der Eingangsspannung zu versorgen. Dies erfordert einen Eingriff in das Gerät und darf ausschließlich von elektrotechnischen Fachkräften durchgeführt werden. Details hierzu sind im E-Layout der ZapBox ZapOMat beschrieben.
+
+> **Hinweis:** Der interne Spannungswandler besitzt eine begrenzte Leistungsfähigkeit. Bei hohen Lastströmen entsteht erhöhte Wärmeentwicklung, die zu einer Erwärmung des Geräts führen kann. Sorgen Sie für ausreichende Kühlung und überschreiten Sie die angegebenen Stromgrenzen nicht.
+
+## Externe Anschluss - 16-poliger Steckverbinder
+
+Die ZapBox verfügt über einen abnehmbaren 16-poligen Steckverbinder.
+
+**Klemmenbelegung in der Übersicht:**
+| Anschluss | Funktion | Verwendung | Hinweis |
+|------|----------|-----------|---------------|
+| 1 | 5 V | Ausgang (intern versorgt) | Spannungsversorgung 5 V |
+| 2 | GND/Masse | Ausgang (intern versorgt) | Masseanschluss 0 V |
+| 3 | Versorgung Relaisausgänge Kanal 1-3 | Eingang / Ausgang | 5 V, 6 V–36 V |
+| 4 | Schaltkontakt (NO) Relais Kanal 1 | Ausgang | Ansteuerung Verbraucher (NO – Normally Open) |
+| 5 | Schaltkontakt (NO) Relais Kanal 2 | Ausgang | Ansteuerung Verbraucher (NO – Normally Open) |
+| 6 | Schaltkontakt (NO) Relais Kanal 3 | Ausgang | Ansteuerung Verbraucher (NO – Normally Open) |
+| 7 | GND | Ausgang | Masseanschluss 0 V (intern versorgt) |
+| 8 | Versorgung Relaisausgänge Kanal 4 | Eingang / Ausgang | 5 V, 6 V–36 V |
+| 9 | Schaltkontakt (NO) Relais Kanal 4 | Ausgang | Ansteuerung Verbraucher (NO – Normally Open) |
+| 10 | GND| Ausgang | Masseanschluss 0 V (intern versorgt) |
+| 11 | Sensor | Eingang | GPIO Pin 2 für z.B. eine Lichtschranke (NPN) |
+| 12 | 5 V | Ausgang | 5 V für Sensor und NFC-Modul (intern versorgt) |
+| 13 | GND | Ausgang | Masseanschluss für Sensor und NFC-Modul (intern versorgt) |
+| 14 | NFC IRQ | Schnittstelle | GPIO Pin 1 an externes NFC-Modul |
+| 15 | I2C SCL | Schnittstelle | GPIO Pin 17 an externes NFC-Modul |
+| 16 | I2C SDA | Schnittstelle | GPIO Pin 18 an externes NFC-Modul |
+
+**Hinweis Spannungsverteilung mit Brücken:** 
+
+Im Auslieferungszustand ist intern eine 5-V-Versorgung auf die Klemmen 1 (5 V) und 2 (GND) gebrückt. Zusätzlich ist Klemme 12 (Versorgung Sensor und NFC) intern mit 5 V verbunden.
+
+Die Masse (GND) ist intern auf die Klemmen 2, 7, 10 und 13 gebrückt.
+
+Die Relaiskontakte besitzen keine interne Versorgungsspannung. Die gewünschte Schaltspannung muss extern aufgebrückt werden.
+Um beispielsweise einen 5-V-Verbraucher zu schalten, muss für die Kanäle 1–3 eine externe Brücke von Klemme 1 auf Klemme 3 gesetzt werden. Für den Betrieb von Kanal 4 mit 5 V ist eine Brücke von Klemme 1 auf Klemme 8 erforderlich.
+
+**Hinweis zu den Relaiskontakten:** 
+
+Die Relaiskontakte sind intern als Schließer (NO – Normally Open) ausgeführt und über die Klemmen 4–6 sowie Klemme 9 nach außen geführt. Soll ein Relaiskontakt als Öffner (NC – Normally Closed) verwendet werden, ist eine interne Umverdrahtung erforderlich.
+
+**Hinweis zu DC-Buchse (6 V–36 V für Klemmen 3 & 8):** 
+
+Die Eingangsspannung der DC-Hohlsteckerbuchse (6 V–36 V) kann intern abgegriffen und auf die Klemmen 3 und/oder 8 geführt werden, um Relaisausgänge mit höheren Spannungen zu schalten.
+
+**Voraussetzungen:**
+- Eingriffe dürfen ausschließlich durch elektrotechnische Fachkräfte erfolgen.
+- Die vorhandenen 5-V-Brücken (Klemme 1 → 3 und/oder Klemme 1 → 8) müssen **zuvor** entfernt werden.
+- Details sind dem E-Layout der ZapBox ZapOMat zu entnehmen.
 
 ---
+
+## Weitere Anschlüsse
 
 ### Eingang - USB-C Buchse am Mikrocontroller (Datenzugang, hinter rechtem Seitenpanel)
 
@@ -157,9 +218,10 @@ Voraussetzung für die Funktion ist die LNbits [ZapBox Extension](https://github
 
 | Eigenschaft | Wert |
 |---|---|
-| Versorgungsspannung | 5 V DC über USB-C |
-| Maximaler Eingangsstrom | 5,0 A |
-| Schaltleistung | max. 10 A |
+| Versorgungsspannung | 5V DC USB-C max. 3A |
+| Versorgungsspannung | 6V-36V DC-Hohlbuchse max. 3A bei 24V |
+| Spannungskonverter 6V-36V -> 5V | max. 1A Dauerlast, 2A kurzzeitig (2,5A in Spitze) |
+| Schaltleistung Relais | max. 3A (kurzzeitig 10 A) |
 | Display | 1,9" LCD (T-Display-S3) |
 | Kommunikation | Wi-Fi (ESP32-S3) |
 | Zahlungsprotokoll | Bitcoin Lightning Network |
