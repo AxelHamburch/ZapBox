@@ -112,7 +112,8 @@ void navigateToNextProduct() {
   
 #ifdef ENABLE_NFC
   // NFC "both" mode: cycle through QR → Bolt Card → Ticker → QR
-  if (nfcConfig.mode == "both") {
+  // Only in single-product mode; in multi-product, NFC runs passively in background
+  if (nfcConfig.mode == "both" && multiChannelConfig.mode == "off") {
     if (bothModeScreen == 0) {
       // QR (emulation) → Bolt Card (reader)
       LOG_INFO("Navigation", "NFC both mode: switching to Bolt Card view");
@@ -198,7 +199,8 @@ void navigateToNextProduct() {
   }
 
   // NFC "both-boltcard" mode: cycle through BoltCard → Mobile Phone → Ticker → BoltCard
-  if (nfcConfig.mode == "both-boltcard") {
+  // Only in single-product mode; in multi-product, NFC runs passively in background
+  if (nfcConfig.mode == "both-boltcard" && multiChannelConfig.mode == "off") {
     if (bothModeScreen == 0) {
       // BoltCard (reader) → Mobile Phone (emulation)
       LOG_INFO("Navigation", "NFC both-boltcard mode: switching to Mobile Phone view");
@@ -269,8 +271,48 @@ void navigateToNextProduct() {
       return;
     }
   }
+
+  // NFC "both-boltcard" in multi-product mode:
+  // Each product cycles: QR+BoltCard(passive) → MOBIL PHONE → next product QR+BoltCard → ...
+  if (nfcConfig.mode == "both-boltcard" && multiChannelConfig.mode != "off") {
+    if (multiChannelConfig.currentProduct >= 1 && bothModeScreen == 0) {
+      // QR+BoltCard → MOBIL PHONE (same product, don't advance)
+      LOG_INFO("Navigation", "NFC both-boltcard multi: switching to Mobile Phone for current product");
+      bothModeScreen = 1;
+      nfcBoltCardStop();
+      vTaskDelay(pdMS_TO_TICKS(100));
+      nfcCardEmulationInit();
+      int pin = 12;
+      if (multiChannelConfig.mode == "servo") {
+        pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
+      } else {
+        switch (multiChannelConfig.currentProduct) {
+          case 1: pin = 12; break;
+          case 2: pin = 13; break;
+          case 3: pin = 10; break;
+          case 4: pin = 11; break;
+          default: pin = 12; break;
+        }
+      }
+      int pinIndex = getPinIndex(pin);
+      String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                     ? productLabels.labels[pinIndex] : "Pin " + String(pin);
+      showMobilePhoneScreen(label, pin);
+      productSelectionState.showTime = millis();
+      return;
+    } else if (bothModeScreen == 1) {
+      // MOBIL PHONE → advance to next product, BoltCard reader starts
+      LOG_INFO("Navigation", "NFC both-boltcard multi: advancing to next product with BoltCard");
+      bothModeScreen = 0;
+      nfcCardEmulationStop();
+      vTaskDelay(pdMS_TO_TICKS(100));
+      nfcBoltCardInit();
+      // Fall through to normal multi-product advancement below
+    }
+    // bothModeScreen==0, currentProduct==-1 (SELECT PRODUCT): fall through normally
+  }
 #endif
-  
+
   if (multiChannelConfig.mode == "off") {
     // Single mode behavior depends on multiChannelConfig.btcTickerMode
     if (multiChannelConfig.btcTickerMode == "always") {

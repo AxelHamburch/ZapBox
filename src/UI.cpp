@@ -354,8 +354,9 @@ void updateReadyLed() {
  * Handles threshold mode, multi-channel mode with ticker, and product selection.
  */
 void redrawQRScreen() {
-  // In "both-boltcard" mode, the default screen is BoltCard (no QR code)
-  if (nfcConfig.mode == "both-boltcard") {
+  // In "both-boltcard" single-product mode, the default screen is BoltCard (no QR code)
+  // In multi-product mode the QR is shown normally; BoltCard reader runs passively in background
+  if (nfcConfig.mode == "both-boltcard" && multiChannelConfig.mode == "off") {
     int displayPin = 12;
     if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
       if (multiChannelConfig.mode == "servo") {
@@ -542,11 +543,7 @@ void showInitialScreenAfterConnections() {
     int pinIndex = getPinIndex(firstPin);
     String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : String("Pin ") + String(firstPin);
     ensureQrForPin(firstPin);
-    if (nfcConfig.mode == "both-boltcard") {
-      showBoltCardScreen(label, firstPin);
-    } else {
-      showProductQRScreen(label, firstPin);
-    }
+    showProductQRScreen(label, firstPin);
     multiChannelConfig.btcTickerActive = false;
     deviceState.transition(DeviceState::READY);
     productSelectionState.showTime = millis();
