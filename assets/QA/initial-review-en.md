@@ -1,78 +1,81 @@
-# ZapBox - Initial Review
+# Test Protocol for Initial Review
 
-The ZapBox undergoes an initial review at a test station where device functions and parameters are checked for quality assurance.
+This document serves as the documentation for the initial inspection of the ZapBox, during which the tests performed and the parameters checked ensure the quality and functionality of the device. The ZapBox undergoes a comprehensive initial inspection at a test station, where the functions and parameters of the device are carefully examined to ensure quality and reliability.
 
 ---
 
 ## Device Identification
 
-**ZapBox Type:** ________________________     **Serial Number:** ________________________     **Housing Version:** ________________________
+**ZapBox Type:** ____________________     **Serial Number:** ____________________     **Housing Version:** ____________________
 
-**Color Body:** ___________     **Front:** ___________     **Button:** ___________     **NFC Module:** ___________
+**Base Color:** ___________     **Front:** ___________     **Button:** ___________     **NFC Module:** ___________
 
-**Miscellaneous / Special Features:** ________________________________________________________________
+**Other / Special Features:** ________________________________________________________________
 
 ---
 
-**Note:** For each ZapBox type, relevant tests are marked with an "O". Each version has options. If not available, please mark with *n.a.* for *not available*.
+**Note:** For each ZapBox type, the relevant tests are marked with an "O". Each version has options. If not applicable, please mark with *n.a.* for *not available*.
 
-## Testing ZapBox with Display (T-Display-S3)
+**Abbreviations:**<br>
+I = Current / U = Voltage / Term. = Terminal / GPIO = General-Purpose Input/Output
 
-| Test Item \ Type | Compact | Duo | Quattro | ZapOMat | Servo | Hybrid |
+## Inspection of ZapBox with Display (T-Display-S3)
+
+| Test Object \ Type | Compact | Duo | Quattro | ZapOMat | Servo | Hybrid |
 |---|---|---|---|---|---|---|
-| Output Voltage [V] Terminal 1-2 idle | - | - | - | ____,____V | ____,____V | ____,____V |
-| Output Voltage [V] Terminal 1-2 switched | - | - | - | ____,____V | ____,____V | ____,____V |
-| USB OUT Output Voltage [V] switched | ____,____V | ____,____V | - | ____,____V | ____,____V | ____,____V |
-| CH1 Relay GPIO Pin 12 | - | O | O | O | O | O |
-| CH2 Relay GPIO Pin 13 | - | O | O | O | - | O |
-| CH3 Relay GPIO Pin 10 | - | - | O | O | - | O |
-| CH4 Relay GPIO Pin 11 | - | - | O | O | O | O |
-| CH2 Servo GPIO Pin 13 | - | - | - | - | O | O |
-| CH3 Servo GPIO Pin 10 | - | - | - | - | O | O |
-| Sensor GPIO Pin 2 | - | - | - | O | O | O |
-| Display Function | O | O | O | O | O | O |
-| OnBoard-Button Function | O | O | O | O | O | O |
-| LED-Button Function | - | O | O | O | O | O |
-| Panel Opening | O | O | O | O | O | O |
-| Assembly Snap Lock | O | O | O | O | O | O |
+| I-Input USB-C (idle)  | - | - | - | ___,____A | ___,____A | ___,____A |
+| U-Output Term.1-2 (idle) | - | - | - | ___,____V | ___,____V | ___,____V |
+| U-Output USB-A/C (switched) | ___,____V | ___,____V | - | - | ___,____V | ___,____V |
+| Relay Channel 1 (GPIO Pin 12) | - | O | O | O | O | O |
+| Relay Channel 2 (GPIO Pin 13) | - | O | O | O | - | O |
+| Relay Channel 3 (GPIO Pin 10) | - | - | O | O | - | O |
+| Relay Channel 4 (GPIO Pin 11) | - | - | O | O | O | O |
+| Servo Channel 2 (GPIO Pin 13) | - | - | - | - | O | O |
+| Servo Channel 3 (GPIO Pin 10) | - | - | - | - | O | O |
+| Sensor Term.11 (GPIO Pin 2) | - | - | - | O | O | O |
+| Display | O | O | O | O | O | O |
+| OnBoard-Button | O | O | O | O | O | O |
+| LED-Button | - | O | O | O | O | O |
+| Side Cover | O | O | O | O | O | O |
+| Snap-Fit Mounting | O | O | O | O | O | O |
 | NFC Module | O | O | O | O | O | O |
 
 ---
 
-## Testing ZapBox Headless (ESP32)
+## Inspection of ZapBox Headless (ESP32)
 
-| Test Item | Headless | Headless Servo |
+| Test Object | Headless | Headless Servo |
 |---|---|---|
-| Output Voltage Terminal 1-2 idle | - | ____,____V |
-| Output Voltage Terminal 1-2 switched | - | ____,____V |
-| USB OUT Output Voltage switched | ____,____V | - |
-| Terminal 3 - Control Signal Relay Pin 12 | - | O |
-| Terminal 3 - Control Signal Servo Pin 12 | - | O |
-| Terminal 4 - Sensor 1 GPIO Pin 22 | - | O |
-| Terminal 4 - Sensor 2 GPIO Pin 23 | - | O |
-| LED-READY Function | O | O |
-| LED-ACTION Function | O | O |
-| Panel Opening | O | O |
-| Assembly Snap Lock | O | O |
+| I-Input USB-C (idle)  | ___,____A | ___,____A |
+| U-Output Term.1-2 (idle) | - | ___,____V |
+| U-Output Term.1-2 (switched) | - | ___,____V |
+| U-Output USB-C (switched) | ___,____V | - |
+| Relay Channel 3 - Term.3 - (GPIO Pin 12) | - | O |
+| Servo Channel 3 - Term.3 - (GPIO Pin 12) | - | O |
+| Sensor 1 - Term.4 - (GPIO Pin 22) | - | O |
+| Sensor 2 - Term.5 - (GPIO Pin 23) | - | O |
+| LED-READY | O | O |
+| LED-ACTION | O | O |
+| Side Cover | O | O |
+| Snap-Fit Mounting | O | O |
 | NFC Module | O | O |
 
 ---
 
 ## Notes
 
-⚠️ **NFC Module:** The NFC module can work but still be defective. The error is identified by high power consumption above 0.3A in standby state.
+⚠️ **NFC Module:** The NFC module may function and still be defective. The error can be identified by the high current consumption of over 0.3A in idle mode.
 
 ---
 
-## Test Result
+## Inspection Result
 
-**Test Result:** [ &nbsp; ] Passed / [ &nbsp; ] Failed
+**Inspection Result:** [ &nbsp; ] Passed / [ &nbsp; ] Failed
 
-**Other Defects:** [ &nbsp; ] No / [ &nbsp; ] Yes — If yes, which ones: _________________________________________________________________
+**Other Defects:** [ &nbsp; ] No / [ &nbsp; ] Yes — If yes, which: __________________________________________________________
 
-**Block Time ⛓️ :** ________________________     **Tester 🖊 :** ________________________
-
+ **Block Time ⛓️ :** ________________________     **Inspector 🖊 :** ________________________
 
 ---
 
-*Best Quality - **[zapbox.space](https://zapbox.space)*** | Version: qa945642 | Language: English
+*Best Quality - **[zapbox.space](https://zapbox.space)*** | Version: qa946083 | Language: English
