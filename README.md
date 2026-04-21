@@ -135,6 +135,20 @@ Device String (switchStr)
 | 13 | Relay 2 / Servo 1 | Output | - | Duo/Quattro mode 2, Servo mode PWM output |
 | 10 | Relay 3 / Servo 2 | Output | - | Quattro mode 3, Servo mode PWM output |
 | 11 | Relay 4 / Ambient | Output | - | Quattro mode 4, Servo mode relay 2, or ambient lighting (synced with backlight) |
+| **Available for Expansion** |
+| 3 | – (free) | Input / Output | - | ⚠️ **Strapping Pin** (ESP32-S3 only). Only free GPIO on T-Display-S3, but **not suitable for sensors that can be LOW at power-on**. See note below. |
+
+> **⚠️ GPIO 3 — the only free GPIO on T-Display-S3, but a Strapping Pin**
+> All other GPIOs are fully allocated (display bus, relays, buttons, I2C, NFC, LED button, power control). GPIO 3 is the only physically unconnected pin.
+>
+> GPIO 3 is read by the **ROM bootloader in hardware** at power-on — before any user code runs. If GPIO 3 is LOW at that moment, the chip may enter an unexpected boot mode.
+>
+> **What does not help:**
+> - Pull-up resistors: sensor (low impedance) overrides any pull-up
+> - RC filters: capacitor starts discharged (0V) at cold boot, so GPIO 3 is already LOW during boot
+> - Software workarounds: `delay()` in `setup()` is useless — the boot decision was already made in hardware
+>
+> **GPIO 3 is only safe for:** signals that are guaranteed HIGH during boot (e.g. a PWM output driven by the ESP32 itself, not an external sensor). Do not use GPIO 3 for sensors that can be LOW at power-on. **There is no free GPIO on the T-Display-S3 for such a sensor.**
 
 **I2C Bus Addresses:**
 - Touch CST816S/CST328: `0x15` or `0x5A`

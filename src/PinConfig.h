@@ -135,11 +135,29 @@
 #endif
 
 // ─────────────────────────────────────────────────────────────
-// Free GPIO pins summary:
-//   T-Display-S3 : GPIO 1=NFC-IRQ, 10-13=Relay(CH01-04), 43/44=LED-Button (not RTC-capable)
-//   ESP32 Dev    : GPIO 4=NFC-IRQ, 12/13/14/16/19/22/23/25/26/27/32/33=Relay (CH01-12)
-//                  21=LED, 2=OnboardLED
-//                  22/23 = Vending sensor inputs (when configured, not available as relay)
-//                  ⚠ GPIO 6-11 = internal SPI flash on WROOM-32, NOT usable as output!
-//                  Remaining free (output-capable): GPIO 5, 15
+// GPIO availability summary:
+//
+//   T-Display-S3: ALL GPIOs are allocated. GPIO 3 is the only physically
+//   unconnected pin, but it is a STRAPPING PIN — NOT suitable for sensors
+//   that can be LOW at power-on (see warning below). There is no free GPIO
+//   available for additional sensors on the T-Display-S3.
+//
+//     GPIO 15 = Power On pin (NOT free — display board power control)
+//     GPIO 19/20 = USB D-/D+ (NOT usable as general I/O)
+//     GPIO 34-37 = do not exist on ESP32-S3
+//
+//   ESP32 Dev: GPIO 4=NFC-IRQ, 12/13/14/16/19/22/23/25/26/27/32/33=Relay
+//              21=LED, 2=OnboardLED
+//              22/23 = Vending sensor inputs (when configured)
+//              ⚠️ GPIO 6-11 = internal SPI flash on WROOM-32, NOT usable!
+//
+// ⚠️ GPIO 3 (T-Display-S3 ONLY) — STRAPPING PIN:
+//   - Read by ROM bootloader IN HARDWARE at power-on, before any user code runs
+//   - If GPIO 3 is LOW during boot → unexpected boot mode / download mode
+//   - Pull-up resistors do NOT help: sensor (low impedance) overrides pull-up
+//   - RC filter does NOT help: capacitor starts discharged (0V) at cold boot,
+//     so GPIO 3 is already LOW during the boot phase
+//   - There is NO workaround in software (delay() in setup() is useless)
+//   - ONLY safe for signals guaranteed HIGH during boot (e.g. PWM output)
+//   - Do NOT use GPIO 3 for sensors that can be LOW at power-on
 // ─────────────────────────────────────────────────────────────
