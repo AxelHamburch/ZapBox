@@ -210,6 +210,8 @@ Die ZapBox wird nach der Fertigung getestet und mit der aktuellen Firmware ausge
 
 Die ZapBox wird nach der Initialisierung den QR-Code des Produkts anzeigen und ist bereit für die erste Zahlung und anschließende Schaltaktion.
 
+### Fehlerdiagnose und -behebung 
+
 Die ZapBox verfügt über eine komfortable Fehleranzeige über das Display. Es gibt vier grundlegende Fehler, die priorisiert sind:
 
 | Prio. | Fehlerart | Abkürzung | Erkennungsmethode | Beschreibung |

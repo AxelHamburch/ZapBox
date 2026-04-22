@@ -6,7 +6,7 @@
 
 ## Inhaltsverzeichnis
 
-1. [Übersicht](#übersicht)
+1. [Einleitung](#einleitung)
 2. [Ansichten](#ansichten)
 3. [Anschlüsse](#anschlüsse)
 4. [Bedienelemente](#bedienelemente)
@@ -18,11 +18,15 @@
 
 ---
 
-## Übersicht
+## Einleitung
 
 Die **ZapBox Headless** ist ein elektronischer Schalter für Bitcoin-Lightning-Zahlungen ohne Display. Mit einer Zahlung über das Lightning-Netzwerk lässt sich ein Ausgang schalten – ideal für eingebettete Anwendungen, verdeckte Installationen, Maschinenbau und überall dort, wo kein Display benötigt wird.
 
 Der Betriebszustand wird ausschließlich über eine **Status-LED** angezeigt. Eine zweite **Action-LED** zeigt die Schaltfunktion an.
+
+<img src="pics/pic-Headless/Headless-oi-01.webp" alt="Frontansicht-Draufsicht" width="50%">
+
+*Bild 1: Frontansicht / Draufsicht*
 
 ### Grundausstattung
 
@@ -35,14 +39,6 @@ Der Betriebszustand wird ausschließlich über eine **Status-LED** angezeigt. Ei
 | Bedienelement | Mikrotaster für BOOT (Config-Modus) und Reset |
 | Schalter | 3-poliger Schiebeschalter (AUTO / OFF / ON) |
 | Option NFC-Modul | Für Bolt Cards (NTAG424 DNA) und Standard NTAG213/215/216 (mit LNURL-withdraw) |
-
----
-
-## Ansichten
-
-<img src="pics/pic-Headless/Headless-oi-01.webp" alt="Frontansicht-Draufsicht" width="67%">
-
-*Bild 1: Frontansicht / Draufsicht*
 
 ---
 
@@ -63,11 +59,11 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 1. An der **Vorderseite links** befindet sich eine kleines Panel links neben den USB-Anschlüssen. Öffnen Sie das Panel, indem Sie von unten mit einem **schmalen Schraubendreher** das Panel nach rechts wegschieben.
 2. Schließen Sie ein Micro-USB-Kabel an den Mikrocontroller an.
 
-<img src="pics/pic-Headless/Headless-oi-02.webp" alt="Panel öffnen für Datenverbindung" width="67%">
+<img src="pics/pic-Headless/Headless-oi-02.webp" alt="Panel öffnen für Datenverbindung" width="50%">
 
 *Bild 2: Panel öffnen für Datenverbindung*
 
-<img src="pics/pic-Headless/Headless-oi-03.webp" alt="Micro USB Port" width="67%">
+<img src="pics/pic-Headless/Headless-oi-03.webp" alt="Micro USB Port" width="50%">
 
 *Bild 3: Micro USB Port*
 
@@ -101,10 +97,12 @@ Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließli
 | 200 ms an / 800 ms aus | NFC-Zahlung ausstehend (PENDING) |
 | 2× kurzes Blinken | Zahlung erfolgreich |
 | 3× kurzes Blinken | NFC-Timeout / Fehler |
+| Sehr schnelles Blinken (10 Hz) | Sensor "vending machine" angesprochen |
 | 1× Blinken (500 ms an/aus, 2 s Pause) | Fehlermuster 1: Kein WLAN |
 | 2× Blinken (300 ms an/aus, 2 s Pause) | Fehlermuster 2: Kein Internet |
 | 3× Blinken (250 ms an/aus, 2 s Pause) | Fehlermuster 3: Server nicht erreichbar |
 | 4× Blinken (200 ms an/aus, 2 s Pause) | Fehlermuster 4: WebSocket-Verbindung fehlgeschlagen |
+| Aus | Keine Spannungsversorgung |
 
 ### Bedientaster
 
@@ -133,22 +131,34 @@ Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließli
 
 ## Einrichtung und Inbetriebnahme
 
-Die ZapBox wird nach der Fertigung getestet und mit der aktuellen Firmware ausgeliefert - sie ist aber nicht parametriert. Die Software wird aktiv weiterentwickelt, daher ist es empfehlenswert, die ZapBox gleich zu Beginn einmal mit der neuesten Firmware zu bespielen und dann eine Parametrierung durchzuführen. Dafür gibt es einen komfortablen **Web-Installer** (Headless-Version).
+Die ZapBox wird nach der Fertigung getestet und mit der aktuellen Firmware ausgeliefert - sie ist aber nicht parametriert. Die Software wird aktiv weiterentwickelt, daher ist es empfehlenswert, die ZapBox gleich zu Beginn einmal mit der neuesten Firmware zu bespielen und dann eine Parametrierung durchzuführen. Dafür gibt es einen komfortablen [**Web-Installer**](https://installer.zapbox.space/).
 
-Hier eine Schritt-für-Schritt-Anleitung für die Einrichtung:
+### Schritt 1: Firmware-Update
+1. Öffnet das rechte Seitenpanel der Frontblende, wie oben unter "Seitenpanel öffnen" beschrieben.
+2. Schließt die ZapBox an dem USB-C-Port mit einem Kabel an und verbindet es mit einem Computer.
+3. Öffnet einen Chromium Browser, zum Beispiel Google Chrome, Microsoft Edge, Brave, Vivaldi, Opera oder [Helium](https://helium.computer/).
 
-1. Schließt die ZapBox am Micro-USB-Port des Mikrocontrollers mit einem Kabel an und verbindet es mit einem Computer.
-2. Öffnet einen Chromium Browser, zum Beispiel Google Chrome, Microsoft Edge, Brave, Vivaldi, Opera oder [Helium](https://helium.computer/).
-3. Ruft die Web-Installer Seite **https://installer.zapbox.space/headless/** auf.
-4. Flasht die aktuellste "Latest" Version (Headless), wie unter Punkt 1 des Web-Installer beschrieben.
-5. Nach dem Flashvorgang schließt das kleine Fenster und geht zu Punkt 3 - Load config values. Dort wählt ihr den Button `🔌 Connect`.
-6. Jetzt solltet ihr in dem grünen Feld `✅ Connected` und `✅ Config mode` sehen. Der Config-Modus ist aktiv, sobald die **Status-LED langsam blinkt** (ca. 1 Hz). Falls nicht, prüft einmal den Punkt 2 - Prepare connection.
-7. Drei Parameter benötigt die ZapBox: `WiFi SSID` / `WiFi password` / `Device settings string`. Den Device-Settings-String bekommt ihr von eurer LNbits Wallet. Fügt dazu die Erweiterung **Bitcoin Switch** oder **ZapBox** hinzu. Die ZapBox Erweiterung unterstützt auch das NFC-Modul, ansonsten sind sie identisch.
-8. Nachdem alle drei Parameter hinterlegt wurden, muss diese mit dem Button `🔥 Write Config` einmal gespeichert werden und die ZapBox mit dem Button `🔁 Restart` neu gestartet werden.
+### Schritt 2: Parametrierung
+1. Navigiert im Browser zur Web-Installer-Seite.
+2. Folgt den Anweisungen auf der Seite, um die gewünschten Parameter wie `WiFi SSID`, `WiFi Passwort` und `Device Settings String` einzugeben.
+3. Speichert die Einstellungen und startet die ZapBox neu.
+
+> **Hinweis:** Während der Einrichtung sollte keine Last an den Ausgängen angeschlossen sein, um Fehlfunktionen oder Schäden am Mikrocontroller zu vermeiden.
 
 Nach der Initialisierung leuchtet die Status-LED dauerhaft – die ZapBox ist betriebsbereit und wartet auf die erste Zahlung.
 
-Bei Fehler oder Störungen bitte auf der Web Installer Seite weiter unten die Kapitel "Error Detection & Report" und "Troubleshoot" beachten. 
+### Fehlerdiagnose und -behebung 
+
+Die ZapBox zeigt Fehler über einen LED-Fehlerblinkcode an. Siehe dazu den vorherigen Kapitel *Status-LED – Blinkmuster*. Es gibt vier grundlegende Fehler, die priorisiert sind:
+
+| Prio. | Fehlerart | Abkürzung | Erkennungsmethode | Beschreibung |
+|-----------|-----------|-----------|-------------------|--------------|
+| 1 | **NO WIFI** | NW | WiFi-Verbindungsstatus | WiFi-Netzwerk nicht verbunden<br>-> Sind die WiFi-Daten korrekt?<br>-> Ist das WiFi-Signal zu schwach? |
+| 2 | **NO INTERNET** | NI | HTTP-Check zu Google | Internetverbindung verloren<br>-> Ist das Internet erreichbar? |
+| 3 | **NO SERVER** | NS | TCP-Port 443-Check | LNbits-Server nicht erreichbar<br>-> Ist die Server-Hardware ausgefallen?<br>-> Ist der Geräte-String korrekt? |
+| 4 | **NO WEBSOCKET** | NWS | WebSocket-Verbindungsstatus | WebSocket-Protokoll-/Handshake-Fehler<br>-> Ist LNbits ausgefallen?<br>-> Ist der Geräte-String korrekt? |
+
+Weitere aktuelle Informationen zu Fehlerbeschreibungen können auf der Web-Installer-Seite in den Kapiteln "Error Detection & Report" und "Troubleshoot" nachgelesen werden. 
 
 ---
 
@@ -175,6 +185,7 @@ Voraussetzung für die Funktion ist die LNbits [ZapBox Extension](https://github
 | SRAM | 512 KB |
 | Display | keines (Headless) |
 | Statusanzeige | Status-LED / Action-LED |
+| Temperaturbereich | 0–40 °C |
 | Kommunikation | Wi-Fi (ESP32) |
 | Relaiskanäle | 1 - Erweiterbar bis zu 12 (CH01–CH12) |
 | Zahlungsprotokoll | Bitcoin Lightning Network |
