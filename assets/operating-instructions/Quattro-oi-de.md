@@ -41,15 +41,15 @@ Die **ZapBox Quattro** ist ein elektronischer Schalter für Bitcoin-Lightning-Za
 
 ## Ansichten
 
-<img src="pic-Quattro/Quattro-oi-01.webp" alt="Frontansicht" width="67%">
+<img src="pics/pic-Quattro/Quattro-oi-01.webp" alt="Frontansicht" width="67%">
 
 *Bild 1: Frontansicht*
 
-<img src="pic-Quattro/Quattro-oi-02.webp" alt="Rückansicht" width="67%">
+<img src="pics/pic-Quattro/Quattro-oi-02.webp" alt="Rückansicht" width="67%">
 
 *Bild 2: Rückansicht*
 
-<img src="pic-Quattro/Quattro-oi-04.webp" alt="Draufsicht" width="67%">
+<img src="pics/pic-Quattro/Quattro-oi-04.webp" alt="Draufsicht" width="67%">
 
 *Bild 3: Draufsicht*
 
@@ -73,7 +73,7 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 2. Öffnen Sie die Klappe, indem Sie von unten mit einem **schmalen Schraubendreher** die Klappe nach rechts wegschieben.
 3. Schließen Sie ein USB-C-Kabel am darunter liegenden Anschluss des Mikrocontrollers an.
 
-<img src="pic-Quattro/Quattro-oi-03.webp" alt="Panel öffnen und USB-C-Anschluss" width="67%">
+<img src="pics/pic-Quattro/Quattro-oi-03.webp" alt="Panel öffnen und USB-C-Anschluss" width="67%">
 
 *Bild: Panel öffnen und USB-C-Anschluss für Daten*
 

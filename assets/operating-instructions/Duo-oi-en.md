@@ -42,11 +42,11 @@ The **ZapBox Duo** is an electronic switch for Bitcoin Lightning payments. A pay
 
 ## Views
 
-<img src="pic-Duo/Duo-oi-01.webp" alt="Front view" width="67%">
+<img src="pics/pic-Duo/Duo-oi-01.webp" alt="Front view" width="67%">
 
 *Image 1: Front view*
 
-<img src="pic-Duo/Duo-oi-02.webp" alt="Rear view" width="67%">
+<img src="pics/pic-Duo/Duo-oi-02.webp" alt="Rear view" width="67%">
 
 *Image 2: Rear view*
 
@@ -70,7 +70,7 @@ To read data from or transfer data to the device, connect the ZapBox to a comput
 2. Open the flap by sliding it to the right from below using a **narrow screwdriver**.
 3. Connect a USB-C cable to the connector on the microcontroller underneath.
 
-<img src="pic-Duo/Duo-oi-03.webp" alt="Opening the panel and USB-C connector" width="67%">
+<img src="pics/pic-Duo/Duo-oi-03.webp" alt="Opening the panel and USB-C connector" width="67%">
 
 *Image: Opening the panel and USB-C connector for data*
 

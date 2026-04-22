@@ -43,7 +43,7 @@ Der Betriebszustand wird ausschließlich über eine **Status-LED** angezeigt. Ei
 
 ## Ansichten
 
-<img src="pic-Headless-Servo/Headless-Servo-oi-01.webp" alt="Frontansicht-Draufsicht" width="67%">
+<img src="pics/pic-Headless-Servo/Headless-Servo-oi-01.webp" alt="Frontansicht-Draufsicht" width="67%">
 
 *Bild 1: Frontansicht / Draufsicht*
 
@@ -66,7 +66,7 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 1. An der **Vorderseite links** befindet sich eine kleines Panel links neben den USB-Anschlüssen. Öffnen Sie das Panel, indem Sie von unten mit einem **schmalen Schraubendreher** das Panel nach rechts wegschieben.
 2. Schließen Sie ein Micro-USB-Kabel an den Mikrocontroller an.
 
-<img src="pic-Headless-Servo/Headless-Servo-oi-02.webp" alt="Panel öffnen für Datenverbindung mit Micro USB-Port" width="100%">
+<img src="pics/pic-Headless-Servo/Headless-Servo-oi-02.webp" alt="Panel öffnen für Datenverbindung mit Micro USB-Port" width="100%">
 
 *Bild 2: Panel öffnen für Datenverbindung mit Micro USB-Port*
 
@@ -125,7 +125,7 @@ Die ZapBox Headless hat **kein Display**. Der Betriebszustand wird ausschließli
 
 ### Montagehalterung mit Schnapp-Arretierung
 
-<img src="pic-Headless-Servo/Headless-Servo-oi-mount.webp" alt="Lösen einer Montagehalter einer Headless mit NFC-Modul" width="100%">
+<img src="pics/pic-Headless-Servo/Headless-Servo-oi-mount.webp" alt="Lösen einer Montagehalter einer Headless mit NFC-Modul" width="100%">
 
 *Bild 3: Lösen der Montagehalterung einer Headless mit NFC-Modul*
 

@@ -27,7 +27,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 - [PlatformIO Project](#platformio-project)
 - [Compatibility](#compatibility)
 - [Versioning](#versioning)
-- [Quality Assurance](#quality-assurance)
+- [Documentation](#documentation)
 - [Acknowledgement](#acknowledgement)
 - [Support](#support)
 
@@ -333,37 +333,6 @@ The PN532 chip initializes automatically on power-up.
 - Initialize: `NFCPN532 nfc(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_NFC_IRQ);`
 - Call `nfc.begin()` after Touch initialization
 - Use `nfc.readPassiveTargetID()` to read card UIDs
-
-### Operating Instructions
-
-Current user manuals are available in Markdown format for online viewing and as PDFs for download.
-
-| | Markdown | PDF |
-|---|----------|-----|
-| **Compact** | [de.md](assets/operating-instructions/Compact-oi-de.md) / [en.md](assets/operating-instructions/Compact-oi-en.md) | [de.pdf](assets/operating-instructions/Compact-oi-de.pdf) / [en.pdf](assets/operating-instructions/Compact-oi-en.pdf) |
-| **Duo** | [de.md](assets/operating-instructions/Duo-oi-de.md) / [en.md](assets/operating-instructions/Duo-oi-en.md) | [de.pdf](assets/operating-instructions/Duo-oi-de.pdf) / [en.pdf](assets/operating-instructions/Duo-oi-en.pdf) |
-| **Headless** | [de.md](assets/operating-instructions/Headless-oi-de.md) / [en.md](assets/operating-instructions/Headless-oi-en.md) | [de.pdf](assets/operating-instructions/Headless-oi-de.pdf) / [en.pdf](assets/operating-instructions/Headless-oi-en.pdf) |
-| **Headless Servo** | [de.md](assets/operating-instructions/Headless-Servo-oi944935-de.md) / [en.md](assets/operating-instructions/Headless-Servo-oi944935-en.md) | [de.pdf](assets/operating-instructions/Headless-Servo-oi944935-de.pdf) / [en.pdf](assets/operating-instructions/Headless-Servo-oi944935-en.pdf) |
-| **Quattro** | [de.md](assets/operating-instructions/Quattro-oi-de.md) / [en.md](assets/operating-instructions/Quattro-oi-en.md) | [de.pdf](assets/operating-instructions/Quattro-oi-de.pdf) / [en.pdf](assets/operating-instructions/Quattro-oi-en.pdf) |
-
-For the archive and development, see [here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions).
-
-### Electrical Layout
-
-See the complete wiring diagram:
-
-- [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
-- [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
-- [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
-- [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
-- [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
-- [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
-- [E-Layout-ZapBox-Servo.png](assets/electric/E-Layout-ZapBox-Servo.png)
-
-Miscellaneous:
-
-- [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
-
 
 ### External LED Button (Optional)
 
@@ -1134,7 +1103,40 @@ Electrical design and housing variants, see table.
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
-## Quality Assurance
+## Documentation
+
+### Operating Instructions
+
+Current user manuals are available in Markdown format for online viewing and as PDFs for download.
+
+| | Markdown | PDF |
+|---|----------|-----|
+| **Compact** | [de.md](assets/operating-instructions/Compact-oi-de.md) / [en.md](assets/operating-instructions/Compact-oi-en.md) | [de.pdf](assets/operating-instructions/Compact-oi-de.pdf) / [en.pdf](assets/operating-instructions/Compact-oi-en.pdf) |
+| **Duo** | [de.md](assets/operating-instructions/Duo-oi-de.md) / [en.md](assets/operating-instructions/Duo-oi-en.md) | [de.pdf](assets/operating-instructions/Duo-oi-de.pdf) / [en.pdf](assets/operating-instructions/Duo-oi-en.pdf) |
+| **Quattro** | [de.md](assets/operating-instructions/Quattro-oi-de.md) / [en.md](assets/operating-instructions/Quattro-oi-en.md) | [de.pdf](assets/operating-instructions/Quattro-oi-de.pdf) / [en.pdf](assets/operating-instructions/Quattro-oi-en.pdf) |
+| **ZapOMat** | [de.md](assets/operating-instructions/ZapOMat-oi-de.md) / [en.md](assets/operating-instructions/ZapOMat-oi-en.md) | [de.pdf](assets/operating-instructions/ZapOMat-oi-de.pdf) / [en.pdf](assets/operating-instructions/ZapOMat-oi-en.pdf) |
+| **Headless** | [de.md](assets/operating-instructions/Headless-oi-de.md) / [en.md](assets/operating-instructions/Headless-oi-en.md) | [de.pdf](assets/operating-instructions/Headless-oi-de.pdf) / [en.pdf](assets/operating-instructions/Headless-oi-en.pdf) |
+| **Headless Servo** | [de.md](assets/operating-instructions/Headless-Servo-oi944935-de.md) / [en.md](assets/operating-instructions/Headless-Servo-oi944935-en.md) | [de.pdf](assets/operating-instructions/Headless-Servo-oi944935-de.pdf) / [en.pdf](assets/operating-instructions/Headless-Servo-oi944935-en.pdf) |
+
+For the archive and development, see [here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions).
+
+### Electrical Layout
+
+See the complete wiring diagram:
+
+- [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
+- [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
+- [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
+- [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
+- [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
+- [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
+- [E-Layout-ZapBox-Servo.png](assets/electric/E-Layout-ZapBox-Servo.png)
+
+Miscellaneous:
+
+- [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
+
+### Quality Assurance
 
 Templates for quality assurance protocols to ensure ZapBox quality.
 

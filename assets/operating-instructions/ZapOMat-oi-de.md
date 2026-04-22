@@ -1,32 +1,39 @@
 # ZapBox ZapOMat – Bedienungsanleitung
 
-**Sprache:** Deutsch | **Version:** oi945085
+**Sprache:** Deutsch | **Version:** oi946210
 
 ---
 
 ## Inhaltsverzeichnis
 
-1. [Übersicht](#übersicht)
-2. [Ansichten](#ansichten)
-3. [Anschlüsse](#anschlüsse)
-4. [Bedienelemente](#bedienelemente)
-5. [Einrichtung und Inbetriebnahme](#einrichtung-und-inbetriebnahme)
-6. [NFC-Modul (Option)](#nfc-modul-option)
-7. [Technische Daten](#technische-daten)
-8. [Sicherheitshinweise](#sicherheitshinweise)
-9. [Weiterführende Links](#weiterführende-links)
+1. [Einleitung](#einleitung)
+2. [Spannungsversorgung](#spannungsversorgung)
+3. [Externe Anschlüsse – 16-poliger Steckverbinder](#externe-anschlüsse--16-poliger-steckverbinder)
+4. [USB-C-Anschluss](#usb-c-anschluss)
+5. [Schaltausgänge Kanal 1 bis 4](#schaltausgänge-kanal-1-bis-4)
+6. [Bedienelemente](#bedienelemente)
+7. [Montagehalterung mit Schnapp-Arretierung](#montagehalterung-mit-schnapp-arretierung) 
+8. [Einrichtung und Inbetriebnahme](#einrichtung-und-inbetriebnahme)
+9. [NFC-Modul (Option)](#nfc-modul-option)
+10. [Technische Daten](#technische-daten)
+11. [Sicherheitshinweise](#sicherheitshinweise)
+12. [Weiterführende Links](#weiterführende-links)
 
 ---
 
-## Übersicht
+## Einleitung
 
 Die **ZapBox ZapOMat** ist ein elektronischer Schalter für Bitcoin-Lightning-Zahlungen. Mit einer Zahlung über das Lightning-Netzwerk lassen sich Ausgänge schalten – ideal für Automaten, Präsentationen, Eventsteuerung und viele weitere Anwendungen. 
 
 Für umfängliche Automatisierungsaufgaben sind die Kontakte über einen 16-poligen abnehmbaren Steckverbinder nach außen geführt. Sie verfügt über einen zusätzlichen Sensoreingang, der individuell parametriert werden kann. Optional kann das NFC-Modul über die Steckerleiste extern geführt werden. 
 
-Für den industriellen Einsatz und komfortablen Anschluss kann die ZapOMat, alternativ zum 5V USB-C-Anschluss, mit einem DC-Steckernetzteil betrieben werden. Die ZapOMat kann dafür optional mit einem Weitbereichseingang (DC 6V–36V) über eine Standard 5,5×2,1 mm DC-Buchse angeschlossen werden. Für die intern benötigten 5V ist ein Spannungswandler vorhanden, der sich selbstregelnd ist. Das erweitert die Anwendungsmöglichkeiten enorm und die Spannungsversorgung für die Ausgänge kann dementsprechend angepasst werden.
+Für den industriellen Einsatz und komfortablen Anschluss kann die ZapOMat, alternativ zum 5V USB-C-Anschluss, mit einem DC-Steckernetzteil betrieben werden. Die ZapOMat kann dafür optional mit einem Weitbereichseingang (DC 6V–36V) über eine Standard 5,5×2,1 mm DC-Buchse angeschlossen werden. Für die intern benötigten 5V ist ein Spannungswandler vorhanden, der selbstregulierend ist. Das erweitert die Anwendungsmöglichkeiten enorm und die Spannungsversorgung für die Ausgänge kann dementsprechend angepasst werden.
 
-### Grundausstattung
+<img src="pics/pic-ZapOMat/ZapOMat-oi-01.webp" alt="Frontansicht" width="75%">
+
+*Bild 1: Frontansicht und Rückansicht*
+
+## Grundausstattung
 
 | Komponente | Beschreibung |
 |---|---|
@@ -41,23 +48,7 @@ Für den industriellen Einsatz und komfortablen Anschluss kann die ZapOMat, alte
 | Option BTC-Ticker | Aktivierbar über den Web Installer |
 | Option Boardtaster | Zwei On-board-Mikrotaster (optional verdeckt)|
 | Option NFC-Modul | Für Bolt Cards (NTAG424 DNA) und Standard NTAG213/215/216 (mit LNURL-withdraw) |
-| Option 3-poliger Schalter | Schiebeschalter (AUTO / OFF / ON) |
-
----
-
-## Ansichten
-
-<img src="pic-Quattro/Quattro-oi-01.webp" alt="Frontansicht" width="67%">
-
-*Bild 1: Frontansicht*
-
-<img src="pic-Quattro/Quattro-oi-02.webp" alt="Rückansicht" width="67%">
-
-*Bild 2: Rückansicht*
-
-<img src="pic-Quattro/Quattro-oi-04.webp" alt="Draufsicht" width="67%">
-
-*Bild 3: Draufsicht*
+| Option Schalter | Schiebeschalter (ON/OFF) |
 
 ---
 
@@ -77,7 +68,7 @@ Die DC-Buchse ist als Weitbereichseingang für Spannungen von 6 V bis 36 V ausge
 
 Da einzelne Verbraucher, wie z. B. LED-Streifen, hohe Ströme (> 1 A) aufnehmen können, ist auch eine kombinierte Einspeisung möglich. Beispielsweise kann die ZapBox über die DC-Buchse mit 12 V versorgt werden und gleichzeitig den Relaiskontakt am Ausgang 4 mit dieser Spannung speisen. Der interne Spannungswandler versorgt dabei das System sowie die Relaisausgänge 1–3 mit 5 V, während eine 12-V-LED-Leiste am Ausgang 4 direkt mit 12 V betrieben wird. Dadurch wird die Belastung des internen Spannungswandlers reduziert.
 
-Eine weiter oft benötigte Variante ist der Betrieb von 24V Motoren an den Schaltausgänge. Dazu wird die ZapBox an dem dem DC-Buchseneingang mit 24V versorgt und interen die Spannung vor dem Spannungsregler abgegriffen und auf die dafür vorgesehene Klemme 3 und GND verdrahtet. Die externe Brücke zwischen Klemme 1 und Klemme 3 muss dafür entfallen. Damit sind die Schaltausgänge 1 bis 3 mit 24V gespeist und können 24V Motoren antreiben. In Summe aber nicht mehr als 3 Ampere. Der Schaltausgang 4 kann mit einer Brücke zwischen 1 und 8 mit 5 V gespeist werden. Damit kann der Kanal 4 dann z.B. für ein LED-Licht als Ambientlicht für den Hintergrund geschaltet werden.
+Eine weitere oft benötigte Variante ist der Betrieb von 24V Motoren an den Schaltausgängen. Dazu wird die ZapBox an dem DC-Buchseneingang mit 24V versorgt und intern die Spannung vor dem Spannungsregler abgegriffen und auf die dafür vorgesehene Klemme 3 und GND verdrahtet. Die externe Brücke zwischen Klemme 1 und Klemme 3 muss dafür entfallen. Damit sind die Schaltausgänge 1 bis 3 mit 24V gespeist und können 24V Motoren antreiben. In Summe aber nicht mehr als 3 Ampere. Der Schaltausgang 4 kann mit einer Brücke zwischen 1 und 8 mit 5 V gespeist werden. Damit kann der Kanal 4 dann z.B. für ein LED-Licht als Ambientlicht für den Hintergrund geschaltet werden.
 
 Zusätzlich kann neben der DC-Versorgung (6 V–36 V) ein 5-V-Netzteil mit maximal 3 A am USB-C-Power-Anschluss angeschlossen werden.
 Der gleichzeitige Betrieb beider Versorgungen ist möglich, jedoch sind Unterschiede der 5-V-Spannungen zu beachten, um gegenseitige Beeinflussung oder Rückspeisung der Netzteile zu vermeiden.
@@ -96,7 +87,7 @@ Intern besteht die Möglichkeit, die Eingangsspannung abzugreifen und auf die St
 
 > **Hinweis:** Der interne Spannungswandler besitzt eine begrenzte Leistungsfähigkeit. Bei hohen Lastströmen entsteht erhöhte Wärmeentwicklung, die zu einer Erwärmung des Geräts führen kann. Sorgen Sie für ausreichende Kühlung und überschreiten Sie die angegebenen Stromgrenzen nicht.
 
-## Externe Anschlüsse - 16-poliger Steckverbinder
+## Externe Anschlüsse – 16-poliger Steckverbinder
 
 Die ZapBox verfügt über einen abnehmbaren 16-poligen Steckverbinder.
 
@@ -120,6 +111,10 @@ Die ZapBox verfügt über einen abnehmbaren 16-poligen Steckverbinder.
 | 15 | I2C SCL (GPIO Pin 17) | Schnittstelle | Externes NFC-Modul |
 | 16 | I2C SDA (GPIO Pin 18) | Schnittstelle | Externes NFC-Modul |
 
+<img src="pics/pic-ZapOMat/ZapOMat-oi-03.webp" alt="Draufsicht" width="50%">
+
+*Bild 2: Reihenfolge Klemmenbelegung Steckverbinder, von rechts nach links*
+
 **Hinweis Spannungsverteilung mit Brücken:** 
 
 Im Werkszustand werden die Klemmen 1 (Versorgung Allgemein) und 12 (Versorgung Sensor und NFC-Modul) mit 5 V belegt. Die Masse (GND) ist auf den Klemmen 2, 7, 10 und 13 verdrahtet. 
@@ -139,9 +134,7 @@ Die Eingangsspannung der DC-Hohlsteckerbuchse (6 V–36 V) kann intern abgegriff
 - Die ggf. vorhandenen 5-V-Brücken (Klemme 1 → 3 und/oder Klemme 1 → 8) müssen **zuvor** entfernt werden.
 - Details sind dem [E-Layout](https://github.com/AxelHamburch/ZapBox#electrical-layout) der ZapBox ZapOMat zu entnehmen.
 
----
-
-## Weitere Anschlüsse
+## USB-C-Anschluss
 
 ### Seitenpanel öffnen
 Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit einem Computer oder Laptop:
@@ -149,12 +142,12 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 1. An der **rechten Seite der Frontblende** befindet sich eine kleine Abdeckung.
 2. Öffnen Sie die Abdeckung, indem Sie von unten mit einem **schmalen Schraubendreher** die Abdeckung nach rechts wegschieben. Bei einigen Modellen ist auf der Abdeckung eine kleine Aussparung. Diese Aussparung kann genutzt werden, um die Abdeckung nach vorne zu kippen.
 
-### USB-C-Anschluss verwenden
+### Anschluss des USB-C-Kabels
 3. Schließen Sie ein USB-C-Kabel am darunter liegenden Anschluss des Mikrocontrollers an.
 
-<img src="pic-Quattro/Quattro-oi-03.webp" alt="Panel öffnen und USB-C-Anschluss" width="67%">
+<img src="pics/pic-ZapOMat/ZapOMat-oi-02.webp" alt="Panel öffnen und USB-C-Anschluss" width="75%">
 
-*Bild: Panel öffnen und USB-C-Anschluss für Daten*
+*Bild 3: Panel öffnen und USB-C-Anschluss für Daten*
 
 > **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller ist ausschließlich zum Flashen der Firmware und zur Übertragung von Konfigurationsparametern vorgesehen. Während des Flashvorgangs darf keine Last am Ausgang geschaltet werden, da dies zu Fehlfunktionen oder zur **Beschädigung des Mikrocontrollers** führen kann.
 >
@@ -162,11 +155,10 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 > - während der USB-Verbindung keine Last am Ausgang anzuschließen oder
 > - den regulären **Power-IN-Eingang** zusätzlich an dieselbe Spannungsversorgung anzuschließen. Dadurch wird sichergestellt, dass der Strom für das Leistungsrelais nicht über den Mikrocontroller fließt und diesen überlastet.
 
----
 
-### Ausgänge Kanal 1 bis 4 (CH1-CH4)
+## Schaltausgänge Kanal 1 bis 4 
 
-Die ZapOMat verfügt über vier Relaisausgänge, die intern von den Schaltkontakten (NO/COM/NC) über die Steckverbinderklemmen nach außen geführt werden können. Die Schließerkontakte (NO – Normally Open) sind für die Kanäle 1 bis 3 auf die Klemmen 4, 5 und 6 und für Kanal 4 auf die Klemme 8 verdrahtet.
+Die ZapOMat verfügt über vier Relaisausgänge, die intern von den Schaltkontakten (NO/COM/NC) über die Steckverbinderklemmen nach außen geführt werden können. Die Schließerkontakte (NO – Normally Open) sind für die Kanäle 1 bis 3 auf die Klemmen 4, 5 und 6 und für Kanal 4 auf die Klemme 9 verdrahtet.
 
 Die Schaltausgänge sind für eine **maximale Strombelastung von 3 A Dauerlast** ausgelegt. Kurzzeitig können sie auch mit bis zu 5 A belastet werden.
 
@@ -187,12 +179,25 @@ Je nach Version verfügt die ZapBox neben dem **LED-Button** über zwei kleine *
 
 ---
 
+## Montagehalterung mit Schnapp-Arretierung
+
+Mit der optionalen Montagehalterung kann die ZapBox leicht montiert werden. 
+Die Schnapp-Arretierung kann mit einem flachen Schraubendreher gelöst werden.
+
+<img src="pics/pic-ZapOMat/ZapOMat-oi-04.webp" alt="Lösen der Montagehalter" width="100%">
+
+*Bild 4: Lösen der Montagehalterung*
+
+> **Hinweis:** Die ZapBox ist auf der Montagehalterung nur aufgeschoben und mit einem Schnappverschluss arretiert. Die Arretierung kann mit einem flachen Schraubendreher gelöst werden. Dazu den Schraubendreher vorsichtig in den Schlitz einschieben, leicht anheben und dabei den oberen Teil der ZapBox in Richtung des Schraubendrehers drücken. Die Verbindung sollte sich lösen und die ZapBox kann von der Montageplatte durch anheben getrennt werden.
+
+---
+
 ## Einrichtung und Inbetriebnahme
 
 Die ZapBox wird nach der Fertigung getestet und mit der aktuellen Firmware ausgeliefert - sie ist aber nicht parametriert. Die Software wird aktiv weiterentwickelt, daher ist es empfehlenswert, die ZapBox gleich zu Beginn einmal mit der neuesten Firmware zu bespielen und dann eine Parametrierung durchzuführen. Dafür gibt es einen komfortablen [**Web-Installer**](https://installer.zapbox.space/).
 
 ### Schritt 1: Firmware-Update
-1. Öffnet das rechte Seitenpanel der Frontblende, wie oben unter "Eingang - USB-C Buchse am Mikrocontroller" beschrieben.
+1. Öffnet das rechte Seitenpanel der Frontblende, wie oben unter "Seitenpanel öffnen" beschrieben.
 2. Schließt die ZapBox an dem USB-C-Port mit einem Kabel an und verbindet es mit einem Computer.
 3. Öffnet einen Chromium Browser, zum Beispiel Google Chrome, Microsoft Edge, Brave, Vivaldi, Opera oder [Helium](https://helium.computer/).
 
@@ -207,17 +212,17 @@ Die ZapBox wird nach der Initialisierung den QR-Code des Produkts anzeigen und i
 
 Die ZapBox verfügt über eine komfortable Fehleranzeige über das Display. Es gibt vier grundlegende Fehler, die priorisiert sind:
 
-| Priorität | Fehlerart | Abkürzung | Erkennungsmethode | Beschreibung |
+| Prio. | Fehlerart | Abkürzung | Erkennungsmethode | Beschreibung |
 |-----------|-----------|-----------|-------------------|--------------|
-| 1 (Höchste) | **NO WIFI** | NW | WiFi-Verbindungsstatus | WiFi-Netzwerk nicht verbunden<br>-> Sind die WiFi-Daten korrekt?<br>-> Ist das WiFi-Signal zu schwach? |
+| 1 | **NO WIFI** | NW | WiFi-Verbindungsstatus | WiFi-Netzwerk nicht verbunden<br>-> Sind die WiFi-Daten korrekt?<br>-> Ist das WiFi-Signal zu schwach? |
 | 2 | **NO INTERNET** | NI | HTTP-Check zu Google | Internetverbindung verloren<br>-> Ist das Internet erreichbar? |
 | 3 | **NO SERVER** | NS | TCP-Port 443-Check | LNbits-Server nicht erreichbar<br>-> Ist die Server-Hardware ausgefallen?<br>-> Ist der Geräte-String korrekt? |
-| 4 (Niedrigste) | **NO WEBSOCKET** | NWS | WebSocket-Verbindungsstatus | WebSocket-Protokoll-/Handshake-Fehler<br>-> Ist LNbits ausgefallen?<br>-> Ist der Geräte-String korrekt? |
+| 4 | **NO WEBSOCKET** | NWS | WebSocket-Verbindungsstatus | WebSocket-Protokoll-/Handshake-Fehler<br>-> Ist LNbits ausgefallen?<br>-> Ist der Geräte-String korrekt? |
 
 Die Fehlermeldungen werden auch geloggt und können über den *Report Mode* abgerufen werden:
 
 - Drücken Sie die HELP-Taste zweimal schnell hintereinander, um Fehlerzähler (0-99) für alle vier Fehlertypen mit ihren Auftretenshäufigkeiten anzuzeigen.
-- Drücken Sie die LED-Taste viermal schnell hintereinander (falls eine externe LED-Taste verfügbar ist).
+- Drücken Sie die LED-Taste dreimal schnell hintereinander (falls eine externe LED-Taste verfügbar ist).
 
 Weitere aktuelle Informationen zu Fehlerbeschreibungen können auf der Web-Installer-Seite in den Kapiteln "Error Detection & Report" und "Troubleshoot" nachgelesen werden. 
 

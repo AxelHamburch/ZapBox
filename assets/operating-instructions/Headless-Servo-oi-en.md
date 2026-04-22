@@ -43,7 +43,7 @@ The device status is indicated exclusively via a **Status LED**. A second **Acti
 
 ## Views
 
-<img src="pic-Headless-Servo/Headless-Servo-oi-01.webp" alt="Front view / Top view" width="67%">
+<img src="pics/pic-Headless-Servo/Headless-Servo-oi-01.webp" alt="Front view / Top view" width="67%">
 
 *Figure 1: Front view / Top view*
 
@@ -66,7 +66,7 @@ To read or transfer data from the device, connect the ZapBox to a computer or la
 1. On the **front left side** there is a small panel next to the USB connectors. Open the panel by pushing it to the right from below with a **narrow screwdriver**.
 2. Connect a Micro-USB cable to the microcontroller.
 
-<img src="pic-Headless-Servo/Headless-Servo-oi-02.webp" alt="Open panel for data connection with Micro USB port" width="100%">
+<img src="pics/pic-Headless-Servo/Headless-Servo-oi-02.webp" alt="Open panel for data connection with Micro USB port" width="100%">
 
 *Figure 2: Open panel for data connection with Micro USB port*
 
@@ -125,7 +125,7 @@ The ZapBox Headless has **no display**. The device status is indicated exclusive
 
 ### Mounting Bracket with Snap Lock
 
-<img src="pic-Headless-Servo/Headless-Servo-oi-mount.webp" alt="Release mounting bracket of a Headless with NFC module" width="100%">
+<img src="pics/pic-Headless-Servo/Headless-Servo-oi-mount.webp" alt="Release mounting bracket of a Headless with NFC module" width="100%">
 
 *Figure 3: Release mounting bracket of a Headless with NFC module*
 

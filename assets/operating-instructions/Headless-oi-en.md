@@ -40,7 +40,7 @@ The operating state is indicated exclusively via a **status LED**. A second **ac
 
 ## Views
 
-<img src="pic-Headless/Headless-oi-01.webp" alt="Front view / top view" width="67%">
+<img src="pics/pic-Headless/Headless-oi-01.webp" alt="Front view / top view" width="67%">
 
 *Image 1: Front view / top view*
 
@@ -63,11 +63,11 @@ To read data from or transfer data to the device, connect the ZapBox to a comput
 1. On the **front left**, there is a small panel to the left of the USB connectors. Open the panel by sliding it to the right from below using a **narrow screwdriver**.
 2. Connect a Micro-USB cable to the microcontroller.
 
-<img src="pic-Headless/Headless-oi-02.webp" alt="Opening the panel for data connection" width="67%">
+<img src="pics/pic-Headless/Headless-oi-02.webp" alt="Opening the panel for data connection" width="67%">
 
 *Image 2: Opening the panel for data connection*
 
-<img src="pic-Headless/Headless-oi-03.webp" alt="Micro USB port" width="67%">
+<img src="pics/pic-Headless/Headless-oi-03.webp" alt="Micro USB port" width="67%">
 
 *Image 3: Micro USB port*
 
@@ -123,7 +123,7 @@ The ZapBox Headless has **no display**. The operating state is indicated exclusi
 
 ### Mounting Bracket with Snap Lock
 
-<img src="pic-Headless/Headless-oi-mount.webp" alt="Releasing the mounting bracket of a Headless with NFC module" width="100%">
+<img src="pics/pic-Headless/Headless-oi-mount.webp" alt="Releasing the mounting bracket of a Headless with NFC module" width="100%">
 
 *Image 4: Releasing the mounting bracket of a Headless with NFC module*
 
