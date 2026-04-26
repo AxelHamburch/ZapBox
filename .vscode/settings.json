@@ -1,0 +1,13 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "where.exe": true,
+        "Get-Command": true,
+        "pio": true,
+        "C:\\Users\\Datenrettung\\.platformio\\penv\\Scripts\\platformio.exe": true,
+        "platformio": true,
+        "C:\\Users\\axels\\.platformio\\penv\\Scripts\\platformio.exe": true,
+        "Copy-Item": true,
+        "git add": true,
+        "git commit": true
+    }
+}
