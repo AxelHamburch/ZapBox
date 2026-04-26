@@ -2740,6 +2740,51 @@ static void processThresholdPayment(const JsonDocument &doc)
       activityTracking.lastActivityTime = millis();
       actionTimeScreen();
       updateActionTimeCountdown(duration / 1000);
+      
+      // ── One For All mode support in Threshold ──────────────────────────────
+      // When Pin 12 is threshold-pin in servo OFA mode, also trigger secondary channels.
+      if (multiChannelConfig.mode == "servo" && servoConfig.oneForAll() && pin == 12) {
+        Serial.println("[THRESHOLD-OFA] One For All: launching secondary channel activations");
+        g_ofaStop = false; // Reset OFA stop flag
+        
+        // Pin 13 — Servo 1 (positional)
+        if (servoConfig.servo1Active()) {
+          int d13 = (productLabels.durations[1] > 0) ? productLabels.durations[1] : duration;
+          OFATaskParams* params13 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+          if (params13) {
+            params13->pin = 13; params13->fallbackDuration = d13;
+            xTaskCreate(oneForAllActivationTask, "ofa_s1", 4096, params13, 2, nullptr);
+            Serial.printf("[THRESHOLD-OFA] Launched servo1 task (Pin 13, hold=%d ms%s)\n", d13,
+                          (productLabels.durations[1] > 0) ? " [own]" : " [fallback]");
+          }
+        }
+        
+        // Pin 10 — Servo 2 (continuous)
+        if (servoConfig.servo2Active()) {
+          int d10 = (servoConfig.servo2Duration > 0) ? servoConfig.servo2Duration
+                   : (productLabels.durations[2] > 0) ? productLabels.durations[2]
+                   : duration;
+          OFATaskParams* params10 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+          if (params10) {
+            params10->pin = 10; params10->fallbackDuration = d10;
+            xTaskCreate(oneForAllActivationTask, "ofa_s2", 4096, params10, 2, nullptr);
+            Serial.printf("[THRESHOLD-OFA] Launched servo2 task (Pin 10, dur=%d ms)\n", d10);
+          }
+        }
+        
+        // Pin 11 — Relay 2 (unless ambient-light mode)
+        if (servoConfig.relay2Active() && !channel4AmbientConfig.enabled) {
+          int d11 = (productLabels.durations[3] > 0) ? productLabels.durations[3] : duration;
+          OFATaskParams* params11 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+          if (params11) {
+            params11->pin = 11; params11->fallbackDuration = d11;
+            xTaskCreate(oneForAllActivationTask, "ofa_r2", 2048, params11, 2, nullptr);
+            Serial.printf("[THRESHOLD-OFA] Launched relay2 task (Pin 11, dur=%d ms%s)\n", d11,
+                          (productLabels.durations[3] > 0) ? " [own]" : " [fallback]");
+          }
+        }
+      }
+      
       pinMode(pin, OUTPUT);
       digitalWrite(pin, HIGH);
       Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
@@ -2751,6 +2796,11 @@ static void processThresholdPayment(const JsonDocument &doc)
         // Check light barrier (stop early if triggered after minimum time)
         if (shouldStopForLightBarrier(startTime)) {
           Serial.println("[THRESHOLD] Light barrier stopped action early");
+          // If OFA mode is active, signal secondary tasks to stop
+          if (multiChannelConfig.mode == "servo" && servoConfig.oneForAll() && pin == 12) {
+            g_ofaStop = true;
+            Serial.println("[THRESHOLD-OFA] Signaling secondary tasks to stop");
+          }
           break;
         }
         // Update countdown timer once per second
