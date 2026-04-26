@@ -318,8 +318,8 @@
                 <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">Servo Configuration</p>
                 <p style="margin: 0 0 15px 0; color: #888; font-size: 11px;"><i><strong>Up to 4 channels can be controlled.</strong> <br><br>
                     <strong>Pin 12:</strong> Relay (on/off, standard)<br>
-                    <strong>Pin 13:</strong> 180° servo motor (0–180-degree positioning)<br>
-                    <strong>Pin 10:</strong> 360° servo motor (360-degree multiturn)<br>
+                    <strong>Pin 13:</strong> Configurable (off/relay/180° servo/360° servo)<br>
+                    <strong>Pin 10:</strong> Configurable (off/relay/180° servo/360° servo)<br>
                     <strong>Pin 11:</strong> Relay (on/off, also usable for ambient lighting)<br><br>
                     The "One for All" function allows all channels to be triggered simultaneously. To do this, you only need to configure pin 12 and, if necessary, a servo. In addition, the channels can also be configured and activated individually. To do this, the pins must be configured in LNbits and the servos must be set up. </i></p>
                 
@@ -340,42 +340,113 @@
                     </div>
                 </div>
                 
-                <!-- SERVO 1 (Pin 13) — positional 0-180° -->
+                <!-- GPIO Pin 13 Mode Selection -->
                 <div class="input-wrapper">
                     <div>
-                        <label for="servo1Start">180° Servo - Start angle (°)</label>
-                        <input type="number" id="servo1Start" name="servo1Start" min="0" max="180" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Positioning 0°–180° or 180°–0°</p>
+                        <label for="pin13Mode">Mode GPIO Pin 13</label>
+                        <select name="pin13Mode" id="pin13Mode" disabled>
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function</option>
+                            <option value="servo180">180° servo (0°-180° positioning)</option>
+                            <option value="servo360">360° servo (360° rotation)</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Select the function for GPIO Pin 13</p>
                     </div>
+                </div>
+
+                <!-- Pin 13 - 180° Servo Configuration -->
+                <div id="pin13Servo180Section" style="display: none; margin-top: 10px; padding: 12px; background: #f0f0f0; border-radius: 6px;">
+                    <p style="margin: 0 0 10px 0; color: #333; font-weight: bold; font-size: 12px;">Pin 13 - 180° Servo Configuration</p>
+                    <div class="input-wrapper">
+                        <div>
+                            <label for="pin13Servo180Start">Start angle (°)</label>
+                            <input type="number" id="pin13Servo180Start" name="pin13Servo180Start" min="0" max="180" value="0" disabled>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Positioning 0°–180° or 180°–0°</p>
+                        </div>
+                        <div>
+                            <label for="pin13Servo180End">End angle (°)</label>
+                            <input type="number" id="pin13Servo180End" name="pin13Servo180End" min="0" max="180" value="0" disabled>
+                        </div>
+                        <div>
+                            <label for="pin13Servo180Duration">Sweep duration (ms)</label>
+                            <input type="number" id="pin13Servo180Duration" name="pin13Servo180Duration" min="0" max="10000" value="0" disabled>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = max speed / 1000 = 1 second</p>
+                        </div>
+                    </div>
+                    <p style="margin: 8px 0 0 0; font-size: 11px; color: #bbb; font-style: italic;">The 180° servo returns to start position after completing the switch function.</p>
+                </div>
+
+                <!-- Pin 13 - 360° Servo Configuration -->
+                <div id="pin13Servo360Section" style="display: none; margin-top: 10px; padding: 12px; background: #f0f0f0; border-radius: 6px;">
+                    <p style="margin: 0 0 10px 0; color: #333; font-weight: bold; font-size: 12px;">Pin 13 - 360° Servo Configuration</p>
+                    <div class="input-wrapper">
+                        <div>
+                            <label for="pin13Servo360Speed">Speed (0–180)</label>
+                            <input type="number" id="pin13Servo360Speed" name="pin13Servo360Speed" min="0" max="180" value="0" disabled>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">90 = stop / &lt;90 = CCW / &gt;90 = CW</p>
+                        </div>
+                        <div>
+                            <label for="pin13Servo360Duration">Spin duration (ms)</label>
+                            <input type="number" id="pin13Servo360Duration" name="pin13Servo360Duration" min="0" max="10000" value="0" disabled>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = spin until action time ends</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GPIO Pin 10 Mode Selection -->
+                <div class="input-wrapper" style="margin-top: 15px;">
                     <div>
-                        <label for="servo1End">180° Servo - End angle (°)</label>
-                        <input type="number" id="servo1End" name="servo1End" min="0" max="180" value="0" disabled>
+                        <label for="pin10Mode">Mode GPIO Pin 10</label>
+                        <select name="pin10Mode" id="pin10Mode" disabled>
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function</option>
+                            <option value="servo180">180° servo (0°-180° positioning)</option>
+                            <option value="servo360">360° servo (360° rotation)</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Select the function for GPIO Pin 10</p>
                     </div>
-                    <div>
-                        <label for="servo1Duration">180° Servo - Sweep duration (ms)</label>
-                        <input type="number" id="servo1Duration" name="servo1Duration" min="0" max="10000" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = max speed / 1000 = 1 second for start/stop</p>
+                </div>
+
+                <!-- Pin 10 - 180° Servo Configuration -->
+                <div id="pin10Servo180Section" style="display: none; margin-top: 10px; padding: 12px; background: #f0f0f0; border-radius: 6px;">
+                    <p style="margin: 0 0 10px 0; color: #333; font-weight: bold; font-size: 12px;">Pin 10 - 180° Servo Configuration</p>
+                    <div class="input-wrapper">
+                        <div>
+                            <label for="pin10Servo180Start">Start angle (°)</label>
+                            <input type="number" id="pin10Servo180Start" name="pin10Servo180Start" min="0" max="180" value="0" disabled>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Positioning 0°–180° or 180°–0°</p>
+                        </div>
+                        <div>
+                            <label for="pin10Servo180End">End angle (°)</label>
+                            <input type="number" id="pin10Servo180End" name="pin10Servo180End" min="0" max="180" value="0" disabled>
+                        </div>
+                        <div>
+                            <label for="pin10Servo180Duration">Sweep duration (ms)</label>
+                            <input type="number" id="pin10Servo180Duration" name="pin10Servo180Duration" min="0" max="10000" value="0" disabled>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = max speed / 1000 = 1 second</p>
+                        </div>
                     </div>
-                    <div style="display: flex; align-items: center;">
-                        <p style="margin: 0; font-size: 11px; color: #bbb; font-style: italic;">Please note that the 180° servo always returns to its starting position after completing the switch function.</p>
+                    <p style="margin: 8px 0 0 0; font-size: 11px; color: #bbb; font-style: italic;">The 180° servo returns to start position after completing the switch function.</p>
+                </div>
+
+                <!-- Pin 10 - 360° Servo Configuration -->
+                <div id="pin10Servo360Section" style="display: none; margin-top: 10px; padding: 12px; background: #f0f0f0; border-radius: 6px;">
+                    <p style="margin: 0 0 10px 0; color: #333; font-weight: bold; font-size: 12px;">Pin 10 - 360° Servo Configuration</p>
+                    <div class="input-wrapper">
+                        <div>
+                            <label for="pin10Servo360Speed">Speed (0–180)</label>
+                            <input type="number" id="pin10Servo360Speed" name="pin10Servo360Speed" min="0" max="180" value="0" disabled>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">90 = stop / &lt;90 = CCW / &gt;90 = CW</p>
+                        </div>
+                        <div>
+                            <label for="pin10Servo360Duration">Spin duration (ms)</label>
+                            <input type="number" id="pin10Servo360Duration" name="pin10Servo360Duration" min="0" max="10000" value="0" disabled>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = spin until action time ends</p>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Servo 2 (Pin 10) — continuous rotation 360° -->
-                <div class="input-wrapper">
-                    <div>
-                        <label for="servo2Speed">360° Servo - Speed (0–180)</label>
-                        <input type="number" id="servo2Speed" name="servo2Speed" min="0" max="180" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Continuous rotation 360° / 90 = stop / &lt;90 = CCW / &gt;90 = CW</p>
-                    </div>
-                    <div>
-                        <label for="servo2Duration">360° Servo - Spin duration (ms)</label>
-                        <input type="number" id="servo2Duration" name="servo2Duration" min="0" max="10000" value="0" disabled>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = spin until action time ends</p>
-                    </div>
-                </div>
-                
-                <p style="margin: 8px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
+                <p style="margin: 15px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
                     Servos become active when their values are non-zero. Special Mode (blink, pulse, etc.) works for relays (Pin 12/11) but not for servo pins (Pin 13/10).
                 </p>
             </div>
@@ -740,13 +811,28 @@
         const channel4Ambient = document.getElementById('channel4Ambient');
         const deepSleepTime = document.getElementById('deepSleepTime');
         // Servo config elements
-        const servo1Start = document.getElementById('servo1Start');
-        const servo1End = document.getElementById('servo1End');
-        const servo1Duration = document.getElementById('servo1Duration');
-        const servo2Speed = document.getElementById('servo2Speed');
-        const servo2Duration = document.getElementById('servo2Duration');
         const servoRelayMode = document.getElementById('servoRelayMode');
         const servoConfigSection = document.getElementById('servoConfigSection');
+        // Pin 13 mode and config
+        const pin13Mode = document.getElementById('pin13Mode');
+        const pin13Servo180Section = document.getElementById('pin13Servo180Section');
+        const pin13Servo180Start = document.getElementById('pin13Servo180Start');
+        const pin13Servo180End = document.getElementById('pin13Servo180End');
+        const pin13Servo180Duration = document.getElementById('pin13Servo180Duration');
+        const pin13Servo360Section = document.getElementById('pin13Servo360Section');
+        const pin13Servo360Speed = document.getElementById('pin13Servo360Speed');
+        const pin13Servo360Duration = document.getElementById('pin13Servo360Duration');
+        // Pin 10 mode and config
+        const pin10Mode = document.getElementById('pin10Mode');
+        const pin10Servo180Section = document.getElementById('pin10Servo180Section');
+        const pin10Servo180Start = document.getElementById('pin10Servo180Start');
+        const pin10Servo180End = document.getElementById('pin10Servo180End');
+        const pin10Servo180Duration = document.getElementById('pin10Servo180Duration');
+        const pin10Servo360Section = document.getElementById('pin10Servo360Section');
+        const pin10Servo360Speed = document.getElementById('pin10Servo360Speed');
+        const pin10Servo360Duration = document.getElementById('pin10Servo360Duration');
+        // NFC config
+        const nfcMode = document.getElementById('nfcMode');
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
@@ -858,32 +944,60 @@
                 "value": "30"
             },
             {
-                "name": "servo1Start",
+                "name": "pin13Mode",
+                "value": "off"
+            },
+            {
+                "name": "pin13Servo180Start",
                 "value": "0"
             },
             {
-                "name": "servo1End",
+                "name": "pin13Servo180End",
                 "value": "0"
             },
             {
-                "name": "servo1Duration",
+                "name": "pin13Servo180Duration",
                 "value": "0"
             },
             {
-                "name": "servo2Speed",
+                "name": "pin13Servo360Speed",
                 "value": "0"
             },
             {
-                "name": "servo2Duration",
+                "name": "pin13Servo360Duration",
+                "value": "0"
+            },
+            {
+                "name": "servoRelayMode",
+                "value": "one-for-all"
+            },
+            {
+                "name": "pin10Mode",
+                "value": "off"
+            },
+            {
+                "name": "pin10Servo180Start",
+                "value": "0"
+            },
+            {
+                "name": "pin10Servo180End",
+                "value": "0"
+            },
+            {
+                "name": "pin10Servo180Duration",
+                "value": "0"
+            },
+            {
+                "name": "pin10Servo360Speed",
+                "value": "0"
+            },
+            {
+                "name": "pin10Servo360Duration",
                 "value": "0"
             },
             {
                 "name": "nfcMode",
                 "value": "emulation"
-            },
-            {
-                "name": "servoRelayMode",
-                "value": "one-for-all"
             }
         ]
 
@@ -1322,22 +1436,120 @@
                 if (config[23]) config[23].value = configData[23]?.value || "30";
                 deepSleepTime.value = config[23]?.value || "30";
 
-                // Index 24-30: Servo configuration (may not exist in older configs)
-                if (config[24]) config[24].value = configData[24]?.value || "0";
-                servo1Start.value = config[24]?.value || "0";
-                if (config[25]) config[25].value = configData[25]?.value || "0";
-                servo1End.value = config[25]?.value || "0";
-                if (config[26]) config[26].value = configData[26]?.value || "0";
-                servo1Duration.value = config[26]?.value || "0";
-                if (config[27]) config[27].value = configData[27]?.value || "0";
-                servo2Speed.value = config[27]?.value || "0";
-                if (config[28]) config[28].value = configData[28]?.value || "0";
-                servo2Duration.value = config[28]?.value || "0";
-                // Index 29: NFC mode
-                if (config[29]) config[29].value = configData[29]?.value || "emulation";
-                nfcMode.value = config[29]?.value || "emulation";
+                // Index 24-36: New Servo configuration (with backwards compatibility)
+                // Check if this is an old config (config[24] was servo1Start)
+                const isOldServoConfig = configData[24] && !configData[31] && (configData[24].name === "servo1Start" || !configData[24].name);
+                
+                if (isOldServoConfig) {
+                    // Migrate old config to new structure
+                    console.log("Migrating old servo config to new structure");
+                    
+                    // Migrate Pin 13 180° servo (old config[24-26])
+                    const oldServo1Start = configData[24]?.value || "0";
+                    const oldServo1End = configData[25]?.value || "0";
+                    const oldServo1Duration = configData[26]?.value || "0";
+                    
+                    // Set Pin 13 mode to servo180 if any values are non-zero
+                    if (oldServo1Start !== "0" || oldServo1End !== "0" || oldServo1Duration !== "0") {
+                        if (!config[24]) config[24] = { name: "pin13Mode", value: "servo180" };
+                        config[24].value = "servo180";
+                        pin13Mode.value = "servo180";
+                    } else {
+                        if (!config[24]) config[24] = { name: "pin13Mode", value: "off" };
+                        config[24].value = "off";
+                        pin13Mode.value = "off";
+                    }
+                    
+                    // Migrate values
+                    if (!config[25]) config[25] = { name: "pin13Servo180Start", value: oldServo1Start };
+                    config[25].value = oldServo1Start;
+                    pin13Servo180Start.value = oldServo1Start;
+                    
+                    if (!config[26]) config[26] = { name: "pin13Servo180End", value: oldServo1End };
+                    config[26].value = oldServo1End;
+                    pin13Servo180End.value = oldServo1End;
+                    
+                    if (!config[27]) config[27] = { name: "pin13Servo180Duration", value: oldServo1Duration };
+                    config[27].value = oldServo1Duration;
+                    pin13Servo180Duration.value = oldServo1Duration;
+                    
+                    // Migrate Pin 10 360° servo (old config[27-28])
+                    const oldServo2Speed = configData[27]?.value || "0";
+                    const oldServo2Duration = configData[28]?.value || "0";
+                    
+                    // Set Pin 10 mode to servo360 if any values are non-zero
+                    if (oldServo2Speed !== "0" || oldServo2Duration !== "0") {
+                        if (!config[31]) config[31] = { name: "pin10Mode", value: "servo360" };
+                        config[31].value = "servo360";
+                        pin10Mode.value = "servo360";
+                    } else {
+                        if (!config[31]) config[31] = { name: "pin10Mode", value: "off" };
+                        config[31].value = "off";
+                        pin10Mode.value = "off";
+                    }
+                    
+                    // Migrate values
+                    if (!config[35]) config[35] = { name: "pin10Servo360Speed", value: oldServo2Speed };
+                    config[35].value = oldServo2Speed;
+                    pin10Servo360Speed.value = oldServo2Speed;
+                    
+                    if (!config[36]) config[36] = { name: "pin10Servo360Duration", value: oldServo2Duration };
+                    config[36].value = oldServo2Duration;
+                    pin10Servo360Duration.value = oldServo2Duration;
+                    
+                    // Initialize empty values for unused configs
+                    if (!config[28]) config[28] = { name: "pin13Servo360Speed", value: "0" };
+                    if (!config[29]) config[29] = { name: "pin13Servo360Duration", value: "0" };
+                    if (!config[32]) config[32] = { name: "pin10Servo180Start", value: "0" };
+                    if (!config[33]) config[33] = { name: "pin10Servo180End", value: "0" };
+                    if (!config[34]) config[34] = { name: "pin10Servo180Duration", value: "0" };
+                } else {
+                    // New config structure
+                    if (config[24]) config[24].value = configData[24]?.value || "off";
+                    pin13Mode.value = config[24]?.value || "off";
+                    
+                    if (config[25]) config[25].value = configData[25]?.value || "0";
+                    pin13Servo180Start.value = config[25]?.value || "0";
+                    
+                    if (config[26]) config[26].value = configData[26]?.value || "0";
+                    pin13Servo180End.value = config[26]?.value || "0";
+                    
+                    if (config[27]) config[27].value = configData[27]?.value || "0";
+                    pin13Servo180Duration.value = config[27]?.value || "0";
+                    
+                    if (config[28]) config[28].value = configData[28]?.value || "0";
+                    pin13Servo360Speed.value = config[28]?.value || "0";
+                    
+                    if (config[29]) config[29].value = configData[29]?.value || "0";
+                    pin13Servo360Duration.value = config[29]?.value || "0";
+                    
+                    if (config[31]) config[31].value = configData[31]?.value || "off";
+                    pin10Mode.value = config[31]?.value || "off";
+                    
+                    if (config[32]) config[32].value = configData[32]?.value || "0";
+                    pin10Servo180Start.value = config[32]?.value || "0";
+                    
+                    if (config[33]) config[33].value = configData[33]?.value || "0";
+                    pin10Servo180End.value = config[33]?.value || "0";
+                    
+                    if (config[34]) config[34].value = configData[34]?.value || "0";
+                    pin10Servo180Duration.value = config[34]?.value || "0";
+                    
+                    if (config[35]) config[35].value = configData[35]?.value || "0";
+                    pin10Servo360Speed.value = config[35]?.value || "0";
+                    
+                    if (config[36]) config[36].value = configData[36]?.value || "0";
+                    pin10Servo360Duration.value = config[36]?.value || "0";
+                }
+                
+                // Index 30: Servo relay mode (remains at same index)
                 if (config[30]) config[30].value = configData[30]?.value || "one-for-all";
                 servoRelayMode.value = config[30]?.value || "one-for-all";
+
+                // NFC mode - check both old position (29) and new position (37)
+                const nfcModeIndex = isOldServoConfig ? 29 : 37;
+                if (config[nfcModeIndex]) config[nfcModeIndex].value = configData[nfcModeIndex]?.value || "emulation";
+                nfcMode.value = config[nfcModeIndex]?.value || "emulation";
 
                 // Update servo field enabled/disabled state based on multiControl mode
                 updateServoFieldState();
@@ -1486,21 +1698,50 @@
             if (!config[23]) config[23] = { name: "deepSleepTime", value: "30" };
             config[23].value = deepSleepTime.value || "30";
 
-            // Servo configuration (indices 24-30)
-            if (!config[24]) config[24] = { name: "servo1Start", value: "0" };
-            config[24].value = servo1Start.value || "0";
-            if (!config[25]) config[25] = { name: "servo1End", value: "0" };
-            config[25].value = servo1End.value || "0";
-            if (!config[26]) config[26] = { name: "servo1Duration", value: "0" };
-            config[26].value = servo1Duration.value || "0";
-            if (!config[27]) config[27] = { name: "servo2Speed", value: "0" };
-            config[27].value = servo2Speed.value || "0";
-            if (!config[28]) config[28] = { name: "servo2Duration", value: "0" };
-            config[28].value = servo2Duration.value || "0";
-            if (!config[29]) config[29] = { name: "nfcMode", value: "emulation" };
-            config[29].value = nfcMode.value || "emulation";
+            // New Servo configuration (indices 24-36)
+            // Pin 13 mode
+            if (!config[24]) config[24] = { name: "pin13Mode", value: "off" };
+            config[24].value = pin13Mode.value;
+            
+            // Pin 13 - 180° servo config
+            if (!config[25]) config[25] = { name: "pin13Servo180Start", value: "0" };
+            config[25].value = pin13Servo180Start.value || "0";
+            if (!config[26]) config[26] = { name: "pin13Servo180End", value: "0" };
+            config[26].value = pin13Servo180End.value || "0";
+            if (!config[27]) config[27] = { name: "pin13Servo180Duration", value: "0" };
+            config[27].value = pin13Servo180Duration.value || "0";
+            
+            // Pin 13 - 360° servo config
+            if (!config[28]) config[28] = { name: "pin13Servo360Speed", value: "0" };
+            config[28].value = pin13Servo360Speed.value || "0";
+            if (!config[29]) config[29] = { name: "pin13Servo360Duration", value: "0" };
+            config[29].value = pin13Servo360Duration.value || "0";
+            
+            // Servo relay mode (index 30)
             if (!config[30]) config[30] = { name: "servoRelayMode", value: "one-for-all" };
             config[30].value = servoRelayMode.value;
+            
+            // Pin 10 mode
+            if (!config[31]) config[31] = { name: "pin10Mode", value: "off" };
+            config[31].value = pin10Mode.value;
+            
+            // Pin 10 - 180° servo config
+            if (!config[32]) config[32] = { name: "pin10Servo180Start", value: "0" };
+            config[32].value = pin10Servo180Start.value || "0";
+            if (!config[33]) config[33] = { name: "pin10Servo180End", value: "0" };
+            config[33].value = pin10Servo180End.value || "0";
+            if (!config[34]) config[34] = { name: "pin10Servo180Duration", value: "0" };
+            config[34].value = pin10Servo180Duration.value || "0";
+            
+            // Pin 10 - 360° servo config
+            if (!config[35]) config[35] = { name: "pin10Servo360Speed", value: "0" };
+            config[35].value = pin10Servo360Speed.value || "0";
+            if (!config[36]) config[36] = { name: "pin10Servo360Duration", value: "0" };
+            config[36].value = pin10Servo360Duration.value || "0";
+            
+            // NFC mode (index 37)
+            if (!config[37]) config[37] = { name: "nfcMode", value: "emulation" };
+            config[37].value = nfcMode.value || "emulation";
 
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -1722,12 +1963,40 @@
             config[22].value = event.target.value;
         });
 
+        nfcMode.addEventListener("change", (event) => {
+            config[37].value = event.target.value;
+        });
+
         // Servo config field change listeners
         function updateServoFieldState() {
             const isServo = multiControl.value === 'servo';
-            const fields = [servo1Start, servo1End, servo1Duration, servo2Speed, servo2Duration, servoRelayMode];
-            fields.forEach(el => { el.disabled = !isServo; });
             servoConfigSection.style.display = isServo ? 'block' : 'none';
+            
+            // Enable/disable mode selectors
+            pin13Mode.disabled = !isServo;
+            pin10Mode.disabled = !isServo;
+            servoRelayMode.disabled = !isServo;
+            
+            // Update Pin 13 sections - read value fresh each time
+            const pin13ModeValue = pin13Mode.value;
+            pin13Servo180Section.style.display = (pin13ModeValue === 'servo180' && isServo) ? 'block' : 'none';
+            pin13Servo360Section.style.display = (pin13ModeValue === 'servo360' && isServo) ? 'block' : 'none';
+            pin13Servo180Start.disabled = !(pin13ModeValue === 'servo180' && isServo);
+            pin13Servo180End.disabled = !(pin13ModeValue === 'servo180' && isServo);
+            pin13Servo180Duration.disabled = !(pin13ModeValue === 'servo180' && isServo);
+            pin13Servo360Speed.disabled = !(pin13ModeValue === 'servo360' && isServo);
+            pin13Servo360Duration.disabled = !(pin13ModeValue === 'servo360' && isServo);
+            
+            // Update Pin 10 sections - read value fresh each time
+            const pin10ModeValue = pin10Mode.value;
+            console.log('Pin 10 Mode Value:', pin10ModeValue, 'isServo:', isServo); // Debug log
+            pin10Servo180Section.style.display = (pin10ModeValue === 'servo180' && isServo) ? 'block' : 'none';
+            pin10Servo360Section.style.display = (pin10ModeValue === 'servo360' && isServo) ? 'block' : 'none';
+            pin10Servo180Start.disabled = !(pin10ModeValue === 'servo180' && isServo);
+            pin10Servo180End.disabled = !(pin10ModeValue === 'servo180' && isServo);
+            pin10Servo180Duration.disabled = !(pin10ModeValue === 'servo180' && isServo);
+            pin10Servo360Speed.disabled = !(pin10ModeValue === 'servo360' && isServo);
+            pin10Servo360Duration.disabled = !(pin10ModeValue === 'servo360' && isServo);
         }
 
         multiControl.addEventListener("change", (event) => {
@@ -1735,25 +2004,62 @@
             updateServoFieldState();
         });
 
-        servo1Start.addEventListener("input", (event) => {
-            config[24].value = event.target.value || "0";
+        // Pin 13 mode selection
+        pin13Mode.addEventListener("change", (event) => {
+            config[24].value = event.target.value;
+            updateServoFieldState();
         });
-        servo1End.addEventListener("input", (event) => {
+
+        // Pin 13 - 180° servo config
+        pin13Servo180Start.addEventListener("input", (event) => {
             config[25].value = event.target.value || "0";
         });
-        servo1Duration.addEventListener("input", (event) => {
+        pin13Servo180End.addEventListener("input", (event) => {
             config[26].value = event.target.value || "0";
         });
-        servo2Speed.addEventListener("input", (event) => {
+        pin13Servo180Duration.addEventListener("input", (event) => {
             config[27].value = event.target.value || "0";
         });
-        servo2Duration.addEventListener("input", (event) => {
+
+        // Pin 13 - 360° servo config
+        pin13Servo360Speed.addEventListener("input", (event) => {
             config[28].value = event.target.value || "0";
         });
+        pin13Servo360Duration.addEventListener("input", (event) => {
+            config[29].value = event.target.value || "0";
+        });
+
+        // Relay mode (servoRelayMode remains at config[30])
         servoRelayMode.addEventListener("change", (event) => {
             config[30].value = event.target.value;
             const ofaNote = document.getElementById('ofaNoteDiv');
             if (ofaNote) ofaNote.style.display = event.target.value === 'one-for-all' ? 'flex' : 'none';
+        });
+
+        // Pin 10 mode selection
+        pin10Mode.addEventListener("change", (event) => {
+            console.log('Pin 10 mode changed to:', event.target.value); // Debug log
+            config[31].value = event.target.value;
+            updateServoFieldState();
+        });
+
+        // Pin 10 - 180° servo config
+        pin10Servo180Start.addEventListener("input", (event) => {
+            config[32].value = event.target.value || "0";
+        });
+        pin10Servo180End.addEventListener("input", (event) => {
+            config[33].value = event.target.value || "0";
+        });
+        pin10Servo180Duration.addEventListener("input", (event) => {
+            config[34].value = event.target.value || "0";
+        });
+
+        // Pin 10 - 360° servo config
+        pin10Servo360Speed.addEventListener("input", (event) => {
+            config[35].value = event.target.value || "0";
+        });
+        pin10Servo360Duration.addEventListener("input", (event) => {
+            config[36].value = event.target.value || "0";
         });
 
         // Set initial visibility of OFA note on page load
@@ -1761,6 +2067,9 @@
             const ofaNote = document.getElementById('ofaNoteDiv');
             if (ofaNote) ofaNote.style.display = servoRelayMode.value === 'one-for-all' ? 'flex' : 'none';
         })();
+
+        // Set initial visibility of servo configuration on page load
+        updateServoFieldState();
 
         // Print Config functionality
         function printConfig() {
@@ -1822,14 +2131,35 @@
             );
 
             if (multiControlVal === 'servo') {
-                sections += section('Servo Configuration',
-                    row('Activation Options', selText('servoRelayMode')) +
-                    row('180&deg; Servo &ndash; Start Angle (&deg;)', inputVal('servo1Start')) +
-                    row('180&deg; Servo &ndash; End Angle (&deg;)', inputVal('servo1End')) +
-                    row('180&deg; Servo &ndash; Sweep Duration (ms)', inputVal('servo1Duration')) +
-                    row('360&deg; Servo &ndash; Speed (0&ndash;180)', inputVal('servo2Speed')) +
-                    row('360&deg; Servo &ndash; Spin Duration (ms)', inputVal('servo2Duration'))
-                );
+                let servoConfigRows = row('Activation Options', selText('servoRelayMode'));
+                
+                // Pin 13 Configuration
+                const pin13ModeVal = document.getElementById('pin13Mode').value;
+                servoConfigRows += row('Mode GPIO Pin 13', selText('pin13Mode'));
+                
+                if (pin13ModeVal === 'servo180') {
+                    servoConfigRows += row('Pin 13 - 180&deg; Servo Start Angle (&deg;)', inputVal('pin13Servo180Start'));
+                    servoConfigRows += row('Pin 13 - 180&deg; Servo End Angle (&deg;)', inputVal('pin13Servo180End'));
+                    servoConfigRows += row('Pin 13 - 180&deg; Servo Sweep Duration (ms)', inputVal('pin13Servo180Duration'));
+                } else if (pin13ModeVal === 'servo360') {
+                    servoConfigRows += row('Pin 13 - 360&deg; Servo Speed (0&ndash;180)', inputVal('pin13Servo360Speed'));
+                    servoConfigRows += row('Pin 13 - 360&deg; Servo Spin Duration (ms)', inputVal('pin13Servo360Duration'));
+                }
+                
+                // Pin 10 Configuration
+                const pin10ModeVal = document.getElementById('pin10Mode').value;
+                servoConfigRows += row('Mode GPIO Pin 10', selText('pin10Mode'));
+                
+                if (pin10ModeVal === 'servo180') {
+                    servoConfigRows += row('Pin 10 - 180&deg; Servo Start Angle (&deg;)', inputVal('pin10Servo180Start'));
+                    servoConfigRows += row('Pin 10 - 180&deg; Servo End Angle (&deg;)', inputVal('pin10Servo180End'));
+                    servoConfigRows += row('Pin 10 - 180&deg; Servo Sweep Duration (ms)', inputVal('pin10Servo180Duration'));
+                } else if (pin10ModeVal === 'servo360') {
+                    servoConfigRows += row('Pin 10 - 360&deg; Servo Speed (0&ndash;180)', inputVal('pin10Servo360Speed'));
+                    servoConfigRows += row('Pin 10 - 360&deg; Servo Spin Duration (ms)', inputVal('pin10Servo360Duration'));
+                }
+                
+                sections += section('Servo Configuration', servoConfigRows);
             }
 
             sections += section('Vending Machine Features',
