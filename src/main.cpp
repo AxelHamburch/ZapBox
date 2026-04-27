@@ -486,8 +486,9 @@ void readFiles()
         return String("");
       };
 
-      // Index 24: pin13Mode — "servo180", "servo360", or "off" (relay removed)
-      // Pin 13 is a positional 180° servo → only "servo180" activates servo1
+#if ENABLE_DISPLAY
+      // Display version: Index 24 = pin13Mode string ("servo180"/"servo360"/"off")
+      // Servo 1 params (Pin 13 positional) at indices 25/26/27
       String pin13Mode = readStr(24);
       if (pin13Mode == "servo180") {
         servoConfig.servo1Start    = readInt(25, 0, 180, 0);
@@ -526,6 +527,42 @@ void readFiles()
         LOG_INFO("Config", String("Active channels: ") + String(servoConfig.activeChannelCount()));
         LOG_INFO("Config", "===========================");
       }
+#else
+      // Headless version: Index 17 = mode ("servo180"/"servo360"), no pin13Mode string.
+      // Servo 1 params (Pin 12, 180° positional) stored directly at indices 24/25/26.
+      // Servo 2 params (Pin 12, 360° continuous) stored at indices 27/28.
+      if (multiChannelConfig.mode == "servo180") {
+        servoConfig.servo1Start    = readInt(24, 0, 180, 0);
+        servoConfig.servo1End      = readInt(25, 0, 180, 0);
+        servoConfig.servo1Duration = readInt(26, 0, 10000, 0);
+        servoConfig.servo2Speed    = 0;
+        servoConfig.servo2Duration = 0;
+        LOG_INFO("Config", "=== HEADLESS SERVO CONFIGURATION ===");
+        LOG_INFO("Config", String("180° Servo (Pin 12): Start=") + String(servoConfig.servo1Start) + " End=" + String(servoConfig.servo1End) + " Duration=" + String(servoConfig.servo1Duration) + "ms" + (servoConfig.servo1Active() ? " [ACTIVE]" : " [inactive]"));
+        LOG_INFO("Config", "=====================================");
+      } else if (multiChannelConfig.mode == "servo360") {
+        servoConfig.servo1Start    = 0;
+        servoConfig.servo1End      = 0;
+        servoConfig.servo1Duration = 0;
+        servoConfig.servo2Speed    = readInt(27, 0, 180, 0);
+        servoConfig.servo2Duration = readInt(28, 0, 10000, 0);
+        LOG_INFO("Config", "=== HEADLESS SERVO CONFIGURATION ===");
+        LOG_INFO("Config", String("360° Servo (Pin 12): Speed=") + String(servoConfig.servo2Speed) + " Duration=" + String(servoConfig.servo2Duration) + "ms" + (servoConfig.servo2Active() ? " [ACTIVE]" : " [inactive]"));
+        LOG_INFO("Config", "=====================================");
+      } else {
+        servoConfig.servo1Start = 0;
+        servoConfig.servo1End   = 0;
+        servoConfig.servo1Duration = 0;
+        servoConfig.servo2Speed    = 0;
+        servoConfig.servo2Duration = 0;
+      }
+
+      // Index 30: relay activation mode ("one-for-all"/"relay1"/"both"/"off")
+      {
+        String sr = readStr(30);
+        if (sr.length() > 0) servoConfig.relayMode = sr;
+      }
+#endif
     }
 
     // Read NFC mode configuration (index 37 in new config format)
