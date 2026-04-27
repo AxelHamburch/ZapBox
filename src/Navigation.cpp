@@ -83,6 +83,10 @@ void resetBothModeToQR() {
 
   bothModeScreen = 0;
 }
+
+int getBothModeScreen() {
+  return bothModeScreen;
+}
 #endif
 
 // External function declarations from main.cpp

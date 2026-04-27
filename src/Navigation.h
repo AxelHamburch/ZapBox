@@ -33,6 +33,12 @@ void navigateToNextProduct();
  * reader (if active) and restarts NFC card emulation.
  */
 void resetBothModeToQR();
+
+/**
+ * Returns current "both/both-boltcard" NFC mode sub-screen.
+ * 0 = QR (default), 1 = Mobile Phone / BoltCard screen, 2 = Ticker
+ */
+int getBothModeScreen();
 #endif
 
 #endif // NAVIGATION_H

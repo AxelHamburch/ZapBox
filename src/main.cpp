@@ -2034,6 +2034,23 @@ void loop()
       }
     }
     
+    // NFC both-boltcard: return non-QR sub-screen (Mobile Phone / Ticker) to QR after PRODUCT_TIMEOUT
+#ifdef ENABLE_NFC
+    if (nfcConfig.mode == "both-boltcard" && productSelectionState.showTime > 0 &&
+        getBothModeScreen() != 0 &&
+        (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
+      LOG_INFO("Navigation", "NFC both-boltcard: timeout – returning to QR from sub-screen");
+      resetBothModeToQR(); // stops emulation/ticker, restarts BoltCard reader, sets bothModeScreen=0
+      ensureQrForPin(12);
+      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+        showSpecialModeQRScreen();
+      } else {
+        showQRScreen();
+      }
+      productSelectionState.showTime = millis();
+    }
+#endif
+
     // Check if it's time to show/hide Bitcoin ticker screen
     // Behavior depends on multiChannelConfig.btcTickerMode
     if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && lightningConfig.thresholdKey.length() == 0) {
