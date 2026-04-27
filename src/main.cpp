@@ -556,13 +556,14 @@ void readFiles()
         servoConfig.servo2Speed    = 0;
         servoConfig.servo2Duration = 0;
       }
+#endif
 
-      // Index 30: relay activation mode ("one-for-all"/"relay1"/"both"/"off")
+      // Index 30: relay activation mode — same for both Display and Headless
+      // ("one-for-all"/"relay1"/"both"/"off")
       {
         String sr = readStr(30);
         if (sr.length() > 0) servoConfig.relayMode = sr;
       }
-#endif
     }
 
     // Read NFC mode configuration (index 37 in new config format)
