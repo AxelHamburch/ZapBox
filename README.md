@@ -160,7 +160,6 @@ Device String (switchStr)
 |------|----------|------|-----------|-------------|
 | **User Input** |
 | 0 | BOOT Button | Input | Pull-up | Wake from sleep / Config mode |
-| 14 | HELP Button | Input | Pull-up | Help/Report mode |
 | 2 | Onboard LED | Output | HIGH=ON | Additional status LED (not used as sensor on headless) |
 | **Vending Sensors / Relay Output (Optional)** |
 | 22 | Sensor 1 / Relay Out | Input or Output | Pull-up / HIGH | Vending sensor input or relay output synced with Pin 12 (when configured, replaces CH06) |
@@ -231,7 +230,7 @@ Signal (NPN output)    →    GPIO 2
 
 **Feature:** Two independent sensor inputs for headless vending machine operation on GPIO 22 and GPIO 23.
 
-**Three operating modes per sensor:**
+**Four operating modes per sensor:**
 
 - **Stop the advance** (`yes`): Stops the relay action when the sensor detects a product (LOW signal). Minimum 2-second action time before the sensor can trigger.
 
@@ -1044,7 +1043,7 @@ ZapBox/
 ## Compatibility
 
 - **LNbits**: Compatible with v1.4.x or higher
-- **Bitcoin Switch Extension**: Compatible with v1.2.1 ohr higher
+- **Bitcoin Switch Extension**: Compatible with v1.2.1 or higher
 - **ESP32-S3**: Optimized for LilyGo T-Display-S3
 - **ESP32 classic**: A standard ESP32 can also be used. For installation in the headless case, an unsoldered 30-pin board is recommended.
 
