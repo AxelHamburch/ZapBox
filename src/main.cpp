@@ -2690,6 +2690,14 @@ static void checkProductBlockage() {
   // and WebSocket disconnect already signal the blockage state.
 }
 
+// Forward declarations for One For All task (defined after processThresholdPayment)
+static volatile bool g_ofaStop = false;
+struct OFATaskParams {
+  int pin;
+  int fallbackDuration;
+};
+static void oneForAllActivationTask(void* pvParams);
+
 static void processThresholdPayment(const JsonDocument &doc)
 {
   JsonVariantConst payment = doc["payment"];
@@ -2845,14 +2853,6 @@ static void processThresholdPayment(const JsonDocument &doc)
 // ─── One For All: concurrent activation task ─────────────────────────────────
 // Launched as a FreeRTOS task for each secondary channel (Pin 13, 10, 11) when
 // servoConfig.relayMode == "one-for-all" and Pin 12 is triggered.
-
-// Flag set to true by the light barrier to stop all OFA secondary tasks early.
-static volatile bool g_ofaStop = false;
-
-struct OFATaskParams {
-  int pin;
-  int fallbackDuration; // Duration to use when the channel has no own timing
-};
 
 static void oneForAllActivationTask(void* pvParams) {
   OFATaskParams* p = (OFATaskParams*)pvParams;
