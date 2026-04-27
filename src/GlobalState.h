@@ -164,9 +164,12 @@ struct ServoConfig {
   int servo2Duration = 0;    // Spin duration ms
   // Relay activation in servo mode
   String relayMode = "one-for-all"; // "one-for-all" (default), "relay1", "both", "off"
-  // Helper: servo is active if parameters are non-zero
-  bool servo1Active() const { return servo1Start != 0 || servo1End != 0; }
-  bool servo2Active() const { return servo2Speed != 0 && servo2Speed != 90; }
+  // Pin 13 / Pin 10 configured as external relay (not servo) in servo mode
+  bool pin13IsRelay = false;
+  bool pin10IsRelay = false;
+  // Helper: channel is active if servo params are non-zero OR pin is in relay mode
+  bool servo1Active() const { return servo1Start != 0 || servo1End != 0 || pin13IsRelay; }
+  bool servo2Active() const { return (servo2Speed != 0 && servo2Speed != 90) || pin10IsRelay; }
   bool relay1Active() const { return relayMode != "off"; }
   bool relay2Active() const { return relayMode == "both"; }
   // One For All mode: Pin 12 triggers all channels simultaneously

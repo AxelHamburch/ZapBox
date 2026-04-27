@@ -121,11 +121,19 @@ Die ZapBox verfügt über einen abnehmbaren 16-poligen Steckverbinder.
 
 *Bild 2: Reihenfolge Klemmenbelegung Steckverbinder, von rechts nach links*
 
+**Hinweis zur Belegung:** 
+
+Die ZapBox Servo verfügt über 4 Ausgänge Kanal 1 bis Kanal 4. Kanal 1 und 4 sind fest auf Relais verdrahtet. Kanal 2 und 3 gehen direkt zum Ausgang sind vorwiegend zur Servoansteuerung gedacht. Auf den Ausgangsklemmen 5 und 6 liegt das Steuersignal der GPIO Pins 13 und 10 an. 
+
 **Hinweis Spannungsverteilung mit Brücken:** 
 
 Im Werkszustand werden die Klemmen 1 (Versorgung Allgemein) und 12 (Versorgung Sensor und NFC-Modul) mit 5 V belegt. Die Masse (GND) ist auf den Klemmen 2, 7, 10 und 13 verdrahtet. 
 
 Die Relaiskontakte besitzen keine interne Versorgungsspannung. Die gewünschte Schaltspannung muss extern aufgebrückt werden. Um beispielsweise einen 5-V-Verbraucher zu schalten, muss für die Kanäle 1–3 eine externe Brücke (auf dem 16-poligen Steckverbinder) von Klemme 1 auf Klemme 3 gesetzt werden. Für den Betrieb von Kanal 4 mit 5 V ist eine Brücke von Klemme 1 auf Klemme 8 erforderlich.
+
+<img src="pics/pic-Servo/jumper.webp" alt="Jumper" width="35%">
+
+*Bild 3: Auszug E-Layout - Klemmen die gebrückt sind*
 
 **Hinweis zu den Relaiskontakten:** 
 
@@ -153,7 +161,7 @@ Um Daten vom Gerät zu lesen oder zu übertragen, verbinden Sie die ZapBox mit e
 
 <img src="pics/pic-Servo/Servo-oi-02.webp" alt="Panel öffnen und USB-C-Anschluss" width="75%">
 
-*Bild 3: Panel öffnen und USB-C-Anschluss für Daten*
+*Bild 4: Panel öffnen und USB-C-Anschluss für Daten*
 
 > **Wichtiger Hinweis:** Der USB-Anschluss direkt am Mikrocontroller ist ausschließlich zum Flashen der Firmware und zur Übertragung von Konfigurationsparametern vorgesehen. Während des Flashvorgangs darf keine Last am Ausgang geschaltet werden, da dies zu Fehlfunktionen oder zur **Beschädigung des Mikrocontrollers** führen kann.
 >
@@ -192,7 +200,7 @@ Die Schnapp-Arretierung kann mit einem flachen Schraubendreher gelöst werden.
 
 <img src="pics/pic-Servo/Servo-oi-04.webp" alt="Lösen der Montagehalter" width="100%">
 
-*Bild 4: Lösen der Montagehalterung*
+*Bild 5: Lösen der Montagehalterung*
 
 > **Hinweis:** Die ZapBox ist auf der Montagehalterung nur aufgeschoben und mit einem Schnappverschluss arretiert. Die Arretierung kann mit einem flachen Schraubendreher gelöst werden. Dazu den Schraubendreher vorsichtig in den Schlitz einschieben, leicht anheben und dabei den oberen Teil der ZapBox in Richtung des Schraubendrehers drücken. Die Verbindung sollte sich lösen und die ZapBox kann von der Montageplatte durch anheben getrennt werden.
 

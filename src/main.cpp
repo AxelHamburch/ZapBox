@@ -487,9 +487,11 @@ void readFiles()
       };
 
 #if ENABLE_DISPLAY
-      // Display version: Index 24 = pin13Mode string ("servo180"/"servo360"/"off")
+      // Display version: Index 24 = pin13Mode string ("servo180"/"servo360"/"relay"/"off")
       // Servo 1 params (Pin 13 positional) at indices 25/26/27
+      // "relay" = Pin 13 acts as normal relay (external relay connected)
       String pin13Mode = readStr(24);
+      servoConfig.pin13IsRelay = (pin13Mode == "relay");
       if (pin13Mode == "servo180") {
         servoConfig.servo1Start    = readInt(25, 0, 180, 0);
         servoConfig.servo1End      = readInt(26, 0, 180, 0);
@@ -506,10 +508,12 @@ void readFiles()
         if (sr.length() > 0) servoConfig.relayMode = sr;
       }
 
-      // Index 31: pin10Mode — "servo360", "servo180", or "off" (relay removed)
+      // Index 31: pin10Mode — "servo360", "servo180", "relay", or "off"
       // Pin 10 is a continuous 360° servo → only "servo360" activates servo2
+      // "relay" = Pin 10 acts as normal relay (external relay connected)
       if (doc.size() > 31) {
         String pin10Mode = readStr(31);
+        servoConfig.pin10IsRelay = (pin10Mode == "relay");
         if (pin10Mode == "servo360") {
           servoConfig.servo2Speed    = readInt(35, 0, 180, 0);
           servoConfig.servo2Duration = readInt(36, 0, 10000, 0);
@@ -521,8 +525,14 @@ void readFiles()
 
       if (multiChannelConfig.mode == "servo") {
         LOG_INFO("Config", "=== SERVO CONFIGURATION ===");
-        LOG_INFO("Config", String("Servo 1 (Pin 13, positional): Start=") + String(servoConfig.servo1Start) + " End=" + String(servoConfig.servo1End) + " Duration=" + String(servoConfig.servo1Duration) + "ms" + (servoConfig.servo1Active() ? " [ACTIVE]" : " [inactive]"));
-        LOG_INFO("Config", String("Servo 2 (Pin 10, continuous): Speed=") + String(servoConfig.servo2Speed) + " Duration=" + String(servoConfig.servo2Duration) + "ms" + (servoConfig.servo2Active() ? " [ACTIVE]" : " [inactive]"));
+        if (servoConfig.pin13IsRelay)
+          LOG_INFO("Config", "Pin 13: RELAY (external relay) [ACTIVE]");
+        else
+          LOG_INFO("Config", String("Servo 1 (Pin 13, positional): Start=") + String(servoConfig.servo1Start) + " End=" + String(servoConfig.servo1End) + " Duration=" + String(servoConfig.servo1Duration) + "ms" + (servoConfig.servo1Active() ? " [ACTIVE]" : " [inactive]"));
+        if (servoConfig.pin10IsRelay)
+          LOG_INFO("Config", "Pin 10: RELAY (external relay) [ACTIVE]");
+        else
+          LOG_INFO("Config", String("Servo 2 (Pin 10, continuous): Speed=") + String(servoConfig.servo2Speed) + " Duration=" + String(servoConfig.servo2Duration) + "ms" + (servoConfig.servo2Active() ? " [ACTIVE]" : " [inactive]"));
         LOG_INFO("Config", String("Relay mode: ") + servoConfig.relayMode + " (OneForAll=" + (servoConfig.oneForAll() ? "ON" : "OFF") + " Relay1=" + (servoConfig.relay1Active() ? "ON" : "OFF") + " Relay2=" + (servoConfig.relay2Active() ? "ON" : "OFF") + ")");
         LOG_INFO("Config", String("Active channels: ") + String(servoConfig.activeChannelCount()));
         LOG_INFO("Config", "===========================");
@@ -2946,37 +2956,63 @@ static void oneForAllActivationTask(void* pvParams) {
   free(p);
 
   if (pin == 13) {
-    // Servo 1 (positional 0-180°): sweep Start→End, hold at end for the
-    // remaining time, then sweep back End→Start.
-    // Hold = max(0, fallback - servo1Duration) so that total active time == fallback.
-    activateServo(13); // sweep to end (takes servo1Duration ms)
-    int holdTime = fallback - servoConfig.servo1Duration;
-    if (holdTime > 0) {
-      // Poll g_ofaStop so the light barrier can cut the hold short.
-      unsigned long t0 = millis();
-      while (!g_ofaStop && (millis() - t0 < (unsigned long)holdTime)) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-      }
-      if (g_ofaStop) {
-        Serial.println("[OFA] Pin 13 (servo1): stopped early by light barrier");
-      }
-    }
-    deactivateServo(13); // sweep back to start
-
-  } else if (pin == 10) {
-    // Servo 2 (continuous 360°): spin for servo2Duration ms.
-    // If servo2Duration == 0 (indefinite), use fallback duration instead.
-    activateServo(10);
-    if (servoConfig.servo2Duration == 0 && fallback > 0) {
-      // Poll g_ofaStop so the light barrier can stop the motor early.
+    if (servoConfig.pin13IsRelay) {
+      // Pin 13 configured as external relay: switch HIGH for fallback duration
+      pinMode(pin, OUTPUT);
+      digitalWrite(pin, HIGH);
+      Serial.println("[OFA] Pin 13 set HIGH (relay mode)");
       unsigned long t0 = millis();
       while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
         vTaskDelay(pdMS_TO_TICKS(10));
       }
-      if (g_ofaStop) {
-        Serial.println("[OFA] Pin 10 (servo2): stopped early by light barrier");
+      digitalWrite(pin, LOW);
+      Serial.println("[OFA] Pin 13 set LOW (relay mode)");
+    } else {
+      // Servo 1 (positional 0-180°): sweep Start→End, hold at end for the
+      // remaining time, then sweep back End→Start.
+      // Hold = max(0, fallback - servo1Duration) so that total active time == fallback.
+      activateServo(13); // sweep to end (takes servo1Duration ms)
+      int holdTime = fallback - servoConfig.servo1Duration;
+      if (holdTime > 0) {
+        // Poll g_ofaStop so the light barrier can cut the hold short.
+        unsigned long t0 = millis();
+        while (!g_ofaStop && (millis() - t0 < (unsigned long)holdTime)) {
+          vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        if (g_ofaStop) {
+          Serial.println("[OFA] Pin 13 (servo1): stopped early by light barrier");
+        }
       }
-      deactivateServo(10); // Stop spinning
+      deactivateServo(13); // sweep back to start
+    }
+
+  } else if (pin == 10) {
+    if (servoConfig.pin10IsRelay) {
+      // Pin 10 configured as external relay: switch HIGH for fallback duration
+      pinMode(pin, OUTPUT);
+      digitalWrite(pin, HIGH);
+      Serial.println("[OFA] Pin 10 set HIGH (relay mode)");
+      unsigned long t0 = millis();
+      while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
+      digitalWrite(pin, LOW);
+      Serial.println("[OFA] Pin 10 set LOW (relay mode)");
+    } else {
+      // Servo 2 (continuous 360°): spin for servo2Duration ms.
+      // If servo2Duration == 0 (indefinite), use fallback duration instead.
+      activateServo(10);
+      if (servoConfig.servo2Duration == 0 && fallback > 0) {
+        // Poll g_ofaStop so the light barrier can stop the motor early.
+        unsigned long t0 = millis();
+        while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
+          vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        if (g_ofaStop) {
+          Serial.println("[OFA] Pin 10 (servo2): stopped early by light barrier");
+        }
+        deactivateServo(10); // Stop spinning
+      }
     }
     // If servo2Duration > 0: activateServo() already stopped the motor internally.
 
@@ -3025,7 +3061,10 @@ static void processNormalPayment(int pin, int duration)
 
   // Special mode applies to relay pins (12, 11) but NOT servo pins (13, 10).
   // Skip when: this is a servo pin, or channel 4 ambient owns Pin 11.
-  bool isServoPin = (multiChannelConfig.mode == "servo" && (pin == 13 || pin == 10))
+  // In servo mode: Pin 13/10 are servo pins UNLESS configured as external relay
+  bool isServoPin = (multiChannelConfig.mode == "servo" &&
+                       ((pin == 13 && !servoConfig.pin13IsRelay) ||
+                        (pin == 10 && !servoConfig.pin10IsRelay)))
                  || ((multiChannelConfig.mode == "servo180" || multiChannelConfig.mode == "servo360") && pin == 12);
   bool useSpecialMode = (specialModeConfig.mode != "standard" && specialModeConfig.mode != "")
                      && !isServoPin

@@ -349,6 +349,7 @@
                             <option value="off" selected>Off (default)</option>
                             <option value="servo180">180° servo (0°-180° positioning)</option>
                             <option value="servo360">360° servo (360° rotation)</option>
+                            <option value="relay">Relay function (external relay)</option>
                         </select>
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Select the function for GPIO Pin 13</p>
                     </div>
@@ -401,6 +402,7 @@
                             <option value="off" selected>Off (default)</option>
                             <option value="servo180">180° servo (0°-180° positioning)</option>
                             <option value="servo360">360° servo (360° rotation)</option>
+                            <option value="relay">Relay function (external relay)</option>
                         </select>
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Select the function for GPIO Pin 10</p>
                     </div>
@@ -446,7 +448,7 @@
                 </div>
                 
                 <p style="margin: 15px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
-                    Servos become active when their values are non-zero. Special Mode (blink, pulse, etc.) works for relays (Pin 12/11) but not for servo pins (Pin 13/10).
+                    Servos become active when their values are non-zero. "Relay function (external relay)" uses Pin 13/10 as a standard relay output — an external relay module must be connected. Special Mode (blink, pulse, etc.) works for relays (Pin 12/11) and relay-function pins (Pin 13/10), but not for servo pins.
                 </p>
             </div>
 
