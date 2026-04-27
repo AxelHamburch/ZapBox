@@ -206,7 +206,8 @@ void navigateToNextProduct() {
     if (multiChannelConfig.btcTickerActive && bothModeScreen == 0) {
       LOG_INFO("Navigation", "NFC both-boltcard mode: auto-ticker at QR state, restoring QR");
       multiChannelConfig.btcTickerActive = false;
-      nfcBoltCardInit();
+      // BoltCard reader task is already running from startup (bothModeScreen==0 = default state).
+      // Do NOT call nfcBoltCardInit() here – re-initializing while the task is live causes a crash.
       ensureQrForPin(12);
       if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
         showSpecialModeQRScreen();
