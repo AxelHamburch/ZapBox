@@ -501,14 +501,9 @@ void showInitialScreenAfterConnections() {
       multiChannelConfig.btcTickerActive = true;
       productSelectionState.showTime = millis();
     } else {
-      // SELECTING or OFF: show normal/special QR (or BoltCard screen in both-boltcard mode)
+      // SELECTING or OFF: show QR screen (BoltCard reader runs in background for both-boltcard)
       ensureQrForPin(12);
-      if (nfcConfig.mode == "both-boltcard") {
-        int pinIndex = getPinIndex(12);
-        String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
-                       ? productLabels.labels[pinIndex] : "READY 4 ZAP ACTION";
-        showBoltCardScreen(label, 12);
-      } else if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
         showSpecialModeQRScreen();
       } else {
         showQRScreen();

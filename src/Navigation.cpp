@@ -250,7 +250,23 @@ void navigateToNextProduct() {
       productSelectionState.showTime = millis();
       return;
     } else if (bothModeScreen == 1) {
-      // Mobile Phone → Ticker (stop emulation)
+      // Mobile Phone → Ticker (only if ticker mode allows it)
+      if (multiChannelConfig.btcTickerMode == "off") {
+        // Ticker disabled – skip directly back to QR+BoltCard
+        LOG_INFO("Navigation", "NFC both-boltcard mode: ticker OFF, returning to QR from Mobile Phone");
+        bothModeScreen = 0;
+        nfcCardEmulationStop();
+        vTaskDelay(pdMS_TO_TICKS(100));
+        nfcBoltCardInit();
+        ensureQrForPin(12);
+        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+          showSpecialModeQRScreen();
+        } else {
+          showQRScreen();
+        }
+        productSelectionState.showTime = millis();
+        return;
+      }
       LOG_INFO("Navigation", "NFC both-boltcard mode: switching to Ticker view");
       bothModeScreen = 2;
       nfcCardEmulationStop();
