@@ -169,6 +169,21 @@ void navigateToNextProduct() {
   // NFC "both" mode: cycle through QR → Bolt Card → Ticker → QR
   // Only in single-product mode; in multi-product, NFC runs passively in background
   if (nfcConfig.mode == "both" && multiChannelConfig.mode == "off") {
+    // If always-ticker is auto-showing while on QR state (bothModeScreen=0),
+    // pressing NEXT should restore QR first instead of jumping to Bolt Card.
+    if (multiChannelConfig.btcTickerActive && bothModeScreen == 0) {
+      LOG_INFO("Navigation", "NFC both mode: auto-ticker at QR state, restoring QR");
+      multiChannelConfig.btcTickerActive = false;
+      // NFC emulation is already running (started at boot/prev state), no need to reinit
+      ensureQrForPin(12);
+      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+        showSpecialModeQRScreen();
+      } else {
+        showQRScreen();
+      }
+      productSelectionState.showTime = millis();
+      return;
+    }
     if (bothModeScreen == 0) {
       // QR (emulation) → Bolt Card (reader)
       LOG_INFO("Navigation", "NFC both mode: switching to Bolt Card view");
