@@ -39,6 +39,13 @@ void resetBothModeToQR();
  * 0 = QR (default), 1 = Mobile Phone / BoltCard screen, 2 = Ticker
  */
 int getBothModeScreen();
+
+/**
+ * Auto-timeout handler: returns secondary NFC sub-screen (1) to default screen.
+ * "both" mode:         Bolt Card → BTC Ticker (always) or QR (off/selecting)
+ * "both-boltcard":     Mobile Phone → QR (all ticker modes)
+ */
+void timeoutBothNfcToDefault();
 #endif
 
 #endif // NAVIGATION_H

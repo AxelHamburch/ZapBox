@@ -2034,21 +2034,16 @@ void loop()
       }
     }
     
-    // NFC both-boltcard: return Mobile Phone sub-screen (1) to QR after PRODUCT_TIMEOUT
+    // NFC both/both-boltcard: secondary screen (Bolt Card / Mobile Phone) auto-returns after PRODUCT_TIMEOUT
+    // "both" mode:       Bolt Card (1) → BTC Ticker (always) or QR (off/selecting)
+    // "both-boltcard":   Mobile Phone (1) → QR (all ticker modes)
     // Note: Ticker sub-screen (2) is handled by the btcTickerMode timeout logic below
 #ifdef ENABLE_NFC
-    if (nfcConfig.mode == "both-boltcard" && productSelectionState.showTime > 0 &&
+    if ((nfcConfig.mode == "both" || nfcConfig.mode == "both-boltcard") &&
+        productSelectionState.showTime > 0 &&
         getBothModeScreen() == 1 &&
         (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
-      LOG_INFO("Navigation", "NFC both-boltcard: timeout – returning to QR from sub-screen");
-      resetBothModeToQR(); // stops emulation/ticker, restarts BoltCard reader, sets bothModeScreen=0
-      ensureQrForPin(12);
-      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-        showSpecialModeQRScreen();
-      } else {
-        showQRScreen();
-      }
-      productSelectionState.showTime = millis();
+      timeoutBothNfcToDefault();
     }
 #endif
 

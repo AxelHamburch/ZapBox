@@ -87,6 +87,56 @@ void resetBothModeToQR() {
 int getBothModeScreen() {
   return bothModeScreen;
 }
+
+/**
+ * Auto-timeout handler for NFC sub-screens (bothModeScreen == 1).
+ * Both modes:        Bolt Card screen  → BTC Ticker (always) or QR (off/selecting)
+ * Both-BoltCard:    Mobile Phone screen → QR (all ticker modes)
+ */
+void timeoutBothNfcToDefault() {
+  if (getBothModeScreen() != 1) return;
+
+  if (nfcConfig.mode == "both") {
+    if (multiChannelConfig.btcTickerMode == "always") {
+      // Bolt Card screen → BTC Ticker (stop reader, restart emulation for bg, show ticker)
+      LOG_INFO("Navigation", "NFC both: timeout on Bolt Card – returning to BTC Ticker");
+      nfcBoltCardStop();
+      vTaskDelay(pdMS_TO_TICKS(100));
+      nfcCardEmulationInit();
+      bothModeScreen = 0; // emulation + ticker = same as always-mode auto-ticker state
+      btctickerScreen();
+      multiChannelConfig.btcTickerActive = true;
+      productSelectionState.showTime = 0; // No further product timeout while ticker shows
+    } else {
+      // Bolt Card screen → QR (stop reader, restart emulation)
+      LOG_INFO("Navigation", "NFC both: timeout on Bolt Card – returning to QR");
+      nfcBoltCardStop();
+      vTaskDelay(pdMS_TO_TICKS(100));
+      nfcCardEmulationInit();
+      bothModeScreen = 0;
+      ensureQrForPin(12);
+      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+        showSpecialModeQRScreen();
+      } else {
+        showQRScreen();
+      }
+      multiChannelConfig.btcTickerActive = false;
+      productSelectionState.showTime = millis();
+    }
+  } else if (nfcConfig.mode == "both-boltcard") {
+    // Mobile Phone screen → QR (stop emulation, restart bolt card reader)
+    LOG_INFO("Navigation", "NFC both-boltcard: timeout on Mobile Phone – returning to QR");
+    resetBothModeToQR(); // stops emulation, restarts bolt card reader, sets bothModeScreen=0
+    ensureQrForPin(12);
+    if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+      showSpecialModeQRScreen();
+    } else {
+      showQRScreen();
+    }
+    multiChannelConfig.btcTickerActive = false;
+    productSelectionState.showTime = millis();
+  }
+}
 #endif
 
 // External function declarations from main.cpp
@@ -99,6 +149,7 @@ extern void showSpecialModeQRScreen();
 extern void btctickerScreen();
 extern void deactivateScreensaver();
 extern void configMode();
+extern void ensureQrForPin(int pin);
 extern void reportMode();
 extern void showHelp();
 
