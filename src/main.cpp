@@ -461,7 +461,7 @@ void readFiles()
 
     // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 
-    // Read servo configuration (indices 24-30, only relevant when multiControl == "servo")
+    // Read servo configuration (new format: indices 24-36, only relevant when multiControl == "servo")
     if (doc.size() > 24) {
       auto readInt = [&](int idx, int minVal, int maxVal, int def) -> int {
         const JsonObject obj = doc[idx];
@@ -476,22 +476,47 @@ void readFiles()
         }
         return def;
       };
-      servoConfig.servo1Start    = readInt(24, 0, 180, 0);
-      servoConfig.servo1End      = readInt(25, 0, 180, 0);
-      servoConfig.servo1Duration = readInt(26, 0, 10000, 0);
-      servoConfig.servo2Speed    = readInt(27, 0, 180, 0);
-      servoConfig.servo2Duration = readInt(28, 0, 10000, 0);
-      // Index 30: relay activation mode ("relay1"/"both"/"off")
-      const JsonObject r30 = doc[30];
-      if (!r30.isNull()) {
-        const char *v30 = r30["value"];
-        if (v30 != nullptr) {
-          String sr = String(v30);
-          sr.toLowerCase();
-          sr.trim();
-          servoConfig.relayMode = sr;
+      auto readStr = [&](int idx) -> String {
+        const JsonObject obj = doc[idx];
+        if (!obj.isNull()) {
+          const char *v = obj["value"];
+          if (v != nullptr) { String s = String(v); s.toLowerCase(); s.trim(); return s; }
+        }
+        return String("");
+      };
+
+      // Index 24: pin13Mode — "servo180", "servo360", or "off" (relay removed)
+      // Pin 13 is a positional 180° servo → only "servo180" activates servo1
+      String pin13Mode = readStr(24);
+      if (pin13Mode == "servo180") {
+        servoConfig.servo1Start    = readInt(25, 0, 180, 0);
+        servoConfig.servo1End      = readInt(26, 0, 180, 0);
+        servoConfig.servo1Duration = readInt(27, 0, 10000, 0);
+      } else {
+        servoConfig.servo1Start = 0;
+        servoConfig.servo1End   = 0;
+        servoConfig.servo1Duration = 0;
+      }
+
+      // Index 30: relay activation mode ("one-for-all"/"relay1"/"both"/"off")
+      {
+        String sr = readStr(30);
+        if (sr.length() > 0) servoConfig.relayMode = sr;
+      }
+
+      // Index 31: pin10Mode — "servo360", "servo180", or "off" (relay removed)
+      // Pin 10 is a continuous 360° servo → only "servo360" activates servo2
+      if (doc.size() > 31) {
+        String pin10Mode = readStr(31);
+        if (pin10Mode == "servo360") {
+          servoConfig.servo2Speed    = readInt(35, 0, 180, 0);
+          servoConfig.servo2Duration = readInt(36, 0, 10000, 0);
+        } else {
+          servoConfig.servo2Speed    = 0;
+          servoConfig.servo2Duration = 0;
         }
       }
+
       if (multiChannelConfig.mode == "servo") {
         LOG_INFO("Config", "=== SERVO CONFIGURATION ===");
         LOG_INFO("Config", String("Servo 1 (Pin 13, positional): Start=") + String(servoConfig.servo1Start) + " End=" + String(servoConfig.servo1End) + " Duration=" + String(servoConfig.servo1Duration) + "ms" + (servoConfig.servo1Active() ? " [ACTIVE]" : " [inactive]"));
@@ -502,8 +527,8 @@ void readFiles()
       }
     }
 
-    // Read NFC mode configuration (index 29, replaces unused29)
-    const JsonObject maRoot29 = doc[29];
+    // Read NFC mode configuration (index 37 in new config format)
+    const JsonObject maRoot29 = doc[37];
     if (!maRoot29.isNull()) {
       const char *maRoot29Char = maRoot29["value"];
       if (maRoot29Char != nullptr) {
