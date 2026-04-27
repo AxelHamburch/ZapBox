@@ -369,6 +369,21 @@ void navigateToNextProduct() {
     multiChannelConfig.currentProduct = 1;
     deviceState.transition(DeviceState::READY);
     LOG_INFO("Navigation", "Ticker active - returning to first product");
+
+    // Determine the correct pin and show the QR screen immediately.
+    // Must return here to avoid falling through to the maxProducts check below,
+    // which would re-trigger BTC_TICKER when activeChannelCount() == 0 (compact servo mode).
+    vTaskDelay(pdMS_TO_TICKS(50));
+    int pin = (multiChannelConfig.mode == "servo")
+              ? servoConfig.productToPin(1)
+              : 12;
+    ensureQrForPin(pin);
+    int pinIndex = getPinIndex(pin);
+    String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                   ? productLabels.labels[pinIndex] : "Pin " + String(pin);
+    showProductQRScreen(label, pin);
+    productSelectionState.showTime = millis();
+    return;
   } else {
     multiChannelConfig.currentProduct++;
   }
