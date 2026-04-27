@@ -82,7 +82,8 @@ const unsigned long GRACE_PERIOD_MS = 1000;  // 1 second grace period after wake
 
 // Product timeout: configurable via platformio.ini build flag PRODUCT_TIMEOUT
 // Default 10 seconds for testing, use 60 seconds for production
-// Used when: QR/Product shown → timeout → back to Ticker/ProductSelection
+// Used when: Non-first product shown → timeout → back to Product No.1 (Ticker-OFF/Selecting)
+//            Product/QR shown → timeout → back to BTC Ticker (Ticker-Always)
 #ifndef PRODUCT_TIMEOUT
 #define PRODUCT_TIMEOUT 10000
 #endif
@@ -2058,20 +2059,23 @@ void loop()
           }
         }
       } else if (multiChannelConfig.btcTickerMode == "off" && multiChannelConfig.mode != "off") {
-        // OFF mode with Duo/Quattro: Return to product selection after timeout on product
-        if (productSelectionState.showTime > 0 && 
+        // OFF mode with Duo/Quattro: Return to Product No.1 after timeout
+        if (productSelectionState.showTime > 0 &&
             (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
-          // Check if we're on a product screen
           if (multiChannelConfig.currentProduct > 0) {
-            // In servo mode with only 1 active product: stay on product 1, no selection screen
-            if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
-              productSelectionState.showTime = 0; // Reset timer, stay on product 1
+            if (multiChannelConfig.currentProduct == 1) {
+              productSelectionState.showTime = 0; // Already on Product 1, reset timer
             } else {
-              Serial.println("[SCREEN] Timeout reached - returning to product selection screen (OFF mode - Duo/Quattro)");
-              multiChannelConfig.currentProduct = -1;
-              deviceState.transition(DeviceState::PRODUCT_SELECTION);
-              productSelectionScreen();
-              productSelectionState.showTime = 0; // Reset timer
+              Serial.println("[SCREEN] Timeout reached - returning to Product No.1 (OFF mode - Duo/Quattro)");
+              multiChannelConfig.currentProduct = 1;
+              deviceState.transition(DeviceState::READY);
+              int pin = (multiChannelConfig.mode == "servo") ? servoConfig.productToPin(1) : 12;
+              ensureQrForPin(pin);
+              int pinIndex = getPinIndex(pin);
+              String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                             ? productLabels.labels[pinIndex] : "Pin " + String(pin);
+              showProductQRScreen(label, pin);
+              productSelectionState.showTime = 0;
             }
           }
         }
@@ -2122,15 +2126,20 @@ void loop()
               productSelectionState.showTime = 0; // Reset timer
             } else if (multiChannelConfig.currentProduct > 0 && !deviceState.isInState(DeviceState::PRODUCT_SELECTION) && 
                       (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
-              // Product showing: Return to product selection after PRODUCT_SELECTION_DELAY
-              if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
-                productSelectionState.showTime = 0; // Reset timer, stay on product 1
+              // Product showing: Return to Product No.1 after PRODUCT_SELECTION_DELAY
+              if (multiChannelConfig.currentProduct == 1) {
+                productSelectionState.showTime = 0; // Already on Product 1, reset timer
               } else {
-                Serial.println("[SCREEN] Timeout reached - returning to product selection screen (SELECTING mode - Duo/Quattro)");
-                multiChannelConfig.currentProduct = -1;
-                deviceState.transition(DeviceState::PRODUCT_SELECTION);
-                productSelectionScreen();
-                productSelectionState.showTime = 0; // Reset timer
+                Serial.println("[SCREEN] Timeout reached - returning to Product No.1 (SELECTING mode - Duo/Quattro)");
+                multiChannelConfig.currentProduct = 1;
+                deviceState.transition(DeviceState::READY);
+                int pin = (multiChannelConfig.mode == "servo") ? servoConfig.productToPin(1) : 12;
+                ensureQrForPin(pin);
+                int pinIndex = getPinIndex(pin);
+                String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                               ? productLabels.labels[pinIndex] : "Pin " + String(pin);
+                showProductQRScreen(label, pin);
+                productSelectionState.showTime = 0;
               }
             }
           }
