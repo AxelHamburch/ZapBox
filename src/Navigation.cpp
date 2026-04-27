@@ -198,9 +198,24 @@ void navigateToNextProduct() {
     }
   }
 
-  // NFC "both-boltcard" mode: cycle through BoltCard → Mobile Phone → Ticker → BoltCard
+  // NFC "both-boltcard" mode: cycle through QR+BoltCard → Mobile Phone → Ticker → QR+BoltCard
   // Only in single-product mode; in multi-product, NFC runs passively in background
   if (nfcConfig.mode == "both-boltcard" && multiChannelConfig.mode == "off") {
+    // "always" ticker auto-returns to ticker while QR+BoltCard state (bothModeScreen=0):
+    // pressing NEXT should show QR (not jump directly to Mobile Phone)
+    if (multiChannelConfig.btcTickerActive && bothModeScreen == 0) {
+      LOG_INFO("Navigation", "NFC both-boltcard mode: auto-ticker at QR state, restoring QR");
+      multiChannelConfig.btcTickerActive = false;
+      nfcBoltCardInit();
+      ensureQrForPin(12);
+      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+        showSpecialModeQRScreen();
+      } else {
+        showQRScreen();
+      }
+      productSelectionState.showTime = millis();
+      return;
+    }
     if (bothModeScreen == 0) {
       // BoltCard (reader) → Mobile Phone (emulation)
       LOG_INFO("Navigation", "NFC both-boltcard mode: switching to Mobile Phone view");
@@ -243,30 +258,17 @@ void navigateToNextProduct() {
       productSelectionState.showTime = millis();
       return;
     } else {
-      // Ticker → BoltCard (start reader again)
-      LOG_INFO("Navigation", "NFC both-boltcard mode: switching to BoltCard view");
+      // Ticker → QR+BoltCard (start reader again, show QR — BoltCard reader runs in background)
+      LOG_INFO("Navigation", "NFC both-boltcard mode: returning to QR view with BoltCard reader");
       bothModeScreen = 0;
       multiChannelConfig.btcTickerActive = false;
       nfcBoltCardInit();
-
-      int pin = 12;
-      if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
-        if (multiChannelConfig.mode == "servo") {
-          pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
-        } else {
-          switch(multiChannelConfig.currentProduct) {
-            case 1: pin = 12; break;
-            case 2: pin = 13; break;
-            case 3: pin = 10; break;
-            case 4: pin = 11; break;
-            default: pin = 12; break;
-          }
-        }
+      ensureQrForPin(12);
+      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
+        showSpecialModeQRScreen();
+      } else {
+        showQRScreen();
       }
-      int pinIndex = getPinIndex(pin);
-      String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
-                     ? productLabels.labels[pinIndex] : "Pin " + String(pin);
-      showBoltCardScreen(label, pin);
       productSelectionState.showTime = millis();
       return;
     }
