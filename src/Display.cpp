@@ -1634,6 +1634,27 @@ void showBoltCardScreen(String label, int pin)
       tft.setTextSize(2);
       tft.drawString(words[2], x - 58, startY + 60, GFXFF);
     }
+
+    // Button labels
+    tft.setTextSize(2);
+    tft.setTextColor(fg);
+    if (touchState.available) {
+      tft.setTextDatum(MC_DATUM);
+      if (displayConfig.orientation == "v") {
+        tft.drawString("HELP", x + 2, 312, GFXFF);
+      } else {
+        tft.drawString("HELP", x + 2, 10, GFXFF);
+      }
+    } else if (!externalButtonState.enabled) {
+      tft.setTextDatum(ML_DATUM);
+      if (displayConfig.orientation == "v") {
+        tft.drawString("HELP", x + 35, y + 150, GFXFF);
+        tft.drawString("NEXT", 5, y + 150, GFXFF);
+      } else {
+        tft.drawString("HELP", 5, 10, GFXFF);
+        tft.drawString("NEXT", x + 35, 10, GFXFF);
+      }
+    }
   } else {
     // Horizontal: "Bolt Card" in the left area where QR would be
     tft.setTextDatum(MC_DATUM);
@@ -1668,6 +1689,33 @@ void showBoltCardScreen(String label, int pin)
       tft.drawString(words[1], x + textOffset, startY + 30, GFXFF);
       tft.setTextSize(2);
       tft.drawString(words[2], x + textOffset, startY + 60, GFXFF);
+    }
+
+    // Button labels
+    tft.setTextSize(2);
+    tft.setTextColor(fg);
+    if (touchState.available) {
+      tft.setTextDatum(MC_DATUM);
+      if (displayConfig.orientation == "h") {
+        tft.drawString("H", 311, y - 30, GFXFF);
+        tft.drawString("E", 311, y - 10, GFXFF);
+        tft.drawString("L", 311, y + 10, GFXFF);
+        tft.drawString("P", 311, y + 30, GFXFF);
+      } else {
+        tft.drawString("H", 11, y - 30, GFXFF);
+        tft.drawString("E", 11, y - 10, GFXFF);
+        tft.drawString("L", 11, y + 10, GFXFF);
+        tft.drawString("P", 11, y + 30, GFXFF);
+      }
+    } else if (!externalButtonState.enabled) {
+      tft.setTextDatum(ML_DATUM);
+      if (displayConfig.orientation == "h") {
+        tft.drawString("HELP", x + 110, 9, GFXFF);
+        tft.drawString("NEXT", x + 110, 163, GFXFF);
+      } else {
+        tft.drawString("HELP", 5, 163, GFXFF);
+        tft.drawString("NEXT", 5, 9, GFXFF);
+      }
     }
   }
 }
@@ -1754,6 +1802,27 @@ void showMobilePhoneScreen(String label, int pin)
       tft.setTextSize(2);
       tft.drawString(words[2], x - 58, startY + 60, GFXFF);
     }
+
+    // Button labels
+    tft.setTextSize(2);
+    tft.setTextColor(fg);
+    if (touchState.available) {
+      tft.setTextDatum(MC_DATUM);
+      if (displayConfig.orientation == "v") {
+        tft.drawString("HELP", x + 2, 312, GFXFF);
+      } else {
+        tft.drawString("HELP", x + 2, 10, GFXFF);
+      }
+    } else if (!externalButtonState.enabled) {
+      tft.setTextDatum(ML_DATUM);
+      if (displayConfig.orientation == "v") {
+        tft.drawString("HELP", x + 35, y + 150, GFXFF);
+        tft.drawString("NEXT", 5, y + 150, GFXFF);
+      } else {
+        tft.drawString("HELP", 5, 10, GFXFF);
+        tft.drawString("NEXT", x + 35, 10, GFXFF);
+      }
+    }
   } else {
     // Horizontal: "Mobile Phone" in the left area where QR would be
     tft.setTextDatum(MC_DATUM);
@@ -1788,6 +1857,33 @@ void showMobilePhoneScreen(String label, int pin)
       tft.drawString(words[1], x + textOffset, startY + 30, GFXFF);
       tft.setTextSize(2);
       tft.drawString(words[2], x + textOffset, startY + 60, GFXFF);
+    }
+
+    // Button labels
+    tft.setTextSize(2);
+    tft.setTextColor(fg);
+    if (touchState.available) {
+      tft.setTextDatum(MC_DATUM);
+      if (displayConfig.orientation == "h") {
+        tft.drawString("H", 311, y - 30, GFXFF);
+        tft.drawString("E", 311, y - 10, GFXFF);
+        tft.drawString("L", 311, y + 10, GFXFF);
+        tft.drawString("P", 311, y + 30, GFXFF);
+      } else {
+        tft.drawString("H", 11, y - 30, GFXFF);
+        tft.drawString("E", 11, y - 10, GFXFF);
+        tft.drawString("L", 11, y + 10, GFXFF);
+        tft.drawString("P", 11, y + 30, GFXFF);
+      }
+    } else if (!externalButtonState.enabled) {
+      tft.setTextDatum(ML_DATUM);
+      if (displayConfig.orientation == "h") {
+        tft.drawString("HELP", x + 110, 9, GFXFF);
+        tft.drawString("NEXT", x + 110, 163, GFXFF);
+      } else {
+        tft.drawString("HELP", 5, 163, GFXFF);
+        tft.drawString("NEXT", 5, 9, GFXFF);
+      }
     }
   }
 }
