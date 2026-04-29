@@ -61,8 +61,16 @@ your-subdomain.your-domain.com {
     
     encode gzip
     
+    # Prevent browser from caching firmware binaries and manifests
     header /firmware/* {
         Content-Type "application/octet-stream"
+        Cache-Control "no-store, no-cache, must-revalidate"
+        Pragma "no-cache"
+    }
+
+    # Prevent caching of the main installer page
+    header / {
+        Cache-Control "no-store"
     }
 }
 ```
@@ -120,8 +128,8 @@ Create `.vscode/sftp.json` in your ZapBox project:
     "passphrase": true,
     "context": "./installer",
     "syncOption": {
-        "delete": false,
-        "update": false
+        "delete": true,
+        "update": true
     }
 }
 ```
