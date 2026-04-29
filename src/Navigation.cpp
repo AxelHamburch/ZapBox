@@ -28,6 +28,7 @@ extern TouchState touchState;
 extern TouchCST816S touch;
 extern DisplayConfig displayConfig;
 extern unsigned long configModeStartTime;
+extern bool labelsLoadedSuccessfully;
 
 // External constants
 extern unsigned long TOUCH_DOUBLE_CLICK_MS;
@@ -477,33 +478,87 @@ void navigateToNextProduct() {
     multiChannelConfig.currentProduct++;
   }
   
-  // Determine navigation behavior based on multiChannelConfig.btcTickerMode
-  if (multiChannelConfig.btcTickerMode == "selecting") {
-    // SELECTING mode: After last product, show BTC ticker (which will auto-return to product selection)
-    // Determine max products based on mode
+  // Determine navigation behavior: compute max products, skip unconfigured channels,
+  // and handle wrap / BTC-ticker transition.
+  {
     int maxProducts = 2; // default for duo
     if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
     else if (multiChannelConfig.mode == "quattro") maxProducts = 4;
     else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.activeChannelCount();
-    
-    if (multiChannelConfig.currentProduct > maxProducts) {
-      multiChannelConfig.currentProduct = 0; // Reset for next navigation
-      btctickerScreen();
-      multiChannelConfig.btcTickerActive = true;
-      deviceState.transition(DeviceState::BTC_TICKER);
-      productSelectionState.showTime = millis(); // Start timer for auto-return
-      LOG_INFO("Navigation", "SELECTING mode - Showing Bitcoin ticker after last product");
-      return;
-    }
-  } else {
-    // ALWAYS or OFF mode: Loop back to first product
-    int maxProducts = 2; // default for duo
-    if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
-    else if (multiChannelConfig.mode == "quattro") maxProducts = 4;
-    else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.activeChannelCount();
-    
-    if (multiChannelConfig.currentProduct > maxProducts) {
-      multiChannelConfig.currentProduct = 1; // Loop back to first product
+
+    // For non-servo modes with labels already loaded: skip products whose GPIO
+    // has no LNbits switch configured (duration == 0 AND label empty).
+    // This prevents showing QR/mobile-phone screens for unconfigured channels.
+    if (multiChannelConfig.mode != "servo" && labelsLoadedSuccessfully) {
+      // Advance past every unconfigured product
+      while (multiChannelConfig.currentProduct <= maxProducts) {
+        int pin;
+        switch (multiChannelConfig.currentProduct) {
+          case 1: pin = 12; break;
+          case 2: pin = 13; break;
+          case 3: pin = 10; break;
+          case 4: pin = 11; break;
+          default: pin = 12; break;
+        }
+        int idx = getPinIndex(pin);
+        if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
+          break; // This product has a switch – show it
+        }
+        LOG_DEBUG("Navigation", String("Product ") + String(multiChannelConfig.currentProduct) + " (Pin " + String(pin) + ") has no switch – skipping");
+        multiChannelConfig.currentProduct++;
+      }
+
+      // All products in range are unconfigured (or we wrapped past the last one)
+      if (multiChannelConfig.currentProduct > maxProducts) {
+        if (multiChannelConfig.btcTickerMode != "off") {
+          // Return to BTC ticker (applies to both "always" and "selecting" modes)
+          multiChannelConfig.currentProduct = 0;
+          btctickerScreen();
+          multiChannelConfig.btcTickerActive = true;
+          deviceState.transition(DeviceState::BTC_TICKER);
+          productSelectionState.showTime = millis();
+          LOG_INFO("Navigation", "No more configured products - returning to BTC Ticker");
+          return;
+        } else {
+          // Ticker disabled: wrap to first configured product
+          multiChannelConfig.currentProduct = 1;
+          while (multiChannelConfig.currentProduct <= maxProducts) {
+            int pin;
+            switch (multiChannelConfig.currentProduct) {
+              case 1: pin = 12; break;
+              case 2: pin = 13; break;
+              case 3: pin = 10; break;
+              case 4: pin = 11; break;
+              default: pin = 12; break;
+            }
+            int idx = getPinIndex(pin);
+            if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
+              break;
+            }
+            multiChannelConfig.currentProduct++;
+          }
+          if (multiChannelConfig.currentProduct > maxProducts) {
+            multiChannelConfig.currentProduct = 1; // Safety fallback: nothing configured
+          }
+        }
+      }
+    } else {
+      // Servo mode or labels not yet loaded: use original simple wrap logic
+      if (multiChannelConfig.btcTickerMode == "selecting") {
+        if (multiChannelConfig.currentProduct > maxProducts) {
+          multiChannelConfig.currentProduct = 0; // Reset for next navigation
+          btctickerScreen();
+          multiChannelConfig.btcTickerActive = true;
+          deviceState.transition(DeviceState::BTC_TICKER);
+          productSelectionState.showTime = millis(); // Start timer for auto-return
+          LOG_INFO("Navigation", "SELECTING mode - Showing Bitcoin ticker after last product");
+          return;
+        }
+      } else {
+        if (multiChannelConfig.currentProduct > maxProducts) {
+          multiChannelConfig.currentProduct = 1; // Loop back to first product
+        }
+      }
     }
   }
   
