@@ -72,7 +72,7 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="./firmware/v946837/manifest.json">v946837 (Latest - Servo OFA Threshold mode &amp; NFC fix ⚙️)</option>
+                <option value="./firmware/v946837/manifest.json">v946837 (Latest - NFC both-mode fixes &amp; multi-channel navigation ⚡🛠️)</option>
                 <option value="./firmware/v945816/manifest.json">v945816 (NFC both-boltcard mode &amp; NFC auto-reset ⚡)</option>
                 <option value="./firmware/v944600/manifest.json">v944600 (More sensor functionality 🏪⚙️)</option>
                 <option value="./firmware/v944382/manifest.json">v944382 (Monitoring Product Blockage for vending machines 🏪)</option>
@@ -114,7 +114,7 @@
                 <option value="./firmware/v926531/manifest.json">v926531 (Initial Release - LNbits v0.12.12 / LNURLdevice v.0.6.9)</option>
             </select>
             
-            <esp-web-install-button id="flash-button" manifest="./firmware/v946837/manifest.json">
+            <esp-web-install-button id="flash-button" manifest="./firmware/v946837/manifest.json?_t=0">
                 <button slot="activate">🔥 Flash</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -124,11 +124,24 @@
         <p><i><strong>Note:</strong> The configuration data can be deleted using "Erase device." Otherwise, it will be retained even with the new firmware. LOGS & CONSOLE is no needed.</i></p>
         
         <script>
-            // Update manifest when version is changed
+            // Append timestamp to manifest URL to prevent browser caching of manifest + firmware files
+            function nocacheManifest(url) {
+                return url.split('?')[0] + '?_t=' + Date.now();
+            }
+
+            // Set cache-busting timestamp on initial load
+            (function() {
+                const flashButton = document.getElementById('flash-button');
+                const sel = document.getElementById('firmware-version');
+                flashButton.setAttribute('manifest', nocacheManifest(sel.value));
+            })();
+
+            // Update manifest (with cache buster) when version is changed
             document.getElementById('firmware-version').addEventListener('change', function(e) {
                 const flashButton = document.getElementById('flash-button');
-                flashButton.setAttribute('manifest', e.target.value);
-                console.log('Manifest changed to:', e.target.value);
+                const url = nocacheManifest(e.target.value);
+                flashButton.setAttribute('manifest', url);
+                console.log('Manifest changed to:', url);
             });
         </script>
 
