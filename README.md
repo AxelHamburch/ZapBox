@@ -1044,8 +1044,10 @@ ZapBox/
 
 - **LNbits**: Compatible with v1.4.x or higher
 - **Bitcoin Switch Extension**: Compatible with v1.2.1 or higher
+- **ZapBox Extension**: NFC Bolt Card functionality
 - **ESP32-S3**: Optimized for LilyGo T-Display-S3
 - **ESP32 classic**: A standard ESP32 can also be used. For installation in the headless case, an unsoldered 30-pin board is recommended.
+
 
 ## Versioning
 
