@@ -40,7 +40,7 @@ Für den industriellen Einsatz und komfortablen Anschluss kann die ZapOMat, alte
 | Mikrocontroller | T-Display-S3 mit 1,9" LCD-Display |
 | Frontpanel | Wahlweise mit 35° oder 90° Display Front (90° auch Einbau erhältlich) |
 | Spannungsversorgung | USB-C (5V) und Weitbereichseingang DC 6V-36V (Hohlbuchse 5,5*2,1 mm) |
-| Eingänge / Ausgänge | 16-polige Steckverbinder (15EDGWC-3,81mm) |
+| Eingänge / Ausgänge | 16-polige Steckverbinder (15EDGWC 3,81mm) |
 | Ausgänge | 4 Relaisausgänge CH1-CH4 - Schaltkontakte (NO/COM/NC) |
 | Eingang | 1 Sensoreingang |
 | Interface | Anschluss für externes NFC-Modul |
