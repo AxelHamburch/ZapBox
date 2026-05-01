@@ -936,8 +936,10 @@ NDEF URI Record:
 ```
 
 **Supported Phones**:
-- Android: Any phone with NFC (Phoenix, Wallet of Satoshi, Zeus, etc.)
+- Android: Any phone with NFC (Phoenix, Zeus, etc.)
 - iOS: iPhone 7 and later (NFC tag reading via NDEF)
+
+> **Note on Wallet of Satoshi (WoS):** WoS's NFC feature is designed exclusively for Bolt Cards (NTAG424 with LNURLW authentication). It does not process plain LNURLp from NFC tags. WoS users should use the QR code. This is a WoS app limitation — a PN532-based emulation cannot replicate the NTAG424 AES key derivation required for Bolt Card authentication.
 
 **NFC Mode Configuration** (Web Installer):
 - `reader` — Bolt Card / NTAG21x reading only (default)
@@ -948,8 +950,11 @@ NDEF URI Record:
 - Uses PN532 `TgInitAsTarget` command with SAK=0x20 (ISO-DEP only)
 - IRQ-based phone detection — no I2C polling during idle wait
 - APDU exchange handles the full NFC Forum Type 4 Tag command set (SELECT, READ BINARY)
-- FreeRTOS task on Core 0, priority 1, 8192 byte stack
+- FreeRTOS task on Core 1, priority 5, 8192-byte stack
 - NDEF payload supports URIs up to ~900 bytes (sufficient for all LNURL encodings)
+
+**Why not NTAG21x (Type 2 Tag) emulation?**
+The PN532 cannot emulate an NTAG21x via its TgGetData/TgSetData interface because the `GET_VERSION` command (`0x60`) used by modern NFC readers to fingerprint NTAG chips conflicts with the Mifare `AUTH_A` command (`0x60`). The PN532 intercepts `0x60` internally in Type 2 Tag mode, sends a Mifare authentication response, and the phone — expecting a GET_VERSION reply — immediately deselects the tag (PN532 error `0x25`). ISO-DEP (Type 4 Tag, SAK=0x20) is the only PN532 target mode that provides transparent APDU data exchange.
 
 ---
 

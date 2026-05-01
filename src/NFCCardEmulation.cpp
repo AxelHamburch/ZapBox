@@ -711,7 +711,7 @@ static void emulation_task_code(void *pvParams)
         consecutiveI2CErrors = 0;  // Successful connection resets counter
 
         LOG_INFO("NFC", "Phone connected — processing APDUs");
-        // Minimal delay for RATS/ATS \u2014 first APDU is already in PN532 buffer.
+        // Minimal delay for RATS/ATS — first APDU is already in PN532 buffer.
         // Shorter = better: less time for RF link to degrade.
         vTaskDelay(pdMS_TO_TICKS(5));
         SelectedFile selectedFile = SEL_NONE;
