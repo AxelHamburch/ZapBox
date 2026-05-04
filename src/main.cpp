@@ -2734,10 +2734,28 @@ void loop()
     }
     #endif
 
+    // ── IOExpander sensor polling: PCF8574 P0–P7 in "sensor" mode ─────────────
+    // Each sensor channel is active-LOW: pin pulled to GND = triggered.
+    // Transitions are logged; sensorActive[ch] is checked in payment blocking.
+    if (ioExpanderConfig.enabled) {
+      for (int ch = 0; ch < 8; ch++) {
+        if (ioExpanderConfig.channels[ch].mode != "sensor") continue;
+        bool triggered = readExpanderSensor(ch);          // true when pin is LOW
+        bool wasSensorActive = ioExpanderConfig.sensorActive[ch];
+        if (triggered && !wasSensorActive) {
+          ioExpanderConfig.sensorActive[ch] = true;
+          Serial.printf("[SENSOR] CH%02d (P%d) triggered — payments blocked\n", ch + 5, ch);
+        } else if (!triggered && wasSensorActive) {
+          ioExpanderConfig.sensorActive[ch] = false;
+          Serial.printf("[SENSOR] CH%02d (P%d) released — payments re-enabled\n", ch + 5, ch);
+        }
+      }
+    }
+
     // Process payments from queue
     if (paymentQueue.hasPending() && !paymentQueue.processing) {
-      // Block payment activation while any sensor condition is active
-      if (lightBarrierConfig.isAnyBlocking()) {
+      // Block payment activation while any sensor condition is active (GPIO + IOExpander)
+      if (lightBarrierConfig.isAnyBlocking() || ioExpanderConfig.isAnySensorBlocking()) {
         Serial.println("[SENSOR] Payment skipped — sensor blocking active");
         vTaskDelay(pdMS_TO_TICKS(500));
       } else {

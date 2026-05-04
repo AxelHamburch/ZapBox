@@ -419,6 +419,13 @@ struct IOExpanderChannelConfig {
 struct IOExpanderConfig {
   bool enabled = false;                   // True when PCF8574 is present and configured
   IOExpanderChannelConfig channels[8];    // CH05=0 … CH12=7
+  bool sensorActive[8] = {};              // runtime: true when sensor channel reads LOW (triggered)
+  bool isAnySensorBlocking() const {
+    for (int i = 0; i < 8; i++) {
+      if (channels[i].mode == "sensor" && sensorActive[i]) return true;
+    }
+    return false;
+  }
 };
 
 extern IOExpanderConfig ioExpanderConfig;
