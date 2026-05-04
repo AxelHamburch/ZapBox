@@ -3195,6 +3195,9 @@ static void processNormalPayment(int pin, int duration)
         lastDisplayedSec = remaining;
         updateActionTimeCountdown(remaining);
       }
+      if (shouldStopForLightBarrier(startTime)) {
+        break;
+      }
       webSocket.loop();
       vTaskDelay(pdMS_TO_TICKS(10));
     }
