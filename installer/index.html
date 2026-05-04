@@ -641,8 +641,6 @@
                 <img class="center-img" src="./assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" />
             </a>
 
-        </div>
-
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
@@ -652,19 +650,19 @@
                     <label for="ioExpander">I/O-Expander (PCF8574)</label>
                     <select name="ioExpander" id="ioExpander">
                         <option value="no" selected>No (default)</option>
-                        <option value="yes">Yes - CH05&ndash;CH12</option>
+                        <option value="yes">Yes - CH05–CH12</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I2C (SDA=GPIO18, SCL=GPIO17) &ndash; address 0x20 (A0/A1/A2 all to GND)</p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I2C (SDA=GPIO18, SCL=GPIO17) – address 0x20 (A0/A1/A2 all to GND)</p>
                 </div>
             </div>
 
             <!-- I/O-Expander channel configuration (visible only when "Yes" is selected) -->
             <div id="ioExpanderChannels" style="display: none; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
-                <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">I/O-Expander Channel Configuration (CH05&ndash;CH12)</p>
+                <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">I/O-Expander Channel Configuration (CH05–CH12)</p>
                 <p style="margin: 0 0 15px 0; color: #888; font-size: 11px;"><i>
                     Connect the PCF8574 to the I2C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V).<br>
-                    Set address pins: A0=GND, A1=GND, A2=GND &rarr; I2C address <strong>0x20</strong>.<br>
-                    Relay outputs: PCF8574 pin goes LOW when channel is triggered (low-level trigger).<br>
+                    Set address pins: A0=GND, A1=GND, A2=GND → I2C address <strong>0x20</strong>.<br>
+                    Relay outputs: PCF8574 pin goes HIGH when channel is triggered.<br>
                     Sensor inputs: NPN type, active LOW (pulls pin to GND when active).
                 </i></p>
 
@@ -769,9 +767,9 @@
                 </div><!-- end grid -->
 
                 <p style="margin: 15px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
-                    <strong>Relay function (low-level trigger):</strong> PCF8574 pin goes LOW when the channel is triggered &ndash; use low-level trigger relay modules (IN pulled to GND = relay ON).<br>
-                    Sensor modes behave identically to the built-in &ldquo;Special features for the vending machine&rdquo; options.<br>
-                    <strong>Servo 180&deg;/360&deg;</strong> is not available on PCF8574 channels (no PWM output).
+                    Sensor modes behave identically to the built-in "Special features for the vending machine" options.
+                    <strong>Relay function (low-level trigger):</strong> PCF8574 pin goes LOW when the channel is triggered — use low-level trigger relay modules (IN pulled to GND = relay ON). High-level trigger modules are not compatible with PCF8574.
+                    <strong>Servo 180°/360°</strong> is not available on PCF8574 channels (no PWM output).
                 </p>
             </div>
 
@@ -1147,12 +1145,12 @@
                 "name": "nfcMode",
                 "value": "emulation"
             },
-            // index 38 — I/O-Expander enabled flag
+            // index 38 – I/O-Expander enabled flag
             {
                 "name": "ioExpander",
                 "value": "no"
             },
-            // indices 39-46 — CH05-CH12 modes
+            // indices 39-46 – CH05-CH12 modes
             { "name": "ch05Mode", "value": "off" },
             { "name": "ch06Mode", "value": "off" },
             { "name": "ch07Mode", "value": "off" },
