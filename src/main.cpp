@@ -612,6 +612,7 @@ void readFiles()
         }
         String m = String(expanderModes[ch]);
         m.toLowerCase(); m.trim();
+        if (m == "yes" || m == "true" || m == "1") m = "relay"; // normalize legacy boolean values
         ioExpanderConfig.channels[ch].mode = m;
         if (m == "relay" || m == "sensor") anyConfigured = true;
       }

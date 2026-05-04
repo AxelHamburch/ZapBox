@@ -43,7 +43,7 @@ void activateExpanderChannel(int ch) {
     if (ioExpanderConfig.channels[ch].mode != "relay") return;
     outputState &= ~(1 << ch); // LOW = active (PCF8574 sinks current)
     pcf.write8(outputState);
-    LOG_INFO("IOExpander", String("CH") + String(ch + 5) + " activated (relay LOW/sink)");
+    LOG_INFO("IOExpander", String("CH") + String(ch + 5) + " (P" + String(ch) + ") activated");
 }
 
 void deactivateExpanderChannel(int ch) {
@@ -51,7 +51,7 @@ void deactivateExpanderChannel(int ch) {
     if (ioExpanderConfig.channels[ch].mode != "relay") return;
     outputState |= (1 << ch); // HIGH = inactive (open-drain, weak pull-up)
     pcf.write8(outputState);
-    LOG_INFO("IOExpander", String("CH") + String(ch + 5) + " deactivated (relay HIGH/open)");
+    LOG_INFO("IOExpander", String("CH") + String(ch + 5) + " (P" + String(ch) + ") deactivated");
 }
 
 bool readExpanderSensor(int ch) {
