@@ -2863,11 +2863,19 @@ inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
   }
   #endif
 
-  // IOExpander sensor-stop channels: stop action when any stop-sensor goes LOW
+  // IOExpander sensor-stop channels: read PCF8574 directly here.
+  // The main-loop polling (which updates sensorActive[]) is NOT running during a relay action,
+  // so we must not rely on the cached sensorActive[] state — read hardware directly instead.
   #if ENABLE_DISPLAY
-  if (ioExpanderConfig.isAnyStopSensorTriggered()) {
-    Serial.printf("[SENSOR] IOExpander stop-sensor triggered after %lu ms - stopping action!\n", elapsed);
-    return true;
+  if (ioExpanderConfig.enabled) {
+    for (int ch = 0; ch < 8; ch++) {
+      if (ioExpanderConfig.channels[ch].mode != "sensor") continue;
+      if (ioExpanderConfig.channels[ch].sensorSubMode != "sensor-stop") continue;
+      if (readExpanderSensor(ch)) { // direct PCF8574 read
+        Serial.printf("[SENSOR] IOExpander CH%02d (P%d) stop-sensor triggered after %lu ms - stopping action!\n", ch + 5, ch, elapsed);
+        return true;
+      }
+    }
   }
   #endif
 
