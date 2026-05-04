@@ -1,5 +1,6 @@
 ﻿#include "IOExpander.h"
 #include "GlobalState.h"
+#include "I2CBus.h"
 #include "Log.h"
 
 #if ENABLE_DISPLAY
@@ -22,12 +23,16 @@ void initIOExpander() {
     // ÔåÆ initialise ALL pins HIGH; relay channels pulled LOW when activated.
     outputState = 0xFF; // all HIGH on startup
 
-    if (!pcf.begin()) {
-        LOG_ERROR("IOExpander", "PCF8574 not found at 0x20 ÔÇô check wiring and address jumpers");
+    i2cTake();
+    bool found = pcf.begin();
+    if (found) pcf.write8(outputState);
+    i2cGive();
+
+    if (!found) {
+        LOG_ERROR("IOExpander", "PCF8574 not found at 0x20 – check wiring and address jumpers");
         ioExpanderConfig.enabled = false;
         return;
     }
-    pcf.write8(outputState);
     pcfInitialized = true;
     LOG_INFO("IOExpander", "PCF8574 initialized at 0x20 (all pins HIGH, relay=active-LOW)");
 
@@ -42,7 +47,9 @@ void activateExpanderChannel(int ch) {
     if (!pcfInitialized || ch < 0 || ch > 7) return;
     if (ioExpanderConfig.channels[ch].mode != "relay") return;
     outputState &= ~(1 << ch); // LOW = active (PCF8574 sinks current)
+    i2cTake();
     pcf.write8(outputState);
+    i2cGive();
     LOG_INFO("IOExpander", String("CH") + String(ch + 5) + " (P" + String(ch) + ") activated");
 }
 
@@ -50,14 +57,19 @@ void deactivateExpanderChannel(int ch) {
     if (!pcfInitialized || ch < 0 || ch > 7) return;
     if (ioExpanderConfig.channels[ch].mode != "relay") return;
     outputState |= (1 << ch); // HIGH = inactive (open-drain, weak pull-up)
+    i2cTake();
     pcf.write8(outputState);
+    i2cGive();
     LOG_INFO("IOExpander", String("CH") + String(ch + 5) + " (P" + String(ch) + ") deactivated");
 }
 
 bool readExpanderSensor(int ch) {
     if (!pcfInitialized || ch < 0 || ch > 7) return false;
     // PCF8574 open-drain: pin reads LOW when NPN sensor pulls it to GND
-    return (pcf.read8() & (1 << ch)) == 0;
+    i2cTake();
+    uint8_t val = pcf.read8();
+    i2cGive();
+    return (val & (1 << ch)) == 0;
 }
 
 #else

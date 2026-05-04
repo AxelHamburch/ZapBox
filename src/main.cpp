@@ -29,6 +29,7 @@
 #include "Navigation.h"
 #include "ServoControl.h"
 #include "IOExpander.h"
+#include "I2CBus.h"
 #include "Log.h"
 
 // NFC modules (optional feature, gated by ENABLE_NFC build flag)
@@ -1133,6 +1134,7 @@ void setup()
 #endif
 
   initDisplayMutex(); // MUST be called before any display function (thread-safe SPI)
+  i2cBusInit();       // MUST be called before touch.begin() / NFC init (shared I2C bus)
   initDisplay();
   startupScreen();
 
