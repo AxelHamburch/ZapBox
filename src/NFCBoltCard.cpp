@@ -18,6 +18,8 @@
 #include "I2CBus.h"
 #include "Log.h"
 
+#include <esp_log.h>
+
 #include <Wire.h>
 #include <Adafruit_PN532_NTAG424.h>
 #include <vector>
@@ -344,11 +346,20 @@ static void nfc_task_code(void *pvParams)
             continue;
         }
 
+        // Suppress Wire "i2cRead Error -1" log spam during the APDU exchange.
+        // The Adafruit PN532 library polls the chip's ready-status via requestFrom()
+        // every ~46 ms until it responds. During this poll the ESP32 Wire driver
+        // logs Error -1 for each unsuccessful attempt. These are benign retries –
+        // the chip responds successfully after ~3 polls (~138 ms). Suppressing here
+        // prevents misleading error messages; restored immediately after the exchange.
+        esp_log_level_set("i2c.master", ESP_LOG_NONE);
+
         // Verify the card is an NTAG424 DNA (required for Bolt Card).
         bool isNtag = s_nfc->ntag424_isNTAG424();
         if (!isNtag) {
             String uri = readNdefUri();
             i2cGive(); // release bus before HTTP call
+            esp_log_level_set("i2c.master", ESP_LOG_WARN); // restore Wire logging
             if (uri.length() == 0) {
                 LOG_WARN("NFC", "No readable NDEF URI found on card");
                 vTaskDelay(pdMS_TO_TICKS(500));
@@ -396,6 +407,7 @@ static void nfc_task_code(void *pvParams)
             }
         }
         i2cGive(); // release bus – remaining work (HTTP, card-removal poll) must not hold the mutex
+        esp_log_level_set("i2c.master", ESP_LOG_WARN); // restore Wire logging
 
         if (bytesRead == 0)
         {
