@@ -413,7 +413,8 @@ extern PaymentQueue paymentQueue;
 // ============================================================================
 
 struct IOExpanderChannelConfig {
-  String mode = "off";  // "off", "relay", "sensor"
+  String mode = "off";          // "off", "relay", "sensor"
+  String sensorSubMode = "";    // "sensor-stop", "sensor-monitor", "sensor-level" (stored for future use)
 };
 
 struct IOExpanderConfig {

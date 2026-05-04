@@ -597,28 +597,47 @@ void readFiles()
     #endif
     LOG_INFO("Config", "NFC mode: " + nfcConfig.mode);
 
-    // Read I/O Expander channel configuration (indices 38–45 = CH05–CH12)
-    // Each index holds a value string: "relay", "sensor", or "off".
-    // If at least one channel is configured, the PCF8574 is enabled.
+    // Read I/O Expander channel configuration
+    // Index 38 = ioExpander enable flag ("yes"/"no")
+    // Indices 39-46 = CH05-CH12 channel modes ("off","relay","sensor-stop","sensor-monitor","sensor-level")
     #if ENABLE_DISPLAY
     {
+      // Check enable flag at index 38
+      bool expanderEnabled = false;
+      const JsonObject enableObj = doc[38];
+      if (!enableObj.isNull()) {
+        const char* val = enableObj["value"];
+        if (val != nullptr) {
+          String s = String(val); s.toLowerCase(); s.trim();
+          expanderEnabled = (s == "yes" || s == "true" || s == "1");
+        }
+      }
+      ioExpanderConfig.enabled = expanderEnabled;
+
+      // Channel modes at indices 39-46
       bool anyConfigured = false;
-      const char* expanderModes[8];
       for (int ch = 0; ch < 8; ch++) {
-        const JsonObject chObj = doc[38 + ch];
-        expanderModes[ch] = "off";
+        const JsonObject chObj = doc[39 + ch];
+        String m = "off";
         if (!chObj.isNull()) {
           const char* val = chObj["value"];
-          if (val != nullptr) expanderModes[ch] = val;
+          if (val != nullptr) { m = String(val); m.toLowerCase(); m.trim(); }
         }
-        String m = String(expanderModes[ch]);
-        m.toLowerCase(); m.trim();
-        if (m == "yes" || m == "true" || m == "1") m = "relay"; // normalize legacy boolean values
+        // Normalize legacy values
+        if (m == "yes" || m == "true" || m == "1") m = "relay";
+        // Collapse sensor sub-types to "sensor" for firmware logic
+        if (m == "sensor-stop" || m == "sensor-monitor" || m == "sensor-level") {
+          ioExpanderConfig.channels[ch].sensorSubMode = m; // store for future use
+          m = "sensor";
+        } else {
+          ioExpanderConfig.channels[ch].sensorSubMode = "";
+        }
         ioExpanderConfig.channels[ch].mode = m;
         if (m == "relay" || m == "sensor") anyConfigured = true;
       }
-      ioExpanderConfig.enabled = anyConfigured;
-      LOG_INFO("Config", String("I/O Expander (PCF8574): ") + (anyConfigured ? "ENABLED" : "disabled"));
+      // If the user explicitly enabled the expander, mark it; auto-detect in initIOExpander() covers missing config
+      if (expanderEnabled) ioExpanderConfig.enabled = true;
+      LOG_INFO("Config", String("I/O Expander (PCF8574): ") + (expanderEnabled ? "ENABLED" : "disabled") + (anyConfigured ? " (" + String(anyConfigured) + " channels)" : ""));
       // initIOExpander() is called later in setup(), after touch.begin() initialises Wire
     }
     #endif
