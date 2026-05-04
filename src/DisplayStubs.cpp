@@ -29,6 +29,7 @@ void nfcNotSupportedScreen() {}
 void nfcErrorDetailScreen(const char*) {}
 void thankYouScreen() {}
 void productBlockedScreen() {}
+void supplyBinEmptyScreen() {}
 void drawQRCode() {}
 void showQRScreen() {}
 void showThresholdQRScreen() {}
