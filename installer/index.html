@@ -641,6 +641,138 @@
                 <img class="center-img" src="./assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" />
             </a>
 
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+        <!-- I/O-Expander Section (PCF8574) -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="ioExpander">I/O-Expander (PCF8574)</label>
+                    <select name="ioExpander" id="ioExpander">
+                        <option value="no" selected>No (default)</option>
+                        <option value="yes">Yes - CH05–CH12</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I2C (SDA=GPIO18, SCL=GPIO17) – address 0x20 (A0/A1/A2 all to GND)</p>
+                </div>
+            </div>
+
+            <!-- I/O-Expander channel configuration (visible only when "Yes" is selected) -->
+            <div id="ioExpanderChannels" style="display: none; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
+                <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">I/O-Expander Channel Configuration (CH05–CH12)</p>
+                <p style="margin: 0 0 15px 0; color: #888; font-size: 11px;"><i>
+                    Connect the PCF8574 to the I2C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V).<br>
+                    Set address pins: A0=GND, A1=GND, A2=GND → I2C address <strong>0x20</strong>.<br>
+                    Relay outputs: PCF8574 pin goes HIGH when channel is triggered.<br>
+                    Sensor inputs: NPN type, active LOW (pulls pin to GND when active).
+                </i></p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px;">
+
+                    <!-- CH05 -->
+                    <div>
+                        <label for="ch05Mode">CH05 (PCF8574 P0)</label>
+                        <select name="ch05Mode" id="ch05Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+
+                    <!-- CH06 -->
+                    <div>
+                        <label for="ch06Mode">CH06 (PCF8574 P1)</label>
+                        <select name="ch06Mode" id="ch06Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+
+                    <!-- CH07 -->
+                    <div style="margin-top: 10px;">
+                        <label for="ch07Mode">CH07 (PCF8574 P2)</label>
+                        <select name="ch07Mode" id="ch07Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+
+                    <!-- CH08 -->
+                    <div style="margin-top: 10px;">
+                        <label for="ch08Mode">CH08 (PCF8574 P3)</label>
+                        <select name="ch08Mode" id="ch08Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+
+                    <!-- CH09 -->
+                    <div style="margin-top: 10px;">
+                        <label for="ch09Mode">CH09 (PCF8574 P4)</label>
+                        <select name="ch09Mode" id="ch09Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+
+                    <!-- CH10 -->
+                    <div style="margin-top: 10px;">
+                        <label for="ch10Mode">CH10 (PCF8574 P5)</label>
+                        <select name="ch10Mode" id="ch10Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+
+                    <!-- CH11 -->
+                    <div style="margin-top: 10px;">
+                        <label for="ch11Mode">CH11 (PCF8574 P6)</label>
+                        <select name="ch11Mode" id="ch11Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+
+                    <!-- CH12 -->
+                    <div style="margin-top: 10px;">
+                        <label for="ch12Mode">CH12 (PCF8574 P7)</label>
+                        <select name="ch12Mode" id="ch12Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+
+                </div><!-- end grid -->
+
+                <p style="margin: 15px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
+                    Sensor modes behave identically to the built-in "Special features for the vending machine" options.
+                    <strong>Relay function (low-level trigger):</strong> PCF8574 pin goes LOW when the channel is triggered — use low-level trigger relay modules (IN pulled to GND = relay ON). High-level trigger modules are not compatible with PCF8574.
+                    <strong>Servo 180°/360°</strong> is not available on PCF8574 channels (no PWM output).
+                </p>
+            </div>
+
         </div>
 
         <!-- Error Detection Section -->
@@ -1012,7 +1144,21 @@
             {
                 "name": "nfcMode",
                 "value": "emulation"
-            }
+            },
+            // index 38 – I/O-Expander enabled flag
+            {
+                "name": "ioExpander",
+                "value": "no"
+            },
+            // indices 39-46 – CH05-CH12 modes
+            { "name": "ch05Mode", "value": "off" },
+            { "name": "ch06Mode", "value": "off" },
+            { "name": "ch07Mode", "value": "off" },
+            { "name": "ch08Mode", "value": "off" },
+            { "name": "ch09Mode", "value": "off" },
+            { "name": "ch10Mode", "value": "off" },
+            { "name": "ch11Mode", "value": "off" },
+            { "name": "ch12Mode", "value": "off" }
         ]
 
         // Setup Web Serial using serial.js
@@ -1565,6 +1711,22 @@
                 if (config[nfcModeIndex]) config[nfcModeIndex].value = configData[nfcModeIndex]?.value || "emulation";
                 nfcMode.value = config[nfcModeIndex]?.value || "emulation";
 
+                // I/O-Expander fields (indices 38-46)
+                if (configData[38]) {
+                    if (!config[38]) config[38] = { name: "ioExpander", value: "no" };
+                    config[38].value = configData[38]?.value || "no";
+                    document.getElementById("ioExpander").value = config[38].value;
+                }
+                const ioChIds2 = ["ch05Mode","ch06Mode","ch07Mode","ch08Mode","ch09Mode","ch10Mode","ch11Mode","ch12Mode"];
+                for (let i = 0; i < 8; i++) {
+                    if (configData[39 + i]) {
+                        if (!config[39 + i]) config[39 + i] = { name: ioChIds2[i], value: "off" };
+                        config[39 + i].value = configData[39 + i]?.value || "off";
+                        document.getElementById(ioChIds2[i]).value = config[39 + i].value;
+                    }
+                }
+                updateIOExpanderFieldState();
+
                 // Update servo field enabled/disabled state based on multiControl mode
                 updateServoFieldState();
 
@@ -1756,6 +1918,15 @@
             // NFC mode (index 37)
             if (!config[37]) config[37] = { name: "nfcMode", value: "emulation" };
             config[37].value = nfcMode.value || "emulation";
+
+            // I/O-Expander (indices 38-46)
+            if (!config[38]) config[38] = { name: "ioExpander", value: "no" };
+            config[38].value = document.getElementById("ioExpander").value || "no";
+            const ioChIds = ["ch05Mode","ch06Mode","ch07Mode","ch08Mode","ch09Mode","ch10Mode","ch11Mode","ch12Mode"];
+            for (let i = 0; i < 8; i++) {
+                if (!config[39 + i]) config[39 + i] = { name: ioChIds[i], value: "off" };
+                config[39 + i].value = document.getElementById(ioChIds[i]).value || "off";
+            }
 
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -1980,6 +2151,31 @@
         nfcMode.addEventListener("change", (event) => {
             config[37].value = event.target.value;
         });
+
+        // I/O-Expander event listeners
+        document.getElementById("ioExpander").addEventListener("change", (event) => {
+            if (!config[38]) config[38] = { name: "ioExpander", value: "no" };
+            config[38].value = event.target.value;
+            updateIOExpanderFieldState();
+        });
+
+        (function() {
+            const ioChIds = ["ch05Mode","ch06Mode","ch07Mode","ch08Mode","ch09Mode","ch10Mode","ch11Mode","ch12Mode"];
+            ioChIds.forEach((id, i) => {
+                document.getElementById(id).addEventListener("change", (event) => {
+                    if (!config[39 + i]) config[39 + i] = { name: id, value: "off" };
+                    config[39 + i].value = event.target.value;
+                });
+            });
+        })();
+
+        function updateIOExpanderFieldState() {
+            const enabled = document.getElementById("ioExpander").value === "yes";
+            document.getElementById("ioExpanderChannels").style.display = enabled ? "block" : "none";
+        }
+
+        // Set initial visibility of I/O-Expander section
+        updateIOExpanderFieldState();
 
         // Servo config field change listeners
         function updateServoFieldState() {

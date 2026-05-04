@@ -296,6 +296,16 @@ inline int getPinIndex(int pin) {
     case 27: return 9;
     case 32: return 10;
     case 33: return 11;
+    // Virtual IOExpander pins (PCF8574 P0–P7) reuse indices 4–11 on T-Display-S3
+    // (GPIO 19/22/23/25/26/27/32/33 are unused on T-Display-S3)
+    case 200: return 4;
+    case 201: return 5;
+    case 202: return 6;
+    case 203: return 7;
+    case 204: return 8;
+    case 205: return 9;
+    case 206: return 10;
+    case 207: return 11;
     default: return -1;
   }
 }
@@ -397,6 +407,45 @@ struct PaymentQueue {
 };
 
 extern PaymentQueue paymentQueue;
+
+// ============================================================================
+// I/O EXPANDER CONFIGURATION (PCF8574 — T-Display-S3 only)
+// ============================================================================
+
+struct IOExpanderChannelConfig {
+  String mode = "off";          // "off", "relay", "sensor"
+  String sensorSubMode = "";    // "sensor-stop", "sensor-monitor", "sensor-level"
+};
+
+struct IOExpanderConfig {
+  bool enabled = false;                   // True when PCF8574 is present and configured
+  IOExpanderChannelConfig channels[8];    // CH05=0 … CH12=7
+  bool sensorActive[8] = {};              // sensor-stop / sensor-monitor: true when pin LOW (triggered)
+  bool binEmpty[8] = {};                  // sensor-level: true when pin HIGH (bin is empty)
+
+  // Blocks payments when monitor channel is triggered (LOW) or level channel bin is empty (HIGH)
+  // sensor-stop does NOT block payments — it stops the action mid-flight instead.
+  bool isAnySensorBlocking() const {
+    for (int i = 0; i < 8; i++) {
+      if (channels[i].mode != "sensor") continue;
+      const String& sub = channels[i].sensorSubMode;
+      if (sub == "sensor-monitor" && sensorActive[i]) return true;
+      if (sub == "sensor-level"   && binEmpty[i])     return true;
+    }
+    return false;
+  }
+
+  // Returns true if any sensor-stop channel is currently triggered (LOW)
+  // Used during relay action to abort mid-flight.
+  bool isAnyStopSensorTriggered() const {
+    for (int i = 0; i < 8; i++) {
+      if (channels[i].mode == "sensor" && channels[i].sensorSubMode == "sensor-stop" && sensorActive[i]) return true;
+    }
+    return false;
+  }
+};
+
+extern IOExpanderConfig ioExpanderConfig;
 
 // ============================================================================
 // NFC MODE CONFIGURATION

@@ -129,24 +129,30 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     LOG_INFO("NFC", "LNURLW received from Bolt Card – sending WS event");
 
-    // Block NFC payments when any sensor condition is active
-    if (lightBarrierConfig.isAnyBlocking()) {
+    // Block NFC payments when any sensor condition is active (GPIO sensors + IOExpander sensors)
+    if (lightBarrierConfig.isAnyBlocking() || ioExpanderConfig.isAnySensorBlocking()) {
         LOG_WARN("NFC", "NFC tap blocked — sensor blocking active");
         return;
     }
 
     // Determine which relay pin is currently active.
     // In servo mode, use productToPin() which skips inactive channels.
-    // Otherwise use RELAY_CHANNEL_PINS[product-1] (standard mapping from PinConfig.h).
+    // Products 1-4 → RELAY_CHANNEL_PINS[0-3] (GPIO 12/13/10/11).
+    // Products 5-12 → virtual IOExpander pins 200-207 (PCF8574 P0-P7).
     int activePin = RELAY_CHANNEL_PINS[0]; // Default: CH01 / GPIO 12
     if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct > 0)
     {
         if (multiChannelConfig.mode == "servo") {
             activePin = servoConfig.productToPin(multiChannelConfig.currentProduct);
         } else {
-            int idx = multiChannelConfig.currentProduct - 1;
-            if (idx >= 0 && idx < RELAY_CHANNEL_MAX) {
-                activePin = RELAY_CHANNEL_PINS[idx];
+            int prod = multiChannelConfig.currentProduct;
+            if (prod >= 5 && prod <= 12) {
+                activePin = 200 + (prod - 5); // IOExpander virtual pins 200-207
+            } else {
+                int idx = prod - 1;
+                if (idx >= 0 && idx < RELAY_CHANNEL_MAX) {
+                    activePin = RELAY_CHANNEL_PINS[idx];
+                }
             }
         }
     }

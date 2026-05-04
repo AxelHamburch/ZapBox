@@ -28,6 +28,8 @@
 #include "API.h"
 #include "Navigation.h"
 #include "ServoControl.h"
+#include "IOExpander.h"
+#include "I2CBus.h"
 #include "Log.h"
 
 // NFC modules (optional feature, gated by ENABLE_NFC build flag)
@@ -595,6 +597,51 @@ void readFiles()
     #endif
     LOG_INFO("Config", "NFC mode: " + nfcConfig.mode);
 
+    // Read I/O Expander channel configuration
+    // Index 38 = ioExpander enable flag ("yes"/"no")
+    // Indices 39-46 = CH05-CH12 channel modes ("off","relay","sensor-stop","sensor-monitor","sensor-level")
+    #if ENABLE_DISPLAY
+    {
+      // Check enable flag at index 38
+      bool expanderEnabled = false;
+      const JsonObject enableObj = doc[38];
+      if (!enableObj.isNull()) {
+        const char* val = enableObj["value"];
+        if (val != nullptr) {
+          String s = String(val); s.toLowerCase(); s.trim();
+          expanderEnabled = (s == "yes" || s == "true" || s == "1");
+        }
+      }
+      ioExpanderConfig.enabled = expanderEnabled;
+
+      // Channel modes at indices 39-46
+      bool anyConfigured = false;
+      for (int ch = 0; ch < 8; ch++) {
+        const JsonObject chObj = doc[39 + ch];
+        String m = "off";
+        if (!chObj.isNull()) {
+          const char* val = chObj["value"];
+          if (val != nullptr) { m = String(val); m.toLowerCase(); m.trim(); }
+        }
+        // Normalize legacy values
+        if (m == "yes" || m == "true" || m == "1") m = "relay";
+        // Collapse sensor sub-types to "sensor" for firmware logic
+        if (m == "sensor-stop" || m == "sensor-monitor" || m == "sensor-level") {
+          ioExpanderConfig.channels[ch].sensorSubMode = m; // store for future use
+          m = "sensor";
+        } else {
+          ioExpanderConfig.channels[ch].sensorSubMode = "";
+        }
+        ioExpanderConfig.channels[ch].mode = m;
+        if (m == "relay" || m == "sensor") anyConfigured = true;
+      }
+      // If the user explicitly enabled the expander, mark it; auto-detect in initIOExpander() covers missing config
+      if (expanderEnabled) ioExpanderConfig.enabled = true;
+      LOG_INFO("Config", String("I/O Expander (PCF8574): ") + (expanderEnabled ? "ENABLED" : "disabled") + (anyConfigured ? " (" + String(anyConfigured) + " channels)" : ""));
+      // initIOExpander() is called later in setup(), after touch.begin() initialises Wire
+    }
+    #endif
+
     // Apply predefined mode settings
     if (specialModeConfig.mode == "blink") {
       specialModeConfig.frequency = 1.0;
@@ -1106,6 +1153,7 @@ void setup()
 #endif
 
   initDisplayMutex(); // MUST be called before any display function (thread-safe SPI)
+  i2cBusInit();       // MUST be called before touch.begin() / NFC init (shared I2C bus)
   initDisplay();
   startupScreen();
 
@@ -1116,6 +1164,11 @@ void setup()
   } else {
     Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
   }
+
+  // IOExpander init: Wire (SDA=18, SCL=17) is now ready after touch.begin()
+#if ENABLE_DISPLAY
+  initIOExpander();
+#endif
 
   // NFC module (optional, activated via -DENABLE_NFC=1 in platformio.ini)
   // Must run AFTER touch.begin() because Wire.begin(GPIO17, GPIO18) must have been
@@ -1151,6 +1204,9 @@ void setup()
     nfcBoltCardInit();
   }
 #endif
+
+  // I/O Expander init is deferred: runs after LNbits config is loaded (requires WiFi).
+  // This prevents I2C bus activity during WiFi association.
 
   // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
   leftButton.setPressMs(3000); // 3 s hold triggers config mode internally; WiFi teardown adds ~2.7 s → config screen appears after ~5.7 s total (documented as "hold 5 seconds")
@@ -1345,6 +1401,7 @@ void setup()
       wifiReconnectScreen();
       deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 1;
+      onErrorScreen = true;
       if (networkStatus.errors.wifi < 99) networkStatus.errors.wifi++;
       
       // Handle WiFi failure
@@ -1359,16 +1416,19 @@ void setup()
       internetReconnectScreen();
       deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 2;
+      onErrorScreen = true;
     } else if (!networkStatus.confirmed.server) {
       SETUP_PRINT("[STARTUP] Server failed - showing Server error");
       serverReconnectScreen();
       deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 3;
+      onErrorScreen = true;
     } else if (!networkStatus.confirmed.websocket) {
       SETUP_PRINT("[STARTUP] WebSocket failed - showing WebSocket error");
       websocketReconnectScreen();
       deviceState.transition(DeviceState::ERROR_RECOVERABLE);
       currentErrorType = 4;
+      onErrorScreen = true;
       if (networkStatus.errors.websocket < 99) networkStatus.errors.websocket++;
       
       // Start WebSocket if not yet started
@@ -1602,7 +1662,7 @@ void loop()
     readyMessageShown = true;
   }
 
-  unsigned long lastWiFiCheck = millis();
+  static unsigned long lastWiFiCheck = 0; // static: survives loop() re-entry from return;
   networkStatus.lastPingTime = millis(); // Initialize global variable
   unsigned long loopCount = 0;
   // Don't reset onErrorScreen/currentErrorType - they should persist across loop iterations
@@ -1689,6 +1749,7 @@ void loop()
             nfcErrorDetailStart = millis();
             LOG_INFO("NFC", "NO LUCK dismissed – showing error detail screen");
           } else {
+            productSelectionState.showTime = millis(); // Prevent immediate product timeout after NFC failure
             needsQRRedraw = true;
             LOG_INFO("NFC", "NFC NO LUCK screen dismissed – returning to QR screen");
           }
@@ -1697,6 +1758,7 @@ void loop()
         // Error detail screen active – show for 6s then return to QR
         if (millis() - nfcErrorDetailStart > 6000) {
           nfcErrorDetailShown = false;
+          productSelectionState.showTime = millis(); // Prevent immediate product timeout after NFC failure
           needsQRRedraw = true;
           LOG_INFO("NFC", "NFC error detail screen dismissed – returning to QR screen");
         }
@@ -2122,6 +2184,7 @@ void loop()
       } else if (multiChannelConfig.btcTickerMode == "off" && multiChannelConfig.mode != "off") {
         // OFF mode with Duo/Quattro: Return to Product No.1 after timeout
         if (productSelectionState.showTime > 0 &&
+            !extensionConfig.nfcPaymentPending &&
             (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
           if (multiChannelConfig.currentProduct > 0) {
             if (multiChannelConfig.currentProduct == 1) {
@@ -2185,7 +2248,8 @@ void loop()
                 }
               }
               productSelectionState.showTime = 0; // Reset timer
-            } else if (multiChannelConfig.currentProduct > 0 && !deviceState.isInState(DeviceState::PRODUCT_SELECTION) && 
+            } else if (multiChannelConfig.currentProduct > 0 && !deviceState.isInState(DeviceState::PRODUCT_SELECTION) &&
+                      !extensionConfig.nfcPaymentPending &&
                       (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
               // Product showing: Return to Product No.1 after PRODUCT_SELECTION_DELAY
               if (multiChannelConfig.currentProduct == 1) {
@@ -2382,6 +2446,7 @@ void loop()
     // Note: Internet is checked separately every 30 seconds
     if (millis() - lastWiFiCheck > 5000)
     {
+      lastWiFiCheck = millis(); // Reset at entry so all return paths are rate-limited
       // Check connection status step by step
       bool wifiOk = (WiFi.status() == WL_CONNECTED);
       bool serverOk = true;
@@ -2624,8 +2689,6 @@ void loop()
         // Don't override the websocket = false that was set by fetchSwitchLabels()
         return;
       }
-      
-      lastWiFiCheck = millis();
     }
     
     // ── Level monitoring: continuous bin-empty check (PIN 2 HIGH = empty) ────
@@ -2690,10 +2753,57 @@ void loop()
     }
     #endif
 
+    // ── IOExpander sensor polling: PCF8574 P0–P7 in "sensor" mode ─────────────
+    // sensor-stop   : active-LOW → stops action mid-flight (no pre-payment block)
+    // sensor-monitor: active-LOW → blocks payments + shows "PRODUCT IN EJECTOR"
+    // sensor-level  : INVERTED  → LOW=OK, HIGH=bin empty → blocks payments + "SUPPLY BIN EMPTY"
+    if (ioExpanderConfig.enabled) {
+      for (int ch = 0; ch < 8; ch++) {
+        if (ioExpanderConfig.channels[ch].mode != "sensor") continue;
+        const String& sub = ioExpanderConfig.channels[ch].sensorSubMode;
+        bool pinLow = readExpanderSensor(ch); // true when pin is LOW
+
+        if (sub == "sensor-level") {
+          // Level monitoring: pin HIGH = bin empty
+          bool isEmpty = !pinLow;
+          if (isEmpty && !ioExpanderConfig.binEmpty[ch]) {
+            ioExpanderConfig.binEmpty[ch] = true;
+            Serial.printf("[SENSOR] CH%02d (P%d) bin EMPTY — payments blocked\n", ch + 5, ch);
+            supplyBinEmptyScreen();
+          } else if (!isEmpty && ioExpanderConfig.binEmpty[ch]) {
+            ioExpanderConfig.binEmpty[ch] = false;
+            Serial.printf("[SENSOR] CH%02d (P%d) bin restocked — payments re-enabled\n", ch + 5, ch);
+            showQRScreen();
+          }
+        } else {
+          // sensor-stop and sensor-monitor: active-LOW
+          bool wasActive = ioExpanderConfig.sensorActive[ch];
+          if (pinLow && !wasActive) {
+            ioExpanderConfig.sensorActive[ch] = true;
+            if (sub == "sensor-monitor") {
+              Serial.printf("[SENSOR] CH%02d (P%d) product blocked — payments blocked\n", ch + 5, ch);
+              productBlockedScreen();
+            } else {
+              // sensor-stop: only blocks during action, not before
+              Serial.printf("[SENSOR] CH%02d (P%d) stop-sensor triggered\n", ch + 5, ch);
+            }
+          } else if (!pinLow && wasActive) {
+            ioExpanderConfig.sensorActive[ch] = false;
+            if (sub == "sensor-monitor") {
+              Serial.printf("[SENSOR] CH%02d (P%d) product cleared — payments re-enabled\n", ch + 5, ch);
+              showQRScreen();
+            } else {
+              Serial.printf("[SENSOR] CH%02d (P%d) stop-sensor released\n", ch + 5, ch);
+            }
+          }
+        }
+      }
+    }
+
     // Process payments from queue
     if (paymentQueue.hasPending() && !paymentQueue.processing) {
-      // Block payment activation while any sensor condition is active
-      if (lightBarrierConfig.isAnyBlocking()) {
+      // Block payment activation while any sensor condition is active (GPIO + IOExpander)
+      if (lightBarrierConfig.isAnyBlocking() || ioExpanderConfig.isAnySensorBlocking()) {
         Serial.println("[SENSOR] Payment skipped — sensor blocking active");
         vTaskDelay(pdMS_TO_TICKS(500));
       } else {
@@ -2752,7 +2862,23 @@ inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
     }
   }
   #endif
-  
+
+  // IOExpander sensor-stop channels: read PCF8574 directly here.
+  // The main-loop polling (which updates sensorActive[]) is NOT running during a relay action,
+  // so we must not rely on the cached sensorActive[] state — read hardware directly instead.
+  #if ENABLE_DISPLAY
+  if (ioExpanderConfig.enabled) {
+    for (int ch = 0; ch < 8; ch++) {
+      if (ioExpanderConfig.channels[ch].mode != "sensor") continue;
+      if (ioExpanderConfig.channels[ch].sensorSubMode != "sensor-stop") continue;
+      if (readExpanderSensor(ch)) { // direct PCF8574 read
+        Serial.printf("[SENSOR] IOExpander CH%02d (P%d) stop-sensor triggered after %lu ms - stopping action!\n", ch + 5, ch, elapsed);
+        return true;
+      }
+    }
+  }
+  #endif
+
   return false;
 }
 
@@ -3039,6 +3165,72 @@ static void oneForAllActivationTask(void* pvParams) {
 static void processNormalPayment(int pin, int duration)
 {
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
+
+  // Virtual pin mapping: 200–207 → PCF8574 I/O-Expander CH05–CH12 (channels 0–7)
+#if ENABLE_DISPLAY
+  if (pin >= 200 && pin <= 207) {
+    int ch = pin - 200;
+    if (!ioExpanderConfig.enabled) {
+      Serial.printf("[IOExpander] ERROR: virtual pin %d received but I/O-Expander is disabled!\n", pin);
+      return;
+    }
+    // Show action-time screen with countdown, same as physical pins
+    productSelectionState.showTime = 0;
+    activityTracking.lastActivityTime = millis();
+    if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+      deactivateScreensaver();
+      deviceState.transition(DeviceState::READY);
+    }
+    actionTimeScreen();
+    updateActionTimeCountdown(duration / 1000);
+
+    Serial.printf("[IOExpander] Activating CH%02d (P%d) for %d ms\n", ch + 5, ch, duration);
+    activateExpanderChannel(ch);
+
+    unsigned long startTime = millis();
+    int lastDisplayedSec = duration / 1000;
+    while (millis() - startTime < (unsigned long)duration) {
+      int remaining = (int)((duration - (millis() - startTime)) / 1000);
+      if (remaining != lastDisplayedSec) {
+        lastDisplayedSec = remaining;
+        updateActionTimeCountdown(remaining);
+      }
+      if (shouldStopForLightBarrier(startTime)) {
+        break;
+      }
+      webSocket.loop();
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    deactivateExpanderChannel(ch);
+    Serial.printf("[IOExpander] CH%02d (P%d) deactivated\n", ch + 5, ch);
+
+    // Thank-you screen + 2s hold (same as physical pins)
+    thankYouScreen();
+    activityTracking.lastActivityTime = millis();
+    unsigned long tyStart = millis();
+    while (millis() - tyStart < 2000) {
+      webSocket.loop();
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    // Reset timer and NFC state – same cleanup as end of processNormalPayment()
+    productSelectionState.showTime = millis();
+    multiChannelConfig.btcTickerActive = false;
+    #if ENABLE_NFC
+    extensionConfig.nfcPaymentPending = false;
+    extensionConfig.nfcErrorDetail[0] = '\0';
+    nfcPendingScreenShown = false;
+    nfcNoLuckScreenShown  = false;
+    nfcErrorDetailShown   = false;
+    nfcNotSupportedShown  = false;
+    resetBothModeToQR();
+    #endif
+    redrawQRScreen();
+    Serial.println("[NORMAL] Ready for next payment");
+    return;
+  }
+#endif
 
   // Reset OFA stop flag so secondary tasks from any previous payment don't
   // carry over into this activation.
