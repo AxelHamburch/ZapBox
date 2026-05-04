@@ -45,7 +45,8 @@ void initIOExpander() {
 
 void activateExpanderChannel(int ch) {
     if (!pcfInitialized || ch < 0 || ch > 7) return;
-    if (ioExpanderConfig.channels[ch].mode != "relay") return;
+    // No mode check: relay activation is triggered by a paid LNbits invoice
+    // on virtual pin 200-207. If the PCF8574 is present we execute it.
     outputState &= ~(1 << ch); // LOW = active (PCF8574 sinks current)
     i2cTake();
     pcf.write8(outputState);
@@ -55,7 +56,6 @@ void activateExpanderChannel(int ch) {
 
 void deactivateExpanderChannel(int ch) {
     if (!pcfInitialized || ch < 0 || ch > 7) return;
-    if (ioExpanderConfig.channels[ch].mode != "relay") return;
     outputState |= (1 << ch); // HIGH = inactive (open-drain, weak pull-up)
     i2cTake();
     pcf.write8(outputState);

@@ -643,6 +643,79 @@
 
         </div>
 
+        <!-- I/O Expander Section (PCF8574, CH05–CH12) -->
+        <div style="margin: 40px 0 0 0;">
+            <h2 id="io-expander">I/O Expander – PCF8574 (CH05–CH12)</h2>
+            <p>Configure the eight channels of an optional PCF8574 I2C GPIO expander (address 0x20). Each channel can be set as a <strong>relay output</strong> (activated by a Lightning payment) or a <strong>sensor input</strong> (blocks payments while the NPN input is pulled LOW).</p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px;">
+              <div class="input-wrapper">
+                <label for="ch05Mode">CH05 / P0</label>
+                <select name="ch05Mode" id="ch05Mode">
+                    <option value="off" selected>Off (default)</option>
+                    <option value="relay">Relay output (switched by payment)</option>
+                    <option value="sensor">Sensor input – blocks payments when LOW</option>
+                </select>
+              </div>
+              <div class="input-wrapper">
+                <label for="ch06Mode">CH06 / P1</label>
+                <select name="ch06Mode" id="ch06Mode">
+                    <option value="off" selected>Off (default)</option>
+                    <option value="relay">Relay output (switched by payment)</option>
+                    <option value="sensor">Sensor input – blocks payments when LOW</option>
+                </select>
+              </div>
+              <div class="input-wrapper">
+                <label for="ch07Mode">CH07 / P2</label>
+                <select name="ch07Mode" id="ch07Mode">
+                    <option value="off" selected>Off (default)</option>
+                    <option value="relay">Relay output (switched by payment)</option>
+                    <option value="sensor">Sensor input – blocks payments when LOW</option>
+                </select>
+              </div>
+              <div class="input-wrapper">
+                <label for="ch08Mode">CH08 / P3</label>
+                <select name="ch08Mode" id="ch08Mode">
+                    <option value="off" selected>Off (default)</option>
+                    <option value="relay">Relay output (switched by payment)</option>
+                    <option value="sensor">Sensor input – blocks payments when LOW</option>
+                </select>
+              </div>
+              <div class="input-wrapper">
+                <label for="ch09Mode">CH09 / P4</label>
+                <select name="ch09Mode" id="ch09Mode">
+                    <option value="off" selected>Off (default)</option>
+                    <option value="relay">Relay output (switched by payment)</option>
+                    <option value="sensor">Sensor input – blocks payments when LOW</option>
+                </select>
+              </div>
+              <div class="input-wrapper">
+                <label for="ch10Mode">CH10 / P5</label>
+                <select name="ch10Mode" id="ch10Mode">
+                    <option value="off" selected>Off (default)</option>
+                    <option value="relay">Relay output (switched by payment)</option>
+                    <option value="sensor">Sensor input – blocks payments when LOW</option>
+                </select>
+              </div>
+              <div class="input-wrapper">
+                <label for="ch11Mode">CH11 / P6</label>
+                <select name="ch11Mode" id="ch11Mode">
+                    <option value="off" selected>Off (default)</option>
+                    <option value="relay">Relay output (switched by payment)</option>
+                    <option value="sensor">Sensor input – blocks payments when LOW</option>
+                </select>
+              </div>
+              <div class="input-wrapper">
+                <label for="ch12Mode">CH12 / P7</label>
+                <select name="ch12Mode" id="ch12Mode">
+                    <option value="off" selected>Off (default)</option>
+                    <option value="relay">Relay output (switched by payment)</option>
+                    <option value="sensor">Sensor input – blocks payments when LOW</option>
+                </select>
+              </div>
+            </div>
+        </div>
+
         <!-- Error Detection Section -->
         <div style="background-color: #FFFFCC; padding: 30px 20px; margin: 0 -20px;">
             <h2 id="error-detection">Error Detection & Report</h2>
@@ -1012,7 +1085,15 @@
             {
                 "name": "nfcMode",
                 "value": "emulation"
-            }
+            },
+            { "name": "ch05Mode", "value": "off" },
+            { "name": "ch06Mode", "value": "off" },
+            { "name": "ch07Mode", "value": "off" },
+            { "name": "ch08Mode", "value": "off" },
+            { "name": "ch09Mode", "value": "off" },
+            { "name": "ch10Mode", "value": "off" },
+            { "name": "ch11Mode", "value": "off" },
+            { "name": "ch12Mode", "value": "off" }
         ]
 
         // Setup Web Serial using serial.js
@@ -1565,6 +1646,13 @@
                 if (config[nfcModeIndex]) config[nfcModeIndex].value = configData[nfcModeIndex]?.value || "emulation";
                 nfcMode.value = config[nfcModeIndex]?.value || "emulation";
 
+                // IOExpander channels (indices 38-45 = CH05-CH12)
+                for (let c = 0; c < 8; c++) {
+                    const el = document.getElementById(`ch${String(c + 5).padStart(2, '0')}Mode`);
+                    if (el) el.value = configData[38 + c]?.value || "off";
+                    if (config[38 + c]) config[38 + c].value = configData[38 + c]?.value || "off";
+                }
+
                 // Update servo field enabled/disabled state based on multiControl mode
                 updateServoFieldState();
 
@@ -1756,6 +1844,14 @@
             // NFC mode (index 37)
             if (!config[37]) config[37] = { name: "nfcMode", value: "emulation" };
             config[37].value = nfcMode.value || "emulation";
+
+            // IOExpander channel modes (indices 38-45 = CH05-CH12)
+            const chNames = ['ch05Mode','ch06Mode','ch07Mode','ch08Mode','ch09Mode','ch10Mode','ch11Mode','ch12Mode'];
+            for (let c = 0; c < 8; c++) {
+                if (!config[38 + c]) config[38 + c] = { name: chNames[c], value: "off" };
+                const el = document.getElementById(chNames[c]);
+                config[38 + c].value = el ? el.value : "off";
+            }
 
             // Validate required fields
             const ssidValue = config[0].value.trim();
