@@ -2754,19 +2754,48 @@ void loop()
     #endif
 
     // ── IOExpander sensor polling: PCF8574 P0–P7 in "sensor" mode ─────────────
-    // Each sensor channel is active-LOW: pin pulled to GND = triggered.
-    // Transitions are logged; sensorActive[ch] is checked in payment blocking.
+    // sensor-stop   : active-LOW → stops action mid-flight (no pre-payment block)
+    // sensor-monitor: active-LOW → blocks payments + shows "PRODUCT IN EJECTOR"
+    // sensor-level  : INVERTED  → LOW=OK, HIGH=bin empty → blocks payments + "SUPPLY BIN EMPTY"
     if (ioExpanderConfig.enabled) {
       for (int ch = 0; ch < 8; ch++) {
         if (ioExpanderConfig.channels[ch].mode != "sensor") continue;
-        bool triggered = readExpanderSensor(ch);          // true when pin is LOW
-        bool wasSensorActive = ioExpanderConfig.sensorActive[ch];
-        if (triggered && !wasSensorActive) {
-          ioExpanderConfig.sensorActive[ch] = true;
-          Serial.printf("[SENSOR] CH%02d (P%d) triggered — payments blocked\n", ch + 5, ch);
-        } else if (!triggered && wasSensorActive) {
-          ioExpanderConfig.sensorActive[ch] = false;
-          Serial.printf("[SENSOR] CH%02d (P%d) released — payments re-enabled\n", ch + 5, ch);
+        const String& sub = ioExpanderConfig.channels[ch].sensorSubMode;
+        bool pinLow = readExpanderSensor(ch); // true when pin is LOW
+
+        if (sub == "sensor-level") {
+          // Level monitoring: pin HIGH = bin empty
+          bool isEmpty = !pinLow;
+          if (isEmpty && !ioExpanderConfig.binEmpty[ch]) {
+            ioExpanderConfig.binEmpty[ch] = true;
+            Serial.printf("[SENSOR] CH%02d (P%d) bin EMPTY — payments blocked\n", ch + 5, ch);
+            supplyBinEmptyScreen();
+          } else if (!isEmpty && ioExpanderConfig.binEmpty[ch]) {
+            ioExpanderConfig.binEmpty[ch] = false;
+            Serial.printf("[SENSOR] CH%02d (P%d) bin restocked — payments re-enabled\n", ch + 5, ch);
+            showQRScreen();
+          }
+        } else {
+          // sensor-stop and sensor-monitor: active-LOW
+          bool wasActive = ioExpanderConfig.sensorActive[ch];
+          if (pinLow && !wasActive) {
+            ioExpanderConfig.sensorActive[ch] = true;
+            if (sub == "sensor-monitor") {
+              Serial.printf("[SENSOR] CH%02d (P%d) product blocked — payments blocked\n", ch + 5, ch);
+              productBlockedScreen();
+            } else {
+              // sensor-stop: only blocks during action, not before
+              Serial.printf("[SENSOR] CH%02d (P%d) stop-sensor triggered\n", ch + 5, ch);
+            }
+          } else if (!pinLow && wasActive) {
+            ioExpanderConfig.sensorActive[ch] = false;
+            if (sub == "sensor-monitor") {
+              Serial.printf("[SENSOR] CH%02d (P%d) product cleared — payments re-enabled\n", ch + 5, ch);
+              showQRScreen();
+            } else {
+              Serial.printf("[SENSOR] CH%02d (P%d) stop-sensor released\n", ch + 5, ch);
+            }
+          }
         }
       }
     }
@@ -2833,7 +2862,15 @@ inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
     }
   }
   #endif
-  
+
+  // IOExpander sensor-stop channels: stop action when any stop-sensor goes LOW
+  #if ENABLE_DISPLAY
+  if (ioExpanderConfig.isAnyStopSensorTriggered()) {
+    Serial.printf("[SENSOR] IOExpander stop-sensor triggered after %lu ms - stopping action!\n", elapsed);
+    return true;
+  }
+  #endif
+
   return false;
 }
 
