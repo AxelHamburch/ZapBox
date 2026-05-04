@@ -293,6 +293,75 @@ When servo mode is active, Pin 12 is reserved for the servo and skipped in the r
 **Max Current per Pin:** ~40mA (requires external relay driver for high-power loads)
 **Typical Usage:** Relay driver IC (ULN2003/ULN2803) or MOSFET for external circuits
 
+### IOExpander — PCF8574 (Optional, both variants)
+
+**Feature:** Adds 8 additional relay/sensor channels (CH05–CH12) via a PCF8574 I2C I/O expander. Both the T-Display-S3 and the headless ESP32 Dev variant are supported, since both share the same I2C bus (SDA=GPIO18, SCL=GPIO17).
+
+This is the recommended solution for the T-Display-S3, which has no free GPIO pins left for additional relays or sensors. The PCF8574 sits on the existing I2C bus alongside the PN532 NFC reader — no additional wiring to the ESP32 is required.
+
+**Virtual Pin Mapping:**
+
+| Virtual Pin (LNbits) | PCF8574 Port | Config Key | Default Mode |
+|----------------------|--------------|------------|--------------|
+| 200 | P0 | ch05 | off |
+| 201 | P1 | ch06 | off |
+| 202 | P2 | ch07 | off |
+| 203 | P3 | ch08 | off |
+| 204 | P4 | ch09 | off |
+| 205 | P5 | ch10 | off |
+| 206 | P6 | ch11 | off |
+| 207 | P7 | ch12 | off |
+
+**Hardware:**
+
+| PCF8574 Pin | Connect to | Notes |
+|-------------|-----------|-------|
+| VCC | 3.3V | |
+| GND | GND | |
+| SDA (A4) | GPIO 18 | Shared with Touch / NFC |
+| SCL (A5) | GPIO 17 | Shared with Touch / NFC |
+| A0, A1, A2 | GND | Sets I2C address to 0x20 |
+| P0–P7 | Relay module IN1–IN8 | Active-LOW (LOW = relay on) |
+
+> **⚠️ Relay logic is active-LOW:** The PCF8574 outputs are active-LOW. Connect relay modules that trigger on LOW (most common opto-coupled relay boards). On startup all pins are set HIGH (all relays off).
+
+**Wiring:**
+```
+PCF8574         →    T-Display-S3 / ESP32 Dev    →    Relay Module
+───────────────────────────────────────────────────────────────────
+VCC             →    3.3V
+GND             →    GND
+SDA             →    GPIO 18 (shared I2C)
+SCL             →    GPIO 17 (shared I2C)
+A0, A1, A2      →    GND                         (address = 0x20)
+P0              →                                →    IN1
+P1              →                                →    IN2
+...
+P7              →                                →    IN8
+```
+
+**Channel Modes (configurable per channel via web installer):**
+
+- **off**: Channel disabled (PCF8574 pin stays HIGH)
+- **relay**: Standard relay output — activated for the payment duration, then deactivated
+- **sensor-stop**: Sensor input — stops an active relay action immediately when triggered (LOW). Reads the PCF8574 hardware directly on every tick for real-time response
+- **sensor-monitor**: Sensor input — blocks the next payment and shows a "Product Blocked" screen when the sensor is LOW. Payments are re-enabled once the sensor returns to HIGH
+- **sensor-level**: Sensor input — inverted logic: LOW = supply OK, HIGH = bin empty. Shows a "Supply Bin Empty" screen and blocks payments when the sensor goes HIGH
+
+**Sensor Mode Behavior Summary:**
+
+| Mode | Trigger | Effect | Screen |
+|------|---------|--------|--------|
+| `sensor-stop` | LOW during active relay | Stops relay immediately | None |
+| `sensor-monitor` | LOW before/after payment | Blocks next payment | "PRODUCT BLOCKED" |
+| `sensor-level` | HIGH (bin empty) | Blocks payments | "SUPPLY BIN EMPTY" |
+
+**I2C Address:** `0x20` (default, A0/A1/A2 all tied to GND). The device is auto-detected at startup. If no PCF8574 is found, the IOExpander feature is silently disabled.
+
+**I2C Bus Sharing:** The PCF8574 shares the I2C bus with the PN532 NFC reader (address `0x24`). An I2C bus mutex prevents simultaneous access from different FreeRTOS tasks.
+
+**Circuit Diagram:** See [assets/electric/e947689-Compact-Ext/](assets/electric/e947689-Compact-Ext/) for the complete Compact-Ext wiring schematic.
+
 ### NFC Reader Setup (Optional)
 
 **Hardware:** PN532 NFC Module (HW-147, I2C mode)
