@@ -1104,6 +1104,7 @@ Electrical design and housing variants, see table.
 | e944644 | Headless Servo | First powerfull Headless Servo | e945370
 | e945370 | ZapOMat | Update with wide-range voltage input | 
 | e946465 | Servo | Update with wide-range voltage input and NFC-plug | 
+| e947689 | Compact-Ext | Special version with external guided switching contact |
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
@@ -1130,6 +1131,7 @@ For the archive and development, see [here](https://github.com/AxelHamburch/ZapB
 See the complete wiring diagram:
 
 - [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
+- [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact-Ext.png)
 - [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
 - [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
 - [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
