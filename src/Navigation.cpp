@@ -1,5 +1,21 @@
 #include "Navigation.h"
 #include "GlobalState.h"
+#include "IOExpander.h"
+
+// Helper: map product number (1-based) to GPIO pin.
+// Products 1–4  → physical pins 12, 13, 10, 11
+// Products 5–12 → virtual IOExpander pins 200–207
+static int productNumToPin(int productNum) {
+  switch (productNum) {
+    case 1: return 12;
+    case 2: return 13;
+    case 3: return 10;
+    case 4: return 11;
+    default:
+      if (productNum >= 5 && productNum <= 12) return 200 + (productNum - 5);
+      return 12;
+  }
+}
 #include "DeviceState.h"
 #include "PinConfig.h"
 #include "Display.h"
@@ -198,13 +214,7 @@ void navigateToNextProduct() {
         if (multiChannelConfig.mode == "servo") {
           pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
         } else {
-          switch(multiChannelConfig.currentProduct) {
-            case 1: pin = 12; break;
-            case 2: pin = 13; break;
-            case 3: pin = 10; break;
-            case 4: pin = 11; break;
-            default: pin = 12; break;
-          }
+          pin = productNumToPin(multiChannelConfig.currentProduct);
         }
       }
       int pinIndex = getPinIndex(pin);
@@ -238,13 +248,7 @@ void navigateToNextProduct() {
         if (multiChannelConfig.mode == "servo") {
           pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
         } else {
-          switch(multiChannelConfig.currentProduct) {
-            case 1: pin = 12; break;
-            case 2: pin = 13; break;
-            case 3: pin = 10; break;
-            case 4: pin = 11; break;
-            default: pin = 12; break;
-          }
+          pin = productNumToPin(multiChannelConfig.currentProduct);
         }
       }
       ensureQrForPin(pin);
@@ -302,13 +306,7 @@ void navigateToNextProduct() {
         if (multiChannelConfig.mode == "servo") {
           pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
         } else {
-          switch(multiChannelConfig.currentProduct) {
-            case 1: pin = 12; break;
-            case 2: pin = 13; break;
-            case 3: pin = 10; break;
-            case 4: pin = 11; break;
-            default: pin = 12; break;
-          }
+          pin = productNumToPin(multiChannelConfig.currentProduct);
         }
       }
       int pinIndex = getPinIndex(pin);
@@ -376,13 +374,7 @@ void navigateToNextProduct() {
       if (multiChannelConfig.mode == "servo") {
         pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
       } else {
-        switch (multiChannelConfig.currentProduct) {
-          case 1: pin = 12; break;
-          case 2: pin = 13; break;
-          case 3: pin = 10; break;
-          case 4: pin = 11; break;
-          default: pin = 12; break;
-        }
+        pin = productNumToPin(multiChannelConfig.currentProduct);
       }
       int pinIndex = getPinIndex(pin);
       String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
@@ -485,6 +477,8 @@ void navigateToNextProduct() {
     if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
     else if (multiChannelConfig.mode == "quattro") maxProducts = 4;
     else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.activeChannelCount();
+    // Add configured IOExpander channels (pins 200–207) as additional products
+    if (ioExpanderConfig.enabled && multiChannelConfig.mode != "servo") maxProducts += 8;
 
     // For non-servo modes with labels already loaded: skip products whose GPIO
     // has no LNbits switch configured (duration == 0 AND label empty).
@@ -492,14 +486,7 @@ void navigateToNextProduct() {
     if (multiChannelConfig.mode != "servo" && labelsLoadedSuccessfully) {
       // Advance past every unconfigured product
       while (multiChannelConfig.currentProduct <= maxProducts) {
-        int pin;
-        switch (multiChannelConfig.currentProduct) {
-          case 1: pin = 12; break;
-          case 2: pin = 13; break;
-          case 3: pin = 10; break;
-          case 4: pin = 11; break;
-          default: pin = 12; break;
-        }
+        int pin = productNumToPin(multiChannelConfig.currentProduct);
         int idx = getPinIndex(pin);
         if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
           break; // This product has a switch – show it
@@ -523,14 +510,7 @@ void navigateToNextProduct() {
           // Ticker disabled: wrap to first configured product
           multiChannelConfig.currentProduct = 1;
           while (multiChannelConfig.currentProduct <= maxProducts) {
-            int pin;
-            switch (multiChannelConfig.currentProduct) {
-              case 1: pin = 12; break;
-              case 2: pin = 13; break;
-              case 3: pin = 10; break;
-              case 4: pin = 11; break;
-              default: pin = 12; break;
-            }
+            int pin = productNumToPin(multiChannelConfig.currentProduct);
             int idx = getPinIndex(pin);
             if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
               break;
@@ -582,20 +562,11 @@ void navigateToNextProduct() {
     
     // Map product number to pin
     // Servo mode: dynamic mapping based on active channels (relay1→12, servo1→13, servo2→10, relay2→11)
-    // Standard:   Product 1 → Pin 12, Product 2 → Pin 13, Product 3 → Pin 10, Product 4 → Pin 11
+    // Standard:   Product 1–4 → Pins 12, 13, 10, 11; Products 5–12 → IOExpander Pins 200–207
     if (multiChannelConfig.mode == "servo") {
       pin = servoConfig.productToPin(productNum);
     } else {
-      switch(productNum) {
-        case 1: pin = 12; break;
-        case 2: pin = 13; break;
-        case 3: pin = 10; break;
-        case 4: pin = 11; break;
-        default:
-          LOG_WARN("Navigation", String("Invalid product number ") + String(productNum) + String(", defaulting to Pin 12"));
-          pin = 12;
-          break;
-      }
+      pin = productNumToPin(productNum);
     }
     
     // Get label from array, or use fallback

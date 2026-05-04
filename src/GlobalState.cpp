@@ -65,6 +65,9 @@ PaymentQueue paymentQueue;
 // Activity Tracking for Screensaver
 ActivityTracking activityTracking;
 
+// I/O Expander Configuration (PCF8574)
+IOExpanderConfig ioExpanderConfig;
+
 // NFC Mode Configuration
 NfcConfig nfcConfig;
 
