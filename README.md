@@ -360,8 +360,6 @@ P7              →                                →    IN8
 
 **I2C Bus Sharing:** The PCF8574 shares the I2C bus with the PN532 NFC reader (address `0x24`). An I2C bus mutex prevents simultaneous access from different FreeRTOS tasks.
 
-**Circuit Diagram:** See [assets/electric/e947689-Compact-Ext/](assets/electric/e947689-Compact-Ext/) for the complete Compact-Ext wiring schematic.
-
 ### NFC Reader Setup (Optional)
 
 **Hardware:** PN532 NFC Module (HW-147, I2C mode)
