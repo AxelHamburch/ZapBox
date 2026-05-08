@@ -36,6 +36,7 @@
 #ifdef ENABLE_NFC
 #include "NFCBoltCard.h"
 #include "NFCCardEmulation.h"
+#include "NFCNT3H2111.h"
 #endif
 
 #define FORMAT_ON_FAIL true
@@ -578,24 +579,24 @@ void readFiles()
       }
     }
 
-    // Read NFC mode configuration (index 37 in new config format)
-    const JsonObject maRoot29 = doc[37];
-    if (!maRoot29.isNull()) {
-      const char *maRoot29Char = maRoot29["value"];
-      if (maRoot29Char != nullptr) {
-        nfcConfig.mode = String(maRoot29Char);
-        nfcConfig.mode.toLowerCase();
-        nfcConfig.mode.trim();
+    // Read GPIO 3 function configuration (index 37)
+    {
+      const JsonObject maRoot37 = doc[37];
+      if (!maRoot37.isNull()) {
+        const char *val = maRoot37["value"];
+        if (val != nullptr) {
+          String s = String(val);
+          s.toLowerCase();
+          s.trim();
+          gpio3Config.mode            = s;
+          gpio3Config.enabled         = (s == "yes");
+          gpio3Config.monitoring      = (s == "monitor");
+          gpio3Config.levelMonitoring = (s == "level");
+          gpio3Config.isFd            = (s == "fd");
+        }
       }
+      LOG_INFO("Config", String("GPIO 3 function: ") + gpio3Config.mode);
     }
-    // Headless: "both" requires a display – fall back to "boltcard"
-    #if !ENABLE_DISPLAY
-    if (nfcConfig.mode == "both" || nfcConfig.mode == "both-boltcard") {
-      LOG_WARN("Config", "NFC mode 'both'/'both-boltcard' requires display – falling back to 'boltcard'");
-      nfcConfig.mode = "boltcard";
-    }
-    #endif
-    LOG_INFO("Config", "NFC mode: " + nfcConfig.mode);
 
     // Read I/O Expander channel configuration
     // Index 38 = ioExpander enable flag ("yes"/"no")
@@ -1170,39 +1171,23 @@ void setup()
   initIOExpander();
 #endif
 
+  // GPIO 3 function (T-Display-S3 only — sensor input or FD from NT3H2111)
+#ifdef PIN_GPIO3
+  if (gpio3Config.isActive()) {
+    pinMode(PIN_GPIO3, PIN_GPIO3_MODE);
+    LOG_INFO("Setup", String("GPIO ") + PIN_GPIO3 + " configured: mode=" + gpio3Config.mode);
+  }
+#endif
+
   // NFC module (optional, activated via -DENABLE_NFC=1 in platformio.ini)
   // Must run AFTER touch.begin() because Wire.begin(GPIO17, GPIO18) must have been
   // called first (PN532 shares the same I2C bus as the touch controller).
 #ifdef ENABLE_NFC
-  if (nfcConfig.mode == "off") {
-    Serial.println("[NFC] NFC disabled by configuration");
-  } else if (nfcConfig.mode == "boltcard") {
-    if (!nfcBoltCardInit()) {
-      Serial.println("[NFC] Bolt Card reader not found - normal operation unaffected");
-    }
-  } else if (nfcConfig.mode == "emulation") {
-    if (!nfcCardEmulationInit()) {
-      Serial.println("[NFC] Card emulation init failed - normal operation unaffected");
-    }
-  } else if (nfcConfig.mode == "both") {
-    // "both" mode: start in emulation (QR screen is shown first)
-    if (!nfcCardEmulationInit()) {
-      Serial.println("[NFC] Card emulation init failed - trying bolt card only");
-      nfcConfig.mode = "boltcard";
-      nfcBoltCardInit();
-    }
-  } else if (nfcConfig.mode == "both-boltcard") {
-    // "both-boltcard" mode: start BoltCard reader (BoltCard screen shown first)
-    if (!nfcBoltCardInit()) {
-      Serial.println("[NFC] Bolt Card reader init failed - trying emulation only");
-      nfcConfig.mode = "emulation";
-      nfcCardEmulationInit();
-    }
-  } else {
-    Serial.println("[NFC] Unknown NFC mode '" + nfcConfig.mode + "' - defaulting to boltcard");
-    nfcConfig.mode = "boltcard";
-    nfcBoltCardInit();
-  }
+  // Both NFC modules are always initialized — each self-detects on I²C,
+  // skipped silently if the hardware is not connected.
+  Serial.println("[NFC] Initializing NFC modules (auto-detect)...");
+  nfcBoltCardInit();   // PN532 @ 0x24 — Bolt Card reader (IRQ: PIN_NFC_IRQ)
+  nfcNT3H2111Init();   // NT3H2111 @ 0x55 — Passive NFC tag for mobile phones
 #endif
 
   // I/O Expander init is deferred: runs after LNbits config is loaded (requires WiFi).
@@ -1797,6 +1782,11 @@ void loop()
     }
     #endif
     // \u2500\u2500\u2500 End NFC payment monitoring \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+    // NT3H2111: re-write NDEF if the active LNURL changed (no-op when unchanged)
+    #ifdef ENABLE_NFC
+    nfcNT3H2111UpdateIfChanged();
+    #endif
 
     // Check for touch input (if available)
     static unsigned long lastTouchEvent = 0;
@@ -2800,10 +2790,47 @@ void loop()
       }
     }
 
+    // ── GPIO 3 function: level / blockage / FD monitoring (T-Display-S3 only) ──
+    #ifdef PIN_GPIO3
+    if (gpio3Config.levelMonitoring) {
+      bool pinIsLow = (digitalRead(PIN_GPIO3) == LOW);
+      if (!pinIsLow && !gpio3Config.binEmpty) {
+        gpio3Config.binEmpty = true;
+        Serial.println("[GPIO3] Level: bin empty detected — payments blocked");
+        supplyBinEmptyScreen();
+      } else if (pinIsLow && gpio3Config.binEmpty) {
+        gpio3Config.binEmpty = false;
+        Serial.println("[GPIO3] Level: bin restocked — payments re-enabled");
+        redrawQRScreen();
+      }
+    }
+    if (gpio3Config.monitoring) {
+      bool pinIsLow = (digitalRead(PIN_GPIO3) == LOW);
+      if (pinIsLow && !gpio3Config.blocked) {
+        gpio3Config.blocked = true;
+        Serial.println("[GPIO3] Blockage detected — payments blocked");
+        productBlockedScreen();
+      } else if (!pinIsLow && gpio3Config.blocked) {
+        gpio3Config.blocked = false;
+        Serial.println("[GPIO3] Blockage cleared — payments re-enabled");
+        redrawQRScreen();
+      }
+    }
+    if (gpio3Config.isFd) {
+      // FD pin (open-drain): LOW = no NFC field, HIGH = phone approaching
+      static bool lastFdState = false;
+      bool fdHigh = (digitalRead(PIN_GPIO3) == HIGH);
+      if (fdHigh && !lastFdState) {
+        Serial.println("[GPIO3] FD: mobile phone detected on NFC Tag 2");
+      }
+      lastFdState = fdHigh;
+    }
+    #endif
+
     // Process payments from queue
     if (paymentQueue.hasPending() && !paymentQueue.processing) {
       // Block payment activation while any sensor condition is active (GPIO + IOExpander)
-      if (lightBarrierConfig.isAnyBlocking() || ioExpanderConfig.isAnySensorBlocking()) {
+      if (lightBarrierConfig.isAnyBlocking() || ioExpanderConfig.isAnySensorBlocking() || gpio3Config.isBlocking()) {
         Serial.println("[SENSOR] Payment skipped — sensor blocking active");
         vTaskDelay(pdMS_TO_TICKS(500));
       } else {
@@ -2875,6 +2902,15 @@ inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
         Serial.printf("[SENSOR] IOExpander CH%02d (P%d) stop-sensor triggered after %lu ms - stopping action!\n", ch + 5, ch, elapsed);
         return true;
       }
+    }
+  }
+  #endif
+
+  #ifdef PIN_GPIO3
+  if (gpio3Config.enabled) {
+    if (digitalRead(PIN_GPIO3) == LOW) {
+      Serial.printf("[GPIO3] Triggered after %lu ms - stopping action!\n", elapsed);
+      return true;
     }
   }
   #endif

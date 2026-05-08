@@ -43,6 +43,13 @@
 #define PIN_IIC_SCL 17         // I2C clock
 #define PIN_IIC_SDA 18         // I2C data
 
+// GPIO 3 — free expansion / sensor input (T-Display-S3 only)
+// Used for: light-barrier-style sensor on channel 1, or FD (Field Detection) from NT3H2111.
+// Not defined on headless ESP32 Dev (different free GPIOs available there).
+#if ENABLE_DISPLAY
+  #define PIN_GPIO3 3
+#endif
+
 // Touch controller (CST816S/CST328)
 #define PIN_TOUCH_INT 16       // Touch interrupt
 #if ENABLE_DISPLAY

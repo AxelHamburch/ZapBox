@@ -136,19 +136,21 @@ Device String (switchStr)
 | 10 | Relay 3 / Servo 2 | Output | - | Quattro mode 3, Servo mode PWM output |
 | 11 | Relay 4 / Ambient | Output | - | Quattro mode 4, Servo mode relay 2, or ambient lighting (synced with backlight) |
 | **Available for Expansion** |
-| 3 | – (free) | Input / Output | - | ⚠️ **Strapping Pin** (ESP32-S3 only). Only free GPIO on T-Display-S3, but **not suitable for sensors that can be LOW at power-on**. See note below. |
+| 3 | – (free) | Input / Output | - | ℹ️ **Strapping Pin** (JTAG source select only — no boot-mode risk). Only free GPIO on T-Display-S3. Safe with `INPUT_PULLUP` for open-drain signals; 10 kΩ series resistor recommended for PCB designs. See note below. |
 
-> **⚠️ GPIO 3 — the only free GPIO on T-Display-S3, but a Strapping Pin**
+> **ℹ️ GPIO 3 — the only free GPIO on T-Display-S3, Strapping Pin with low practical risk**
 > All other GPIOs are fully allocated (display bus, relays, buttons, I2C, NFC, LED button, power control). GPIO 3 is the only physically unconnected pin.
 >
-> GPIO 3 is read by the **ROM bootloader in hardware** at power-on — before any user code runs. If GPIO 3 is LOW at that moment, the chip may enter an unexpected boot mode.
+> On the ESP32-S3, GPIO 3 is a strapping pin that controls the **JTAG signal source**:
+> - HIGH at boot (default) → JTAG routed through GPIO-Matrix (GPIO 39–42)
+> - LOW at boot → JTAG routed through the USB Serial/JTAG controller
 >
-> **What does not help:**
-> - Pull-up resistors: sensor (low impedance) overrides any pull-up
-> - RC filters: capacitor starts discharged (0V) at cold boot, so GPIO 3 is already LOW during boot
-> - Software workarounds: `delay()` in `setup()` is useless — the boot decision was already made in hardware
+> This has **no effect on normal firmware operation**. The device boots and runs identically either way. There is no download-mode risk and no bricking scenario from GPIO 3 being LOW.
 >
-> **GPIO 3 is only safe for:** signals that are guaranteed HIGH during boot (e.g. a PWM output driven by the ESP32 itself, not an external sensor). Do not use GPIO 3 for sensors that can be LOW at power-on. **There is no free GPIO on the T-Display-S3 for such a sensor.**
+> **Practical guidance:**
+> - A 10 kΩ series resistor between the external signal and GPIO 3 is sufficient protection for a clean PCB design
+> - For quick prototyping, GPIO 3 with `INPUT_PULLUP` is safe for open-drain sensors (e.g. NT3H2111 FD pin)
+> - The only real consequence of a LOW at boot is that an attached JTAG debugger may need to connect via USB instead of GPIO 39–42
 
 **I2C Bus Addresses:**
 - Touch CST816S/CST328: `0x15` or `0x5A`

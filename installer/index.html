@@ -492,6 +492,22 @@
             <strong>Monitoring product blockage:</strong> The (NPN) input (light barrier/limit switch) displays the message "PRODUCT IN THE EJECTOR - Remove the product" and no further payment is possible until the input is free again.<br>
             <strong>Level monitoring:</strong> The (NPN) input monitors the fill level of a magazine or container. As long as Pin 2 is pulled LOW (sensor active), everything is fine. As soon as Pin 2 is HIGH (sensor free), all payment options are blocked and the message "THE SUPPLY BIN IS EMPTY - Please restock it" is displayed. Payments are re-enabled automatically once the sensor is active again.</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Note on "Ambient lighting switch":</strong> With pre-selection enabled, channel 4 is switched depending on the display backlight. Whenever the display is on, channel 4 is activated, thus, for example, the lighting for a vending machine. If the display backlight switches off because the screensaver mode is active, channel 4 is also deactivated.</i></p>
+
+            <div class="input-wrapper">
+                <div>
+                    <label for="gpio3Function">Function GPIO pin 3</label>
+                    <select name="gpio3Function" id="gpio3Function">
+                        <option value="no" selected>No (default)</option>
+                        <option value="yes">Stop the advance (Product ejected, slide stopped)</option>
+                        <option value="monitor">Monitoring product blockage (Remove product to resume)</option>
+                        <option value="level">Level Monitoring (empty bin)</option>
+                        <option value="fd">FD (Field Detection) for NFC Tag 2 – Mobile phone detected</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN input on Pin 3 (T-Display-S3 only) — controls / monitors Channel 1 (GPIO 12)</p>
+                </div>
+            </div>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Stop / Monitoring / Level Monitoring:</strong> Same behavior as "Special features for the vending machine" but using GPIO 3 instead of GPIO 2. Triggers and blocks always refer to Channel 1 (GPIO 12).<br><strong>FD (Field Detection):</strong> GPIO 3 is configured as input for the INT/FD pin of the NFC Tag 2 Click module. When a mobile phone approaches the NFC tag, the FD pin goes HIGH — the ZapBox logs the event. No relay action is triggered; this is for diagnostics and future extensions only.</i></p>
+
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
@@ -622,25 +638,16 @@
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
-        <!-- NFC Bolt Card Section -->
-            <div class="input-wrapper">
-                <div>
-                    <label for="nfcMode">NFC mode - NFC options and support</label>
-                    <select name="nfcMode" id="nfcMode">
-                        <option value="boltcard" selected>NFC Bolt Cards support only (default)</option>
-                        <option value="emulation">NFC card emulation for mobile phones only</option>
-                        <option value="both">Both, standard mobile phones, Bolt Cards extra</option>
-                        <option value="both-boltcard">Both, standard Bolt Cards, mobile phones extra</option>
-                        <option value="off">NFC off</option>
-                    </select>
-                </div>
-            </div>
-            <p style="margin-top: 5px; color: #888;"><i><b>NFC Bolt Cards</b> work reliably and securely with all major Lightning wallets and PoS systems. This is the recommended default.<br><br><b>NFC card emulation</b> (experimental): The ZapBox emulates an NFC tag so customers can pay by tapping their phone. Currently only supported by <a href="https://phoenix.acinq.co/" target="_blank" rel="noopener noreferrer">Phoenix Wallet</a>, and even then, only with certain limitations. Other wallets may not even recognize the NFC tag. For best compatibility, use the QR code format <b>"LNURL in LUD-17"</b> instead.</i></p>
+        <!-- NFC Modules Section -->
+            <h3 style="margin: 0 0 10px 0;">NFC-Module</h3>
             <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server – no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
             <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
             <a href="./assets/NFC-Module-PN532.webp" target="_blank">
                 <img class="center-img" src="./assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" />
             </a>
+            <p style="margin-top: 15px; color: #888;"><i><b>Bolt Card (PN532, I²C 0x24)</b> — NFC reader for Bolt Cards. Customers tap a pre-programmed NFC card to pay. Works with all major Lightning wallets and PoS systems. No configuration required — the module is auto-detected on the I²C bus at startup.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i><b>NFC Tag 2 (NT3H2111 / MikroE NFC Tag 2 Click, I²C 0x55)</b> — Passive NFC tag for mobile phones. The ZapBox writes the current LNURL to the chip via I²C. Customers tap their phone to read it directly from the chip — the ESP32 is not involved during the tap. Compatible with Android NFC Tools and wallets that support LNURL via NFC (e.g. Phoenix). No configuration required — auto-detected at startup.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i>Both modules operate independently and in parallel. If a module is not connected, it is simply skipped — normal operation is not affected.</i></p>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
@@ -978,8 +985,8 @@
         const pin10Servo360Section = document.getElementById('pin10Servo360Section');
         const pin10Servo360Speed = document.getElementById('pin10Servo360Speed');
         const pin10Servo360Duration = document.getElementById('pin10Servo360Duration');
-        // NFC config
-        const nfcMode = document.getElementById('nfcMode');
+        // GPIO 3 function config
+        const gpio3Function = document.getElementById('gpio3Function');
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
@@ -1143,8 +1150,9 @@
                 "value": "0"
             },
             {
-                "name": "nfcMode",
-                "value": "emulation"
+            {
+                "name": "gpio3Function",
+                "value": "no"
             },
             // index 38 – I/O-Expander enabled flag
             {
@@ -1709,8 +1717,14 @@
 
                 // NFC mode - check both old position (29) and new position (37)
                 const nfcModeIndex = isOldServoConfig ? 29 : 37;
-                if (config[nfcModeIndex]) config[nfcModeIndex].value = configData[nfcModeIndex]?.value || "emulation";
-                nfcMode.value = config[nfcModeIndex]?.value || "emulation";
+                // Index 37 is now gpio3Function; legacy config may have nfcMode here — treat as "no"
+                const raw37 = config[nfcModeIndex]?.value || "no";
+                const gpio3FunctionEl = document.getElementById('gpio3Function');
+                // Only apply if it looks like a gpio3 value (not legacy nfc values)
+                const legacyNfcValues = ['boltcard','emulation','both','both-boltcard','off'];
+                if (gpio3FunctionEl) {
+                    gpio3FunctionEl.value = legacyNfcValues.includes(raw37) ? 'no' : raw37;
+                }
 
                 // I/O-Expander fields (indices 38-46)
                 if (configData[38]) {
@@ -1917,8 +1931,8 @@
             config[36].value = pin10Servo360Duration.value || "0";
             
             // NFC mode (index 37)
-            if (!config[37]) config[37] = { name: "nfcMode", value: "emulation" };
-            config[37].value = nfcMode.value || "emulation";
+            if (!config[37]) config[37] = { name: "gpio3Function", value: "no" };
+            config[37].value = gpio3Function.value || "no";
 
             // I/O-Expander (indices 38-46)
             if (!config[38]) config[38] = { name: "ioExpander", value: "no" };
@@ -2149,7 +2163,7 @@
             config[22].value = event.target.value;
         });
 
-        nfcMode.addEventListener("change", (event) => {
+        gpio3Function.addEventListener("change", (event) => {
             config[37].value = event.target.value;
         });
 
@@ -2408,7 +2422,7 @@
             );
 
             sections += section('NFC',
-                row('NFC Mode', selText('nfcMode'))
+                row('GPIO 3 Function', selText('gpio3Function'))
             );
 
             const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +

@@ -38,6 +38,9 @@ LightBarrierConfig lightBarrierConfig;
 // Channel 4 Ambient Light
 Channel4AmbientConfig channel4AmbientConfig;
 
+// GPIO 3 Function (sensor / FD input on T-Display-S3)
+Gpio3Config gpio3Config;
+
 // Servo Motor Configuration
 ServoConfig servoConfig;
 
