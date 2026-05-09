@@ -453,18 +453,11 @@ void redrawQRScreen() {
   }
 
   if (multiChannelConfig.btcTickerMode == "always") {
-    // In "both-boltcard" mode, redrawQRScreen() is called after a payment –
-    // always return to the QR+BoltCard screen, never re-show the ticker here.
-    // The ticker is part of the manual NEXT cycle, not the post-payment restore path.
-    if (nfcConfig.mode != "both-boltcard") {
-      btctickerScreen();
-      multiChannelConfig.btcTickerActive = true;
-      LOG_DEBUG("Display", "Bitcoin ticker screen displayed (single mode, ALWAYS)");
-      deviceState.transition(DeviceState::READY);
-      return;
-    }
-    // "both-boltcard + always": fall through to QR screen below
-    multiChannelConfig.btcTickerActive = false;
+    btctickerScreen();
+    multiChannelConfig.btcTickerActive = true;
+    LOG_DEBUG("Display", "Bitcoin ticker screen displayed (single mode, ALWAYS)");
+    deviceState.transition(DeviceState::READY);
+    return;
   }
 
   // OFF or SELECTING: show QR unless ticker is currently active

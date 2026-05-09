@@ -16,8 +16,7 @@
  *   - Same PN532 module as Bolt Card reader (shared I2C bus)
  *   - No additional wiring needed
  *
- * The module is gated by the ENABLE_NFC preprocessor flag AND the runtime
- * nfcConfig.mode setting ("emulation", "both", or "off").
+ * The module is gated by the ENABLE_NFC preprocessor flag.
  *
  * Architecture:
  *   - Separate FreeRTOS task on Core 0 (same as Bolt Card task)

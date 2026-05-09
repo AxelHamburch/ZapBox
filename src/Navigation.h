@@ -26,26 +26,6 @@ void handleTouchButton();
  */
 void navigateToNextProduct();
 
-#ifdef ENABLE_NFC
-/**
- * Reset NFC "both" mode back to QR + card emulation.
- * Call this after a payment completes so the device stops the BoltCard
- * reader (if active) and restarts NFC card emulation.
- */
-void resetBothModeToQR();
 
-/**
- * Returns current "both/both-boltcard" NFC mode sub-screen.
- * 0 = QR (default), 1 = Mobile Phone / BoltCard screen, 2 = Ticker
- */
-int getBothModeScreen();
-
-/**
- * Auto-timeout handler: returns secondary NFC sub-screen (1) to default screen.
- * "both" mode:         Bolt Card → BTC Ticker (always) or QR (off/selecting)
- * "both-boltcard":     Mobile Phone → QR (all ticker modes)
- */
-void timeoutBothNfcToDefault();
-#endif
 
 #endif // NAVIGATION_H

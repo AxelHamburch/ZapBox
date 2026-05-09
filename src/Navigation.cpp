@@ -1,21 +1,5 @@
 #include "Navigation.h"
 #include "GlobalState.h"
-#include "IOExpander.h"
-
-// Helper: map product number (1-based) to GPIO pin.
-// Products 1–4  → physical pins 12, 13, 10, 11
-// Products 5–12 → virtual IOExpander pins 200–207
-static int productNumToPin(int productNum) {
-  switch (productNum) {
-    case 1: return 12;
-    case 2: return 13;
-    case 3: return 10;
-    case 4: return 11;
-    default:
-      if (productNum >= 5 && productNum <= 12) return 200 + (productNum - 5);
-      return 12;
-  }
-}
 #include "DeviceState.h"
 #include "PinConfig.h"
 #include "Display.h"
@@ -27,10 +11,7 @@ static int productNumToPin(int productNum) {
 #include <Arduino.h>
 #include "Log.h"
 
-#ifdef ENABLE_NFC
-#include "NFCCardEmulation.h"
-#include "NFCBoltCard.h"
-#endif
+
 
 // External references to main.cpp
 extern StateManager deviceState;
@@ -49,112 +30,7 @@ extern bool labelsLoadedSuccessfully;
 // External constants
 extern unsigned long TOUCH_DOUBLE_CLICK_MS;
 
-// NFC "both" mode state: 0=QR, 1=BoltCard, 2=Ticker
-static int bothModeScreen = 0;
 
-#ifdef ENABLE_NFC
-/**
- * Switch NFC mode between emulation and bolt card reader.
- * Used in "both" mode when toggling between QR and Bolt Card screens.
- */
-static void switchToBoltCard() {
-  nfcCardEmulationStop();
-  vTaskDelay(pdMS_TO_TICKS(100));
-  nfcBoltCardInit();
-}
-
-/**
- * Reset "both" NFC mode back to QR + card emulation state.
- * Called after a payment completes so the device returns to the default
- * emulation screen instead of staying in BoltCard reader mode.
- */
-void resetBothModeToQR() {
-  if (nfcConfig.mode != "both" && nfcConfig.mode != "both-boltcard") return;
-  if (bothModeScreen == 0) return; // Already on default screen
-
-  if (nfcConfig.mode == "both") {
-    LOG_INFO("Navigation", "NFC both mode: resetting to QR + emulation after payment");
-    if (bothModeScreen == 1) {
-      // BoltCard reader was active – stop it and restart emulation
-      nfcBoltCardStop();
-      vTaskDelay(pdMS_TO_TICKS(100));
-      nfcCardEmulationInit();
-    } else if (bothModeScreen == 2) {
-      // Ticker was shown while in both mode – just restart emulation
-      nfcCardEmulationInit();
-      multiChannelConfig.btcTickerActive = false;
-    }
-  } else { // "both-boltcard"
-    LOG_INFO("Navigation", "NFC both-boltcard mode: resetting to BoltCard screen after payment");
-    if (bothModeScreen == 1) {
-      // Phone emulation was active – stop it and restart BoltCard reader
-      nfcCardEmulationStop();
-      vTaskDelay(pdMS_TO_TICKS(100));
-      nfcBoltCardInit();
-    } else if (bothModeScreen == 2) {
-      // Ticker was shown – just restart BoltCard reader
-      nfcBoltCardInit();
-      multiChannelConfig.btcTickerActive = false;
-    }
-  }
-
-  bothModeScreen = 0;
-}
-
-int getBothModeScreen() {
-  return bothModeScreen;
-}
-
-/**
- * Auto-timeout handler for NFC sub-screens (bothModeScreen == 1).
- * Both modes:        Bolt Card screen  → BTC Ticker (always) or QR (off/selecting)
- * Both-BoltCard:    Mobile Phone screen → QR (all ticker modes)
- */
-void timeoutBothNfcToDefault() {
-  if (getBothModeScreen() != 1) return;
-
-  if (nfcConfig.mode == "both") {
-    if (multiChannelConfig.btcTickerMode == "always") {
-      // Bolt Card screen → BTC Ticker (stop reader, restart emulation for bg, show ticker)
-      LOG_INFO("Navigation", "NFC both: timeout on Bolt Card – returning to BTC Ticker");
-      nfcBoltCardStop();
-      vTaskDelay(pdMS_TO_TICKS(100));
-      nfcCardEmulationInit();
-      bothModeScreen = 0; // emulation + ticker = same as always-mode auto-ticker state
-      btctickerScreen();
-      multiChannelConfig.btcTickerActive = true;
-      productSelectionState.showTime = 0; // No further product timeout while ticker shows
-    } else {
-      // Bolt Card screen → QR (stop reader, restart emulation)
-      LOG_INFO("Navigation", "NFC both: timeout on Bolt Card – returning to QR");
-      nfcBoltCardStop();
-      vTaskDelay(pdMS_TO_TICKS(100));
-      nfcCardEmulationInit();
-      bothModeScreen = 0;
-      ensureQrForPin(12);
-      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-        showSpecialModeQRScreen();
-      } else {
-        showQRScreen();
-      }
-      multiChannelConfig.btcTickerActive = false;
-      productSelectionState.showTime = millis();
-    }
-  } else if (nfcConfig.mode == "both-boltcard") {
-    // Mobile Phone screen → QR (stop emulation, restart bolt card reader)
-    LOG_INFO("Navigation", "NFC both-boltcard: timeout on Mobile Phone – returning to QR");
-    resetBothModeToQR(); // stops emulation, restarts bolt card reader, sets bothModeScreen=0
-    ensureQrForPin(12);
-    if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-      showSpecialModeQRScreen();
-    } else {
-      showQRScreen();
-    }
-    multiChannelConfig.btcTickerActive = false;
-    productSelectionState.showTime = millis();
-  }
-}
-#endif
 
 // External function declarations from main.cpp
 extern void showHelp();
@@ -182,218 +58,6 @@ void navigateToNextProduct() {
   
   LOG_INFO("Navigation", "Navigate button pressed");
   
-#ifdef ENABLE_NFC
-  // NFC "both" mode: cycle through QR → Bolt Card → Ticker → QR
-  // Only in single-product mode; in multi-product, NFC runs passively in background
-  if (nfcConfig.mode == "both" && multiChannelConfig.mode == "off") {
-    // If always-ticker is auto-showing while on QR state (bothModeScreen=0),
-    // pressing NEXT should restore QR first instead of jumping to Bolt Card.
-    if (multiChannelConfig.btcTickerActive && bothModeScreen == 0) {
-      LOG_INFO("Navigation", "NFC both mode: auto-ticker at QR state, restoring QR");
-      multiChannelConfig.btcTickerActive = false;
-      // NFC emulation is already running (started at boot/prev state), no need to reinit
-      ensureQrForPin(12);
-      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-        showSpecialModeQRScreen();
-      } else {
-        showQRScreen();
-      }
-      productSelectionState.showTime = millis();
-      return;
-    }
-    if (bothModeScreen == 0) {
-      // QR (emulation) → Bolt Card (reader)
-      LOG_INFO("Navigation", "NFC both mode: switching to Bolt Card view");
-      bothModeScreen = 1;
-      switchToBoltCard();
-      
-      // Get current product label and pin for Bolt Card screen
-      int pin = 12; // default single mode pin
-      String label = "";
-      if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
-        if (multiChannelConfig.mode == "servo") {
-          pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
-        } else {
-          pin = productNumToPin(multiChannelConfig.currentProduct);
-        }
-      }
-      int pinIndex = getPinIndex(pin);
-      if (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) {
-        label = productLabels.labels[pinIndex];
-      } else {
-        label = "Pin " + String(pin);
-      }
-      showBoltCardScreen(label, pin);
-      productSelectionState.showTime = millis();
-      return;
-    } else if (bothModeScreen == 1) {
-      // Bolt Card → Ticker (stop reader, show ticker)
-      LOG_INFO("Navigation", "NFC both mode: switching to Ticker view");
-      bothModeScreen = 2;
-      nfcBoltCardStop();
-      btctickerScreen();
-      multiChannelConfig.btcTickerActive = true;
-      productSelectionState.showTime = millis(); // Start timer for auto-return
-      return;
-    } else {
-      // Ticker → QR (start emulation again)
-      LOG_INFO("Navigation", "NFC both mode: switching to QR view");
-      bothModeScreen = 0;
-      multiChannelConfig.btcTickerActive = false;
-      nfcCardEmulationInit();
-      
-      // Restore QR screen for current product
-      int pin = 12;
-      if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
-        if (multiChannelConfig.mode == "servo") {
-          pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
-        } else {
-          pin = productNumToPin(multiChannelConfig.currentProduct);
-        }
-      }
-      ensureQrForPin(pin);
-      if (multiChannelConfig.mode == "off") {
-        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-          showSpecialModeQRScreen();
-        } else {
-          showQRScreen();
-        }
-      } else {
-        String label = "";
-        int pinIndex = getPinIndex(pin);
-        if (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) {
-          label = productLabels.labels[pinIndex];
-        } else {
-          label = "Pin " + String(pin);
-        }
-        showProductQRScreen(label, pin);
-      }
-      productSelectionState.showTime = millis();
-      return;
-    }
-  }
-
-  // NFC "both-boltcard" mode: cycle through QR+BoltCard → Mobile Phone → Ticker → QR+BoltCard
-  // Only in single-product mode; in multi-product, NFC runs passively in background
-  if (nfcConfig.mode == "both-boltcard" && multiChannelConfig.mode == "off") {
-    // "always" ticker auto-returns to ticker while QR+BoltCard state (bothModeScreen=0):
-    // pressing NEXT should show QR (not jump directly to Mobile Phone)
-    if (multiChannelConfig.btcTickerActive && bothModeScreen == 0) {
-      LOG_INFO("Navigation", "NFC both-boltcard mode: auto-ticker at QR state, restoring QR");
-      multiChannelConfig.btcTickerActive = false;
-      // BoltCard reader task is already running from startup (bothModeScreen==0 = default state).
-      // Do NOT call nfcBoltCardInit() here – re-initializing while the task is live causes a crash.
-      ensureQrForPin(12);
-      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-        showSpecialModeQRScreen();
-      } else {
-        showQRScreen();
-      }
-      productSelectionState.showTime = millis();
-      return;
-    }
-    if (bothModeScreen == 0) {
-      // BoltCard (reader) → Mobile Phone (emulation)
-      LOG_INFO("Navigation", "NFC both-boltcard mode: switching to Mobile Phone view");
-      bothModeScreen = 1;
-      nfcBoltCardStop();
-      vTaskDelay(pdMS_TO_TICKS(100));
-      nfcCardEmulationInit();
-
-      int pin = 12;
-      String label = "";
-      if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct >= 1) {
-        if (multiChannelConfig.mode == "servo") {
-          pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
-        } else {
-          pin = productNumToPin(multiChannelConfig.currentProduct);
-        }
-      }
-      int pinIndex = getPinIndex(pin);
-      if (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) {
-        label = productLabels.labels[pinIndex];
-      } else {
-        label = "Pin " + String(pin);
-      }
-      showMobilePhoneScreen(label, pin);
-      productSelectionState.showTime = millis();
-      return;
-    } else if (bothModeScreen == 1) {
-      // Mobile Phone → Ticker (only if ticker mode allows it)
-      if (multiChannelConfig.btcTickerMode == "off") {
-        // Ticker disabled – skip directly back to QR+BoltCard
-        LOG_INFO("Navigation", "NFC both-boltcard mode: ticker OFF, returning to QR from Mobile Phone");
-        bothModeScreen = 0;
-        nfcCardEmulationStop();
-        vTaskDelay(pdMS_TO_TICKS(100));
-        nfcBoltCardInit();
-        ensureQrForPin(12);
-        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-          showSpecialModeQRScreen();
-        } else {
-          showQRScreen();
-        }
-        productSelectionState.showTime = millis();
-        return;
-      }
-      LOG_INFO("Navigation", "NFC both-boltcard mode: switching to Ticker view");
-      bothModeScreen = 2;
-      nfcCardEmulationStop();
-      btctickerScreen();
-      multiChannelConfig.btcTickerActive = true;
-      productSelectionState.showTime = millis();
-      return;
-    } else {
-      // Ticker → QR+BoltCard (start reader again, show QR — BoltCard reader runs in background)
-      LOG_INFO("Navigation", "NFC both-boltcard mode: returning to QR view with BoltCard reader");
-      bothModeScreen = 0;
-      multiChannelConfig.btcTickerActive = false;
-      nfcBoltCardInit();
-      ensureQrForPin(12);
-      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-        showSpecialModeQRScreen();
-      } else {
-        showQRScreen();
-      }
-      productSelectionState.showTime = millis();
-      return;
-    }
-  }
-
-  // NFC "both-boltcard" in multi-product mode:
-  // Each product cycles: QR+BoltCard(passive) → MOBIL PHONE → next product QR+BoltCard → ...
-  if (nfcConfig.mode == "both-boltcard" && multiChannelConfig.mode != "off") {
-    if (multiChannelConfig.currentProduct >= 1 && bothModeScreen == 0) {
-      // QR+BoltCard → MOBIL PHONE (same product, don't advance)
-      LOG_INFO("Navigation", "NFC both-boltcard multi: switching to Mobile Phone for current product");
-      bothModeScreen = 1;
-      nfcBoltCardStop();
-      vTaskDelay(pdMS_TO_TICKS(100));
-      nfcCardEmulationInit();
-      int pin = 12;
-      if (multiChannelConfig.mode == "servo") {
-        pin = servoConfig.productToPin(multiChannelConfig.currentProduct);
-      } else {
-        pin = productNumToPin(multiChannelConfig.currentProduct);
-      }
-      int pinIndex = getPinIndex(pin);
-      String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
-                     ? productLabels.labels[pinIndex] : "Pin " + String(pin);
-      showMobilePhoneScreen(label, pin);
-      productSelectionState.showTime = millis();
-      return;
-    } else if (bothModeScreen == 1) {
-      // MOBIL PHONE → advance to next product, BoltCard reader starts
-      LOG_INFO("Navigation", "NFC both-boltcard multi: advancing to next product with BoltCard");
-      bothModeScreen = 0;
-      nfcCardEmulationStop();
-      vTaskDelay(pdMS_TO_TICKS(100));
-      nfcBoltCardInit();
-      // Fall through to normal multi-product advancement below
-    }
-    // bothModeScreen==0, currentProduct==-1 (SELECT PRODUCT): fall through normally
-  }
-#endif
 
   if (multiChannelConfig.mode == "off") {
     // Single mode behavior depends on multiChannelConfig.btcTickerMode
@@ -477,8 +141,6 @@ void navigateToNextProduct() {
     if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
     else if (multiChannelConfig.mode == "quattro") maxProducts = 4;
     else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.activeChannelCount();
-    // Add configured IOExpander channels (pins 200–207) as additional products
-    if (ioExpanderConfig.enabled && multiChannelConfig.mode != "servo") maxProducts += 8;
 
     // For non-servo modes with labels already loaded: skip products whose GPIO
     // has no LNbits switch configured (duration == 0 AND label empty).
@@ -486,7 +148,14 @@ void navigateToNextProduct() {
     if (multiChannelConfig.mode != "servo" && labelsLoadedSuccessfully) {
       // Advance past every unconfigured product
       while (multiChannelConfig.currentProduct <= maxProducts) {
-        int pin = productNumToPin(multiChannelConfig.currentProduct);
+        int pin;
+        switch (multiChannelConfig.currentProduct) {
+          case 1: pin = 12; break;
+          case 2: pin = 13; break;
+          case 3: pin = 10; break;
+          case 4: pin = 11; break;
+          default: pin = 12; break;
+        }
         int idx = getPinIndex(pin);
         if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
           break; // This product has a switch – show it
@@ -510,7 +179,14 @@ void navigateToNextProduct() {
           // Ticker disabled: wrap to first configured product
           multiChannelConfig.currentProduct = 1;
           while (multiChannelConfig.currentProduct <= maxProducts) {
-            int pin = productNumToPin(multiChannelConfig.currentProduct);
+            int pin;
+            switch (multiChannelConfig.currentProduct) {
+              case 1: pin = 12; break;
+              case 2: pin = 13; break;
+              case 3: pin = 10; break;
+              case 4: pin = 11; break;
+              default: pin = 12; break;
+            }
             int idx = getPinIndex(pin);
             if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
               break;
@@ -562,11 +238,20 @@ void navigateToNextProduct() {
     
     // Map product number to pin
     // Servo mode: dynamic mapping based on active channels (relay1→12, servo1→13, servo2→10, relay2→11)
-    // Standard:   Product 1–4 → Pins 12, 13, 10, 11; Products 5–12 → IOExpander Pins 200–207
+    // Standard:   Product 1 → Pin 12, Product 2 → Pin 13, Product 3 → Pin 10, Product 4 → Pin 11
     if (multiChannelConfig.mode == "servo") {
       pin = servoConfig.productToPin(productNum);
     } else {
-      pin = productNumToPin(productNum);
+      switch(productNum) {
+        case 1: pin = 12; break;
+        case 2: pin = 13; break;
+        case 3: pin = 10; break;
+        case 4: pin = 11; break;
+        default:
+          LOG_WARN("Navigation", String("Invalid product number ") + String(productNum) + String(", defaulting to Pin 12"));
+          pin = 12;
+          break;
+      }
     }
     
     // Get label from array, or use fallback

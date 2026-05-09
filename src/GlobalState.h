@@ -475,9 +475,6 @@ extern IOExpanderConfig ioExpanderConfig;
 // ============================================================================
 
 struct NfcConfig {
-  // Both NFC modules (PN532 BoltCard + NT3H2111 mobile tag) are always auto-detected.
-  // mode field retained for legacy Navigation.cpp compatibility — always "boltcard" at runtime.
-  String mode = "boltcard";
   volatile bool emulationActive = false;  // True when card emulation task is running
   volatile bool boltcardActive = false;   // True when bolt card reader task is running
   volatile bool nfcSessionActive = false; // True during active APDU exchange (suppresses internet checks)

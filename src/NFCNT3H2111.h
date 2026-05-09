@@ -19,8 +19,7 @@
  *   SCL → GPIO 17
  *   FD  → not connected  (field-detect output, open-drain — not required)
  *
- * The module is gated by the ENABLE_NFC build flag and requires
- * nfcConfig.mode == "emulation" at runtime.
+ * The module is gated by the ENABLE_NFC build flag.
  *
  * There is no FreeRTOS task — the NT3H2111 holds the NDEF data autonomously
  * in its internal memory after one I²C write.  nfcNT3H2111UpdateIfChanged()

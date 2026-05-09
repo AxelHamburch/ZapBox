@@ -2134,19 +2134,6 @@ void loop()
       }
     }
     
-    // NFC both/both-boltcard: secondary screen (Bolt Card / Mobile Phone) auto-returns after PRODUCT_TIMEOUT
-    // "both" mode:       Bolt Card (1) → BTC Ticker (always) or QR (off/selecting)
-    // "both-boltcard":   Mobile Phone (1) → QR (all ticker modes)
-    // Note: Ticker sub-screen (2) is handled by the btcTickerMode timeout logic below
-#ifdef ENABLE_NFC
-    if ((nfcConfig.mode == "both" || nfcConfig.mode == "both-boltcard") &&
-        productSelectionState.showTime > 0 &&
-        getBothModeScreen() == 1 &&
-        (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
-      timeoutBothNfcToDefault();
-    }
-#endif
-
     // Check if it's time to show/hide Bitcoin ticker screen
     // Behavior depends on multiChannelConfig.btcTickerMode
     if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && lightningConfig.thresholdKey.length() == 0) {
@@ -3260,7 +3247,6 @@ static void processNormalPayment(int pin, int duration)
     nfcNoLuckScreenShown  = false;
     nfcErrorDetailShown   = false;
     nfcNotSupportedShown  = false;
-    resetBothModeToQR();
     #endif
     redrawQRScreen();
     Serial.println("[NORMAL] Ready for next payment");
@@ -3501,9 +3487,6 @@ static void processNormalPayment(int pin, int duration)
   nfcNoLuckScreenShown   = false;
   nfcErrorDetailShown    = false;
   nfcNotSupportedShown   = false;
-  // In "both" mode: stop BoltCard reader and restore NFC card emulation
-  // before the QR screen is redrawn, so the default state is correct.
-  resetBothModeToQR();
   #endif
 
   // Restore correct product QR (handles single, multi-channel, servo)
