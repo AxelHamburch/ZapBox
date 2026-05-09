@@ -36,7 +36,7 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 ## How it Works
 
 1. **QR Code Display**: The integrated display of the T-Display-S3 shows a QR code with the LNURL for scanning *(T-Display-S3 only)*
-2. **Lightning Payment**: After scanning and paying the invoice, the payment is sent to the LNbits server — or tap an **NFC Bolt Card / NTAG21x tag** on the PN532 reader for contactless payment — or hold a **smartphone** near the PN532 to read the LNURLp via **NFC Card Emulation**
+2. **Lightning Payment**: After scanning and paying the invoice, the payment is sent to the LNbits server — or tap an **NFC Bolt Card / NTAG21x tag** on the PN532 reader for contactless payment — or hold a **smartphone** near the **NT3H2111** (NFC Tag 2) to read the LNURLp via tap
 3. **WebSocket Trigger**: The LNbits server sends a signal via WebSocket to the ESP32 microcontroller
 4. **Relay Switching**: The ESP32 activates the relay, which turns on the USB output for a specified period (with optional special modes like blinking, pulsing, or strobing)
 5. **Confirmation**: The display shows that the payment has been received and the relay has been switched *(T-Display-S3 only)*
@@ -155,6 +155,8 @@ Device String (switchStr)
 **I2C Bus Addresses:**
 - Touch CST816S/CST328: `0x15` or `0x5A`
 - PN532 NFC Reader: `0x24`
+- NT3H2111 NFC Tag 2: `0x55`
+- PCF8574 I/O-Expander: `0x20`
 
 #### ESP32 Dev Module GPIO Mapping (ENABLE_DISPLAY=0 - Headless)
 
@@ -925,7 +927,7 @@ Phone opens wallet    ◄────     Payment flow starts automatically
 - **Zero interaction required** — customer just taps their phone
 - **Automatic NDEF update** — the LNURL payload updates whenever the QR code changes (product selection, channel switch)
 - **ISO 14443-4 / ISO-DEP** compliant — works with all modern Android and iOS NFC readers
-- **Coexists with Reader Mode** — NFC mode is configurable per device (reader, emulation, or both)
+- **Coexists with Reader Mode** — bolt card reading (PN532) and card emulation run automatically in parallel; no configuration required
 - **No additional hardware** — uses the same PN532 module and wiring as Bolt Card reading
 - **Raw I2C communication** — bypasses the Adafruit library for precise timing control required by ISO-DEP frame deadlines
 
@@ -944,11 +946,6 @@ NDEF URI Record:
 
 > **Note on Wallet of Satoshi (WoS):** WoS's NFC feature is designed exclusively for Bolt Cards (NTAG424 with LNURLW authentication). It does not process plain LNURLp from NFC tags. WoS users should use the QR code. This is a WoS app limitation — a PN532-based emulation cannot replicate the NTAG424 AES key derivation required for Bolt Card authentication.
 
-**NFC Mode Configuration** (Web Installer):
-- `reader` — Bolt Card / NTAG21x reading only (default)
-- `emulation` — Card Emulation only (LNURLp via NFC)
-- `both` — Alternates between Reader and Emulation modes
-
 **Implementation Notes**:
 - Uses PN532 `TgInitAsTarget` command with SAK=0x20 (ISO-DEP only)
 - IRQ-based phone detection — no I2C polling during idle wait
@@ -958,6 +955,58 @@ NDEF URI Record:
 
 **Why not NTAG21x (Type 2 Tag) emulation?**
 The PN532 cannot emulate an NTAG21x via its TgGetData/TgSetData interface because the `GET_VERSION` command (`0x60`) used by modern NFC readers to fingerprint NTAG chips conflicts with the Mifare `AUTH_A` command (`0x60`). The PN532 intercepts `0x60` internally in Type 2 Tag mode, sends a Mifare authentication response, and the phone — expecting a GET_VERSION reply — immediately deselects the tag (PN532 error `0x25`). ISO-DEP (Type 4 Tag, SAK=0x20) is the only PN532 target mode that provides transparent APDU data exchange.
+
+---
+
+#### NFC Tag 2 / NT3H2111 (LNURLp via smartphone tap)
+
+> **Optional feature** — activated via build flag `ENABLE_NFC=1`. Requires an NT3H2111 NFC Tag 2 module (I²C address `0x55`).
+
+The ZapBox writes the current LNURLp as an NDEF record to the **NT3H2111 NFC tag chip** via I²C. When a smartphone approaches, the phone's NFC field powers the chip directly — the ESP32 is not involved during the tap. The phone reads the NDEF LNURL and opens it in a compatible Lightning wallet.
+
+Unlike the PN532-based card emulation, the NT3H2111 is a **real NTAG chip**. It passes the `GET_VERSION` fingerprint check that modern phones perform, giving maximum wallet compatibility.
+
+**How it Works**:
+```
+ZapBox (ESP32)                   NT3H2111             Smartphone
+──────────────                   ────────             ──────────
+LNURL changes     ──I²C──►       NDEF updated
+(product switch)                 (chip stores data)
+                                                      NFC field ON
+                                 ◄── powered by phone field ──
+                                 NDEF URI record ──────────►
+                                                      wallet opens
+```
+
+**Key Features**:
+- **True NTAG chip** — passes `GET_VERSION` fingerprint; no emulation artifacts, broad wallet compatibility
+- **ESP32 not involved during tap** — once programmed, the chip answers the phone autonomously
+- **Automatic NDEF update** — LNURL is rewritten via I²C whenever the active product or channel changes
+- **No configuration required** — auto-detected at startup via I²C scan; silently skipped if not present
+- **Coexists with PN532** — both modules run independently in parallel; no mode switching needed
+- **FD pin (optional)** — the INT/FD pin goes HIGH when a phone's NFC field is detected; connect to GPIO 3 (T-Display-S3) or GPIO 34 (headless) and configure as `fd` in the Web Installer
+
+**Wiring**:
+```
+NT3H2111 Module    →    T-Display-S3 / ESP32 Dev
+─────────────────────────────────────────────────────────────────
+VCC (3.3V)         →    3.3V
+GND                →    GND
+SDA                →    GPIO 18 (shared I²C bus)
+SCL                →    GPIO 17 (shared I²C bus)
+FD / INT           →    GPIO 3  (T-Display-S3)              ← optional
+                   →    GPIO 34 (ESP32 Dev, ext. pull-up!)  ← optional
+```
+
+**Supported Wallets**:
+- Phoenix Wallet (Android/iOS) — reads LNURL via NFC NDEF tap
+- Any wallet supporting LNURL-pay via NFC NDEF URI records
+
+**Implementation Notes**:
+- `nfcNT3H2111Init()` scans the I²C bus at startup and writes the initial NDEF record
+- `nfcNT3H2111UpdateIfChanged()` compares the stored LNURL and rewrites only on change (minimises I²C traffic)
+- I²C access protected by the shared bus mutex (same bus as PN532 and PCF8574)
+- I²C address: `0x55` (fixed NT3H2111 default)
 
 ---
 
@@ -1078,7 +1127,10 @@ ZapBox/
 │   ├── UI.cpp/h                   # UI components & rendering
 │   ├── NFCPN532.cpp/h             # PN532 NFC reader driver
 │   ├── NFCBoltCard.cpp/h          # Bolt Card LNURLW authentication
-│   ├── NFCCardEmulation.cpp/h     # NFC Card Emulation (target mode)
+│   ├── NFCCardEmulation.cpp/h     # NFC Card Emulation (PN532 target mode)
+│   ├── NFCNT3H2111.cpp/h          # NT3H2111 NFC Tag 2 driver (passive phone tap)
+│   ├── IOExpander.h               # PCF8574 I/O-Expander driver (virtual pins 200–207)
+│   ├── I2CBus.h                   # Shared I²C bus mutex (PN532 + NT3H2111 + PCF8574)
 │   ├── ServoControl.cpp/h         # Servo motor control
 │   ├── TouchCST816S.cpp/h         # Touch display driver
 │   ├── SerialConfig.cpp/h         # Serial configuration interface
