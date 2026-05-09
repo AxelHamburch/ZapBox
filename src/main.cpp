@@ -1171,7 +1171,7 @@ void setup()
   initIOExpander();
 #endif
 
-  // GPIO 3 function (T-Display-S3 only — sensor input or FD from NT3H2111)
+  // GPIO 3 (T-Display-S3) / GPIO 34 (headless ESP32 Dev) — sensor input or FD from NT3H2111
 #ifdef PIN_GPIO3
   if (gpio3Config.isActive()) {
     pinMode(PIN_GPIO3, PIN_GPIO3_MODE);

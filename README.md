@@ -166,6 +166,7 @@ Device String (switchStr)
 | **Vending Sensors / Relay Output (Optional)** |
 | 22 | Sensor 1 / Relay Out | Input or Output | Pull-up / HIGH | Vending sensor input or relay output synced with Pin 12 (when configured, replaces CH06) |
 | 23 | Sensor 2 / Relay Out | Input or Output | Pull-up / HIGH | Vending sensor input or relay output synced with Pin 12 (when configured, replaces CH07) |
+| 34 | FD / Sensor In | Input only | — | Field Detection from NT3H2111 (NFC Tag 2) or general sensor input. GPIO 34 is input-only, no internal pull-up — use external pull-up (10 kΩ to 3.3 V) for open-drain signals. |
 | **LEDs & Status** |
 | 21 | Status LED | Output | HIGH=ON | Status indication (RTC-capable) |
 | **I2C (Optional)** |

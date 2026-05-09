@@ -330,7 +330,7 @@
 
             <!-- Servo Configuration (visible only in servo mode) -->
             <div id="servoConfigSection" style="margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
-                <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">Servo Configuration</p>
+                <p style="margin: 0 0 10px 0; color: #444; font-weight: bold; font-size: 20px;">Servo Configuration</p>
                 <p style="margin: 0 0 15px 0; color: #888; font-size: 11px;"><i><strong>Up to 4 channels can be controlled.</strong> <br><br>
                     <strong>Pin 12:</strong> Relay (on/off, standard)<br>
                     <strong>Pin 13:</strong> Configurable (off/relay/180° servo/360° servo)<br>
@@ -642,11 +642,16 @@
             <h3 style="margin: 0 0 10px 0;">NFC-Module</h3>
             <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server – no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
             <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
-            <a href="./assets/NFC-Module-PN532.webp" target="_blank">
-                <img class="center-img" src="./assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" />
-            </a>
-            <p style="margin-top: 15px; color: #888;"><i><b>Bolt Card (PN532, I²C 0x24)</b> — NFC reader for Bolt Cards. Customers tap a pre-programmed NFC card to pay. Works with all major Lightning wallets and PoS systems. No configuration required — the module is auto-detected on the I²C bus at startup.</i></p>
-            <p style="margin-top: 5px; color: #888;"><i><b>NFC Tag 2 (NT3H2111 / MikroE NFC Tag 2 Click, I²C 0x55)</b> — Passive NFC tag for mobile phones. The ZapBox writes the current LNURL to the chip via I²C. Customers tap their phone to read it directly from the chip — the ESP32 is not involved during the tap. Compatible with Android NFC Tools and wallets that support LNURL via NFC (e.g. Phoenix). No configuration required — auto-detected at startup.</i></p>
+            <div style="display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start;">
+                <a href="./assets/NFC-Module-PN532.webp" target="_blank">
+                    <img src="./assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" style="height: 220px; width: auto; display: block;" />
+                </a>
+                <a href="./assets/NFC-Tag-2.webp" target="_blank">
+                    <img src="./assets/NFC-Tag-2.webp" alt="NFC Tag 2 / NT3H2111 wiring" style="height: 220px; width: auto; display: block;" />
+                </a>
+            </div>
+            <p style="margin-top: 15px; color: #888;"><i><b>Bolt Cards &amp; NTAG 21x (PN532, I²C 0x24)</b> — Active NFC reader: the PN532 generates its own magnetic field and reads cards placed on it. Supports pre-programmed Bolt Cards for contactless Lightning payment. Also reads passive NFC tags of type NTAG 213, 215 and 216 — e.g. for LNURL-based payment tags. Works with all major Lightning wallets and PoS systems. No configuration required — the module is auto-detected on the I²C bus at startup.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i><b>Mobile Phones (NFC Tag 2 / NT3H2111, I²C 0x55)</b> — Passive NFC tag: unlike the PN532, the NT3H2111 generates no field of its own. It is a true NTAG chip that delivers the LNURL autonomously as soon as the active field of an approaching mobile phone is detected. The ZapBox writes the current LNURL to the chip via I²C — the ESP32 is not involved during the tap. Compatible with Android NFC Tools and wallets that support LNURL via NFC (e.g. Phoenix). No configuration required — auto-detected at startup.</i></p>
             <p style="margin-top: 5px; color: #888;"><i>Both modules operate independently and in parallel. If a module is not connected, it is simply skipped — normal operation is not affected.</i></p>
 
         <!-- Section Separator -->
