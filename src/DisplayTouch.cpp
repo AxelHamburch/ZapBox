@@ -6,6 +6,7 @@
 #include <FreeRTOS.h>
 #include <semphr.h>
 #include <esp_heap_caps.h>
+#include <qrcode.h>
 #include "Display.h"
 #include "GlobalState.h"
 #include "Log.h"
@@ -15,8 +16,15 @@
 // ============================================================================
 
 #define PIN_LCD_BL  LCD_BL_PIN
-#define SCR_W       320
-#define SCR_H       480
+// We expose a LANDSCAPE 480×320 canvas to the rest of the code (matches the
+// T-Display-S3 layout convention used in the original ZapBox screens). The
+// physical panel is 320×480 portrait — software rotation in putPixel maps
+// our landscape coordinates to portrait pixels (90° CCW so the user holds
+// the device with its native top edge on the LEFT).
+#define SCR_W       480
+#define SCR_H       320
+#define PANEL_W     320
+#define PANEL_H     480
 
 // ============================================================================
 // COLORS — TFT_eSPI compatibility macros (RGB565)
@@ -33,6 +41,47 @@
 
 uint16_t themeForeground = TFT_BLACK;
 uint16_t themeBackground = TFT_WHITE;
+
+// External currency string set from config (defaults to "USD")
+extern String currency;
+
+// ============================================================================
+// BITCOIN LOGO — 64×64 monochrome bitmap (from original Display.cpp)
+// ============================================================================
+static const uint8_t bitcoin_logo[] PROGMEM = {
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x3f,0xfc,0x00,0x00,0x00, 0x00,0x00,0x03,0xff,0xff,0x80,0x00,0x00,
+  0x00,0x00,0x0f,0xff,0xff,0xf0,0x00,0x00, 0x00,0x00,0x3f,0xff,0xff,0xfc,0x00,0x00,
+  0x00,0x00,0x7f,0xff,0xff,0xfe,0x00,0x00, 0x00,0x00,0xff,0xff,0xff,0xff,0x00,0x00,
+  0x00,0x03,0xff,0xff,0xff,0xff,0xc0,0x00, 0x00,0x07,0xff,0xff,0xff,0xff,0xe0,0x00,
+  0x00,0x0f,0xff,0xff,0xff,0xff,0xf0,0x00, 0x00,0x0f,0xff,0xfc,0x7f,0xff,0xf0,0x00,
+  0x00,0x1f,0xff,0xfc,0x63,0xff,0xf8,0x00, 0x00,0x3f,0xff,0xfc,0x63,0xff,0xfc,0x00,
+  0x00,0x7f,0xfe,0x38,0xe3,0xff,0xfe,0x00, 0x00,0x7f,0xfe,0x00,0xe3,0xff,0xfe,0x00,
+  0x00,0xff,0xfe,0x00,0x03,0xff,0xff,0x00, 0x00,0xff,0xff,0x80,0x03,0xff,0xff,0x00,
+  0x00,0xff,0xff,0xc0,0x00,0xff,0xff,0x80, 0x01,0xff,0xff,0xc0,0x00,0x7f,0xff,0x80,
+  0x01,0xff,0xff,0xc1,0xe0,0x3f,0xff,0x80, 0x01,0xff,0xff,0x81,0xf8,0x1f,0xff,0x80,
+  0x03,0xff,0xff,0x83,0xf8,0x1f,0xff,0xc0, 0x03,0xff,0xff,0x83,0xf8,0x1f,0xff,0xc0,
+  0x03,0xff,0xff,0x83,0xf8,0x1f,0xff,0xc0, 0x03,0xff,0xff,0x01,0xf0,0x1f,0xff,0xc0,
+  0x03,0xff,0xff,0x00,0x00,0x3f,0xff,0xc0, 0x03,0xff,0xff,0x00,0x00,0x7f,0xff,0xc0,
+  0x03,0xff,0xff,0x06,0x00,0xff,0xff,0xc0, 0x03,0xff,0xfe,0x07,0xc0,0x7f,0xff,0xc0,
+  0x03,0xff,0xfe,0x0f,0xe0,0x3f,0xff,0xc0, 0x03,0xff,0xfe,0x0f,0xf0,0x3f,0xff,0xc0,
+  0x03,0xff,0xec,0x0f,0xf0,0x3f,0xff,0xc0, 0x03,0xff,0xe0,0x0f,0xf0,0x3f,0xff,0xc0,
+  0x01,0xff,0xc0,0x0f,0xf0,0x3f,0xff,0x80, 0x01,0xff,0xc0,0x00,0x00,0x3f,0xff,0x80,
+  0x01,0xff,0xf8,0x00,0x00,0x7f,0xff,0x80, 0x01,0xff,0xfe,0x00,0x00,0x7f,0xff,0x00,
+  0x00,0xff,0xfe,0x30,0x00,0xff,0xff,0x00, 0x00,0xff,0xfe,0x38,0xc7,0xff,0xff,0x00,
+  0x00,0x7f,0xfe,0x31,0xff,0xff,0xfe,0x00, 0x00,0x7f,0xfc,0x31,0xff,0xff,0xfe,0x00,
+  0x00,0x3f,0xff,0xf1,0xff,0xff,0xfc,0x00, 0x00,0x1f,0xff,0xf1,0xff,0xff,0xf8,0x00,
+  0x00,0x0f,0xff,0xff,0xff,0xff,0xf0,0x00, 0x00,0x0f,0xff,0xff,0xff,0xff,0xf0,0x00,
+  0x00,0x07,0xff,0xff,0xff,0xff,0xe0,0x00, 0x00,0x03,0xff,0xff,0xff,0xff,0xc0,0x00,
+  0x00,0x00,0xff,0xff,0xff,0xff,0x00,0x00, 0x00,0x00,0x7f,0xff,0xff,0xfe,0x00,0x00,
+  0x00,0x00,0x3f,0xff,0xff,0xfc,0x00,0x00, 0x00,0x00,0x0f,0xff,0xff,0xf0,0x00,0x00,
+  0x00,0x00,0x01,0xff,0xff,0xc0,0x00,0x00, 0x00,0x00,0x00,0x3f,0xfc,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+};
 
 // ============================================================================
 // GFX HANDLES, BACKBUFFER & MUTEX
@@ -94,33 +143,46 @@ static const uint8_t font5x7[][5] PROGMEM = {
 // BACKBUFFER DRAWING — all primitives write to PSRAM, single flush() pushes
 // ============================================================================
 
-static inline void putPixel(int x, int y, uint16_t color) {
-  if ((unsigned)x < (unsigned)SCR_W && (unsigned)y < (unsigned)SCR_H) {
-    s_backbuf[y * SCR_W + x] = color;
-  }
+// 90° CCW rotation: landscape (lx, ly) → portrait (PANEL_W-1-ly, lx)
+// Caller passes landscape coords (0..SCR_W-1, 0..SCR_H-1).
+// Buffer is laid out as portrait (PANEL_W cols × PANEL_H rows).
+static inline void putPixel(int lx, int ly, uint16_t color) {
+  if ((unsigned)lx >= (unsigned)SCR_W || (unsigned)ly >= (unsigned)SCR_H) return;
+  int px = PANEL_W - 1 - ly;
+  int py = lx;
+  s_backbuf[py * PANEL_W + px] = color;
 }
 
-static void fillRect(int x, int y, int w, int h, uint16_t color) {
+static void fillRect(int lx, int ly, int lw, int lh, uint16_t color) {
   if (!s_backbuf) return;
-  if (x < 0) { w += x; x = 0; }
-  if (y < 0) { h += y; y = 0; }
-  if (x + w > SCR_W) w = SCR_W - x;
-  if (y + h > SCR_H) h = SCR_H - y;
-  if (w <= 0 || h <= 0) return;
-  for (int row = 0; row < h; row++) {
-    uint16_t *p = &s_backbuf[(y + row) * SCR_W + x];
-    for (int col = 0; col < w; col++) p[col] = color;
+  // Clip in landscape space
+  if (lx < 0) { lw += lx; lx = 0; }
+  if (ly < 0) { lh += ly; ly = 0; }
+  if (lx + lw > SCR_W) lw = SCR_W - lx;
+  if (ly + lh > SCR_H) lh = SCR_H - ly;
+  if (lw <= 0 || lh <= 0) return;
+
+  // Rotate rect to portrait: 90° CCW maps width↔height and shifts origin
+  int px = PANEL_W - ly - lh;
+  int py = lx;
+  int pw = lh;     // landscape height → portrait width
+  int ph = lw;     // landscape width  → portrait height
+
+  for (int row = 0; row < ph; row++) {
+    uint16_t *p = &s_backbuf[(py + row) * PANEL_W + px];
+    for (int col = 0; col < pw; col++) p[col] = color;
   }
 }
 
 static void fillScreen(uint16_t color) {
   if (!s_backbuf) return;
+  size_t total_bytes = (size_t)PANEL_W * PANEL_H * 2;
   if (color == 0x0000) {
-    memset(s_backbuf, 0x00, (size_t)SCR_W * SCR_H * 2);
+    memset(s_backbuf, 0x00, total_bytes);
   } else if (color == 0xFFFF) {
-    memset(s_backbuf, 0xFF, (size_t)SCR_W * SCR_H * 2);
+    memset(s_backbuf, 0xFF, total_bytes);
   } else {
-    int n = SCR_W * SCR_H;
+    int n = PANEL_W * PANEL_H;
     for (int i = 0; i < n; i++) s_backbuf[i] = color;
   }
 }
@@ -171,13 +233,49 @@ static void drawCenter(int cx, int cy, const char *s, uint16_t fg, uint16_t bg, 
   drawString(cx - w / 2, cy - h / 2, s, fg, bg, size);
 }
 
+// Draw a 1-bit-per-pixel bitmap (Adafruit format: MSB first per row, byte
+// boundaries). Foreground bits become `fg`, background bits stay untouched
+// (transparent overlay onto the existing backbuffer).
+static void drawMonoBitmap(int x, int y, const uint8_t *bmp, int w, int h, uint16_t fg) {
+  if (!s_backbuf) return;
+  int row_bytes = (w + 7) / 8;
+  for (int j = 0; j < h; j++) {
+    for (int i = 0; i < w; i++) {
+      uint8_t byte = pgm_read_byte(&bmp[j * row_bytes + i / 8]);
+      if (byte & (0x80 >> (i & 7))) {
+        putPixel(x + i, y + j, fg);
+      }
+    }
+  }
+}
+
+// Same as drawMonoBitmap but each source pixel is plotted as a `scale × scale`
+// block, useful for upscaling small icons (e.g. 64×64 logo → 128×128).
+static void drawMonoBitmapScaled(int x, int y, const uint8_t *bmp, int w, int h,
+                                  uint16_t fg, uint8_t scale) {
+  if (!s_backbuf || scale == 0) return;
+  int row_bytes = (w + 7) / 8;
+  for (int j = 0; j < h; j++) {
+    for (int i = 0; i < w; i++) {
+      uint8_t byte = pgm_read_byte(&bmp[j * row_bytes + i / 8]);
+      if (byte & (0x80 >> (i & 7))) {
+        for (int dy = 0; dy < scale; dy++) {
+          for (int dx = 0; dx < scale; dx++) {
+            putPixel(x + i * scale + dx, y + j * scale + dy, fg);
+          }
+        }
+      }
+    }
+  }
+}
+
 // Push the entire backbuffer to the panel in ONE call. The Arduino_GFX library
 // sets one address window then streams all pixels — no fragmented writes, no
-// cache games. This is the operation we proved works (full-screen fillScreen
-// rendered solid colors correctly in earlier tests).
+// cache games. The buffer is in portrait (PANEL_W × PANEL_H) layout because
+// the panel hardware addresses pixels in portrait native order.
 static void flushDisplay() {
   if (!_gfx || !s_backbuf) return;
-  _gfx->draw16bitRGBBitmap(0, 0, s_backbuf, SCR_W, SCR_H);
+  _gfx->draw16bitRGBBitmap(0, 0, s_backbuf, PANEL_W, PANEL_H);
 }
 
 // ============================================================================
@@ -195,8 +293,8 @@ void initDisplay() {
   pinMode(PIN_LCD_BL, OUTPUT);
   digitalWrite(PIN_LCD_BL, LOW);
 
-  // 1. PSRAM-backed framebuffer (320×480×2 = 300 KB)
-  size_t bb_bytes = (size_t)SCR_W * SCR_H * sizeof(uint16_t);
+  // 1. PSRAM-backed framebuffer (laid out as the panel sees it: portrait)
+  size_t bb_bytes = (size_t)PANEL_W * PANEL_H * sizeof(uint16_t);
   s_backbuf = (uint16_t *)heap_caps_malloc(bb_bytes, MALLOC_CAP_SPIRAM);
   if (!s_backbuf) {
     Serial.println("[DISPLAY] FATAL: backbuffer alloc failed (PSRAM)");
@@ -206,13 +304,15 @@ void initDisplay() {
   memset(s_backbuf, 0, bb_bytes);
   Serial.printf("[DISPLAY] backbuffer allocated: %u bytes in PSRAM\n", (unsigned)bb_bytes);
 
-  // 2. QSPI bus + AXS15231B panel via Arduino_GFX (proven to do real Quad-SPI)
+  // 2. QSPI bus + AXS15231B panel via Arduino_GFX (proven to do real Quad-SPI).
+  // The panel is constructed with its NATIVE portrait dimensions (320×480);
+  // landscape orientation is achieved by software rotation in putPixel.
   _bus = new Arduino_ESP32QSPI(
     LCD_QSPI_CS, LCD_QSPI_CLK,
     LCD_QSPI_D0, LCD_QSPI_D1, LCD_QSPI_D2, LCD_QSPI_D3
   );
   _panel = new Arduino_AXS15231B(_bus, GFX_NOT_DEFINED, 0 /*rotation*/, false,
-                                  SCR_W, SCR_H);
+                                  PANEL_W, PANEL_H);
   _gfx = _panel;
 
   if (!_gfx->begin()) {
@@ -295,8 +395,70 @@ static void blankScreen() {
   if (_gfx) { fillScreen(themeBackground); flushDisplay(); }
 }
 
-void btctickerScreen()        { blankScreen(); }
-void updateBtctickerValues()  { /* TODO */ }
+// ============================================================================
+// BTC TICKER — T-Display-S3 horizontal layout (logo left, three text rows right)
+// ============================================================================
+// Layout on 480×320 landscape:
+//   x=  20..148  Bitcoin logo (64×64 ×2 = 128×128, vertically centered)
+//   x= 165..     Right-side text section (centered around cx=320)
+//     y= 110     "<currency>/BTC: <price>"        (size 2)
+//     y= 160     "SAT/<currency>: <sats>"         (size 2)
+//     y= 210     "Block: <block>"                 (size 2)
+//
+// updateBtctickerValues redraws only the right-side text rows so the logo
+// doesn't flicker every refresh.
+
+static const int BTC_TXT_CX     = 320;        // horizontal center of text column
+static const int BTC_LINE1_Y    = 110;
+static const int BTC_LINE2_Y    = 160;
+static const int BTC_LINE3_Y    = 210;
+static const int BTC_TXT_X      = 160;        // left edge of text clear band
+static const int BTC_TXT_W      = 320;        // width of text clear band
+static const int BTC_TXT_BAND_H = 28;         // height per cleared row
+
+static String calcSatsPerCurrency() {
+  float price = bitcoinData.price.toFloat();
+  if (price <= 0) return String("0");
+  long sats = (long)((1.0f / price) * 100000000.0f);
+  return String(sats);
+}
+
+static void btcDrawTextLines() {
+  String s;
+  s = currency + "/BTC: " + bitcoinData.price;
+  drawCenter(BTC_TXT_CX, BTC_LINE1_Y, s.c_str(),
+             themeForeground, themeBackground, 2);
+  s = "SAT/" + currency + ": " + calcSatsPerCurrency();
+  drawCenter(BTC_TXT_CX, BTC_LINE2_Y, s.c_str(),
+             themeForeground, themeBackground, 2);
+  s = "Block: " + bitcoinData.blockHigh;
+  drawCenter(BTC_TXT_CX, BTC_LINE3_Y, s.c_str(),
+             themeForeground, themeBackground, 2);
+}
+
+void btctickerScreen() {
+  DisplayLock l;
+  if (!_gfx) return;
+
+  fillScreen(themeBackground);
+  // Bitcoin logo on the left, vertically centered (logo is 128×128 after 2x scale)
+  drawMonoBitmapScaled(20, (SCR_H - 128) / 2, bitcoin_logo, 64, 64,
+                       themeForeground, 2);
+  btcDrawTextLines();
+  flushDisplay();
+}
+
+void updateBtctickerValues() {
+  DisplayLock l;
+  if (!_gfx) return;
+
+  // Wipe just the three text rows (right side), leave logo intact
+  fillRect(BTC_TXT_X, BTC_LINE1_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
+  fillRect(BTC_TXT_X, BTC_LINE2_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
+  fillRect(BTC_TXT_X, BTC_LINE3_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
+  btcDrawTextLines();
+  flushDisplay();
+}
 void stepOneScreen()          { blankScreen(); }
 void stepTwoScreen()          { blankScreen(); }
 void stepThreeScreen()        { blankScreen(); }
@@ -309,14 +471,203 @@ void nfcErrorDetailScreen(const char*) { blankScreen(); }
 void thankYouScreen()         { blankScreen(); }
 void productBlockedScreen()   { blankScreen(); }
 void supplyBinEmptyScreen()   { blankScreen(); }
-void drawQRCode()             { /* TODO */ }
-void showQRScreen()           { blankScreen(); }
-void showThresholdQRScreen()  { blankScreen(); }
-void showSpecialModeQRScreen(){ blankScreen(); }
-void showProductQRScreen(String, int)    { blankScreen(); }
-void showBoltCardScreen(String, int)     { blankScreen(); }
-void showMobilePhoneScreen(String, int)  { blankScreen(); }
-void productSelectionScreen() { blankScreen(); }
+// ============================================================================
+// QR / PRODUCT SCREENS — landscape 480×320 layout
+// ============================================================================
+// Left side: 245×245 QR (49 modules × 5 px) at (10, 35)
+// Right side: 200×250 colored info box at (270, 35) with up to 3 lines text
+// For BoltCard/MobilePhone variants the QR area shows text instead of a QR.
+
+#define QR_X        10
+#define QR_Y        35
+#define QR_MOD_SIZE 5     // 49 modules × 5 px = 245 px
+#define QR_AREA_CX  ((QR_X) + (49 * QR_MOD_SIZE) / 2)   // 132
+#define QR_AREA_CY  ((QR_Y) + (49 * QR_MOD_SIZE) / 2)   // 157
+
+#define BOX_X       270
+#define BOX_Y       35
+#define BOX_W       200
+#define BOX_H       250
+
+static String sanitizeLabel(String label) {
+  // QR/box font supports only ASCII — replace common currency symbols.
+  label.replace("€", "EUR");  // €
+  label.replace("$",      "USD");
+  label.replace("£", "GBP");  // £
+  label.replace("¥", "YEN");  // ¥
+  label.replace("₿", "BTC");  // ₿
+  label.replace("₹", "INR");  // ₹
+  label.replace("₽", "RUB");  // ₽
+  label.replace("¢", "ct");   // ¢
+  return label;
+}
+
+// Split into up to 3 words: 1st word, 2nd word, rest. Falls back to "Pin <n>"
+// if input is empty.
+static void splitLabelWords(const String &src, int pin,
+                             String words[3], int &wordCount) {
+  words[0] = words[1] = words[2] = "";
+  wordCount = 0;
+  int firstSpace = src.indexOf(' ');
+  if (firstSpace < 0) {
+    words[0] = src;
+    wordCount = (src.length() > 0) ? 1 : 0;
+  } else {
+    words[0] = src.substring(0, firstSpace);
+    wordCount = 1;
+    int secondSpace = src.indexOf(' ', firstSpace + 1);
+    if (secondSpace < 0) {
+      words[1] = src.substring(firstSpace + 1);
+      wordCount = 2;
+    } else {
+      words[1] = src.substring(firstSpace + 1, secondSpace);
+      words[2] = src.substring(secondSpace + 1);
+      wordCount = 3;
+    }
+  }
+  if (wordCount == 0 || words[0].length() == 0) {
+    words[0] = "Pin " + String(pin);
+    wordCount = 1;
+  }
+}
+
+// Render a QR code (text data) into the backbuffer. Uses qrcode library version 8
+// (49×49 modules) which fits typical Lightning URLs.
+static void drawQRAt(const char *text, int lx, int ly, int mod_size,
+                     uint16_t fg, uint16_t bg) {
+  if (!text || !*text) return;
+  QRCode qr;
+  uint8_t qrBuf[qrcode_getBufferSize(8)];
+  if (qrcode_initText(&qr, qrBuf, 8, 0, text) < 0) {
+    // Fallback: just fill the area with bg so we don't show stale pixels
+    fillRect(lx, ly, qr.size * mod_size, qr.size * mod_size, bg);
+    return;
+  }
+  for (int yy = 0; yy < qr.size; yy++) {
+    for (int xx = 0; xx < qr.size; xx++) {
+      uint16_t c = qrcode_getModule(&qr, xx, yy) ? fg : bg;
+      fillRect(lx + xx * mod_size, ly + yy * mod_size, mod_size, mod_size, c);
+    }
+  }
+}
+
+// Filled label box on the right side, text in box-bg color, centered
+static void drawLabelBox(const String words[], int wordCount,
+                          uint16_t box_color, uint16_t text_color) {
+  fillRect(BOX_X, BOX_Y, BOX_W, BOX_H, box_color);
+  int cx = BOX_X + BOX_W / 2;
+  if (wordCount <= 1) {
+    int sz = (words[0].length() >= 7) ? 2 : 4;
+    drawCenter(cx, BOX_Y + BOX_H / 2, words[0].c_str(),
+               text_color, box_color, sz);
+  } else if (wordCount == 2) {
+    int sz1 = (words[0].length() >= 7) ? 2 : 3;
+    int sz2 = (words[1].length() >= 7) ? 2 : 3;
+    drawCenter(cx, BOX_Y + BOX_H / 3,     words[0].c_str(),
+               text_color, box_color, sz1);
+    drawCenter(cx, BOX_Y + 2 * BOX_H / 3, words[1].c_str(),
+               text_color, box_color, sz2);
+  } else {
+    int sz1 = (words[0].length() >= 7) ? 2 : 3;
+    int sz2 = (words[1].length() >= 7) ? 2 : 3;
+    drawCenter(cx, BOX_Y + BOX_H / 4,     words[0].c_str(),
+               text_color, box_color, sz1);
+    drawCenter(cx, BOX_Y + BOX_H / 2,     words[1].c_str(),
+               text_color, box_color, sz2);
+    drawCenter(cx, BOX_Y + 3 * BOX_H / 4, words[2].c_str(),
+               text_color, box_color, 2);
+  }
+}
+
+void drawQRCode() {
+  // External callers expect this draws lightningConfig.lightning at the
+  // standard QR position with current theme colors.
+  drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE,
+           themeForeground, themeBackground);
+}
+
+void showProductQRScreen(String label, int pin) {
+  DisplayLock l;
+  if (!_gfx) return;
+  label = sanitizeLabel(label);
+  String words[3];
+  int wordCount;
+  splitLabelWords(label, pin, words, wordCount);
+
+  fillScreen(themeBackground);
+  drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE,
+           themeForeground, themeBackground);
+  drawLabelBox(words, wordCount, themeForeground, themeBackground);
+  flushDisplay();
+}
+
+void showQRScreen() {
+  int pinIndex = getPinIndex(12);
+  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                  ? productLabels.labels[pinIndex]
+                  : String("READY 4 ZAP ACTION");
+  showProductQRScreen(label, 12);
+}
+
+void showSpecialModeQRScreen() {
+  int pinIndex = getPinIndex(12);
+  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                  ? productLabels.labels[pinIndex]
+                  : String("READY 4 SP ACTION");
+  showProductQRScreen(label, 12);
+}
+
+void showThresholdQRScreen() {
+  DisplayLock l;
+  if (!_gfx) return;
+  fillScreen(themeBackground);
+  drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE,
+           themeForeground, themeBackground);
+  String words[3] = {"READY", "4 TH", "ACTION"};
+  drawLabelBox(words, 3, themeForeground, themeBackground);
+  flushDisplay();
+}
+
+void showBoltCardScreen(String label, int pin) {
+  DisplayLock l;
+  if (!_gfx) return;
+  label = sanitizeLabel(label);
+  String words[3];
+  int wordCount;
+  splitLabelWords(label, pin, words, wordCount);
+
+  fillScreen(themeBackground);
+  // Left: BOLT / CARD / Tap NFC where the QR would be
+  drawCenter(QR_AREA_CX, QR_AREA_CY - 60, "BOLT",
+             themeForeground, themeBackground, 5);
+  drawCenter(QR_AREA_CX, QR_AREA_CY,      "CARD",
+             themeForeground, themeBackground, 5);
+  drawCenter(QR_AREA_CX, QR_AREA_CY + 70, "Tap NFC",
+             themeForeground, themeBackground, 2);
+  drawLabelBox(words, wordCount, themeForeground, themeBackground);
+  flushDisplay();
+}
+
+void showMobilePhoneScreen(String label, int pin) {
+  DisplayLock l;
+  if (!_gfx) return;
+  label = sanitizeLabel(label);
+  String words[3];
+  int wordCount;
+  splitLabelWords(label, pin, words, wordCount);
+
+  fillScreen(themeBackground);
+  drawCenter(QR_AREA_CX, QR_AREA_CY - 60, "MOBILE",
+             themeForeground, themeBackground, 4);
+  drawCenter(QR_AREA_CX, QR_AREA_CY,      "PHONE",
+             themeForeground, themeBackground, 4);
+  drawCenter(QR_AREA_CX, QR_AREA_CY + 70, "Tap NFC",
+             themeForeground, themeBackground, 2);
+  drawLabelBox(words, wordCount, themeForeground, themeBackground);
+  flushDisplay();
+}
+
+void productSelectionScreen() { blankScreen(); /* TODO iteration */ }
 void activateScreensaver(String) { /* TODO */ }
 void deactivateScreensaver()  { /* TODO */ }
 bool isScreensaverActive()    { return false; }
