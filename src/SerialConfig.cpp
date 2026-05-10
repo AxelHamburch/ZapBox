@@ -3,7 +3,11 @@
 #include "FS.h"
 #include "FFat.h"
 #include "SerialConfig.h"
-#include "TouchCST816S.h"
+#ifdef BOARD_JC3248W535C
+  #include "TouchAXS15231B.h"
+#else
+  #include "TouchCST816S.h"
+#endif
 #include "DeviceState.h"
 #include "GlobalState.h"
 #include "PinConfig.h"
@@ -213,7 +217,11 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
         // Check for touch exit (any touch after 2s in config mode)
         if (touchControllerPtr != nullptr && configModeStartTime > 0 && (millis() - configModeStartTime) > 0)
         {
+#ifdef BOARD_JC3248W535C
+            TouchAXS15231B* touch = (TouchAXS15231B*)touchControllerPtr;
+#else
             TouchCST816S* touch = (TouchCST816S*)touchControllerPtr;
+#endif
             if (touch->available())
             {
                 serialPrintln("[CONFIG] Touch detected - exiting config mode");

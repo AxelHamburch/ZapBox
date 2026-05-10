@@ -5,7 +5,11 @@
 #include "Display.h"
 #include "Payment.h"
 #include "UI.h"
-#include "TouchCST816S.h"
+#ifdef BOARD_JC3248W535C
+  #include "TouchAXS15231B.h"
+#else
+  #include "TouchCST816S.h"
+#endif
 #include "SerialConfig.h"
 #include "ServoControl.h"
 #include <Arduino.h>
@@ -22,7 +26,11 @@ extern ProductSelectionState productSelectionState;
 extern PowerConfig powerConfig;
 extern ActivityTracking activityTracking;
 extern TouchState touchState;
+#ifdef BOARD_JC3248W535C
+extern TouchAXS15231B touch;
+#else
 extern TouchCST816S touch;
+#endif
 extern DisplayConfig displayConfig;
 extern unsigned long configModeStartTime;
 extern bool labelsLoadedSuccessfully;

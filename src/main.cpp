@@ -15,7 +15,11 @@
 #include "SerialConfig.h"
 
 #ifdef ENABLE_DISPLAY
-#include "TouchCST816S.h"
+  #ifdef BOARD_JC3248W535C
+    #include "TouchAXS15231B.h"
+  #else
+    #include "TouchCST816S.h"
+  #endif
 #endif
 
 #include "DeviceState.h"
@@ -56,7 +60,13 @@ OneButton rightButton(PIN_BUTTON_2, true);
 
 #ifdef ENABLE_DISPLAY
 // Touch controller (only for T-Display-S3)
+#ifdef BOARD_JC3248W535C
+// AXS15231B touch sits on the module's INTERNAL I²C bus (SDA=4, SCL=8). It
+// uses Wire1 so the external Wire (SDA=18, SCL=17) stays free for NFC.
+TouchAXS15231B touch(Wire1, 4, 8, /*rst=*/-1, /*irq=*/-1);
+#else
 TouchCST816S touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_TOUCH_RES, PIN_TOUCH_INT);
+#endif
 #endif
 
 // Variables that remain here (not migrated to GlobalState)
@@ -1159,20 +1169,17 @@ void setup()
   startupScreen();
 
 #ifdef BOARD_JC3248W535C
-  // AXS15231B-Touch sits on internal pins (GPIO 4/8) not exposed on this module —
-  // skip touch.begin() and bring up Wire (GPIO 18/17) ourselves so NFC works.
+  // The AXS15231B touch lives on Wire1 (internal SDA=4/SCL=8). Bring up the
+  // external Wire (SDA=18/SCL=17) ourselves so NFC modules work even if touch
+  // probe fails.
   Wire.begin(18, 17, 100000);
-  touchState.available = false;
-  Serial.println("[TOUCH] disabled on jc3248w535c (AXS15231B touch driver not yet ported)");
-#else
-  // Initialize touch controller (independent of WiFi)
+#endif
   touchState.available = touch.begin();
   if (touchState.available) {
     Serial.println("[TOUCH] ✓ Touch controller initialized successfully!");
   } else {
     Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
   }
-#endif
 
   // IOExpander init: Wire (SDA=18, SCL=17) is now ready after touch.begin()
 #if ENABLE_DISPLAY

@@ -6,6 +6,9 @@
 #include <FreeRTOS.h>
 #include <semphr.h>
 #include <esp_heap_caps.h>
+#include <esp_sleep.h>
+#include <esp_task_wdt.h>
+#include <driver/rtc_io.h>
 #include <qrcode.h>
 #include "Display.h"
 #include "GlobalState.h"
@@ -38,12 +41,95 @@
 #define TFT_MAGENTA     0xF81F
 #define TFT_YELLOW      0xFFE0
 #define TFT_ORANGE      0xFD20
+#define TFT_DARKGREY    0x7BEF
+#define TFT_LIGHTGREY   0xC618
+#define TFT_NAVY        0x000F
+#define TFT_DARKGREEN   0x03E0
+#define TFT_DARKCYAN    0x03EF
+#define TFT_MAROON      0x7800
+#define TFT_PURPLE      0x780F
+#define TFT_OLIVE       0x7BE0
+#define TFT_PINK        0xFE19
+#define TFT_GREENYELLOW 0xAFE5
+#define TFT_BROWN       0x9A60
 
 uint16_t themeForeground = TFT_BLACK;
 uint16_t themeBackground = TFT_WHITE;
 
+// Special non-standard accent colors used by some themes
+#define COLOR_BTCORANGE    0xFCC0
+#define COLOR_ZAPBOX_AMBER 0xFEA0
+
+// ============================================================================
+// THEME LOOKUP — 24 foreground/background combinations selectable via
+// displayConfig.theme (loaded from FFat config). Linear search at startup
+// is plenty fast for 24 entries.
+// ============================================================================
+
+struct ThemeConfig {
+  const char *name;
+  uint16_t    foreground;
+  uint16_t    background;
+};
+
+static const ThemeConfig themeConfigs[] = {
+  {"black-white",         TFT_BLACK,     TFT_WHITE},
+  {"black-darkcyan",      TFT_BLACK,     TFT_DARKCYAN},
+  {"darkgreen-green",     TFT_DARKGREEN, TFT_GREEN},
+  {"darkgreen-lightgrey", TFT_DARKGREEN, TFT_LIGHTGREY},
+  {"darkblue-lightgrey",  TFT_NAVY,      TFT_LIGHTGREY},
+  {"red-green",           TFT_RED,       TFT_GREEN},
+  {"black-blue",          TFT_BLACK,     TFT_BLUE},
+  {"orange-brown",        TFT_ORANGE,    TFT_BROWN},
+  {"black-yellow",        TFT_BLACK,     TFT_YELLOW},
+  {"black-btcorange",     TFT_BLACK,     COLOR_BTCORANGE},
+  {"btcorange-black",     COLOR_BTCORANGE, TFT_BLACK},
+  {"darkgrey-btcorange",  TFT_DARKGREY,  COLOR_BTCORANGE},
+  {"zapbox",              COLOR_ZAPBOX_AMBER, TFT_BLACK},
+  {"maroon-magenta",      TFT_MAROON,    TFT_MAGENTA},
+  {"black-red",           TFT_BLACK,     TFT_RED},
+  {"brown-orange",        TFT_BROWN,     TFT_ORANGE},
+  {"black-orange",        TFT_BLACK,     TFT_ORANGE},
+  {"white-darkcyan",      TFT_WHITE,     TFT_DARKCYAN},
+  {"white-navy",          TFT_WHITE,     TFT_NAVY},
+  {"darkcyan-cyan",       TFT_DARKCYAN,  TFT_CYAN},
+  {"black-olive",         TFT_BLACK,     TFT_OLIVE},
+  {"black-darkgrey",      TFT_BLACK,     TFT_DARKGREY},
+  {"black-lightgrey",     TFT_BLACK,     TFT_LIGHTGREY},
+  {"black-green",         TFT_BLACK,     TFT_GREEN},
+};
+
+static void setThemeColors() {
+  // Default fallback if displayConfig.theme name doesn't match the table
+  themeForeground = TFT_BLACK;
+  themeBackground = TFT_WHITE;
+  for (const auto &t : themeConfigs) {
+    if (displayConfig.theme == t.name) {
+      themeForeground = t.foreground;
+      themeBackground = t.background;
+      return;
+    }
+  }
+}
+
 // External currency string set from config (defaults to "USD")
 extern String currency;
+
+// ============================================================================
+// SHARED LAYOUT CONSTANTS (used by QR / step / NFC screens)
+// ============================================================================
+// Left half: 245×245 area (10..255, 35..280) — for QR or big icons/text
+// Right half: 200×250 colored info box (270..470, 35..285)
+#define QR_X        10
+#define QR_Y        35
+#define QR_MOD_SIZE 5     // 49 modules × 5 px = 245 px
+#define QR_AREA_CX  ((QR_X) + (49 * QR_MOD_SIZE) / 2)   // 132
+#define QR_AREA_CY  ((QR_Y) + (49 * QR_MOD_SIZE) / 2)   // 157
+
+#define BOX_X       270
+#define BOX_Y       35
+#define BOX_W       200
+#define BOX_H       250
 
 // ============================================================================
 // BITCOIN LOGO — 64×64 monochrome bitmap (from original Display.cpp)
@@ -322,9 +408,10 @@ void initDisplay() {
   }
   Serial.println("[DISPLAY] begin() OK");
 
-  // 3. Initial clear + backlight on
-  themeForeground = TFT_BLACK;
-  themeBackground = TFT_WHITE;
+  // 3. Apply configured theme + initial clear + backlight on
+  setThemeColors();
+  Serial.printf("[DISPLAY] Theme '%s' fg=0x%04X bg=0x%04X\n",
+                displayConfig.theme.c_str(), themeForeground, themeBackground);
   fillScreen(themeBackground);
   flushDisplay();
   digitalWrite(PIN_LCD_BL, HIGH);
@@ -459,35 +546,229 @@ void updateBtctickerValues() {
   btcDrawTextLines();
   flushDisplay();
 }
-void stepOneScreen()          { blankScreen(); }
-void stepTwoScreen()          { blankScreen(); }
-void stepThreeScreen()        { blankScreen(); }
-void actionTimeScreen()       { blankScreen(); }
-void updateActionTimeCountdown(int) { /* TODO */ }
-void nfcPendingScreen()       { blankScreen(); }
-void nfcNoLuckScreen()        { blankScreen(); }
-void nfcNotSupportedScreen()  { blankScreen(); }
-void nfcErrorDetailScreen(const char*) { blankScreen(); }
-void thankYouScreen()         { blankScreen(); }
-void productBlockedScreen()   { blankScreen(); }
-void supplyBinEmptyScreen()   { blankScreen(); }
+// ============================================================================
+// STEP / FLOW SCREENS — big number left + label box right (T-Display-S3 style)
+// ============================================================================
+// Reuses the BOX_X/Y/W/H geometry from the QR screens for a consistent layout.
+
+static void renderStepScreen(const char *big, uint8_t bigSize,
+                              const char *l1, const char *l2, const char *l3) {
+  fillScreen(themeBackground);
+  // Big number/text on the left (center of the QR area for visual consistency)
+  drawCenter(QR_AREA_CX, QR_AREA_CY, big,
+             themeForeground, themeBackground, bigSize);
+  // Filled label box on the right with three lines
+  fillRect(BOX_X, BOX_Y, BOX_W, BOX_H, themeForeground);
+  int cx = BOX_X + BOX_W / 2;
+  drawCenter(cx, BOX_Y + BOX_H / 4,     l1, themeBackground, themeForeground, 4);
+  drawCenter(cx, BOX_Y + BOX_H / 2,     l2, themeBackground, themeForeground, 4);
+  drawCenter(cx, BOX_Y + 3 * BOX_H / 4, l3, themeBackground, themeForeground, 4);
+  flushDisplay();
+}
+
+void stepOneScreen() {
+  DisplayLock l; if (!_gfx) return;
+  renderStepScreen("1", 14, "SELECT", "YOUR", "PRODUCT");
+}
+
+void stepTwoScreen() {
+  DisplayLock l; if (!_gfx) return;
+  renderStepScreen("2", 14, "SCAN", "QR", "CODE");
+}
+
+void stepThreeScreen() {
+  DisplayLock l; if (!_gfx) return;
+  renderStepScreen("3", 14, "PAY", "IN-", "VOICE");
+}
+
+// ============================================================================
+// ACTION TIME — "ACTION" big at top, "TIME" in inverted box, countdown sides
+// ============================================================================
+// Layout on 480×320:
+//   y= 70    "ACTION"           size 6 (centered)
+//   y=130..210  TIME box (220×80, x=130..350)
+//      y=170  "TIME" inside box, size 5
+//   countdown:
+//      MM at (cx=60, cy=170)   size 4   (left of box)
+//      SS at (cx=420, cy=170)  size 4   (right of box)
+
+#define AT_BOX_X    130
+#define AT_BOX_Y    130
+#define AT_BOX_W    220
+#define AT_BOX_H    80
+#define AT_LABEL_Y  170
+#define AT_MM_CX    60
+#define AT_SS_CX    420
+
+void actionTimeScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  drawCenter(SCR_W / 2, 70, "ACTION", themeForeground, themeBackground, 6);
+  fillRect(AT_BOX_X, AT_BOX_Y, AT_BOX_W, AT_BOX_H, themeForeground);
+  drawCenter(SCR_W / 2, AT_LABEL_Y, "TIME",
+             themeBackground, themeForeground, 5);
+  flushDisplay();
+}
+
+void updateActionTimeCountdown(int remainingSecs) {
+  DisplayLock l; if (!_gfx) return;
+  if (remainingSecs < 0) remainingSecs = 0;
+  int mins = remainingSecs / 60;
+  int secs = remainingSecs % 60;
+  if (mins > 99) mins = 99;
+
+  char buf[8];
+  // Wipe just the two countdown bands (avoid touching the TIME box)
+  fillRect(AT_MM_CX - 40, AT_LABEL_Y - 22, 80, 44, themeBackground);
+  fillRect(AT_SS_CX - 40, AT_LABEL_Y - 22, 80, 44, themeBackground);
+
+  snprintf(buf, sizeof(buf), "%02d", mins);
+  drawCenter(AT_MM_CX, AT_LABEL_Y, buf, themeForeground, themeBackground, 4);
+  snprintf(buf, sizeof(buf), "%02d", secs);
+  drawCenter(AT_SS_CX, AT_LABEL_Y, buf, themeForeground, themeBackground, 4);
+  flushDisplay();
+}
+// ============================================================================
+// NFC SCREENS — pending / no luck / not supported / error detail
+// ============================================================================
+// Shared layout: "label" big at top, "NFC" in inverted-color box mid/below.
+// Same box geometry as actionTimeScreen for visual consistency.
+
+#define NFC_BOX_X   130
+#define NFC_BOX_Y   130
+#define NFC_BOX_W   220
+#define NFC_BOX_H   80
+#define NFC_BOX_LBL_Y 170     // y-center of "NFC" inside the box
+
+void nfcPendingScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  drawCenter(SCR_W / 2, 70, "PENDING",
+             themeForeground, themeBackground, 6);
+  fillRect(NFC_BOX_X, NFC_BOX_Y, NFC_BOX_W, NFC_BOX_H, themeForeground);
+  drawCenter(SCR_W / 2, NFC_BOX_LBL_Y, "NFC",
+             themeBackground, themeForeground, 5);
+  flushDisplay();
+}
+
+void nfcNoLuckScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  // NFC box at TOP this time (smaller)
+  fillRect(NFC_BOX_X, 50, NFC_BOX_W, NFC_BOX_H, themeForeground);
+  drawCenter(SCR_W / 2, 90, "NFC",
+             themeBackground, themeForeground, 5);
+  // "NO LUCK" big below
+  drawCenter(SCR_W / 2, 220, "NO LUCK",
+             themeForeground, themeBackground, 6);
+  flushDisplay();
+}
+
+void nfcNotSupportedScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  fillRect(NFC_BOX_X, 50, NFC_BOX_W, NFC_BOX_H, themeForeground);
+  drawCenter(SCR_W / 2, 90, "NFC",
+             themeBackground, themeForeground, 5);
+  drawCenter(SCR_W / 2, 200, "not supported",
+             themeForeground, themeBackground, 3);
+  drawCenter(SCR_W / 2, 255, "use zapbox extension",
+             themeForeground, themeBackground, 2);
+  flushDisplay();
+}
+
+void nfcErrorDetailScreen(const char *detail) {
+  DisplayLock l; if (!_gfx) return;
+  if (!detail) detail = "";
+  fillScreen(themeBackground);
+
+  // Word-wrap into up to 4 lines at text size 2 (12 px per char wide)
+  const int textSize = 2;
+  const int charW    = 6 * textSize;            // 12
+  const int lineH    = 8 * textSize + 8;        // 24 (with extra spacing)
+  const int margin   = 10;
+  const int maxW     = SCR_W - 2 * margin;
+  const int maxChars = maxW / charW;            // ~38
+
+  String full(detail);
+  String lines[4];
+  int lineCount = 0;
+
+  // Split on first ": " so the label keeps its own line (server convention)
+  int colonSplit = full.indexOf(": ");
+  String remaining;
+  if (colonSplit >= 0) {
+    lines[lineCount++] = full.substring(0, colonSplit + 1);
+    remaining = full.substring(colonSplit + 2);
+  } else {
+    remaining = full;
+  }
+
+  while (remaining.length() > 0 && lineCount < 4) {
+    remaining.trim();
+    if ((int)remaining.length() <= maxChars) {
+      lines[lineCount++] = remaining;
+      break;
+    }
+    // Look for the last space within maxChars chars
+    int breakAt = -1;
+    for (int i = 0; i < maxChars && i < (int)remaining.length(); i++) {
+      if (remaining.charAt(i) == ' ') breakAt = i;
+    }
+    if (breakAt <= 0) {
+      // Hard break — no space fits, slice at maxChars
+      lines[lineCount++] = remaining.substring(0, maxChars);
+      remaining = remaining.substring(maxChars);
+    } else {
+      lines[lineCount++] = remaining.substring(0, breakAt);
+      remaining = remaining.substring(breakAt + 1);
+    }
+  }
+
+  int totalH = lineCount * lineH;
+  int startY = (SCR_H - totalH) / 2 + lineH / 2;
+  for (int i = 0; i < lineCount; i++) {
+    drawCenter(SCR_W / 2, startY + i * lineH, lines[i].c_str(),
+               themeForeground, themeBackground, textSize);
+  }
+  flushDisplay();
+}
+void thankYouScreen() {
+  DisplayLock l; if (!_gfx) return;
+  renderStepScreen("ty", 14, "ENJOY", "YOUR", "DAY");
+}
+
+// ============================================================================
+// WARNING SCREENS — warm amber background (0xFBE0), black text, full canvas
+// ============================================================================
+
+#define WARN_BG  0xFBE0   // warm amber
+#define WARN_FG  TFT_BLACK
+
+static void renderWarningScreen(const char *l1_big, const char *l2_big,
+                                 const char *l3_small) {
+  fillScreen(WARN_BG);
+  drawCenter(SCR_W / 2, 90,  l1_big,    WARN_FG, WARN_BG, 4);
+  drawCenter(SCR_W / 2, 145, l2_big,    WARN_FG, WARN_BG, 4);
+  drawCenter(SCR_W / 2, 215, l3_small,  WARN_FG, WARN_BG, 2);
+  flushDisplay();
+}
+
+void productBlockedScreen() {
+  DisplayLock l; if (!_gfx) return;
+  renderWarningScreen("PRODUCT", "BLOCKED", "Remove the product");
+}
+
+void supplyBinEmptyScreen() {
+  DisplayLock l; if (!_gfx) return;
+  renderWarningScreen("SUPPLY BIN", "IS EMPTY", "Please restock it");
+}
 // ============================================================================
 // QR / PRODUCT SCREENS — landscape 480×320 layout
 // ============================================================================
 // Left side: 245×245 QR (49 modules × 5 px) at (10, 35)
 // Right side: 200×250 colored info box at (270, 35) with up to 3 lines text
 // For BoltCard/MobilePhone variants the QR area shows text instead of a QR.
-
-#define QR_X        10
-#define QR_Y        35
-#define QR_MOD_SIZE 5     // 49 modules × 5 px = 245 px
-#define QR_AREA_CX  ((QR_X) + (49 * QR_MOD_SIZE) / 2)   // 132
-#define QR_AREA_CY  ((QR_Y) + (49 * QR_MOD_SIZE) / 2)   // 157
-
-#define BOX_X       270
-#define BOX_Y       35
-#define BOX_W       200
-#define BOX_H       250
 
 static String sanitizeLabel(String label) {
   // QR/box font supports only ASCII — replace common currency symbols.
@@ -667,13 +948,152 @@ void showMobilePhoneScreen(String label, int pin) {
   flushDisplay();
 }
 
-void productSelectionScreen() { blankScreen(); /* TODO iteration */ }
-void activateScreensaver(String) { /* TODO */ }
-void deactivateScreensaver()  { /* TODO */ }
-bool isScreensaverActive()    { return false; }
-void prepareDeepSleep()       { /* TODO */ }
-void setupDeepSleepWakeup(String) { /* TODO */ }
-bool isDeepSleepActive()      { return false; }
-void nfcTestScreen(String)    { blankScreen(); }
+void productSelectionScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  drawCenter(SCR_W / 2, 90,  "SELECT",
+             themeForeground, themeBackground, 5);
+  drawCenter(SCR_W / 2, 155, "PRODUCT",
+             themeForeground, themeBackground, 5);
+  drawCenter(SCR_W / 2, 240, "<-NEXT->",
+             themeForeground, themeBackground, 4);
+  flushDisplay();
+}
+// ============================================================================
+// SCREENSAVER + DEEP SLEEP
+// ============================================================================
+// Screensaver modes:
+//   "off"        — display always on (no-op)
+//   "black"      — display fills black, controller stays on
+//   "backlight"  — backlight off (BL pin LOW), display content unchanged
+// Deep-sleep modes:
+//   "freeze"     — esp_deep_sleep, restart on wake (only BOOT button for now)
+//   "light"      — esp_light_sleep, resumes (then ESP.restart for clean state)
+
+static bool   screensaverIsActive = false;
+static String screensaverMode     = "off";
+static bool   deepSleepIsActive   = false;
+static String deepSleepMode       = "off";
+
+void activateScreensaver(String mode) {
+  DisplayLock l;
+  Serial.println("[SCREENSAVER] Activating mode: " + mode);
+  screensaverIsActive = true;
+  screensaverMode = mode;
+
+  if (mode == "black") {
+    fillScreen(TFT_BLACK);
+    flushDisplay();
+  } else if (mode == "backlight") {
+    pinMode(PIN_LCD_BL, OUTPUT);
+    digitalWrite(PIN_LCD_BL, LOW);
+  }
+}
+
+void deactivateScreensaver() {
+  DisplayLock l;
+  if (!screensaverIsActive) return;
+  Serial.println("[SCREENSAVER] Deactivating mode: " + screensaverMode);
+
+  if (screensaverMode == "backlight") {
+    pinMode(PIN_LCD_BL, OUTPUT);
+    digitalWrite(PIN_LCD_BL, HIGH);
+  }
+  screensaverIsActive = false;
+  screensaverMode = "off";
+  // The main loop will redraw the appropriate screen.
+}
+
+bool isScreensaverActive() { return screensaverIsActive; }
+
+void prepareDeepSleep() {
+  DisplayLock l;
+  Serial.println("[DEEP_SLEEP] Preparing display for deep sleep...");
+  esp_task_wdt_delete(NULL);
+  fillScreen(TFT_BLACK);
+  flushDisplay();
+  pinMode(PIN_LCD_BL, OUTPUT);
+  digitalWrite(PIN_LCD_BL, LOW);
+  delay(200);
+}
+
+void setupDeepSleepWakeup(String mode) {
+  Serial.println("[DEEP_SLEEP] Setup wake sources for mode: " + mode);
+  deepSleepIsActive = true;
+  deepSleepMode = mode;
+
+  // BOOT button (GPIO 0) is the only reliable wake source on this board until
+  // the AXS15231B touch driver is ported (touch INT on GPIO 16 would be ideal).
+
+  if (mode == "freeze") {
+    rtc_gpio_init(GPIO_NUM_0);
+    rtc_gpio_set_direction(GPIO_NUM_0, RTC_GPIO_MODE_INPUT_ONLY);
+    rtc_gpio_pullup_en(GPIO_NUM_0);
+    rtc_gpio_pulldown_dis(GPIO_NUM_0);
+    delay(100);
+
+    if (rtc_gpio_get_level(GPIO_NUM_0) == 0) {
+      Serial.println("[DEEP_SLEEP] Aborting: BOOT button is currently pressed");
+      rtc_gpio_deinit(GPIO_NUM_0);
+      deepSleepIsActive = false;
+      deepSleepMode = "off";
+      return;
+    }
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);   // wake on LOW
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH,   ESP_PD_OPTION_ON);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_OFF);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
+    Serial.println("[DEEP_SLEEP] Wake on BOOT (GPIO 0). Entering deep sleep.");
+    Serial.flush();
+    delay(200);
+    esp_deep_sleep_start();   // does not return
+  } else if (mode == "light") {
+    gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
+    esp_sleep_enable_gpio_wakeup();
+    Serial.println("[LIGHT_SLEEP] Wake on BOOT (GPIO 0). Entering light sleep.");
+    Serial.flush();
+    delay(200);
+    esp_light_sleep_start();
+
+    // Light sleep returns here on wake.
+    Serial.println("[LIGHT_SLEEP] Woke up — restarting for clean state.");
+    gpio_wakeup_disable(GPIO_NUM_0);
+    deepSleepIsActive = false;
+    deepSleepMode = "off";
+    Serial.flush();
+    delay(100);
+    ESP.restart();
+  } else {
+    Serial.println("[DEEP_SLEEP] Unknown mode, ignoring: " + mode);
+    deepSleepIsActive = false;
+    deepSleepMode = "off";
+  }
+}
+
+bool isDeepSleepActive() { return deepSleepIsActive; }
+void nfcTestScreen(String lnurlw) {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  // Big green confirmation header
+  drawCenter(SCR_W / 2, 70, "NFC OK!",
+             TFT_GREEN, themeBackground, 5);
+
+  // LNURL-W preview: first 38 chars on line 1, next 38 on line 2
+  // (480 wide - 20 px margins = 460 / 12 px per char at size 2 ≈ 38 chars)
+  const int chunk = 38;
+  int total = lnurlw.length();
+  String line1 = lnurlw.substring(0, total > chunk ? chunk : total);
+  drawCenter(SCR_W / 2, 160, line1.c_str(),
+             themeForeground, themeBackground, 2);
+  if (total > chunk) {
+    String line2 = lnurlw.substring(chunk, total > 2 * chunk ? 2 * chunk : total);
+    drawCenter(SCR_W / 2, 200, line2.c_str(),
+               themeForeground, themeBackground, 2);
+  }
+
+  drawCenter(SCR_W / 2, 270, "See Serial for full LNURLW",
+             TFT_DARKGREY, themeBackground, 2);
+  flushDisplay();
+}
 
 #endif  // BOARD_JC3248W535C
