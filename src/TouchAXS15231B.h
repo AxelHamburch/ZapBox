@@ -42,6 +42,9 @@ private:
   // Reads + parses touch data, caching the result for a few ms so back-to-back
   // calls (available/isPressed/getX/getY) don't hammer the bus.
   bool readTouchData();
+  // Re-initializes Wire1 after persistent I²C failures (sensor occasionally
+  // gets the bus stuck if we read too fast or partially).
+  void attemptRecovery();
 
   TwoWire *_wire;
   int _sda;
@@ -55,4 +58,5 @@ private:
   uint8_t  _points;
   uint8_t  _gesture;
   unsigned long _lastReadMs;
+  unsigned long _errCount;
 };

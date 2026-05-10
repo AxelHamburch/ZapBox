@@ -18,7 +18,7 @@ static const uint8_t kReadCmd[11] = {
 TouchAXS15231B::TouchAXS15231B(TwoWire &wire, int sda, int scl, int rst, int irq)
   : _wire(&wire), _sda(sda), _scl(scl), _rst(rst), _irq(irq),
     _initialized(false), _x(0), _y(0), _points(0), _gesture(0),
-    _lastReadMs(0) {}
+    _lastReadMs(0), _errCount(0) {}
 
 bool TouchAXS15231B::probe() {
   _wire->beginTransmission(AXS_ADDR);
@@ -54,16 +54,24 @@ bool TouchAXS15231B::begin() {
 bool TouchAXS15231B::readTouchData() {
   if (!_initialized) return false;
 
-  // Cache for ~10 ms so available()/isPressed()/getX()/getY() don't each
-  // re-trigger an I²C transaction within a single processing tick.
+  // Cache for ~30 ms — at 30+ Hz that's still ~33 reads/s, plenty for touch
+  // responsiveness while avoiding hammering the bus (earlier 10 ms cache led
+  // to the bus occasionally getting stuck).
   unsigned long now = millis();
-  if (now - _lastReadMs < 10) return _points > 0;
+  if (now - _lastReadMs < 30) return _points > 0;
   _lastReadMs = now;
 
   // Send the 11-byte read command
   _wire->beginTransmission(AXS_ADDR);
   _wire->write(kReadCmd, sizeof(kReadCmd));
-  if (_wire->endTransmission() != 0) {
+  uint8_t txStatus = _wire->endTransmission();
+  if (txStatus != 0) {
+    _errCount++;
+    if (_errCount == 1 || (_errCount % 200) == 0) {
+      Serial.printf("[TOUCH] write fail (status=%u, count=%lu)\n",
+                    txStatus, _errCount);
+    }
+    if (_errCount >= 50) attemptRecovery();
     _points = 0;
     return false;
   }
@@ -72,20 +80,34 @@ bool TouchAXS15231B::readTouchData() {
   uint8_t buf[8] = {0};
   uint8_t got = _wire->requestFrom(AXS_ADDR, (uint8_t)sizeof(buf));
   if (got != sizeof(buf)) {
+    _errCount++;
+    if (_errCount == 1 || (_errCount % 200) == 0) {
+      Serial.printf("[TOUCH] read short (got=%u, count=%lu)\n",
+                    got, _errCount);
+    }
+    if (_errCount >= 50) attemptRecovery();
+    // Drain any leftover bytes so the next read starts clean
+    while (_wire->available()) _wire->read();
     _points = 0;
     return false;
   }
-  for (uint8_t i = 0; i < got && _wire->available(); i++) {
-    buf[i] = _wire->read();
+  for (uint8_t i = 0; i < got; i++) {
+    if (_wire->available()) buf[i] = _wire->read();
   }
+  // Drain any unread bytes (defensive — should be none if got == 8)
+  while (_wire->available()) _wire->read();
+
+  // Made it through a full transaction — reset error counter
+  _errCount = 0;
 
   _gesture = buf[0];
-  _points  = buf[1];
+  uint8_t numPts = buf[1];
 
-  if (_points == 0 || _points > 2) {
+  if (numPts == 0 || numPts > 2) {
     _points = 0;
     return false;
   }
+  _points = numPts;
 
   // Native portrait coords from the sensor
   uint16_t tx = ((buf[2] & 0x0F) << 8) | buf[3];
@@ -100,6 +122,22 @@ bool TouchAXS15231B::readTouchData() {
   _x = ty;
   _y = (PANEL_W - 1) - tx;
   return true;
+}
+
+void TouchAXS15231B::attemptRecovery() {
+  Serial.println("[TOUCH] attempting bus recovery — re-initializing Wire1");
+  _wire->end();
+  delay(20);
+  _wire->begin(_sda, _scl, 400000);
+  delay(20);
+  // Probe again — if it still doesn't respond, leave _errCount where it is so
+  // we keep trying every 50 calls (rather than spamming recovery every tick).
+  if (probe()) {
+    Serial.println("[TOUCH] bus recovery OK, sensor responding again");
+    _errCount = 0;
+  } else {
+    Serial.println("[TOUCH] bus recovery failed, sensor still silent");
+  }
 }
 
 bool TouchAXS15231B::available() {
