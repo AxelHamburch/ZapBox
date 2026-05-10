@@ -18,7 +18,8 @@ static const uint8_t kReadCmd[11] = {
 TouchAXS15231B::TouchAXS15231B(TwoWire &wire, int sda, int scl, int rst, int irq)
   : _wire(&wire), _sda(sda), _scl(scl), _rst(rst), _irq(irq),
     _initialized(false), _x(0), _y(0), _points(0), _gesture(0),
-    _lastReadMs(0), _errCount(0) {}
+    _lastReadMs(0), _errCount(0),
+    _wasPressed(false), _releaseEdgePending(false) {}
 
 bool TouchAXS15231B::probe() {
   _wire->beginTransmission(AXS_ADDR);
@@ -103,6 +104,8 @@ bool TouchAXS15231B::readTouchData() {
   _gesture = buf[0];
   uint8_t numPts = buf[1];
 
+  // 0xFF is the sensor's idle/no-touch marker (not 0). Treat anything outside
+  // [1..2] as "no touch".
   if (numPts == 0 || numPts > 2) {
     _points = 0;
     return false;
@@ -130,6 +133,10 @@ void TouchAXS15231B::attemptRecovery() {
   delay(20);
   _wire->begin(_sda, _scl, 400000);
   delay(20);
+  // Reset edge-detection state so a stale "press" doesn't survive a recovery
+  _wasPressed = false;
+  _releaseEdgePending = false;
+  _points = 0;
   // Probe again — if it still doesn't respond, leave _errCount where it is so
   // we keep trying every 50 calls (rather than spamming recovery every tick).
   if (probe()) {
@@ -142,8 +149,23 @@ void TouchAXS15231B::attemptRecovery() {
 
 bool TouchAXS15231B::available() {
   if (!_initialized) return false;
-  // Without a usable INT line we always poll the bus.
-  return readTouchData();
+
+  // If a previous poll observed a press→release transition, surface ONE more
+  // "available" event so the consumer can update its `wasTouched` state with
+  // isPressed()=false (mirrors the CST816+IRQ behavior on T-Display-S3).
+  if (_releaseEdgePending) {
+    _releaseEdgePending = false;
+    return true;
+  }
+
+  bool currentlyPressed = readTouchData();   // updates _points
+  if (_wasPressed && !currentlyPressed) {
+    // Release edge — return true once now so the consumer sees isPressed=false
+    _wasPressed = false;
+    return true;
+  }
+  _wasPressed = currentlyPressed;
+  return currentlyPressed;
 }
 
 bool TouchAXS15231B::isPressed() {

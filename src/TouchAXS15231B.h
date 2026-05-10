@@ -59,4 +59,6 @@ private:
   uint8_t  _gesture;
   unsigned long _lastReadMs;
   unsigned long _errCount;
+  bool _wasPressed;          // edge-detection state for available()
+  bool _releaseEdgePending;  // set true when a press→release transition is observed
 };
