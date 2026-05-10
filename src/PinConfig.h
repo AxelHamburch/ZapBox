@@ -126,7 +126,7 @@
     PIN_RELAY_CH05, PIN_RELAY_CH06, PIN_RELAY_CH07, PIN_RELAY_CH08,
     PIN_RELAY_CH09, PIN_RELAY_CH10, PIN_RELAY_CH11, PIN_RELAY_CH12
   };
-#else
+#elif !defined(BOARD_JC3248W535C)
   #define RELAY_CHANNEL_MAX 4
   static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
     PIN_RELAY_CH01, PIN_RELAY_CH02, PIN_RELAY_CH03, PIN_RELAY_CH04
@@ -172,3 +172,79 @@
 //   - ONLY safe for signals guaranteed HIGH during boot (e.g. PWM output)
 //   - Do NOT use GPIO 3 for sensors that can be LOW at power-on
 // ─────────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════
+// JC3248W535C — 3.5" QSPI Touch Display (ESP32-S3-WROOM-1)
+// ═══════════════════════════════════════════════════════════════
+#ifdef BOARD_JC3248W535C
+
+// ── Undefine T-Display-S3 / ESP32-Dev macros that conflict ───────
+#undef PIN_LCD_BL
+#undef PIN_TOUCH_RES
+#undef PIN_NFC_IRQ
+#undef PIN_GPIO3
+#undef PIN_GPIO3_MODE
+#undef PIN_RELAY_CH01
+#undef PIN_RELAY_CH02
+#undef PIN_RELAY_CH03
+#undef PIN_RELAY_CH04
+#undef RELAY_CHANNEL_MAX
+
+// ── Display (QSPI, internal to module — NOT on breakout header) ──
+// Pins defined as build flags in platformio.ini:
+//   LCD_QSPI_CS=45, LCD_QSPI_CLK=47, LCD_QSPI_D0=21
+//   LCD_QSPI_D1=48, LCD_QSPI_D2=40,  LCD_QSPI_D3=39
+// Backlight: GPIO 1, defined as build flag LCD_BL_PIN=1
+#define PIN_LCD_BL  LCD_BL_PIN   // 1 — backlight on/off
+
+// ── External I2C Bus (PN532 NFC + NT3H2111 — broken out on header) ──
+#define PIN_IIC_SCL  17
+#define PIN_IIC_SDA  18
+
+// ── Touch Controller (AXS15231B, internal to module) ─────────────
+// AXS15231B touch shares the display chip; on JC3248W535C it sits on
+// internal pins SDA=4 / SCL=8 (NOT on the external I2C bus above) and
+// has no separate INT pin. Touch driver not yet ported.
+#define PIN_TOUCH_RES  -1
+
+// ── NFC Reader (PN532) — optional, on external I2C bus ───────────
+#define PIN_NFC_IRQ  16
+
+// ── Special Reserve (like GPIO 3 on T-Display-S3) ────────────────
+// ⚠ GPIO 46 is a STRAPPING PIN — same warnings as GPIO 3 above apply.
+// Only use for signals guaranteed HIGH during boot (e.g. PWM output, LED).
+#define PIN_GPIO3       46
+#define PIN_GPIO3_MODE  OUTPUT   // Safe: drive HIGH after boot
+
+// ── Flexible Output/Input Channels ───────────────────────────────
+// GPIOs 5, 6, 7, 9, 14, 15 — each configurable per channel:
+//   relay | servo180 | servo360 | ambient-light |
+//   sensor-stop | sensor-blockage | sensor-level
+//
+// Default pin assignment (overridable via Serial config / NVS):
+//   CH01 → GPIO  5
+//   CH02 → GPIO  6
+//   CH03 → GPIO  7
+//   CH04 → GPIO  9
+//   CH05 → GPIO 14
+//   CH06 → GPIO 15
+//
+// All 6 GPIOs are RTC-capable → deep-sleep wake-up supported.
+// GPIO 16 is reserved for NFC IRQ — not a flex channel.
+// ─────────────────────────────────────────────────────────────────
+#define PIN_RELAY_CH01  5
+#define PIN_RELAY_CH02  6
+#define PIN_RELAY_CH03  7
+#define PIN_RELAY_CH04  9
+#define PIN_RELAY_CH05  14
+#define PIN_RELAY_CH06  15
+
+#define RELAY_CHANNEL_MAX 6
+static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
+    PIN_RELAY_CH01, PIN_RELAY_CH02, PIN_RELAY_CH03,
+    PIN_RELAY_CH04, PIN_RELAY_CH05, PIN_RELAY_CH06
+};
+
+// No external LED button — capacitive touch screen handles wake-up.
+
+#endif  // BOARD_JC3248W535C

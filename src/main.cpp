@@ -1158,6 +1158,13 @@ void setup()
   initDisplay();
   startupScreen();
 
+#ifdef BOARD_JC3248W535C
+  // AXS15231B-Touch sits on internal pins (GPIO 4/8) not exposed on this module —
+  // skip touch.begin() and bring up Wire (GPIO 18/17) ourselves so NFC works.
+  Wire.begin(18, 17, 100000);
+  touchState.available = false;
+  Serial.println("[TOUCH] disabled on jc3248w535c (AXS15231B touch driver not yet ported)");
+#else
   // Initialize touch controller (independent of WiFi)
   touchState.available = touch.begin();
   if (touchState.available) {
@@ -1165,6 +1172,7 @@ void setup()
   } else {
     Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
   }
+#endif
 
   // IOExpander init: Wire (SDA=18, SCL=17) is now ready after touch.begin()
 #if ENABLE_DISPLAY
