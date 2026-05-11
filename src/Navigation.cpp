@@ -283,6 +283,24 @@ void navigateToNextProduct() {
   }
 }
 
+// Touch pin state helpers.
+// JC3248W535C: AXS15231B has no INT pin connected to any GPIO — use I2C polling.
+// All other boards: use digitalRead(PIN_TOUCH_INT) (CST816S/CST328 interrupt on GPIO 16).
+static bool touchPinLow() {
+#ifdef BOARD_JC3248W535C
+  return touch.isPressed();
+#else
+  return digitalRead(PIN_TOUCH_INT) == LOW;
+#endif
+}
+static bool touchPinHigh() {
+#ifdef BOARD_JC3248W535C
+  return !touch.isPressed();
+#else
+  return digitalRead(PIN_TOUCH_INT) == HIGH;
+#endif
+}
+
 /**
  * Handle touch button interactions.
  */
@@ -291,7 +309,7 @@ void handleTouchButton()
   // If in Help mode: Allow second click to switch to Report
   if (deviceState.isInState(DeviceState::HELP_SCREEN)) {
     // Check for new button press
-    if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
+    if (touchPinLow() && !touchState.pressed) {
       touchState.pressed = true;
       touchState.pressStartTime = millis();
       
@@ -323,7 +341,7 @@ void handleTouchButton()
       // No display touch -> Report Mode
       reportMode();
     }
-    else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchState.pressed) {
+    else if (touchPinHigh() && touchState.pressed) {
       touchState.pressed = false;
     }
     return;
@@ -331,12 +349,12 @@ void handleTouchButton()
   
   // If in Report mode: Button press aborts
   if (deviceState.isInState(DeviceState::REPORT_SCREEN)) {
-    if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
+    if (touchPinLow() && !touchState.pressed) {
       LOG_INFO("Touch", "Button press during Report - ABORTING");
       deviceState.transition(DeviceState::READY);
       touchState.pressed = true;
     }
-    else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchState.pressed) {
+    else if (touchPinHigh() && touchState.pressed) {
       touchState.pressed = false;
     }
     touchState.clickCount = 0;
@@ -378,15 +396,15 @@ void handleTouchButton()
   
   // Config Mode Touch Exit: Any touch after 2s exits config mode
   if (deviceState.isInState(DeviceState::CONFIG_MODE) && configModeStartTime > 0 && (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
-    if (digitalRead(PIN_TOUCH_INT) == LOW) {
+    if (touchPinLow()) {
       LOG_INFO("Touch", "Touch detected - exiting config mode");
       delay(100);
       ESP.restart();
     }
   }
   
-  // Check if touch interrupt is triggered (GPIO 16 LOW when touched)
-  if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
+  // Check if touch is active (GPIO INT or I2C polling depending on board)
+  if (touchPinLow() && !touchState.pressed) {
     // Touch detected - read coordinates to check if it's the button area
     uint16_t touchX = touch.getX();
     uint16_t touchY = touch.getY();
@@ -454,7 +472,7 @@ void handleTouchButton()
     }
     // For clicks 1, 2, and 3: Do nothing, let timeout handler decide
   }
-  else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchState.pressed) {
+  else if (touchPinHigh() && touchState.pressed) {
     // Touch released
     touchState.pressed = false;
     unsigned long pressDuration = millis() - touchState.pressStartTime;

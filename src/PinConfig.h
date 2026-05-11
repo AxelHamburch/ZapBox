@@ -208,6 +208,10 @@
 #define PIN_TOUCH_RES  -1
 
 // ── NFC Reader (PN532) — optional, on external I2C bus ───────────
+// GPIO 16 is free on JC3248W535C (not used by display, touch, or any other peripheral).
+// Note: PIN_TOUCH_INT defaults to 16 globally but is not read on this board —
+// handleTouchButton() uses I2C polling (touch.isPressed()) instead of digitalRead().
+// GPIO 16 must be configured as INPUT_PULLUP at boot to avoid floating → spurious reads.
 #define PIN_NFC_IRQ  16
 
 // ── Special Reserve (like GPIO 3 on T-Display-S3) ────────────────

@@ -214,15 +214,19 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
             ESP.restart();
         }
         
-        // Check for touch exit (any touch after 2s in config mode)
-        if (touchControllerPtr != nullptr && configModeStartTime > 0 && (millis() - configModeStartTime) > 0)
+        // Check for touch exit only after the normal guard period and only for
+        // a real current press. `available()` also reports release edges, which
+        // can immediately bounce us out of config mode on the touch hardware.
+        if (touchControllerPtr != nullptr &&
+            configModeStartTime > 0 &&
+            (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS)
         {
 #ifdef BOARD_JC3248W535C
             TouchAXS15231B* touch = (TouchAXS15231B*)touchControllerPtr;
 #else
             TouchCST816S* touch = (TouchCST816S*)touchControllerPtr;
 #endif
-            if (touch->available())
+            if (touch->isPressed())
             {
                 serialPrintln("[CONFIG] Touch detected - exiting config mode");
                 serialPrintln("[CONFIG_MODE_EXIT]");
