@@ -1848,7 +1848,35 @@ void loop()
         uint16_t y = 0;
         bool isTouched = false;
 #endif
-        
+
+#ifdef BOARD_JC3248W535C
+        // Config mode entry: 5 rapid single taps anywhere on screen within 3 seconds.
+        // Swipes reset the counter so normal navigation never accumulates toward 5.
+        {
+          static uint8_t  rapidTapCount = 0;
+          static unsigned long rapidTapStart = 0;
+          if (gesture == GESTURE_SINGLE_CLICK) {
+            unsigned long now = millis();
+            if (rapidTapCount == 0 || (now - rapidTapStart) > 3000) {
+              rapidTapCount = 1;
+              rapidTapStart = now;
+            } else {
+              rapidTapCount++;
+            }
+            Serial.printf("[CONFIG_TAP] tap %u/5 (%.0f ms)\n", rapidTapCount, (float)(now - rapidTapStart));
+            if (rapidTapCount >= 5) {
+              rapidTapCount = 0;
+              Serial.println("[CONFIG_TAP] 5 rapid taps -> Config Mode");
+              configMode();
+              continue;
+            }
+          } else if (gesture == GESTURE_SWIPE_LEFT  || gesture == GESTURE_SWIPE_RIGHT ||
+                     gesture == GESTURE_SWIPE_UP    || gesture == GESTURE_SWIPE_DOWN) {
+            rapidTapCount = 0; // swipe resets counter
+          }
+        }
+#endif
+
         // FIRST: Check if touch is in button area
         // Touch coordinates are hardware-based (0-170 x 0-320), don't rotate with display!
         // Physical button is ALWAYS at Y > 305, regardless of display rotation
