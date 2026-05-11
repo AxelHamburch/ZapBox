@@ -183,8 +183,48 @@
                 <hr style="flex: 1; border: none; border-top: 1px solid #888; margin: 0;">
             </div>
 
-            <!-- Special Mode Section -->
+            <!-- Display Theme Section -->
             <div class="input-wrapper" style="margin-top: 24px;">
+                <div>
+                    <label for="theme">Display theme</label>
+                    <select name="theme" id="theme">
+                        <option value="zapbox" selected>ZapBox (black on gold — default)</option>
+                        <option value="white-black">White / Black</option>
+                        <option value="black-white">Black / White</option>
+                        <option value="white-navy">White / Navy</option>
+                        <option value="btcorange-black">BTC Orange / Black</option>
+                    </select>
+                </div>
+            </div>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- Multi-Channel Mode Section -->
+            <p style="margin-top: 10px;"><strong>Multi-Channel Mode</strong></p>
+            <p style="margin-top: 10px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent relay channels</strong>. Each channel maps to a GPIO output that can switch a relay, solenoid, or any other 3.3 V-driven load.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Available GPIO channels:</strong></i></p>
+            <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH01</strong></td><td>GPIO 5</td><td style="padding-left: 16px; color: #aaa;">(default)</td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH02</strong></td><td>GPIO 6</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH03</strong></td><td>GPIO 7</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH04</strong></td><td>GPIO 9</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH05</strong></td><td>GPIO 14</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH06</strong></td><td>GPIO 15</td><td></td></tr>
+            </table>
+            <p style="margin-top: 14px; color: #888;"><i>Each channel is configured independently in your <strong>LNbits extension</strong> (zapbox / bitcoinswitch) — each switch gets its own QR code and amount. The device activates exactly the GPIO returned in the "paid" event.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Reserved GPIOs (not available as relay channels):</strong><br>
+                GPIO 17 / GPIO 18 — I²C bus (touch controller AXS15231B + NFC reader PN532, always active)<br>
+                GPIO 16 — touch interrupt (INT line of AXS15231B, shared with NFC IRQ)<br>
+                GPIO 46 — strapping pin reserve (do not connect external load)<br>
+                GPIO 21 — display backlight PWM (managed by firmware)
+            </i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- Special Mode Section -->
+            <div class="input-wrapper">
                 <div>
                     <label for="specialMode">Special Mode</label>
                     <select name="specialMode" id="specialMode">
@@ -208,31 +248,10 @@
                 </div>
             </div>
 
-            <!-- Section Separator -->
-            <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
+            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
 
-            <!-- Multi-Channel Mode Section -->
-            <p style="margin-top: 10px;"><strong>Multi-Channel Mode</strong></p>
-            <p style="margin-top: 10px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent relay channels</strong>. Each channel maps to a GPIO output that can switch a relay, solenoid, or any other 3.3 V-driven load.</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Available GPIO channels:</strong></i></p>
-            <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH01</strong></td><td>GPIO 5</td><td style="padding-left: 16px; color: #aaa;">(default)</td></tr>
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH02</strong></td><td>GPIO 6</td><td></td></tr>
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH03</strong></td><td>GPIO 7</td><td></td></tr>
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH04</strong></td><td>GPIO 9</td><td></td></tr>
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH05</strong></td><td>GPIO 14</td><td></td></tr>
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH06</strong></td><td>GPIO 15</td><td></td></tr>
-            </table>
-            <p style="margin-top: 14px; color: #888;"><i>Each channel is configured independently in your <strong>LNbits extension</strong> (zapbox / bitcoinswitch) — each switch gets its own QR code and amount. The device activates exactly the GPIO returned in the "paid" event.</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Reserved GPIOs (not available as relay channels):</strong><br>
-                GPIO 17 / GPIO 18 — I²C bus (touch controller AXS15231B + NFC reader PN532, always active)<br>
-                GPIO 16 — touch interrupt (INT line of AXS15231B, shared with NFC IRQ)<br>
-                GPIO 46 — strapping pin reserve (do not connect external load)<br>
-                GPIO 21 — display backlight PWM (managed by firmware)
-            </i></p>
-
-            <!-- Section Separator -->
-            <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
             <!-- Threshold Mode Section -->
             <div class="input-wrapper">
@@ -260,50 +279,15 @@
                 </div>
             </div>
 
-            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> As soon as something is entered in the "Wallet Invoice/Read Key" field, "THRESHOLD MODE" becomes active. "NORMAL MODE" then no longer works.</i></p>
+            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> As soon as something is entered in the "Wallet Invoice/Read Key" field, "THRESHOLD MODE" becomes active. "NORMAL MODE" then no longer works. The data specified in the bitcoinSwitch extension, such as amount, PIN, and time, is ignored. Only a payment to the wallet with the invoice key counts.</i></p>
 
-            <!-- Section Separator -->
-            <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
-
-            <!-- NFC Bolt Card Section -->
-            <div class="input-wrapper">
-                <div>
-                    <label for="nfcMode">NFC mode - NFC options and support</label>
-                    <select name="nfcMode" id="nfcMode">
-                        <option value="boltcard" selected>NFC Bolt Cards support only (default)</option>
-                        <option value="off">NFC off</option>
-                    </select>
-                </div>
-            </div>
-            <p style="margin-top: 5px; color: #888;"><i><b>NFC Bolt Cards</b> work reliably and securely with all major Lightning wallets and PoS systems. This is the recommended default.</i></p>
-            <p style="margin-top: 5px; color: #888;"><i>The PN532 NFC reader shares the I²C bus (GPIO 17/18) with the touch controller. The ZapBox automatically detects the PN532 at address 0x24 on startup — no additional wiring is required beyond connecting the module to the same I²C pins.</i></p>
-            <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". Extension manifest source:<br>
-                <a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
-            <div style="display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start; margin-top: 12px;">
-                <a href="../assets/NFC-Module-PN532.webp" target="_blank">
-                    <img src="../assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" style="height: 220px; width: auto; display: block;" />
-                </a>
-            </div>
-            <p style="margin-top: 15px; color: #888;"><i><b>PN532 (I²C 0x24)</b> — Active NFC reader connected to the shared I²C bus on GPIO 17 (SCL) and GPIO 18 (SDA). Supports pre-programmed Bolt Cards for contactless Lightning payment. Also reads passive NTAG 213/215/216 tags for LNURL-based payment. Auto-detected at startup — no configuration needed.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
-        <!-- Display & Theme Section -->
-            <h3 style="margin: 0 0 10px 0;">Display &amp; Theme</h3>
-            <p style="margin-top: 5px; color: #888;"><i>The 3.5" touch display shows all status information, QR codes and payment confirmations directly on screen.</i></p>
-
+            <!-- Screensaver and Deep Sleep Section -->
             <div class="input-wrapper">
-                <div>
-                    <label for="theme">Display theme</label>
-                    <select name="theme" id="theme">
-                        <option value="zapbox" selected>ZapBox (black on gold — default)</option>
-                        <option value="white-black">White / Black</option>
-                        <option value="black-white">Black / White</option>
-                        <option value="white-navy">White / Navy</option>
-                        <option value="btcorange-black">BTC Orange / Black</option>
-                    </select>
-                </div>
                 <div>
                     <label for="screensaver">Screensaver</label>
                     <select name="screensaver" id="screensaver">
@@ -311,23 +295,54 @@
                         <option value="backlight">Backlight off (touch to wake)</option>
                         <option value="black">Black screen (backlight stays on)</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Touch the screen to wake from screensaver</p>
                 </div>
                 <div>
-                    <label for="deepSleep">Deep sleep mode</label>
+                    <label for="activationTime">Time until activation - Screensaver</label>
+                    <input type="number" name="activationTime" id="activationTime" min="1" max="120" placeholder="5" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">1-120 minutes (default: 5)</p>
+                </div>
+                <div>
+                    <label for="deepSleep">Deep sleep</label>
                     <select name="deepSleep" id="deepSleep">
                         <option value="off" selected>Off (default)</option>
-                        <option value="light">Light (30 min inactivity)</option>
-                        <option value="freeze">Freeze (touch-only wake)</option>
+                        <option value="light">Light sleep (touch to wake)</option>
+                        <option value="freeze">Freeze (touch-only wake, ~0.01-0.15mA)</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Touch the display (GPIO 16 INT) wakes from deep sleep</p>
                 </div>
                 <div>
-                    <label for="deepSleepTime">Deep sleep inactivity timeout (min)</label>
-                    <input type="number" name="deepSleepTime" id="deepSleepTime" placeholder="30" value="30" min="1" max="1440" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Minutes of inactivity before deep sleep (light mode only)</p>
+                    <label for="deepSleepTime">Time until activation - Deep sleep</label>
+                    <input type="number" name="deepSleepTime" id="deepSleepTime" min="1" max="120" placeholder="30" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">1-120 minutes (default: 30)</p>
                 </div>
             </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>Use Cases:</strong> Energy saving (screensaver ~80-90%, light sleep ~99%, freeze ~99.9%), reducing device heat, extending display lifespan in always-on scenarios.</i></p>
+
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> Touch the screen (GPIO 16 INT) to wake from screensaver or light sleep mode.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- NFC-Module Section -->
+            <h3 style="margin: 0 0 10px 0;">NFC-Module</h3>
+            <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server — no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
+            <div class="input-wrapper" style="margin-top: 16px;">
+                <div>
+                    <label for="nfcMode">NFC mode</label>
+                    <select name="nfcMode" id="nfcMode">
+                        <option value="boltcard" selected>NFC Bolt Cards support only (default)</option>
+                        <option value="off">NFC off</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start; margin-top: 16px;">
+                <a href="../assets/NFC-Module-PN532.webp" target="_blank">
+                    <img src="../assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" style="height: 220px; width: auto; display: block;" />
+                </a>
+            </div>
+            <p style="margin-top: 15px; color: #888;"><i><b>PN532 (I²C 0x24)</b> — Active NFC reader connected to the shared I²C bus on GPIO 17 (SCL) and GPIO 18 (SDA). Supports pre-programmed Bolt Cards for contactless Lightning payment. Also reads passive NTAG 213/215/216 tags for LNURL-based payment. Auto-detected at startup — no configuration needed.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i>Both the touch controller (AXS15231B) and the PN532 operate on the same I²C bus — no additional wiring is required beyond connecting the PN532 to the same I²C pins (GPIO 17/18).</i></p>
 
         </div>
 
