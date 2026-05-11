@@ -1230,10 +1230,11 @@ Electrical design and housing variants, see table.
 | e939705 | ZapOMat | ZapOMat No.1 | 
 | e940540 | Headless | Update | 
 | e943674 | Servo | Start the Servo Story | 
-| e944644 | Headless Servo | First powerfull Headless Servo | e945370
+| e944644 | Headless Servo | First powerfull Headless Servo |
 | e945370 | ZapOMat | Update with wide-range voltage input | 
 | e946465 | Servo | Update with wide-range voltage input and NFC-plug | 
-| e947689 | Compact-Ext | Special version with external guided switching contact |
+| e947689 | Compact-Ext | Special version with external guided switching contact | 
+| e948960 | Headless Servo |  Add NFC Tag 2 module | 
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
