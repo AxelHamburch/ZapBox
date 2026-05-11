@@ -346,69 +346,93 @@
         </div>
 
         <!-- Error Detection Section -->
+        <!-- Error Detection Section -->
         <div style="background-color: #FFFFCC; padding: 30px 20px; margin: 0 -20px;">
-            <h2 id="error-detection">Display Status Screens</h2>
+            <h2 id="error-detection">Error Detection & Report</h2>
 
-            <p>The ZapBox Touch 3.5" shows all status information directly on the 3.5" display. There are no LED error codes — the screen replaces them.</p>
+            <p>The ZapBox features a hierarchical error detection system with automatic diagnostics. Errors are displayed on screen with abbreviations:</p>
 
-            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                <thead>
-                    <tr style="background-color: #f0f0f0;">
-                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Screen shown</th>
-                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Meaning</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style="border: 1px solid #ddd; padding: 8px;"><strong>INIT / CONNECTING WIFI</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">Device is booting and connecting to WiFi</td>
-                    </tr>
-                    <tr style="background-color: #f9f9f9;">
-                        <td style="border: 1px solid #ddd; padding: 8px;"><strong>CONF / SERIAL CONFIG MODE</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">Configuration mode active — device waiting for serial config data</td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid #ddd; padding: 8px;"><strong>WIFI / RE-CON-NECT</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">WiFi connection lost — reconnecting. Check SSID/password</td>
-                    </tr>
-                    <tr style="background-color: #f9f9f9;">
-                        <td style="border: 1px solid #ddd; padding: 8px;"><strong>SERV / RE-CON-NECT</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">LNbits server unreachable — check device string / server status</td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid #ddd; padding: 8px;"><strong>WS / RE-CON-NECT</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">WebSocket connection failed — check LNbits extension status</td>
-                    </tr>
-                    <tr style="background-color: #f9f9f9;">
-                        <td style="border: 1px solid #ddd; padding: 8px;"><strong>REPORT screen</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">Shows error counters (WiFi/Internet/Server/WebSocket fails). Press Report button to open</td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid #ddd; padding: 8px;"><strong>QR code + label</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">ZapBox ready — scan QR or tap Bolt Card to pay</td>
-                    </tr>
-                    <tr style="background-color: #f9f9f9;">
-                        <td style="border: 1px solid #ddd; padding: 8px;"><strong>ty / ENJOY YOUR DAY</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">Payment received — relay activated</td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid #ddd; padding: 8px;"><strong>NFC / HOLD CARD</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">Bolt Card tap detected — waiting for invoice settlement</td>
-                    </tr>
-                </tbody>
-            </table>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+                <tr style="background-color: #f0f0f0;">
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Priority</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Error Type</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Abbreviation</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">1 (Highest)</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WIFI</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NW</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">WiFi network not connected<br>→ Wifi data correct?<br>→ WiFi signal too weak?</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="border: 1px solid #ddd; padding: 8px;">2</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO INTERNET</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NI</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">Internet connectivity lost<br>→ Internet accessible?</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">3</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO SERVER</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NS</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">LNbits server unreachable<br>→ Server hardware down?<br>→ Device string correct?</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="border: 1px solid #ddd; padding: 8px;">4 (Lowest)</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WEBSOCKET</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NWS</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">WebSocket protocol/handshake failure<br>→ LNbits down?<br>→ Device string correct?</td>
+                </tr>
+            </tbody>
+        </table>
 
-            <h3>Common Wallet Errors</h3>
+        <p><i><strong>Note:</strong> Higher priority errors override lower priority error displays. For example, if WiFi is down, all other checks are skipped and only "NO WIFI" is shown.</i></p>
 
-            <p><strong>"bitcoinswitch ... is disabled"</strong> → The Bitcoin Switch extension was actively disabled in LNbits.</p>
-            <p><strong>"No active bitcoinswitch connections"</strong> → WebSocket handshake between wallet and ZapBox failed. Wait or restart the ZapBox.</p>
+        <h3>Error Report Page</h3>
 
-            <h3>NFC Extension Mismatch</h3>
+        <p>All errors with their occurrence counts (0-99) are logged on the Report page. To access the Report page:</p>
 
-            <p>If the serial log shows:</p>
-            <pre style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 13px;">[WARN][NFC] Bolt Card tap detected – NFC is not supported by the active extension (bitcoinswitch).
+        <ul>
+            <li><strong>Touch the HELP button twice</strong> in quick succession</li>
+        </ul>
+
+        <h3>Common Wallet Error</h3>
+
+        <p>If a wallet scanning the QR code shows an error message, here's what it means:</p>
+
+        <p><strong>"bitcoinswitch ... is disabled"</strong> → The Bitcoin Switch was actively disabled in LNbits</p>
+
+        <p><strong>"No active bitcoinswitch connections"</strong> → The handshake between the wallet and ZapBox failed. → Wait or restart the ZapBox to re-establish the connection.</p>
+
+        <h3>Other Errors</h3>
+
+        <p><strong>Relay does not switch, but payment was successful</strong> → Wrong GPIO pin configured in LNbits?</p>
+
+        <h3>NFC Extension Mismatch</h3>
+
+        <p>If you tap an NFC Bolt Card or NTAG21x tag and see <strong>"NFC not supported"</strong> on the display (shown for 5 seconds), and the serial log shows:</p>
+
+        <pre style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 13px;">[WARN][NFC] Bolt Card tap detected – NFC is not supported by the active extension (bitcoinswitch).
 [WARN][NFC] To use NFC / Bolt Cards, switch to zapbox_extension (apiPath = "zapbox").</pre>
-            <p>→ Create a device in the <strong>zapbox_extension</strong> and use its device string.</p>
+
+        <p>This means the device is configured with the <strong>bitcoinswitch_extension</strong>, which does not have an NFC endpoint (<code>/api/v1/nfc/</code>). NFC payments are only supported by the <strong>zapbox_extension</strong>.</p>
+
+        <p><strong>Solution:</strong></p>
+        <ul>
+            <li>In LNbits, create a device using the <strong>zapbox_extension</strong> instead of bitcoinswitch</li>
+            <li>Copy the new device string and reconfigure the ZapBox</li>
+            <li>The device string format is the same – only the server-side extension changes</li>
+        </ul>
+
+        <p><i>This is <strong>not</strong> a hardware problem – the NFC reader works fine. It's purely a server-side configuration issue.</i></p>
+
+        <h3>Typical NFC Error Messages</h3>
+
+        <p><strong><code>{"detail":"LNURLW callback error: Payment failed - "}</code></strong><br>
+        The sending wallet and the receiving wallet in LNbits are the same. The Bolt Card wallet and the receiving wallet must be <strong>different</strong> wallets in LNbits.</p>
         </div>
 
         <!-- Troubleshoot Section -->
