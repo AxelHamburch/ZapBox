@@ -18,7 +18,7 @@ This becomes your version number: `vBLOCKHEIGHT` (e.g., v936746)
 - **Hardware Variants:**
   - **Standard** (T-Display-S3): `vBLOCKHEIGHT` format
   - **Headless** (ESP32 Dev): `vBLOCKHEIGHTh` suffix (note the 'h')
-  - **Touch 3.5"** (JC3248W535C): `vBLOCKHEIGHTt35` suffix (note the 't35')
+  - **Touch 3.5"** (JC3248W535C): `vBLOCKHEIGHTt` suffix (note the 't')
 - **Release Approach:** Versions can be released individually (e.g., touch3.5 only) or as a group
 - **Binary files:** Copied WITHOUT any suffix (just `bootloader.bin`, `partitions.bin`, `firmware.bin`)
 
@@ -31,14 +31,17 @@ Update the VERSION flag with the block height from step above:
 -DVERSION=\"v936746\"
 ```
 
-### 2. Create Firmware Directories (BOTH versions)
+### 2. Create Firmware Directories (for the variants you are releasing)
 
 ```powershell
-mkdir installer/firmware/v936746    # Standard version
-mkdir installer/firmware/v936746h   # Headless version (note the 'h' suffix)
+mkdir installer/firmware/v936746      # Standard version
+mkdir installer/firmware/v936746h     # Headless version (note the 'h' suffix)
+mkdir installer/firmware/v936746t     # Touch 3.5" version (note the 't' suffix)
 ```
 
-### 3. Create manifest.json files (BOTH versions)
+Create only the directories needed for the current release.
+
+### 3. Create manifest.json files (for the variants you are releasing)
 
 **Standard version** - Create `installer/firmware/v936746/manifest.json`:
 ```json
@@ -78,11 +81,34 @@ mkdir installer/firmware/v936746h   # Headless version (note the 'h' suffix)
 }
 ```
 
+**Touch 3.5" version** - Create `installer/firmware/v936746t/manifest.json`:
+```json
+{
+  "name": "ZapBox Touch 3.5\"",
+  "version": "v936746t",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "bootloader.bin", "offset": 0 },
+        { "path": "partitions.bin", "offset": 32768 },
+        { "path": "firmware.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}
+```
+
 **⚠️ Important differences:**
 - Headless uses `"chipFamily": "ESP32"` (not ESP32-S3)
 - Headless bootloader offset is `4096` (not 0)
+- Touch 3.5" uses `"chipFamily": "ESP32-S3"`
+- Touch 3.5" manifest name should clearly identify the hardware
 
-### 4. Update Web Installer (installer/index.html) - 4 locations!
+### 4. Update Web Installer (match the installer page to the released variant)
+
+**Standard installer (`installer/index.html`) - 4 locations total**
 
 **Location 1: Standard version dropdown (~line 68)** - Add new version at TOP:
 ```html
@@ -106,7 +132,20 @@ Remove "(Latest)" from the previous top headless version.
 <esp-web-install-button id="flash-button-headless" manifest="./firmware/v936746h/manifest.json">
 ```
 
-### 5. Compile Firmware (BOTH versions)
+**Touch 3.5" installer (`installer/touch3.5/index.html`) - 2 locations total**
+
+**Location 1: Touch 3.5" version dropdown** - Add new version at TOP:
+```html
+<option value="../firmware/v936746t/manifest.json">v936746t (Latest - Short description)</option>
+```
+Remove `(Latest)` from the previous top touch3.5 version.
+
+**Location 2: Touch 3.5" flash button** - Update manifest path:
+```html
+<esp-web-install-button id="flash-button-touch35" manifest="../firmware/v936746t/manifest.json">
+```
+
+### 5. Compile Firmware (for the variants you are releasing)
 
 **Standard version (T-Display-S3):**
 ```powershell
@@ -116,6 +155,11 @@ C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e lilygo-t-di
 **Headless version (ESP32 Dev):**
 ```powershell
 C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e esp32dev
+```
+
+**Touch 3.5" version (JC3248W535C):**
+```powershell
+C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e jc3248w535c
 ```
 
 ### 6. Copy Binary Files
@@ -136,7 +180,14 @@ Copy-Item -Path ".pio\build\esp32dev\partitions.bin" -Destination "installer\fir
 Copy-Item -Path ".pio\build\esp32dev\firmware.bin" -Destination "installer\firmware\v936746h\firmware.bin"
 ```
 
-**Note:** The directory has the 'h' suffix (v936746h), but the filenames do NOT!
+**Touch 3.5" version (jc3248w535c) → v936746t/:**
+```powershell
+Copy-Item -Path ".pio\build\jc3248w535c\bootloader.bin" -Destination "installer\firmware\v936746t\bootloader.bin"
+Copy-Item -Path ".pio\build\jc3248w535c\partitions.bin" -Destination "installer\firmware\v936746t\partitions.bin"
+Copy-Item -Path ".pio\build\jc3248w535c\firmware.bin" -Destination "installer\firmware\v936746t\firmware.bin"
+```
+
+**Note:** The directory may have the `h` or `t` suffix, but the filenames do NOT!
 
 ### 7. Generate Release Description
 
@@ -172,10 +223,16 @@ git add platformio.ini installer/firmware/v936746/ installer/firmware/v936746h/ 
 git commit -m "Release v936746 & v936746h: <short description in English>"
 ```
 
+**Touch 3.5" only example:**
+```bash
+git add platformio.ini installer/firmware/v936746t/ installer/touch3.5/index.html FIRMWARE.md
+git commit -m "Release v936746t: <short description in English>"
+```
+
 ### 9. Inform User
 
 Tell user:
-- Release v936746 & v936746h prepared
+- Which release variants were prepared
 - Show brief changelog in English
 - Provide English GitHub release description
 - Next steps: Test → Tag → Push → GitHub Release
@@ -186,13 +243,13 @@ Tell user:
 
 - [ ] **STEP 0:** Get Bitcoin block height (ALWAYS DO THIS FIRST!)
 - [ ] Update platformio.ini with new version
-- [ ] Create BOTH firmware directories (standard + headless with 'h' suffix)
-- [ ] Create BOTH manifest.json files (note ESP32 vs ESP32-S3 differences)
-- [ ] Update installer/index.html at 4 locations (2 for standard, 2 for headless)
-- [ ] Compile standard firmware (lilygo-t-display-s3)
-- [ ] Copy standard binary files WITHOUT suffix
-- [ ] Compile headless firmware (esp32dev)
-- [ ] Copy headless binary files WITHOUT suffix  
+- [ ] Create the required firmware directories (`vBLOCKHEIGHT`, `vBLOCKHEIGHTh`, or `vBLOCKHEIGHTt` as needed)
+- [ ] Create the required manifest.json files for the selected variants
+- [ ] Update the matching web installer page:
+  - `installer/index.html` for standard/headless
+  - `installer/touch3.5/index.html` for Touch 3.5"
+- [ ] Compile only the requested firmware variants
+- [ ] Copy binary files WITHOUT suffix
 - [ ] Generate release description from git log (in English)
 - [ ] Git commit (DO NOT push yet)
 - [ ] Inform user with English release notes
@@ -201,10 +258,11 @@ Tell user:
 
 1. ❌ **DON'T** add "-headless" suffix to binary filenames
 2. ❌ **DON'T** forget the 'h' suffix in the headless directory name (v936746h)
-3. ❌ **DON'T** use same chipFamily for both (ESP32-S3 vs ESP32)
-4. ❌ **DON'T** use same bootloader offset for both (0 vs 4096)
-5. ❌ **DON'T** forget to update all 4 locations in installer/index.html
-6. ❌ **DON'T** look at HEADLESS_DEPLOYMENT.md (it's outdated/deleted)
+3. ❌ **DON'T** forget the 't' suffix in the Touch 3.5" directory name (v936746t)
+4. ❌ **DON'T** use same chipFamily for all variants (ESP32-S3 vs ESP32)
+5. ❌ **DON'T** use same bootloader offset for headless and ESP32-S3 variants (4096 vs 0)
+6. ❌ **DON'T** update the wrong installer page (`installer/index.html` vs `installer/touch3.5/index.html`)
+7. ❌ **DON'T** look at HEADLESS_DEPLOYMENT.md (it's outdated/deleted)
 
 ## Binary File Locations
 
@@ -218,6 +276,12 @@ After `pio run`:
 
 # Headless version (esp32dev):
 .pio/build/esp32dev/
+├── bootloader.bin
+├── partitions.bin
+└── firmware.bin
+
+# Touch 3.5" version (jc3248w535c):
+.pio/build/jc3248w535c/
 ├── bootloader.bin
 ├── partitions.bin
 └── firmware.bin
@@ -238,15 +302,23 @@ installer/firmware/
     ├── partitions.bin
     ├── firmware.bin
     └── manifest.json
+
+# Touch 3.5" release example:
+installer/firmware/
+└── v936746t/                   # Touch 3.5" version (note 't' suffix in directory)
+  ├── bootloader.bin
+  ├── partitions.bin
+  ├── firmware.bin
+  └── manifest.json
 ```
 
 ## GitHub Release Template
 
 Use this template for GitHub releases:
 ```markdown
-## 🎯 Release vXXXXXX & vXXXXXXh - [Title]
+## 🎯 Release [Version(s)] - [Title]
 
-### ✨ Features (Both Versions)
+### ✨ Features
 - Feature description
 
 ### 💡 Headless Version (vXXXXXXh) - [Special features]
@@ -254,6 +326,9 @@ Use this template for GitHub releases:
 
 ### 📦 Standard Version (vXXXXXX)
 - Standard-specific improvements
+
+### 🖥️ Touch 3.5" Version (vXXXXXXt)
+- Touch-specific improvements
 
 ### 🛠️ Technical Details
 - Updated to Bitcoin block height XXXXXX
