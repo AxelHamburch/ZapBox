@@ -190,16 +190,52 @@
             <!-- Display Theme Section -->
             <div class="input-wrapper" style="margin-top: 24px;">
                 <div>
-                    <label for="theme">Display theme</label>
+                    <label for="theme">Display color options</label>
                     <select name="theme" id="theme">
-                        <option value="zapbox" selected>ZapBox (black on gold — default)</option>
-                        <option value="white-black">White / Black</option>
-                        <option value="black-white">Black / White</option>
-                        <option value="white-navy">White / Navy</option>
-                        <option value="btcorange-black">BTC Orange / Black</option>
+                        <option value="btcorange-black">BTC ORANGE &amp; BLACK (inv. QR-Code)</option>
+                        <option value="zapbox" selected>GOLD &amp; BLACK (inv. QR-Code)</option>
+                        <option value="black-white">BLACK &amp; WHITE</option>
+                        <option value="black-lightgrey">BLACK &amp; LIGHT GREY (for dark environments)</option>
+                        <option value="black-darkgrey">BLACK &amp; DARK GREY (for very dark environments)</option>
+                        <option value="darkgreen-lightgrey">DARKGREEN &amp; LIGHTGREY (scan-friendly)</option>
+                        <option value="darkblue-lightgrey">DARKBLUE &amp; LIGHTGREY (scan-friendly)</option>
+                        <option value="white-navy">WHITE &amp; NAVY (inv. QR-Code)</option>
+                        <option value="black-blue">BLACK &amp; BLUE</option>
+                        <option value="black-btcorange">BLACK &amp; BTC ORANGE</option>
+                        <option value="black-darkcyan">BLACK &amp; DARKCYAN</option>
+                        <option value="black-green">BLACK &amp; GREEN</option>
+                        <option value="black-olive">BLACK &amp; OLIVE</option>
+                        <option value="black-orange">BLACK &amp; ORANGE</option>
+                        <option value="black-red">BLACK &amp; RED</option>
+                        <option value="brown-orange">BROWN &amp; ORANGE</option>
+                        <option value="darkcyan-cyan">DARKCYAN &amp; CYAN</option>
+                        <option value="darkgrey-btcorange">DARK GREY &amp; BTC ORANGE</option>
+                        <option value="darkgreen-green">DARKGREEN &amp; GREEN</option>
+                        <option value="maroon-magenta">MAROON &amp; MAGENTA</option>
+                        <option value="orange-brown">ORANGE &amp; BROWN</option>
+                        <option value="red-green">RED &amp; GREEN</option>
+                        <option value="white-darkcyan">WHITE &amp; DARKCYAN</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="orientation">Screen orientation</label>
+                    <select name="orientation" id="orientation">
+                        <option value="h" selected>Horizontal (default)</option>
+                        <option value="v">Vertical</option>
+                        <option value="hi">Horizontal (inverse)</option>
+                        <option value="vi">Vertical (inverse)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="qrFormat">QR-Code Format</label>
+                    <select name="qrFormat" id="qrFormat">
+                        <option value="bech32" selected>LNURL in bech32 format (default)</option>
+                        <option value="lud17">LNURL in LUD-17 format (raw)</option>
                     </select>
                 </div>
             </div>
+
+            <p style="margin-top: 5px; margin-bottom: 5px; color: #888;"><i><strong>Note:</strong> The default is Bech32. LUD-17 is easier to scan, but is not yet supported by all types of wallets.</i></p>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
@@ -253,6 +289,31 @@
             </div>
 
             <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- BTC-Ticker Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="btcTicker">BTC-Ticker Mode</label>
+                    <select name="btcTicker" id="btcTicker">
+                        <option value="off">OFF</option>
+                        <option value="always">ON - always</option>
+                        <option value="selecting" selected>ON - when selecting (default)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Control when Bitcoin price/block info is shown</p>
+                </div>
+                <div>
+                    <label for="currency">Currency (ISO Code)</label>
+                    <input type="text" name="currency" id="currency" placeholder="USD" maxlength="3" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">E.g. USD, EUR, GBP, JPY, CHF, TRY, CAD, BRL, CUP, etc.</p>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>OFF:</strong> No ticker shown (Multi-Channel: productSelectionScreen; Single: only QR code)</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>ON - always:</strong> Ticker overlays screen, navigate with swipe to show products temporarily (returns after timeout)</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>ON - when selecting:</strong> Single: Ticker only visible for a short time after swipe. Multi-Channel: productSelectionScreen → products → ticker (at end of product cycle)</i></p>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
