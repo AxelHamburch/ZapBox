@@ -105,7 +105,7 @@
         <p>If parameters have already been saved and need to be changed, you can also open CONF mode retrospectively:</p>
         <ul>
             <li>Press and hold the BOOT button for 5 seconds.</li>
-            <li>On the touchscreen, touch the <strong>HELP button at least 5 times in quick succession</strong>.</li>
+            <li>Or: <strong>tap anywhere on the touchscreen 5 times in rapid succession</strong> (within 3 seconds).</li>
         </ul>
 
         <p><i><strong>Note:</strong> The connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. If data is already available, you can terminate the connection prematurely by pressing the BOOT button or tapping the touchscreen HELP area.</i></p>
@@ -845,7 +845,7 @@
         async function onWriteConfigButtonClick() {
             if (!serial.isOpen()) return;
             if (!configModeVerified) {
-                alert('⚠️ Config Mode Required\n\nThe device must be in SERIAL CONFIG MODE.\n\nPlease:\n1. Disconnect\n2. Enter config mode (touch & hold 5 s or BOOT button)\n3. Reconnect and try again');
+                alert('⚠️ Config Mode Required\n\nThe device must be in SERIAL CONFIG MODE.\n\nPlease:\n1. Disconnect\n2. Enter config mode (tap screen 5× quickly or hold BOOT button 5 s)\n3. Reconnect and try again');
                 const errorMsg = document.createElement('span');
                 errorMsg.style.color = '#ff4444';
                 errorMsg.textContent = '⚠️ Not in config mode - write aborted\n';
@@ -892,7 +892,7 @@
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 const doneMsg = document.createElement('span');
                 doneMsg.style.color = '#00ff00';
-                doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (touch & hold 5s)\n';
+                doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (tap screen 5× quickly or hold BOOT 5 s)\n';
                 consoleDebug.appendChild(doneMsg);
                 consoleDebug.scrollTop = consoleDebug.scrollHeight;
             } else {
