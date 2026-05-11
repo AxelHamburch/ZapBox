@@ -286,13 +286,12 @@
             </div>
             <p style="margin-top: 15px; color: #888;"><i><b>PN532 (I²C 0x24)</b> — Active NFC reader connected to the shared I²C bus on GPIO 17 (SCL) and GPIO 18 (SDA). Supports pre-programmed Bolt Cards for contactless Lightning payment. Also reads passive NTAG 213/215/216 tags for LNURL-based payment. Auto-detected at startup — no configuration needed.</i></p>
 
-        </div>
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
         <!-- Display & Theme Section -->
-        <div style="background-color: #E5F0FF; padding: 30px 20px; margin: 0 -20px;">
-            <h2 id="display">Display &amp; Theme</h2>
-
-            <p>The 3.5" touch display shows all status information, QR codes and payment confirmations directly on screen.</p>
+            <h3 style="margin: 0 0 10px 0;">Display &amp; Theme</h3>
+            <p style="margin-top: 5px; color: #888;"><i>The 3.5" touch display shows all status information, QR codes and payment confirmations directly on screen.</i></p>
 
             <div class="input-wrapper">
                 <div>
@@ -329,6 +328,7 @@
                     <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Minutes of inactivity before deep sleep (light mode only)</p>
                 </div>
             </div>
+
         </div>
 
         <!-- Error Detection Section -->
@@ -620,32 +620,87 @@
                 return;
             }
 
-            // Parse config data from device
+            // Accumulate serial data in buffer
             serialBuffer += newData;
-            parseConfigFromBuffer();
+
+            // Trigger config parse when we see /file-read response or raw JSON array
+            if (serialBuffer.includes('/file-read ') || serialBuffer.includes('[{"name":"ssid"')) {
+                tryParseConfig();
+            }
+
+            // Check for "no config file" message
+            if (newData.includes('- Failed to open file for reading')) {
+                alert('There is no config in the device, please fill options and write.');
+            }
         }
 
-        function parseConfigFromBuffer() {
-            const lines = serialBuffer.split('\n');
-            for (let i = 0; i < lines.length - 1; i++) {
-                const line = lines[i].trim();
-                if (line.startsWith('{') && line.endsWith('}')) {
-                    try {
-                        const parsed = JSON.parse(line);
-                        if (parsed.name && parsed.value !== undefined) {
-                            applyConfigValue(parsed.name, parsed.value);
-                        }
-                    } catch (e) { /* not JSON */ }
+        function tryParseConfig() {
+            // Find the JSON array in the buffer (robust against USB CDC byte-drops)
+            let configStart = serialBuffer.lastIndexOf('[{"name":"ssid"');
+            let searchSection;
+            if (configStart !== -1) {
+                searchSection = serialBuffer.substring(configStart);
+            } else {
+                let fileReadIndex = serialBuffer.lastIndexOf('/file-read ');
+                if (fileReadIndex === -1) return;
+                let afterFileRead = serialBuffer.substring(fileReadIndex);
+                let fallbackStart = afterFileRead.indexOf('[');
+                if (fallbackStart === -1) return;
+                searchSection = afterFileRead.substring(fallbackStart);
+            }
+
+            let jsonStart = searchSection.indexOf('[');
+            if (jsonStart === -1) return;
+
+            let bracketCount = 0, inString = false, escape = false, jsonEnd = -1;
+            for (let i = jsonStart; i < searchSection.length; i++) {
+                let c = searchSection[i];
+                if (escape) { escape = false; continue; }
+                if (c === '\\') { escape = true; continue; }
+                if (c === '"') { inString = !inString; continue; }
+                if (!inString) {
+                    if (c === '[') bracketCount++;
+                    if (c === ']') { bracketCount--; if (bracketCount === 0) { jsonEnd = i; break; } }
                 }
             }
-            serialBuffer = lines[lines.length - 1];
-        }
+            if (jsonEnd === -1) return;
 
-        function applyConfigValue(name, value) {
-            const el = document.getElementById(name);
-            if (el) { el.value = value; }
-            const entry = config.find(c => c.name === name);
-            if (entry) { entry.value = value; }
+            let jsonString = searchSection.substring(jsonStart, jsonEnd + 1);
+            try {
+                let configData = JSON.parse(jsonString);
+                if (!Array.isArray(configData) || configData.length < 3 || configData[0]?.name !== 'ssid') return;
+
+                // Apply each config value by name
+                for (const item of configData) {
+                    if (item.name && item.value !== undefined) {
+                        const el = document.getElementById(item.name);
+                        if (el) el.value = item.value;
+                        const entry = config.find(c => c.name === item.name);
+                        if (entry) entry.value = item.value;
+                    }
+                }
+
+                serialBuffer = '';
+                const successMsg = document.createElement('span');
+                successMsg.style.color = '#00ff00';
+                successMsg.textContent = '\n✓ Data loaded\n';
+                consoleDebug.appendChild(successMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+
+                setTimeout(() => {
+                    const btn = document.getElementById('read-config-button');
+                    btn.disabled = false;
+                    btn.textContent = '📖 Read Config';
+                }, 3000);
+            } catch (e) {
+                console.log('JSON parse failed:', e, jsonString);
+                const errorMsg = document.createElement('span');
+                errorMsg.style.color = '#ff4444';
+                errorMsg.textContent = '⚠️ Config data is corrupted on device. Please fill in the fields and write new config.\n';
+                consoleDebug.appendChild(errorMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                serialBuffer = '';
+            }
         }
 
         // ── Button handlers ────────────────────────────────────────────────────
@@ -669,29 +724,111 @@
         }
 
         async function onReadConfigButtonClick() {
-            if (!serial.isOpen()) return;
-            serial.writeLine("/readconfig");
+            const btn = document.getElementById('read-config-button');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = '⏳ Reading...';
+            serialBuffer = '';
+            await serial.writeLine('/file-read config.json');
+            // Auto-retry once after 2s (USB CDC can drop the first chunk)
+            setTimeout(async () => {
+                if (btn.textContent === '⏳ Reading...') {
+                    serialBuffer = '';
+                    await serial.writeLine('/file-read config.json');
+                }
+            }, 2000);
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = '📖 Read Config';
+            }, 7000);
         }
 
         async function onWriteConfigButtonClick() {
             if (!serial.isOpen()) return;
-            syncConfigFromUI();
-            for (const item of config) {
-                serial.writeLine(JSON.stringify(item));
-                await new Promise(r => setTimeout(r, 50));
+            if (!configModeVerified) {
+                alert('⚠️ Config Mode Required\n\nThe device must be in SERIAL CONFIG MODE.\n\nPlease:\n1. Disconnect\n2. Enter config mode (touch & hold 5 s or BOOT button)\n3. Reconnect and try again');
+                const errorMsg = document.createElement('span');
+                errorMsg.style.color = '#ff4444';
+                errorMsg.textContent = '⚠️ Not in config mode - write aborted\n';
+                consoleDebug.appendChild(errorMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                return;
             }
-            serial.writeLine("/writeconfig");
+            syncConfigFromUI();
+            const ssidVal = config.find(c => c.name === 'ssid')?.value?.trim() || '';
+            const socketVal = config.find(c => c.name === 'socket')?.value?.trim() || '';
+            if (!ssidVal || !socketVal) {
+                alert('⚠️ Validation Error\n\nThe following fields are required:\n- WiFi SSID\n- Device settings string');
+                return;
+            }
+            await serial.writeLine('/file-remove config.json');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const fullCommand = '/file-append config.json ' + JSON.stringify(config) + '\n';
+            const chunkSize = 128;
+            for (let i = 0; i < fullCommand.length; i += chunkSize) {
+                await serial.write(fullCommand.substring(i, Math.min(i + chunkSize, fullCommand.length)));
+                await new Promise(resolve => setTimeout(resolve, 15));
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const successMsg = document.createElement('span');
+            successMsg.style.color = '#00ff00';
+            successMsg.textContent = '✓ Data written\n\n⚠️ To apply changes:\n- Press 🔄 Restart (if in Config Mode), or\n- Press 🔌 Disconnect and reset device manually\n';
+            consoleDebug.appendChild(successMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
         }
 
         async function onSoftResetButtonClick() {
             if (!serial.isOpen()) return;
-            justRestarted = true;
-            serial.writeLine("/restart");
-            setTimeout(() => { justRestarted = false; }, 8000);
+            const resetMsg = document.createElement('span');
+            resetMsg.style.color = '#ffaa00';
+            if (configModeVerified) {
+                resetMsg.textContent = 'Sending software restart command...\n';
+                consoleDebug.appendChild(resetMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                serial.writeLine('/config-soft-reset');
+                configModeVerified = false;
+                justRestarted = true;
+                document.getElementById('read-config-button').disabled = true;
+                document.getElementById('write-config-button').disabled = true;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                const doneMsg = document.createElement('span');
+                doneMsg.style.color = '#00ff00';
+                doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (touch & hold 5s)\n';
+                consoleDebug.appendChild(doneMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            } else {
+                resetMsg.textContent = 'Performing hardware reset...\n';
+                consoleDebug.appendChild(resetMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                try {
+                    await serial.hardwareReset();
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    const doneMsg = document.createElement('span');
+                    doneMsg.style.color = '#00ff00';
+                    doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing boot logs\n';
+                    consoleDebug.appendChild(doneMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                } catch (error) {
+                    const errorMsg = document.createElement('span');
+                    errorMsg.style.color = '#ff0000';
+                    errorMsg.textContent = '✗ Hardware reset failed: ' + error.message + '\n';
+                    consoleDebug.appendChild(errorMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                }
+            }
         }
 
         async function onRestartButtonClick() {
-            if (serial.isOpen()) { await serial.close(); }
+            const restartMsg = document.createElement('span');
+            restartMsg.style.color = '#ffaa00';
+            restartMsg.textContent = 'Disconnecting...\n';
+            consoleDebug.appendChild(restartMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            if (serial.isOpen()) {
+                await serial.close();
+                consoleDebug.innerHTML += '<b>Connection closed.</b><br>';
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            }
         }
 
         function syncConfigFromUI() {
@@ -721,11 +858,31 @@
         }
 
         function printLogs() {
-            const text = consoleDebug.innerText;
-            const w = window.open('', '_blank');
-            w.document.write('<pre>' + text.replace(/</g, '&lt;') + '</pre>');
-            w.print();
-            w.close();
+            const installerTitle = 'ZAPBOX\u26A1 WEB INSTALLER (Touch 3.5")';
+            const ts = new Date().toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' });
+            const url = window.location.href;
+            const logEl = document.getElementById('consoleDebug');
+            const logHtml = (logEl && logEl.innerHTML.trim()) ? logEl.innerHTML : '<span style="color:#888">(no logs)</span>';
+            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + installerTitle + ' \u2013 Log Export</title>' +
+                '<style>' +
+                'body{background:#1a1a1a;color:#e0e0e0;font-family:monospace;font-size:13px;margin:0;padding:20px;}' +
+                '.log-header{background:#2a2a2a;border-bottom:2px solid #f7931a;padding:16px 24px;margin:-20px -20px 20px -20px;}' +
+                '.log-header h1{margin:0 0 4px 0;font-size:18px;color:#f7931a;}' +
+                '.log-header .sub{color:#aaa;font-size:12px;}' +
+                '.log-box{background:#000;color:#d0d0d0;padding:16px;border-radius:6px;white-space:pre-wrap;word-break:break-all;line-height:1.5;}' +
+                '.log-footer{margin-top:16px;padding-top:10px;border-top:1px solid #444;color:#666;font-size:11px;}' +
+                '@media print{body{background:#fff !important;color:#111 !important;}' +
+                '.log-header{background:#f0f0f0 !important;border-bottom-color:#f7931a !important;}' +
+                '.log-header h1{color:#f7931a !important;}.log-header .sub{color:#555 !important;}' +
+                '.log-box{background:#f8f8f8 !important;color:#222 !important;border:1px solid #ddd;}' +
+                '.log-footer{color:#999 !important;border-top-color:#ccc !important;}}' +
+                '</style></head><body>' +
+                '<div class="log-header"><h1>' + installerTitle + '</h1><div class="sub">Serial Log Export</div></div>' +
+                '<div class="log-box">' + logHtml + '</div>' +
+                '<div class="log-footer">Created: ' + ts + ' \u00B7 ZapBox Web Installer \u00B7 ' + url + '</div>' +
+                '</body></html>';
+            const newWin = window.open('', '_blank');
+            if (newWin) { newWin.document.write(html); newWin.document.close(); }
         }
 
         function downloadLogs() {
@@ -740,16 +897,48 @@
         function printConfig() {
             const printWifi   = document.getElementById('print-wifi').checked;
             const printSocket = document.getElementById('print-device-string').checked;
-            let lines = ['ZapBox Touch 3.5" Configuration', '================================'];
-            for (const item of config) {
-                if (!printWifi   && (item.name === 'ssid' || item.name === 'wifipassword')) continue;
-                if (!printSocket && item.name === 'socket') continue;
-                lines.push(item.name + ': ' + item.value);
-            }
-            const w = window.open('', '_blank');
-            w.document.write('<pre>' + lines.join('\n') + '</pre>');
-            w.print();
-            w.close();
+            function selText(id) { const el = document.getElementById(id); return el ? el.options[el.selectedIndex].text : ''; }
+            function inputVal(id) { const el = document.getElementById(id); return el ? (el.value.trim() || '') : ''; }
+            const installerTitle = 'ZAPBOX\u26A1 WEB INSTALLER (Touch 3.5")';
+            const fwSel = document.getElementById('firmware-version-touch35');
+            const fwSelected = fwSel ? fwSel.options[fwSel.selectedIndex].text : '';
+            const now = new Date();
+            const ts = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const hidden = '<span style="color:#aaa;font-style:italic;">&#8212; (not printed)</span>';
+            function row(label, value) { return '<tr><td class="lbl">' + label + '</td><td class="val">' + (value !== '' ? value : '<span style="color:#aaa;">&#8212;</span>') + '</td></tr>'; }
+            function section(title, rows) { return '<h3 class="sec">' + title + '</h3><table class="pt"><tbody>' + rows + '</tbody></table>'; }
+            let sections = '';
+            sections += section('WiFi &amp; Device',
+                row('WiFi SSID', printWifi ? (inputVal('ssid') || '&#8212;') : hidden) +
+                row('WiFi Password', printWifi ? (inputVal('wifiPassword') || '&#8212;') : hidden) +
+                row('Device Settings String', printSocket ? (inputVal('socket') || '&#8212;') : hidden));
+            sections += section('Display &amp; Theme',
+                row('Theme', selText('theme')) +
+                row('Screensaver', selText('screensaver')) +
+                row('Deep Sleep', selText('deepSleep')) +
+                row('Deep Sleep Timeout (min)', inputVal('deepSleepTime')));
+            sections += section('Relay &amp; Special Mode',
+                row('Special Mode', selText('specialMode')) +
+                row('NFC Mode', selText('nfcMode')));
+            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + installerTitle + ' \u2013 Config</title>' +
+                '<style>body{font-family:Arial,sans-serif;font-size:13px;color:#222;margin:0;padding:20px;}' +
+                '.cfg-header{border-bottom:2px solid #f7931a;padding-bottom:12px;margin-bottom:20px;}' +
+                '.cfg-header h1{margin:0 0 4px 0;font-size:18px;color:#f7931a;}' +
+                '.cfg-header .sub{color:#888;font-size:12px;}' +
+                'h3.sec{margin:18px 0 6px 0;font-size:13px;color:#555;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;padding-bottom:4px;}' +
+                'table.pt{border-collapse:collapse;width:100%;margin-bottom:10px;}' +
+                'table.pt td{padding:4px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top;}' +
+                'table.pt td.lbl{width:40%;color:#555;font-weight:600;}table.pt td.val{color:#222;}' +
+                '.cfg-footer{margin-top:20px;padding-top:10px;border-top:1px solid #ddd;color:#aaa;font-size:11px;}' +
+                '</style></head><body>' +
+                '<div class="cfg-header"><h1>' + installerTitle + '</h1>' +
+                '<div class="sub">Configuration saved: ' + ts + '</div>' +
+                '<div class="sub">Firmware: ' + fwSelected + '</div></div>' +
+                sections +
+                '<div class="cfg-footer">' + window.location.href + '</div>' +
+                '</body></html>';
+            const newWin = window.open('', '_blank');
+            if (newWin) { newWin.document.write(html); newWin.document.close(); }
         }
 
         function closeHelpModal() {
