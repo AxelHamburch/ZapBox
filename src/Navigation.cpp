@@ -427,6 +427,29 @@ void handleTouchButton()
       return;
     }
     
+#ifdef BOARD_JC3248W535C
+    // JC3248W535C: no physical button — count ANY tap for the 5-tap config entry,
+    // then fall through to normal button-area logic (or return if not in button area).
+    {
+      static uint8_t  configTapCount = 0;
+      static unsigned long configTapStart = 0;
+      unsigned long now = millis();
+      if (configTapCount == 0 || (now - configTapStart) > 3000) {
+        configTapCount = 1;
+        configTapStart = now;
+      } else {
+        configTapCount++;
+      }
+      LOG_DEBUG("Touch", String("Config tap ") + String(configTapCount) + "/5");
+      if (configTapCount >= 5) {
+        configTapCount = 0;
+        LOG_INFO("Touch", "5 rapid taps -> Config Mode");
+        configMode();
+        return;
+      }
+    }
+#endif
+
     // If not in button area, update activity timer but don't process as button click
     if (!inButtonArea) {
       activityTracking.lastActivityTime = millis();
