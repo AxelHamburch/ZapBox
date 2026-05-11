@@ -432,7 +432,7 @@ static void renderStatusBox(const char *label) {
 void startupScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, SCR_H / 2 - 50, "ZAPBOX",   themeForeground, themeBackground, 5);
+  drawCenter(SCR_W / 2, SCR_H / 2 - 20, "ZAPBOX",   themeForeground, themeBackground, 5);
   drawCenter(SCR_W / 2, SCR_H / 2 + 30, "Firmware", themeForeground, themeBackground, 2);
   drawCenter(SCR_W / 2, SCR_H / 2 + 55, VERSION,    themeForeground, themeBackground, 2);
   flushDisplay();
@@ -441,7 +441,7 @@ void startupScreen() {
 void initializationScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, SCR_H / 2 - 50, "ZAPBOX",          themeForeground, themeBackground, 5);
+  drawCenter(SCR_W / 2, SCR_H / 2 - 20, "ZAPBOX",          themeForeground, themeBackground, 5);
   drawCenter(SCR_W / 2, SCR_H / 2 + 30, "Initializing...", themeForeground, themeBackground, 2);
   flushDisplay();
 }
@@ -449,8 +449,8 @@ void initializationScreen() {
 void configModeScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, SCR_H / 2 - 60, "CONFIG",   themeForeground, themeBackground, 4);
-  drawCenter(SCR_W / 2, SCR_H / 2,      "MODE",     themeForeground, themeBackground, 4);
+  drawCenter(SCR_W / 2, SCR_H / 2 - 30, "CONFIG",   themeForeground, themeBackground, 4);
+  drawCenter(SCR_W / 2, SCR_H / 2 + 20, "MODE",     themeForeground, themeBackground, 4);
   drawCenter(SCR_W / 2, SCR_H / 2 + 60, "(serial)", themeForeground, themeBackground, 2);
   flushDisplay();
 }
