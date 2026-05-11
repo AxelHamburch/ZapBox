@@ -15,8 +15,11 @@ This becomes your version number: `vBLOCKHEIGHT` (e.g., v936746)
 
 ## 📋 Release Strategy
 
-- **Both versions are typically released together:** Standard (T-Display-S3) AND Headless (ESP32 Dev)
-- **Version format:** `vBLOCKHEIGHT` for standard, `vBLOCKHEIGHTh` for headless (note the 'h' suffix)
+- **Hardware Variants:**
+  - **Standard** (T-Display-S3): `vBLOCKHEIGHT` format
+  - **Headless** (ESP32 Dev): `vBLOCKHEIGHTh` suffix (note the 'h')
+  - **Touch 3.5"** (JC3248W535C): `vBLOCKHEIGHTt35` suffix (note the 't35')
+- **Release Approach:** Versions can be released individually (e.g., touch3.5 only) or as a group
 - **Binary files:** Copied WITHOUT any suffix (just `bootloader.bin`, `partitions.bin`, `firmware.bin`)
 
 ## Automated Release Steps
