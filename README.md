@@ -1204,7 +1204,8 @@ Electrical design and housing variants, see table.
 | b944666 | Headless Servo | First powerfull Headless Servo |
 | b945188 | ZapOMat | Add mounting plate and wide-range voltage input | 
 | b946303 | Servo | Add mounting plate and tweak it a bit |
-| b946400 | Compact | Add mounting plate, 90° NFC and option Ext. | 
+| b946400 | Compact | Add mounting plate, 90° NFC and option Ext. | b948772
+| b948772 | Headless Servo | Add NFC Tag 2 module |
 
 -> Find all versions here: [./assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
