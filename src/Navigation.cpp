@@ -306,6 +306,35 @@ static bool touchPinHigh() {
  */
 void handleTouchButton()
 {
+#ifdef BOARD_JC3248W535C
+  // JC3248W535C: 5 rapid taps anywhere on screen → Config Mode.
+  // Uses its own rising-edge detection so it fires exactly once per tap,
+  // independent of inButtonArea logic, screensaver state, click counts, etc.
+  {
+    static bool tapLastPressed = false;
+    static uint8_t tapCount = 0;
+    static unsigned long tapFirstTime = 0;
+    bool tapNow = touch.isPressed();
+    if (tapNow && !tapLastPressed) {           // rising edge = new tap
+      unsigned long now = millis();
+      if (tapCount == 0 || (now - tapFirstTime) > 3000) {
+        tapCount = 1;
+        tapFirstTime = now;
+      } else {
+        tapCount++;
+      }
+      Serial.printf("[CONFIG_TAP] tap %u/5 (%lu ms)\n", tapCount, now - tapFirstTime);
+      if (tapCount >= 5) {
+        tapCount = 0;
+        Serial.println("[CONFIG_TAP] 5 rapid taps -> Config Mode");
+        configMode();
+        return;
+      }
+    }
+    tapLastPressed = tapNow;
+  }
+#endif
+
   // If in Help mode: Allow second click to switch to Report
   if (deviceState.isInState(DeviceState::HELP_SCREEN)) {
     // Check for new button press
@@ -427,29 +456,6 @@ void handleTouchButton()
       return;
     }
     
-#ifdef BOARD_JC3248W535C
-    // JC3248W535C: no physical button — count ANY tap for the 5-tap config entry,
-    // then fall through to normal button-area logic (or return if not in button area).
-    {
-      static uint8_t  configTapCount = 0;
-      static unsigned long configTapStart = 0;
-      unsigned long now = millis();
-      if (configTapCount == 0 || (now - configTapStart) > 3000) {
-        configTapCount = 1;
-        configTapStart = now;
-      } else {
-        configTapCount++;
-      }
-      LOG_DEBUG("Touch", String("Config tap ") + String(configTapCount) + "/5");
-      if (configTapCount >= 5) {
-        configTapCount = 0;
-        LOG_INFO("Touch", "5 rapid taps -> Config Mode");
-        configMode();
-        return;
-      }
-    }
-#endif
-
     // If not in button area, update activity timer but don't process as button click
     if (!inButtonArea) {
       activityTracking.lastActivityTime = millis();
