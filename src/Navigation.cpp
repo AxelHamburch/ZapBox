@@ -307,30 +307,52 @@ static bool touchPinHigh() {
 void handleTouchButton()
 {
 #ifdef BOARD_JC3248W535C
-  // JC3248W535C: 5 rapid taps anywhere on screen → Config Mode.
-  // Uses its own rising-edge detection so it fires exactly once per tap,
-  // independent of inButtonArea logic, screensaver state, click counts, etc.
+  // JC3248W535C: 5 rapid taps + hold on 5th tap (≥2 s) → Config Mode.
+  // Taps 1-4 must each arrive within 3 s of the first tap (rising-edge only).
+  // On the 5th tap the finger must be held for at least 2 s without releasing;
+  // releasing early resets the sequence so accidental multi-taps are ignored.
   {
-    static bool tapLastPressed = false;
-    static uint8_t tapCount = 0;
-    static unsigned long tapFirstTime = 0;
+    static bool     tapLastPressed  = false;
+    static uint8_t  tapCount        = 0;
+    static unsigned long tapFirstTime  = 0;
+    static unsigned long tap5HoldStart = 0;
+    static bool     waitingFor5Hold = false;
+
     bool tapNow = touch.isPressed();
+
     if (tapNow && !tapLastPressed) {           // rising edge = new tap
       unsigned long now = millis();
       if (tapCount == 0 || (now - tapFirstTime) > 3000) {
         tapCount = 1;
         tapFirstTime = now;
+        waitingFor5Hold = false;
       } else {
         tapCount++;
       }
       Serial.printf("[CONFIG_TAP] tap %u/5 (%lu ms)\n", tapCount, now - tapFirstTime);
       if (tapCount >= 5) {
-        tapCount = 0;
-        Serial.println("[CONFIG_TAP] 5 rapid taps -> Config Mode");
+        // Don't trigger yet — wait for hold
+        tap5HoldStart   = now;
+        waitingFor5Hold = true;
+        Serial.println("[CONFIG_TAP] 5th tap detected - hold for 2 s to enter Config Mode");
+      }
+    } else if (!tapNow && tapLastPressed && waitingFor5Hold) {
+      // Finger lifted before 2 s hold → abort
+      Serial.println("[CONFIG_TAP] Released too early - Config Mode aborted, resetting");
+      tapCount        = 0;
+      waitingFor5Hold = false;
+    } else if (tapNow && waitingFor5Hold) {
+      // Finger still held — check if 2 s elapsed
+      if (millis() - tap5HoldStart >= 2000) {
+        tapCount        = 0;
+        waitingFor5Hold = false;
+        Serial.println("[CONFIG_TAP] 2 s hold confirmed -> Config Mode");
         configMode();
+        tapLastPressed = tapNow;
         return;
       }
     }
+
     tapLastPressed = tapNow;
   }
 #endif
