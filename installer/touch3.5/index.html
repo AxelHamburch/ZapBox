@@ -104,8 +104,9 @@
 
         <p>If parameters have already been saved and need to be changed, you can also open CONF mode retrospectively:</p>
         <ul>
-            <li>Press and hold the BOOT button for 5 seconds.</li>
-            <li>Or: <strong>tap anywhere on the touchscreen 5 times in rapid succession</strong> (within 3 seconds).</li>
+            <li>Tap anywhere on the touchscreen 5 times in rapid succession (within 3 seconds), then hold the finger on the 5th tap for at least 2 seconds.</li>
+            <li>Or: Press the LED button (if available) once briefly, then hold it down for at least 5 seconds.</li>   
+            <li>Or: Press and hold the “BOOT” micro-button on the back of the display for 5 seconds.</li>        
         </ul>
 
         <p><i><strong>Note:</strong> The connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. If data is already available, you can terminate the connection prematurely by pressing the BOOT button or tapping the touchscreen HELP area.</i></p>
@@ -193,8 +194,8 @@
                     <label for="theme">Display color options</label>
                     <select name="theme" id="theme">
                         <option value="btcorange-black">BTC ORANGE &amp; BLACK (inv. QR-Code)</option>
-                        <option value="zapbox" selected>GOLD &amp; BLACK (inv. QR-Code)</option>
-                        <option value="black-white">BLACK &amp; WHITE</option>
+                        <option value="zapbox">GOLD &amp; BLACK (inv. QR-Code)</option>
+                        <option value="black-white" selected>BLACK &amp; WHITE (default)</option>
                         <option value="black-lightgrey">BLACK &amp; LIGHT GREY (for dark environments)</option>
                         <option value="black-darkgrey">BLACK &amp; DARK GREY (for very dark environments)</option>
                         <option value="darkgreen-lightgrey">DARKGREEN &amp; LIGHTGREY (scan-friendly)</option>
@@ -581,7 +582,7 @@
             { "name": "socket",          "value": "" },
             { "name": "qrFormat",        "value": "bech32" },
             { "name": "orientation",     "value": "h" },
-            { "name": "theme",           "value": "zapbox" },
+            { "name": "theme",           "value": "black-white" },
             { "name": "thresholdKey",    "value": "" },
             { "name": "thresholdAmount", "value": "" },
             { "name": "thresholdPin",    "value": "" },
@@ -595,9 +596,14 @@
             { "name": "activationTime",  "value": "5" },
             { "name": "multiControl",    "value": "off" },
             { "name": "btcTicker",       "value": "selecting" },
+            // index 19: lightBarrier — not used on JC3248W535C, placeholder keeps firmware indices aligned
+            { "name": "lightBarrier",    "value": "off" },
             { "name": "currency",        "value": "USD" },
-            { "name": "deepSleepTime",   "value": "30" },
-            { "name": "nfcMode",         "value": "boltcard" }
+            // index 21: externalButton — not used on JC3248W535C, placeholder keeps firmware indices aligned
+            { "name": "externalButton",  "value": "no" },
+            // index 22: ambientLight — not used on JC3248W535C, placeholder keeps firmware indices aligned
+            { "name": "ambientLight",    "value": "off" },
+            { "name": "deepSleepTime",   "value": "30" }
         ];
 
         // Setup Web Serial using serial.js
@@ -678,6 +684,22 @@
             consoleDebug.appendChild(textNode);
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
 
+            // Detect config mode exit (device leaving config mode and restarting)
+            if (newData.includes("[CONFIG_MODE_EXIT]")) {
+                configModeVerified = false;
+                justRestarted = true;
+                document.getElementById("read-config-button").disabled  = true;
+                document.getElementById("write-config-button").disabled = true;
+                document.getElementById("soft-reset-button").disabled   = true;
+                updateConfigModeStatus(false);
+                const exitMsg = document.createElement('span');
+                exitMsg.style.color = '#cc6600';
+                exitMsg.textContent = '⚠️ Config mode ended — device is restarting.\n';
+                consoleDebug.appendChild(exitMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                return;
+            }
+
             // Detect normal operation (not in config mode)
             const hasNormalProgramOutput =
                 newData.includes("[LOOP]") ||
@@ -688,39 +710,56 @@
                 newData.includes("[CHECK]");
 
             if (hasNormalProgramOutput && !justRestarted) {
-                if (waitingForManualConfigMode) {
-                    const notConfigMsg = document.createElement('span');
-                    notConfigMsg.style.color = '#cc6600';
-                    notConfigMsg.textContent = '⚠️ Device is running normally (not in config mode). Enter config mode on the device first.\n';
-                    consoleDebug.appendChild(notConfigMsg);
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                if (configModeVerified) {
+                    configModeVerified = false;
+                    document.getElementById("read-config-button").disabled  = true;
+                    document.getElementById("write-config-button").disabled = true;
+                    document.getElementById("soft-reset-button").disabled   = true;
                 }
                 updateConfigModeStatus(false);
                 return;
             }
 
             // Detect config mode acknowledgment
-            if (newData.includes("/hello") || newData.includes("CONFIG MODE") ||
-                newData.includes("config mode") || newData.includes("CONF MODE")) {
-                if (!configModeVerified) {
-                    configModeVerified = true;
-                    waitingForManualConfigMode = false;
+            // IMPORTANT: only react to [CONFIG_MODE_ENTER], which fires after WiFi teardown
+            // and RX-buffer drain. Earlier log lines like "entering config mode" arrive
+            // while the ESP32 is still tearing down WiFi and draining stale RX bytes —
+            // any command sent at that point is silently discarded.
+            // Check both newData and the rolling serialBuffer so that [CONFIG_MODE_ENTER]
+            // is detected even when split across two USB CDC receive events.
+            serialBuffer += newData;
+            const hasConfigModeEnter = newData.includes("[CONFIG_MODE_ENTER]") ||
+                                       serialBuffer.includes("[CONFIG_MODE_ENTER]");
+            const hasConfigTriggerLog = !configModeVerified && (
+                newData.includes("Serial Config Mode Active") ||
+                newData.includes("Waiting for commands")
+            );
+            if ((hasConfigModeEnter || hasConfigTriggerLog) && !configModeVerified) {
+                configModeVerified = true;
+                justRestarted = false;   // mirrors T-Display-S3: clear restart flag
+                waitingForManualConfigMode = false;
+                serialBuffer = '';       // clear buffer; /file-read comes later on demand
+                if (helloSendTimeout) { clearTimeout(helloSendTimeout); helloSendTimeout = null; }
+
+                // Defer badge + button enable by 800 ms so the ESP32 finishes
+                // its RX drain before any command arrives (prevents silent
+                // command discard). The guard re-checks configModeVerified so
+                // that stale-buffer false positives (invalidated by normal-mode
+                // output arriving within 800 ms) never turn the badge green.
+                setTimeout(() => {
+                    if (!configModeVerified) return;
                     updateConfigModeStatus(true);
                     document.getElementById("read-config-button").disabled  = false;
                     document.getElementById("write-config-button").disabled = false;
                     document.getElementById("soft-reset-button").disabled   = false;
-
                     const configMsg = document.createElement('span');
                     configMsg.style.color = 'green';
                     configMsg.textContent = '✅ Config mode detected — ready to read/write config.\n';
                     consoleDebug.appendChild(configMsg);
                     consoleDebug.scrollTop = consoleDebug.scrollHeight;
-                }
+                }, 800);
                 return;
             }
-
-            // Accumulate serial data in buffer
-            serialBuffer += newData;
 
             // Trigger config parse when we see /file-read response or raw JSON array
             if (serialBuffer.includes('/file-read ') || serialBuffer.includes('[{"name":"ssid"')) {
@@ -770,9 +809,12 @@
                 if (!Array.isArray(configData) || configData.length < 3 || configData[0]?.name !== 'ssid') return;
 
                 // Apply each config value by name
+                // Some config keys differ from their HTML element id (legacy naming).
+                const idMap = { "wifipassword": "wifiPassword" };
                 for (const item of configData) {
                     if (item.name && item.value !== undefined) {
-                        const el = document.getElementById(item.name);
+                        const elId = idMap[item.name] || item.name;
+                        const el = document.getElementById(elId);
                         if (el) el.value = item.value;
                         const entry = config.find(c => c.name === item.name);
                         if (entry) entry.value = item.value;
@@ -845,7 +887,7 @@
         async function onWriteConfigButtonClick() {
             if (!serial.isOpen()) return;
             if (!configModeVerified) {
-                alert('⚠️ Config Mode Required\n\nThe device must be in SERIAL CONFIG MODE.\n\nPlease:\n1. Disconnect\n2. Enter config mode (tap screen 5× quickly or hold BOOT button 5 s)\n3. Reconnect and try again');
+                alert('⚠️ Config Mode Required\n\nThe device must be in SERIAL CONFIG MODE.\n\nPlease:\n1. Disconnect\n2. Enter config mode (tap screen 5× quickly, hold on the 5th tap ≥2 s — or hold BOOT button 5 s)\n3. Reconnect and try again');
                 const errorMsg = document.createElement('span');
                 errorMsg.style.color = '#ff4444';
                 errorMsg.textContent = '⚠️ Not in config mode - write aborted\n';
@@ -892,7 +934,7 @@
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 const doneMsg = document.createElement('span');
                 doneMsg.style.color = '#00ff00';
-                doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (tap screen 5× quickly or hold BOOT 5 s)\n';
+                doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (tap screen 5× quickly, hold on the 5th tap ≥2 s — or hold BOOT 5 s)\n';
                 consoleDebug.appendChild(doneMsg);
                 consoleDebug.scrollTop = consoleDebug.scrollHeight;
             } else {
@@ -935,6 +977,8 @@
                 "ssid":            ssid.value,
                 "wifipassword":    wifiPassword.value,
                 "socket":          socket.value,
+                "qrFormat":        (document.getElementById('qrFormat') || {value: "bech32"}).value,
+                "orientation":     (document.getElementById('orientation') || {value: "h"}).value,
                 "specialMode":     specialMode.value,
                 "frequency":       frequency.value || "1.0",
                 "dutyCycleRatio":  dutyCycleRatio.value || "1.0",
@@ -946,8 +990,10 @@
                 "theme":           theme.value,
                 "screensaver":     screensaver.value,
                 "deepSleep":       deepSleep.value,
+                "activationTime":  (document.getElementById('activationTime') || {value: "5"}).value,
                 "deepSleepTime":   deepSleepTime.value,
-                "nfcMode":         document.getElementById('nfcMode').value
+                "btcTicker":       (document.getElementById('btcTicker') || {value: "selecting"}).value,
+                "currency":        (document.getElementById('currency') || {value: "USD"}).value
             };
             for (const entry of config) {
                 if (map.hasOwnProperty(entry.name)) {
@@ -1017,8 +1063,7 @@
                 row('Deep Sleep', selText('deepSleep')) +
                 row('Deep Sleep Timeout (min)', inputVal('deepSleepTime')));
             sections += section('Relay &amp; Special Mode',
-                row('Special Mode', selText('specialMode')) +
-                row('NFC Mode', selText('nfcMode')));
+                row('Special Mode', selText('specialMode')));
             const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + installerTitle + ' \u2013 Config</title>' +
                 '<style>body{font-family:Arial,sans-serif;font-size:13px;color:#222;margin:0;padding:20px;}' +
                 '.cfg-header{border-bottom:2px solid #f7931a;padding-bottom:12px;margin-bottom:20px;}' +
