@@ -37,7 +37,7 @@
 #include "Log.h"
 
 // NFC modules (optional feature, gated by ENABLE_NFC build flag)
-#ifdef ENABLE_NFC
+#if ENABLE_NFC
 #include "NFCBoltCard.h"
 #include "NFCCardEmulation.h"
 #include "NFCNT3H2111.h"
@@ -1197,7 +1197,7 @@ void setup()
   // NFC module (optional, activated via -DENABLE_NFC=1 in platformio.ini)
   // Must run AFTER touch.begin() because Wire.begin(GPIO17, GPIO18) must have been
   // called first (PN532 shares the same I2C bus as the touch controller).
-#ifdef ENABLE_NFC
+#if ENABLE_NFC
   // Both NFC modules are always initialized — each self-detects on I²C,
   // skipped silently if the hardware is not connected.
   Serial.println("[NFC] Initializing NFC modules (auto-detect)...");
@@ -1799,7 +1799,7 @@ void loop()
     // \u2500\u2500\u2500 End NFC payment monitoring \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
     // NT3H2111: re-write NDEF if the active LNURL changed (no-op when unchanged)
-    #ifdef ENABLE_NFC
+    #if ENABLE_NFC
     nfcNT3H2111UpdateIfChanged();
     #endif
 

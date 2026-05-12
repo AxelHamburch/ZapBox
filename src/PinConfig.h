@@ -252,3 +252,34 @@ static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
 // No external LED button — capacitive touch screen handles wake-up.
 
 #endif  // BOARD_JC3248W535C
+
+// ════════════════════════════════════════════════════════════════════════════
+// Board: ESP32-C3-WROOM-02 "esp32-c3-21-1"
+// ESP32-C3, single core RISC-V 160 MHz, 4 MB Flash
+// Native USB CDC/JTAG on GPIO19(D-)/GPIO20(D+) — no external UART chip.
+// IO9 = BOOT: hold LOW during reset to enter download mode.
+// ════════════════════════════════════════════════════════════════════════════
+#ifdef BOARD_ESP32C3_21_1
+
+// ── Relay output (HFD3/5 — 1A 30VDC / 0.5A 125VAC) ─────────────────────
+#define PIN_RELAY    4   // IO4 → Relay coil driver
+
+// ── SSR output (Letex LT218 Solid State Relay) ───────────────────────────
+#define PIN_SSR      5   // IO5 → SSR control signal
+
+// ── Free GPIOs (available for future use) ────────────────────────────────
+// IO6, IO7, IO10 — unassigned
+// IO0, IO1, IO2, IO3 — unassigned
+// IO18 — unassigned
+
+// ── UART (via pin header: TX=TXD, RX=RXD) ───────────────────────────────
+// TXD and RXD are the hardware UART0 pins (default Serial)
+
+// ── LED button / wake ────────────────────────────────────────────────────
+// No LED button on this board.
+#define PIN_LED_BTN  -1
+
+// ── Relay channel array (single relay + single SSR) ──────────────────────
+const int RELAY_PINS[] = { PIN_RELAY, PIN_SSR };
+
+#endif  // BOARD_ESP32C3_21_1
