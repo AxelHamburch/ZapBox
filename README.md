@@ -1204,7 +1204,9 @@ Electrical design and housing variants, see table.
 | b944666 | Headless Servo | First powerfull Headless Servo |
 | b945188 | ZapOMat | Add mounting plate and wide-range voltage input | 
 | b946303 | Servo | Add mounting plate and tweak it a bit |
-| b946400 | Compact | Add mounting plate, 90° NFC and option Ext. | 
+| b946400 | Compact | Add mounting plate, 90° NFC and option Ext. |
+| b948772 | Headless Servo | Add NFC Tag 2 module |
+| b948929 | Headless | Add NFC Tag 2 module |
 
 -> Find all versions here: [./assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
@@ -1228,10 +1230,12 @@ Electrical design and housing variants, see table.
 | e939705 | ZapOMat | ZapOMat No.1 | 
 | e940540 | Headless | Update | 
 | e943674 | Servo | Start the Servo Story | 
-| e944644 | Headless Servo | First powerfull Headless Servo | e945370
+| e944644 | Headless Servo | First powerfull Headless Servo |
 | e945370 | ZapOMat | Update with wide-range voltage input | 
 | e946465 | Servo | Update with wide-range voltage input and NFC-plug | 
-| e947689 | Compact-Ext | Special version with external guided switching contact |
+| e947689 | Compact-Ext | Special version with external guided switching contact | 
+| e948960 | Headless Servo |  Add NFC Tag 2 module |
+| e948971 | Headless |  Add NFC Tag 2 module | 
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 

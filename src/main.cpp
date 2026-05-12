@@ -15,7 +15,11 @@
 #include "SerialConfig.h"
 
 #ifdef ENABLE_DISPLAY
-#include "TouchCST816S.h"
+  #ifdef BOARD_JC3248W535C
+    #include "TouchAXS15231B.h"
+  #else
+    #include "TouchCST816S.h"
+  #endif
 #endif
 
 #include "DeviceState.h"
@@ -56,7 +60,13 @@ OneButton rightButton(PIN_BUTTON_2, true);
 
 #ifdef ENABLE_DISPLAY
 // Touch controller (only for T-Display-S3)
+#ifdef BOARD_JC3248W535C
+// AXS15231B touch sits on the module's INTERNAL I²C bus (SDA=4, SCL=8). It
+// uses Wire1 so the external Wire (SDA=18, SCL=17) stays free for NFC.
+TouchAXS15231B touch(Wire1, 4, 8, /*rst=*/-1, /*irq=*/-1);
+#else
 TouchCST816S touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_TOUCH_RES, PIN_TOUCH_INT);
+#endif
 #endif
 
 // Variables that remain here (not migrated to GlobalState)
@@ -1158,7 +1168,12 @@ void setup()
   initDisplay();
   startupScreen();
 
-  // Initialize touch controller (independent of WiFi)
+#ifdef BOARD_JC3248W535C
+  // The AXS15231B touch lives on Wire1 (internal SDA=4/SCL=8). Bring up the
+  // external Wire (SDA=18/SCL=17) ourselves so NFC modules work even if touch
+  // probe fails.
+  Wire.begin(18, 17, 100000);
+#endif
   touchState.available = touch.begin();
   if (touchState.available) {
     Serial.println("[TOUCH] ✓ Touch controller initialized successfully!");
@@ -1796,26 +1811,56 @@ void loop()
     static unsigned long lastTouchDebugPrint = 0;
     
     if (touchState.available && !deviceState.isInState(DeviceState::CONFIG_MODE)) {
-      // FIRST: Check touch interrupt for powerConfig.screensaver wake-up (even if no new data available)
-      // This ensures we can wake from powerConfig.screensaver by touching anywhere on the screen
+#ifdef BOARD_JC3248W535C
+      // JC3248W535C: PIN_TOUCH_INT == GPIO16 == PIN_NFC_IRQ — permanently LOW, cannot use it.
+      // Use touch.isPressed() (I2C poll) with a 1500 ms cooldown after screensaver activation
+      // to prevent phantom wake from residual touch reports.
+      static unsigned long screensaverEnteredAt = 0;
+      if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+        if (screensaverEnteredAt == 0) screensaverEnteredAt = millis();
+      } else {
+        screensaverEnteredAt = 0;
+      }
+      bool jcWakeSignal = touch.isPressed();
+      bool jcCooldownOk = (screensaverEnteredAt > 0 &&
+                           millis() - screensaverEnteredAt >= 1500);
+
+      if (deviceState.isInState(DeviceState::SCREENSAVER) && (millis() - lastTouchDebugPrint > 5000)) {
+        Serial.printf("[TOUCH_DEBUG] Screensaver active, isPressed=%d, cooldown=%dms\n",
+                      jcWakeSignal,
+                      screensaverEnteredAt > 0 ? (int)(millis() - screensaverEnteredAt) : 0);
+        lastTouchDebugPrint = millis();
+      }
+
+      if (jcWakeSignal && jcCooldownOk && deviceState.isInState(DeviceState::SCREENSAVER)) {
+        Serial.println("[TOUCH] Touch detected during screensaver - WAKING UP");
+        deviceState.transition(DeviceState::READY);
+        deactivateScreensaver();
+        screensaverEnteredAt = 0;
+        powerConfig.lastWakeUpTime = millis();
+        activityTracking.lastActivityTime = millis();
+        vTaskDelay(pdMS_TO_TICKS(50));
+        continue;
+      }
+#else
+      // T-Display-S3: dedicated touch INT pin, original logic unchanged
       int touchIntState = digitalRead(PIN_TOUCH_INT);
-      
-      // Debug: Print touch interrupt state every 5 seconds during powerConfig.screensaver
+
       if (deviceState.isInState(DeviceState::SCREENSAVER) && (millis() - lastTouchDebugPrint > 5000)) {
         Serial.printf("[TOUCH_DEBUG] Screensaver active, PIN_TOUCH_INT=%d\n", touchIntState);
         lastTouchDebugPrint = millis();
       }
-      
+
       if (touchIntState == LOW && deviceState.isInState(DeviceState::SCREENSAVER)) {
         Serial.println("[TOUCH] Touch interrupt detected during powerConfig.screensaver - WAKING UP");
         deviceState.transition(DeviceState::READY);
         deactivateScreensaver();
         powerConfig.lastWakeUpTime = millis();
         activityTracking.lastActivityTime = millis();
-        // Give touch controller time to process and continue to next iteration
         vTaskDelay(pdMS_TO_TICKS(50));
         continue;
       }
+#endif
       
       // Check for actual touch event
       // Note: Minimal debouncing for main area, button has its own 20ms debounce
@@ -1833,15 +1878,16 @@ void loop()
         uint16_t y = 0;
         bool isTouched = false;
 #endif
-        
+
         // FIRST: Check if touch is in button area
         // Touch coordinates are hardware-based (0-170 x 0-320), don't rotate with display!
         // Physical button is ALWAYS at Y > 305, regardless of display rotation
         bool inButtonArea = (y > 305);
         
         if (inButtonArea) {
-          // Update activity timer but don't process as product navigation
-          activityTracking.lastActivityTime = millis();
+          // Update activity timer only on new touch (rising edge) so phantom/idle I2C reads
+          // from AXS15231B don't keep the screensaver timer from expiring.
+          if (isTouched && !wasTouched) activityTracking.lastActivityTime = millis();
           lastTouchEvent = millis();
           // Skip the rest of touch processing - button handler in Task1 will handle this
           goto skip_product_touch_processing;
@@ -1871,8 +1917,8 @@ void loop()
             deactivateScreensaver();
             powerConfig.lastWakeUpTime = millis();
           }
-          // Update activity timer to prevent powerConfig.screensaver from activating again
-          activityTracking.lastActivityTime = millis();
+          // Update activity timer (rising edge only)
+          if (isTouched && !wasTouched) activityTracking.lastActivityTime = millis();
           lastTouchEvent = millis();
           wasTouched = isTouched;
           continue; // Don't process navigation on error screen
@@ -2123,11 +2169,16 @@ void loop()
           actionExecutedThisTouch = false;
         }
         
+        // Reset activity timer only on rising edge (new finger-down event).
+        // Using rising-edge (isTouched && !wasTouched) instead of "any touch frame"
+        // prevents the AXS15231B I2C poller from continuously resetting the screensaver
+        // timer on every loop iteration — even phantom/idle reads that return touch data.
+        if (isTouched && !wasTouched) {
+          activityTracking.lastActivityTime = millis();
+        }
+        
         // Remember touch state for next iteration
         wasTouched = isTouched;
-        
-        // Any touch resets activity timer (for powerConfig.screensaver)
-        activityTracking.lastActivityTime = millis();
         
         skip_product_touch_processing:
         ; // Empty statement required after label

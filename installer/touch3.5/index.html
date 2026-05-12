@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>ZAPBOX⚡️WEB INSTALLER (Touch 3.5")</title>
+
+    <!-- Primary Meta Tags -->
+    <meta name="description" content='Flash & config your ZapBox Touch 3.5" from the browser'>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+
+    <!-- Open Graph -->
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content='ZAPBOX⚡️WEB INSTALLER (Touch 3.5")' />
+    <meta property="og:description"
+        content='Flash & config your ZapBox Touch 3.5" from the browser' />
+    <meta property="og:url" content="https://installer.zapbox.space/touch3.5/" />
+    <meta property="og:image" content="https://installer.zapbox.space/assets/zapbox-social.webp" />
+
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://installer.zapbox.space/touch3.5/">
+    <meta name="twitter:title" content='ZAPBOX⚡️WEB INSTALLER (Touch 3.5")' />
+    <meta name="twitter:description" content='Flash & config your ZapBox Touch 3.5" from the browser'>
+    <meta name="twitter:image" content="https://installer.zapbox.space/assets/zapbox-social.webp" />
+
+    <link rel="icon" href="../assets/favicon_headless.webp" sizes="32x32">
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="../assets/serial.js?v=2"></script>
+    <script src="../assets/config-common.js"></script>
+    <script type="module" src="https://unpkg.com/esp-web-tools@9/dist/web/install-button.js?module"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #fff8e1 0%, #fffde7 25%, #ffd54f33 50%, #fffde7 75%, #fff8e1 100%);
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Image Popup Modal -->
+    <div id="help-image-modal" class="modal" onclick="closeHelpModal()">
+        <div class="modal-content">
+            <img src="../assets/Help-DeviceString.webp" alt="Help - Device String" onclick="closeHelpModal()">
+        </div>
+    </div>
+
+    <div class="wrapper">
+
+        <noscript>
+            <p>
+                I'm sorry! For this to actually work you have to enable JavaScript in your browser.
+            </p>
+        </noscript>
+
+        <h1 style="margin-bottom: 5px;">ZAPBOX⚡️WEB INSTALLER (Touch 3.5")</h1>
+        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with <strong>JC3248W535C</strong> (ESP32-S3, 3.5" QSPI touch display, 480×320).
+            T-Display-S3 installer <a href="../">see here</a> &nbsp;|&nbsp;
+            Headless installer <a href="../headless/">see here</a>.</i></p>
+        <div style="margin-bottom: 30px;"></div>
+
+        <h2 id="flash">1- Flash firmware</h2>
+
+        <ul>
+            <li>Connect your ZapBox Touch 3.5" to USB (the ESP32-S3 USB port)</li>
+            <li>Leave the latest firmware version selected</li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Flash</span> - connect and follow screen instructions</li>
+        </ul>
+
+        <!-- ##### Version selector and flash button ##### -->
+
+        <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+            <select id="firmware-version-touch35" style="padding: 10px; font-size: 16px; border-radius: 4px;">
+                <option value="../firmware/v949107t/manifest.json">v949107t (Latest - Dummy 😈 version - test it or leave it)</option>
+                <option value="../firmware/v948963t/manifest.json">v948963t - 🖥️ Touch 3.5" new JC3248W535C support</option>
+                <option value="../firmware/v1000000t/manifest.json">v1000000t - 🖥️ Touch 3.5" initial release</option>
+            </select>
+
+            <esp-web-install-button id="flash-button-touch35" manifest="../firmware/v949107t/manifest.json">
+                <button slot="activate">🔥 Flash Touch 3.5"</button>
+                <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
+                <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
+            </esp-web-install-button>
+        </div>
+
+        <p><i><strong>Note:</strong> The configuration data can be deleted using "Erase device." Otherwise, it will be retained even with the new firmware.</i></p>
+
+        <p><i><strong>Note on the Touch 3.5" version:</strong> This firmware runs on the <strong>JC3248W535C</strong> module — ESP32-S3-WROOM-1 with 3.5" IPS 480×320 QSPI display and capacitive multi-touch. The display replaces LEDs for all status feedback. Serial logs are still available for diagnostics.</i></p>
+
+        <script>
+            document.getElementById('firmware-version-touch35').addEventListener('change', function(e) {
+                const flashButton = document.getElementById('flash-button-touch35');
+                flashButton.setAttribute('manifest', e.target.value);
+            });
+        </script>
+
+        <hr>
+
+        <h2 id="prepare-connection">2- Prepare connection</h2>
+
+        <p>When you flash a new ESP32-S3 or use "Erase device." the ZapBox automatically starts in configuration mode. The display shows <strong>"CONF / SERIAL CONFIG MODE"</strong>.</p>
+
+        <p>→ The ZapBox is now ready to receive configuration data. ⚙️</p>
+
+        <p>If parameters have already been saved and need to be changed, you can also open CONF mode retrospectively:</p>
+        <ul>
+            <li>Tap anywhere on the touchscreen 5 times in rapid succession (within 3 seconds), then hold the finger on the 5th tap for at least 2 seconds.</li>
+            <li>Or: Press the LED button (if available) once briefly, then hold it down for at least 5 seconds.</li>   
+            <li>Or: Press and hold the “BOOT” micro-button on the back of the display for 5 seconds.</li>        
+        </ul>
+
+        <p><i><strong>Note:</strong> The connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. If data is already available, you can terminate the connection prematurely by pressing the BOOT button or tapping the touchscreen HELP area.</i></p>
+
+        <hr>
+
+        <h2 id="load-config">3- Load config values</h2>
+
+        <ul>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔌 Connect</span> - select the connection and connect.</li>
+            <li>Set or check whether the ZapBox is in configuration mode.⚙️✅</li>
+            <li>If values are already available, press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">📖 Read Config</span>.</li>
+            <li>Define your configuration.📝 At least Wi-Fi and device data.</li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔥 Write Config</span> to write the configuration.</li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔄 Restart</span> to restart while staying connected.</li>
+            <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔌 Disconnect</span> or refresh website to close connection.</li>
+        </ul>
+
+        <div class="buttons">
+            <button id="connect-button" onclick="onConnectButtonClick()">🔌 Connect</button>
+            <button id="read-config-button" onclick="onReadConfigButtonClick()" disabled>📖 Read Config</button>
+            <button id="write-config-button" onclick="onWriteConfigButtonClick()" disabled>🔥 Write Config</button>
+            <button id="soft-reset-button" onclick="onSoftResetButtonClick()" disabled>🔄 Restart</button>
+            <button id="restart-button" onclick="onRestartButtonClick()" disabled>🔌 Disconnect</button>
+        </div>
+
+        <div class="input-wrapper" style="background-color: #CCFFCC; padding: 20px; margin: 20px -20px; border-radius: 8px;">
+            <div>
+                <label for="ssid">WiFi SSID</label>
+                <input type="text" name="ssid" id="ssid" placeholder="SSID" autocomplete="off">
+            </div>
+            <div>
+                <label for="wifiPassword">WiFi password</label>
+                <input type="text" name="wifiPassword" id="wifiPassword" placeholder="password" autocomplete="off">
+            </div>
+            <div style="display: flex; gap: 20px; align-items: flex-start; grid-column: span 2;">
+                <div style="flex: 2;">
+                    <label for="socket">Device settings string</label>
+                    <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? Use Bitcoin Switch or ZapBox extension → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
+                </div>
+                <div style="flex: 1;">
+                    <label>Status</label>
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                        <div id="connection-status" style="padding: 6px 14px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">❌ Not connected</div>
+                        <div id="config-mode-status" style="padding: 6px 14px; border-radius: 5px; background-color: #e0e0e0; color: #888; font-weight: bold; white-space: nowrap; font-size: 13px;">❌ No config mode</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-console" id="consoleDebug" style="margin-top: 20px; margin-bottom: 20px;"></div>
+
+        <!-- Export & Save Section -->
+        <div style="background-color: #E8E8E8; padding: 20px; margin: 20px -20px; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+                <span style="font-weight: 600; white-space: nowrap;">Export log files:</span>
+                <button onclick="printLogs()" style="padding: 10px 18px; font-size: 15px; background: #f7931a; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">🖨️ Print Logs</button>
+                <button onclick="downloadLogs()" style="padding: 10px 18px; font-size: 15px; background: #555; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">💾 Download .txt</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <span style="font-weight: 600; white-space: nowrap;">Save your settings:</span>
+                <button onclick="printConfig()" style="padding: 10px 18px; font-size: 15px; background: #f7931a; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">🖨️ Print Config</button>
+                <div>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: normal; margin-bottom: 8px;">
+                        <input type="checkbox" id="print-wifi" style="display: inline-block; width: auto; margin: 0; padding: 0; flex-shrink: 0;"> Print WiFi data
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: normal;">
+                        <input type="checkbox" id="print-device-string" style="display: inline-block; width: auto; margin: 0; padding: 0; flex-shrink: 0;"> Print Device settings string
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Optional settings and functions Section -->
+        <div style="background-color: #FFE5CC; padding: 30px 20px; margin: 15px -20px 0 -20px; border-radius: 8px 8px 0 0;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: -10px;">
+                <h3 style="margin: 0; color: #000; font-weight: bold; white-space: nowrap;">Optional settings and functions</h3>
+                <hr style="flex: 1; border: none; border-top: 1px solid #888; margin: 0;">
+            </div>
+
+            <!-- Display Theme Section -->
+            <div class="input-wrapper" style="margin-top: 24px;">
+                <div>
+                    <label for="theme">Display color options</label>
+                    <select name="theme" id="theme">
+                        <option value="btcorange-black">BTC ORANGE &amp; BLACK (inv. QR-Code)</option>
+                        <option value="zapbox">GOLD &amp; BLACK (inv. QR-Code)</option>
+                        <option value="black-white" selected>BLACK &amp; WHITE (default)</option>
+                        <option value="black-lightgrey">BLACK &amp; LIGHT GREY (for dark environments)</option>
+                        <option value="black-darkgrey">BLACK &amp; DARK GREY (for very dark environments)</option>
+                        <option value="darkgreen-lightgrey">DARKGREEN &amp; LIGHTGREY (scan-friendly)</option>
+                        <option value="darkblue-lightgrey">DARKBLUE &amp; LIGHTGREY (scan-friendly)</option>
+                        <option value="white-navy">WHITE &amp; NAVY (inv. QR-Code)</option>
+                        <option value="black-blue">BLACK &amp; BLUE</option>
+                        <option value="black-btcorange">BLACK &amp; BTC ORANGE</option>
+                        <option value="black-darkcyan">BLACK &amp; DARKCYAN</option>
+                        <option value="black-green">BLACK &amp; GREEN</option>
+                        <option value="black-olive">BLACK &amp; OLIVE</option>
+                        <option value="black-orange">BLACK &amp; ORANGE</option>
+                        <option value="black-red">BLACK &amp; RED</option>
+                        <option value="brown-orange">BROWN &amp; ORANGE</option>
+                        <option value="darkcyan-cyan">DARKCYAN &amp; CYAN</option>
+                        <option value="darkgrey-btcorange">DARK GREY &amp; BTC ORANGE</option>
+                        <option value="darkgreen-green">DARKGREEN &amp; GREEN</option>
+                        <option value="maroon-magenta">MAROON &amp; MAGENTA</option>
+                        <option value="orange-brown">ORANGE &amp; BROWN</option>
+                        <option value="red-green">RED &amp; GREEN</option>
+                        <option value="white-darkcyan">WHITE &amp; DARKCYAN</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="orientation">Screen orientation</label>
+                    <select name="orientation" id="orientation">
+                        <option value="h" selected>Horizontal (default)</option>
+                        <option value="v">Vertical</option>
+                        <option value="hi">Horizontal (inverse)</option>
+                        <option value="vi">Vertical (inverse)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="qrFormat">QR-Code Format</label>
+                    <select name="qrFormat" id="qrFormat">
+                        <option value="bech32" selected>LNURL in bech32 format (default)</option>
+                        <option value="lud17">LNURL in LUD-17 format (raw)</option>
+                    </select>
+                </div>
+            </div>
+
+            <p style="margin-top: 5px; margin-bottom: 5px; color: #888;"><i><strong>Note:</strong> The default is Bech32. LUD-17 is easier to scan, but is not yet supported by all types of wallets.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- Multi-Channel Mode Section -->
+            <p style="margin-top: 10px;"><strong>Multi-Channel Mode</strong></p>
+            <p style="margin-top: 10px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent relay channels</strong>. Each channel maps to a GPIO output that can switch a relay, solenoid, or any other 3.3 V-driven load.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Available GPIO channels:</strong></i></p>
+            <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH01</strong></td><td>GPIO 5</td><td style="padding-left: 16px; color: #aaa;">(default)</td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH02</strong></td><td>GPIO 6</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH03</strong></td><td>GPIO 7</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH04</strong></td><td>GPIO 9</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH05</strong></td><td>GPIO 14</td><td></td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH06</strong></td><td>GPIO 15</td><td></td></tr>
+            </table>
+            <p style="margin-top: 14px; color: #888;"><i>Each channel is configured independently in your <strong>LNbits extension</strong> (zapbox / bitcoinswitch) — each switch gets its own QR code and amount. The device activates exactly the GPIO returned in the "paid" event.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Reserved GPIOs (not available as relay channels):</strong><br>
+                GPIO 17 / GPIO 18 — I²C bus (touch controller AXS15231B + NFC reader PN532, always active)<br>
+                GPIO 16 — touch interrupt (INT line of AXS15231B, shared with NFC IRQ)<br>
+                GPIO 46 — strapping pin reserve (do not connect external load)<br>
+                GPIO 21 — display backlight PWM (managed by firmware)
+            </i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- Special Mode Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="specialMode">Special Mode</label>
+                    <select name="specialMode" id="specialMode">
+                        <option value="standard" selected>Standard (simple on/off - default)</option>
+                        <option value="blink">Blink (1 Hz, 1:1)</option>
+                        <option value="pulse">Pulse (2 Hz, 1:4)</option>
+                        <option value="fast-blink">Strobe (5 Hz, 1:1)</option>
+                        <option value="custom">Custom (manual settings)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Choose pulsing/blinking mode for relay control</p>
+                </div>
+                <div id="frequencyDiv" style="display: none;">
+                    <label for="frequency">Frequency (Hz)</label>
+                    <input type="number" name="frequency" id="frequency" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Cycles per second (0.1 – 10 Hz)</p>
+                </div>
+                <div id="dutyCycleDiv" style="display: none;">
+                    <label for="dutyCycleRatio">Duty Cycle Ratio</label>
+                    <input type="number" name="dutyCycleRatio" id="dutyCycleRatio" placeholder="0.1 to 10" step="0.1" min="0.1" max="10" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">ON:OFF ratio (0.25 = 1:4, 1.0 = 1:1, 2.0 = 2:1)</p>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> Special modes control how the relay switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- BTC-Ticker Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="btcTicker">BTC-Ticker Mode</label>
+                    <select name="btcTicker" id="btcTicker">
+                        <option value="off">OFF</option>
+                        <option value="always">ON - always</option>
+                        <option value="selecting" selected>ON - when selecting (default)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Control when Bitcoin price/block info is shown</p>
+                </div>
+                <div>
+                    <label for="currency">Currency (ISO Code)</label>
+                    <input type="text" name="currency" id="currency" placeholder="USD" maxlength="3" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">E.g. USD, EUR, GBP, JPY, CHF, TRY, CAD, BRL, CUP, etc.</p>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>OFF:</strong> No ticker shown (Multi-Channel: productSelectionScreen; Single: only QR code)</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>ON - always:</strong> Ticker overlays screen, navigate with swipe to show products temporarily (returns after timeout)</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>ON - when selecting:</strong> Single: Ticker only visible for a short time after swipe. Multi-Channel: productSelectionScreen → products → ticker (at end of product cycle)</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- Threshold Mode Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="thresholdKey">Threshold Mode - Wallet Invoice/Read Key</label>
+                    <input type="text" name="thresholdKey" id="thresholdKey" placeholder="e.g. c9e68ab036.." autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">leave empty for normal mode (default)</p>
+                </div>
+                <div>
+                    <label for="thresholdAmount">Threshold value in satoshi</label>
+                    <input type="number" name="thresholdAmount" id="thresholdAmount" placeholder="e.g. 21" autocomplete="off">
+                </div>
+                <div>
+                    <label for="thresholdPin">GPIO pin to be controlled</label>
+                    <input type="number" name="thresholdPin" id="thresholdPin" placeholder="e.g. 5" value="5" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">5 (default CH01)</p>
+                </div>
+                <div>
+                    <label for="thresholdTime">Control time for GPIO pin (ms)</label>
+                    <input type="number" name="thresholdTime" id="thresholdTime" placeholder="e.g. 3000" autocomplete="off">
+                </div>
+                <div>
+                    <label for="thresholdLnurl">LNURL or LIGHTNING ADDRESS for QR-Code</label>
+                    <input type="text" name="thresholdLnurl" id="thresholdLnurl" placeholder="LNURL or lightning address" autocomplete="off">
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> As soon as something is entered in the "Wallet Invoice/Read Key" field, "THRESHOLD MODE" becomes active. "NORMAL MODE" then no longer works. The data specified in the bitcoinSwitch extension, such as amount, PIN, and time, is ignored. Only a payment to the wallet with the invoice key counts.</i></p>
+
+            <p style="margin-top: 10px; color: #888;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- Screensaver and Deep Sleep Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="screensaver">Screensaver</label>
+                    <select name="screensaver" id="screensaver">
+                        <option value="off" selected>Off (default)</option>
+                        <option value="backlight">Backlight off (touch to wake)</option>
+                        <option value="black">Black screen (backlight stays on)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="activationTime">Time until activation - Screensaver</label>
+                    <input type="number" name="activationTime" id="activationTime" min="1" max="120" placeholder="5" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">1-120 minutes (default: 5)</p>
+                </div>
+                <div>
+                    <label for="deepSleep">Deep sleep</label>
+                    <select name="deepSleep" id="deepSleep">
+                        <option value="off" selected>Off (default)</option>
+                        <option value="light">Light sleep (touch to wake)</option>
+                        <option value="freeze">Freeze (touch-only wake, ~0.01-0.15mA)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="deepSleepTime">Time until activation - Deep sleep</label>
+                    <input type="number" name="deepSleepTime" id="deepSleepTime" min="1" max="120" placeholder="30" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">1-120 minutes (default: 30)</p>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>Use Cases:</strong> Energy saving (screensaver ~80-90%, light sleep ~99%, freeze ~99.9%), reducing device heat, extending display lifespan in always-on scenarios.</i></p>
+
+            <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> Touch the screen (GPIO 16 INT) to wake from screensaver or light sleep mode.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- NFC-Module Section -->
+            <h3 style="margin: 0 0 10px 0;">NFC-Module</h3>
+            <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server — no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
+            <div style="display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start; margin-top: 16px;">
+                <a href="../assets/NFC-Module-PN532.webp" target="_blank">
+                    <img src="../assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" style="height: 220px; width: auto; display: block;" />
+                </a>
+                <a href="../assets/NFC-Tag-2.webp" target="_blank">
+                    <img src="../assets/NFC-Tag-2.webp" alt="NFC Tag 2 / NT3H2111 wiring" style="height: 220px; width: auto; display: block;" />
+                </a>
+            </div>
+            <p style="margin-top: 15px; color: #888;"><i><b>Bolt Cards &amp; NTAG 21x (PN532, I²C 0x24)</b> — Active NFC reader: the PN532 generates its own magnetic field and reads cards placed on it. Supports pre-programmed Bolt Cards for contactless Lightning payment. Also reads passive NFC tags of type NTAG 213, 215 and 216 — e.g. for LNURL-based payment tags. Works with all major Lightning wallets and PoS systems. No configuration required — the module is auto-detected on the I²C bus at startup.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i><b>Mobile Phones (NFC Tag 2 / NT3H2111, I²C 0x55)</b> — Passive NFC tag: unlike the PN532, the NT3H2111 generates no field of its own. It is a true NTAG chip that delivers the LNURL autonomously as soon as the active field of an approaching mobile phone is detected. The ZapBox writes the current LNURL to the chip via I²C — the ESP32 is not involved during the tap. Compatible with Android NFC Tools and wallets that support LNURL via NFC (e.g. Phoenix). No configuration required — auto-detected at startup.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i>Both modules operate independently and in parallel on the shared I²C bus (GPIO 17 SCL / GPIO 18 SDA — same bus as the touch controller). If a module is not connected, it is simply skipped — normal operation is not affected.</i></p>
+
+        </div>
+
+        <!-- Error Detection Section -->
+        <!-- Error Detection Section -->
+        <div style="background-color: #FFFFCC; padding: 30px 20px; margin: 0 -20px;">
+            <h2 id="error-detection">Error Detection & Report</h2>
+
+            <p>The ZapBox features a hierarchical error detection system with automatic diagnostics. Errors are displayed on screen with abbreviations:</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+                <tr style="background-color: #f0f0f0;">
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Priority</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Error Type</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Abbreviation</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">1 (Highest)</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WIFI</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NW</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">WiFi network not connected<br>→ Wifi data correct?<br>→ WiFi signal too weak?</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="border: 1px solid #ddd; padding: 8px;">2</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO INTERNET</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NI</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">Internet connectivity lost<br>→ Internet accessible?</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">3</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO SERVER</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NS</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">LNbits server unreachable<br>→ Server hardware down?<br>→ Device string correct?</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="border: 1px solid #ddd; padding: 8px;">4 (Lowest)</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WEBSOCKET</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">NWS</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">WebSocket protocol/handshake failure<br>→ LNbits down?<br>→ Device string correct?</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p><i><strong>Note:</strong> Higher priority errors override lower priority error displays. For example, if WiFi is down, all other checks are skipped and only "NO WIFI" is shown.</i></p>
+
+        <h3>Error Report Page</h3>
+
+        <p>All errors with their occurrence counts (0-99) are logged on the Report page. To access the Report page:</p>
+
+        <ul>
+            <li><strong>Touch the HELP button twice</strong> in quick succession</li>
+        </ul>
+
+        <h3>Common Wallet Error</h3>
+
+        <p>If a wallet scanning the QR code shows an error message, here's what it means:</p>
+
+        <p><strong>"bitcoinswitch ... is disabled"</strong> → The Bitcoin Switch was actively disabled in LNbits</p>
+
+        <p><strong>"No active bitcoinswitch connections"</strong> → The handshake between the wallet and ZapBox failed. → Wait or restart the ZapBox to re-establish the connection.</p>
+
+        <h3>Other Errors</h3>
+
+        <p><strong>Relay does not switch, but payment was successful</strong> → Wrong GPIO pin configured in LNbits?</p>
+
+        <h3>NFC Extension Mismatch</h3>
+
+        <p>If you tap an NFC Bolt Card or NTAG21x tag and see <strong>"NFC not supported"</strong> on the display (shown for 5 seconds), and the serial log shows:</p>
+
+        <pre style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 13px;">[WARN][NFC] Bolt Card tap detected – NFC is not supported by the active extension (bitcoinswitch).
+[WARN][NFC] To use NFC / Bolt Cards, switch to zapbox_extension (apiPath = "zapbox").</pre>
+
+        <p>This means the device is configured with the <strong>bitcoinswitch_extension</strong>, which does not have an NFC endpoint (<code>/api/v1/nfc/</code>). NFC payments are only supported by the <strong>zapbox_extension</strong>.</p>
+
+        <p><strong>Solution:</strong></p>
+        <ul>
+            <li>In LNbits, create a device using the <strong>zapbox_extension</strong> instead of bitcoinswitch</li>
+            <li>Copy the new device string and reconfigure the ZapBox</li>
+            <li>The device string format is the same – only the server-side extension changes</li>
+        </ul>
+
+        <p><i>This is <strong>not</strong> a hardware problem – the NFC reader works fine. It's purely a server-side configuration issue.</i></p>
+
+        <h3>Typical NFC Error Messages</h3>
+
+        <p><strong><code>{"detail":"LNURLW callback error: Payment failed - "}</code></strong><br>
+        The sending wallet and the receiving wallet in LNbits are the same. The Bolt Card wallet and the receiving wallet must be <strong>different</strong> wallets in LNbits.</p>
+        </div>
+
+        <!-- Troubleshoot Section -->
+        <div style="background-color: #CCE5FF; padding: 30px 20px; margin: 0 -20px; border-radius: 0 0 8px 8px;">
+            <h2 id="troubleshoot">Troubleshoot</h2>
+
+            <h3>Connection problems</h3>
+            <ul>
+                <li>Check that the USB cable is plugged directly into the USB port of the ESP32-S3 module.</li>
+                <li>Use a data-capable USB cable (not a charge-only cable).</li>
+                <li>If you see "No port selected": check/install the USB-serial drivers for your OS.</li>
+                <li>Double connection: check whether a connection already exists in another browser tab.</li>
+                <li>A page refresh with CTRL+F5 can also help.</li>
+                <li>Message "Installation failed ⚠️ Your ESP32 board is not supported" → You are using the wrong firmware variant. Use this Touch 3.5" installer for JC3248W535C boards only.</li>
+                <li>If nothing else helps, erase the device via <a href="https://espressif.github.io/esptool-js/" target="_blank" rel="noopener noreferrer">https://espressif.github.io/esptool-js/</a> and reflash.</li>
+            </ul>
+
+            <h3>Boot into flash mode (if flash fails)</h3>
+            <ul>
+                <li>Connect the board via USB</li>
+                <li>Press and hold the BOOT button</li>
+                <li>While still pressing BOOT, press RESET (or disconnect/reconnect power)</li>
+                <li>Release RESET, then release BOOT</li>
+                <li><a href="#flash">Retry step 1</a></li>
+            </ul>
+
+            <h3>Helpful links</h3>
+            <p>
+                Main page: <a href="https://zapbox.space" target="_blank" rel="noopener noreferrer">https://zapbox.space</a><br>
+                Web installer – T-Display-S3: <a href="https://installer.zapbox.space" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space</a><br>
+                Web installer – Headless (esp32dev): <a href="https://installer.zapbox.space/headless/" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/headless/</a><br>
+                Web installer – Touch 3.5" (JC3248W535C): <a href="https://installer.zapbox.space/touch3.5/" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/touch3.5/</a><br>
+                GitHub – ZapBox: <a href="https://github.com/AxelHamburch/ZapBox" target="_blank" rel="noopener noreferrer">https://github.com/AxelHamburch/ZapBox</a><br>
+                GitHub – zapbox_extension: <a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">https://github.com/AxelHamburch/zapbox_extension</a><br>
+                Extension manifest source: <a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a>
+            </p>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ccc;">
+            <p>
+                LNbits: <a href="https://lnbits.com/" target="_blank" rel="noopener noreferrer">https://lnbits.com/</a><br>
+                MakerBits Telegram Gruppe: <a href="https://t.me/makerbits" target="_blank" rel="noopener noreferrer">https://t.me/makerbits</a>
+            </p>
+        </div>
+
+        <hr>
+
+        <footer>
+            <p>Built on the shoulders of giants by <a href="https://njump.to/npub1yynthqj2zv663t0v8jtmtnwm34ak2fwe6zys043weqlnxgyuw7qqnk23ds" target="_blank" rel="noopener noreferrer">@axelhamburch</a> | <a href="https://github.com/AxelHamburch/ZapBox" target="_blank" rel="noopener noreferrer">Github repo</a> | <a href="https://zapbox.space/" target="_blank" rel="noopener noreferrer">zapbox.space</a></p>
+        </footer>
+    </div>
+
+    <script>
+        const consoleDebug = document.getElementById('consoleDebug');
+        const ssid         = document.getElementById('ssid');
+        const wifiPassword = document.getElementById('wifiPassword');
+        const socket       = document.getElementById('socket');
+        const specialMode  = document.getElementById('specialMode');
+        const frequency    = document.getElementById('frequency');
+        const dutyCycleRatio  = document.getElementById('dutyCycleRatio');
+        const frequencyDiv    = document.getElementById('frequencyDiv');
+        const dutyCycleDiv    = document.getElementById('dutyCycleDiv');
+        const thresholdKey    = document.getElementById('thresholdKey');
+        const thresholdAmount = document.getElementById('thresholdAmount');
+        const thresholdPin    = document.getElementById('thresholdPin');
+        const thresholdTime   = document.getElementById('thresholdTime');
+        const thresholdLnurl  = document.getElementById('thresholdLnurl');
+        const theme           = document.getElementById('theme');
+        const screensaver     = document.getElementById('screensaver');
+        const deepSleep       = document.getElementById('deepSleep');
+        const deepSleepTime   = document.getElementById('deepSleepTime');
+
+        // Show/hide custom frequency/duty cycle inputs
+        specialMode.addEventListener('change', function() {
+            if (specialMode.value === 'custom') {
+                frequencyDiv.style.display = 'block';
+                dutyCycleDiv.style.display = 'block';
+            } else {
+                frequencyDiv.style.display = 'none';
+                dutyCycleDiv.style.display = 'none';
+            }
+        });
+
+        let config = [
+            { "name": "ssid",            "value": "" },
+            { "name": "wifipassword",    "value": "" },
+            { "name": "socket",          "value": "" },
+            { "name": "qrFormat",        "value": "bech32" },
+            { "name": "orientation",     "value": "h" },
+            { "name": "theme",           "value": "black-white" },
+            { "name": "thresholdKey",    "value": "" },
+            { "name": "thresholdAmount", "value": "" },
+            { "name": "thresholdPin",    "value": "" },
+            { "name": "thresholdTime",   "value": "" },
+            { "name": "thresholdLnurl",  "value": "" },
+            { "name": "specialMode",     "value": "standard" },
+            { "name": "frequency",       "value": "1.0" },
+            { "name": "dutyCycleRatio",  "value": "1.0" },
+            { "name": "screensaver",     "value": "off" },
+            { "name": "deepSleep",       "value": "off" },
+            { "name": "activationTime",  "value": "5" },
+            { "name": "multiControl",    "value": "off" },
+            { "name": "btcTicker",       "value": "selecting" },
+            // index 19: lightBarrier — not used on JC3248W535C, placeholder keeps firmware indices aligned
+            { "name": "lightBarrier",    "value": "off" },
+            { "name": "currency",        "value": "USD" },
+            // index 21: externalButton — not used on JC3248W535C, placeholder keeps firmware indices aligned
+            { "name": "externalButton",  "value": "no" },
+            // index 22: ambientLight — not used on JC3248W535C, placeholder keeps firmware indices aligned
+            { "name": "ambientLight",    "value": "off" },
+            { "name": "deepSleepTime",   "value": "30" }
+        ];
+
+        // Setup Web Serial using serial.js
+        const serial = new Serial();
+        serial.on(SerialEvents.CONNECTION_OPENED,  onSerialConnectionOpened);
+        serial.on(SerialEvents.CONNECTION_CLOSED,  onSerialConnectionClosed);
+        serial.on(SerialEvents.DATA_RECEIVED,      onSerialDataReceived);
+        serial.on(SerialEvents.ERROR_OCCURRED,     onSerialErrorOccurred);
+
+        function onSerialErrorOccurred(eventSender, error) { console.log("onSerialErrorOccurred", error); }
+
+        let configModeCheckTimeout   = null;
+        let configModeVerified       = false;
+        let helloSendTimeout         = null;
+        let serialBuffer             = "";
+        let justRestarted            = false;
+        let lastDataReceivedTime     = 0;
+        let connectionMonitorInterval = null;
+        let inactivityWarningShown   = false;
+        let waitingForManualConfigMode = false;
+
+        function onSerialConnectionOpened(eventSender) {
+            configModeVerified   = false;
+            lastDataReceivedTime = Date.now();
+            inactivityWarningShown = false;
+            waitingForManualConfigMode = false;
+            connectionMonitorInterval  = null;
+
+            document.getElementById("connect-button").disabled       = true;
+            document.getElementById("read-config-button").disabled   = true;
+            document.getElementById("write-config-button").disabled  = true;
+            document.getElementById("soft-reset-button").disabled    = true;
+            document.getElementById("restart-button").disabled       = false;
+
+            const checkMsg = document.createElement('span');
+            checkMsg.style.color = '#888';
+            checkMsg.textContent = 'Connecting...\n';
+            consoleDebug.appendChild(checkMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+
+            updateConnectionStatus(true);
+            updateConfigModeStatus(false);
+            waitingForManualConfigMode = true;
+
+            helloSendTimeout = setTimeout(() => {
+                if (!configModeVerified) { serial.writeLine("/hello"); }
+            }, 3000);
+            configModeCheckTimeout = null;
+        }
+
+        function onSerialConnectionClosed(eventSender) {
+            if (connectionMonitorInterval) { clearInterval(connectionMonitorInterval); connectionMonitorInterval = null; }
+            if (helloSendTimeout)          { clearTimeout(helloSendTimeout);           helloSendTimeout = null; }
+            if (configModeCheckTimeout)    { clearTimeout(configModeCheckTimeout);     configModeCheckTimeout = null; }
+
+            inactivityWarningShown  = false;
+            lastDataReceivedTime    = 0;
+            configModeVerified      = false;
+            serialBuffer            = "";
+            justRestarted           = false;
+            waitingForManualConfigMode = false;
+
+            updateConnectionStatus(false);
+            updateConfigModeStatus(false);
+
+            document.getElementById("connect-button").disabled       = false;
+            document.getElementById("read-config-button").disabled   = true;
+            document.getElementById("write-config-button").disabled  = true;
+            document.getElementById("soft-reset-button").disabled    = true;
+            document.getElementById("restart-button").disabled       = true;
+        }
+
+        function onSerialDataReceived(eventSender, newData) {
+            lastDataReceivedTime = Date.now();
+            inactivityWarningShown = false;
+
+            const textNode = document.createTextNode(newData + '\n');
+            consoleDebug.appendChild(textNode);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+
+            // Detect config mode exit (device leaving config mode and restarting)
+            if (newData.includes("[CONFIG_MODE_EXIT]")) {
+                configModeVerified = false;
+                justRestarted = true;
+                document.getElementById("read-config-button").disabled  = true;
+                document.getElementById("write-config-button").disabled = true;
+                document.getElementById("soft-reset-button").disabled   = true;
+                updateConfigModeStatus(false);
+                const exitMsg = document.createElement('span');
+                exitMsg.style.color = '#cc6600';
+                exitMsg.textContent = '⚠️ Config mode ended — device is restarting.\n';
+                consoleDebug.appendChild(exitMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                return;
+            }
+
+            // Detect normal operation (not in config mode)
+            const hasNormalProgramOutput =
+                newData.includes("[LOOP]") ||
+                newData.includes("[WS]") ||
+                newData.includes("[INFO][Config] Socket:") ||
+                newData.includes("[STARTUP] WiFi connection") ||
+                newData.includes("Still waiting") ||
+                newData.includes("[CHECK]");
+
+            if (hasNormalProgramOutput && !justRestarted) {
+                if (configModeVerified) {
+                    configModeVerified = false;
+                    document.getElementById("read-config-button").disabled  = true;
+                    document.getElementById("write-config-button").disabled = true;
+                    document.getElementById("soft-reset-button").disabled   = true;
+                }
+                updateConfigModeStatus(false);
+                return;
+            }
+
+            // Detect config mode acknowledgment
+            // IMPORTANT: only react to [CONFIG_MODE_ENTER], which fires after WiFi teardown
+            // and RX-buffer drain. Earlier log lines like "entering config mode" arrive
+            // while the ESP32 is still tearing down WiFi and draining stale RX bytes —
+            // any command sent at that point is silently discarded.
+            // Check both newData and the rolling serialBuffer so that [CONFIG_MODE_ENTER]
+            // is detected even when split across two USB CDC receive events.
+            serialBuffer += newData;
+            const hasConfigModeEnter = newData.includes("[CONFIG_MODE_ENTER]") ||
+                                       serialBuffer.includes("[CONFIG_MODE_ENTER]");
+            const hasConfigTriggerLog = !configModeVerified && (
+                newData.includes("Serial Config Mode Active") ||
+                newData.includes("Waiting for commands")
+            );
+            if ((hasConfigModeEnter || hasConfigTriggerLog) && !configModeVerified) {
+                configModeVerified = true;
+                justRestarted = false;   // mirrors T-Display-S3: clear restart flag
+                waitingForManualConfigMode = false;
+                serialBuffer = '';       // clear buffer; /file-read comes later on demand
+                if (helloSendTimeout) { clearTimeout(helloSendTimeout); helloSendTimeout = null; }
+
+                // Defer badge + button enable by 800 ms so the ESP32 finishes
+                // its RX drain before any command arrives (prevents silent
+                // command discard). The guard re-checks configModeVerified so
+                // that stale-buffer false positives (invalidated by normal-mode
+                // output arriving within 800 ms) never turn the badge green.
+                setTimeout(() => {
+                    if (!configModeVerified) return;
+                    updateConfigModeStatus(true);
+                    document.getElementById("read-config-button").disabled  = false;
+                    document.getElementById("write-config-button").disabled = false;
+                    document.getElementById("soft-reset-button").disabled   = false;
+                    const configMsg = document.createElement('span');
+                    configMsg.style.color = 'green';
+                    configMsg.textContent = '✅ Config mode detected — ready to read/write config.\n';
+                    consoleDebug.appendChild(configMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                }, 800);
+                return;
+            }
+
+            // Trigger config parse when we see /file-read response or raw JSON array
+            if (serialBuffer.includes('/file-read ') || serialBuffer.includes('[{"name":"ssid"')) {
+                tryParseConfig();
+            }
+
+            // Check for "no config file" message
+            if (newData.includes('- Failed to open file for reading')) {
+                alert('There is no config in the device, please fill options and write.');
+            }
+        }
+
+        function tryParseConfig() {
+            // Find the JSON array in the buffer (robust against USB CDC byte-drops)
+            let configStart = serialBuffer.lastIndexOf('[{"name":"ssid"');
+            let searchSection;
+            if (configStart !== -1) {
+                searchSection = serialBuffer.substring(configStart);
+            } else {
+                let fileReadIndex = serialBuffer.lastIndexOf('/file-read ');
+                if (fileReadIndex === -1) return;
+                let afterFileRead = serialBuffer.substring(fileReadIndex);
+                let fallbackStart = afterFileRead.indexOf('[');
+                if (fallbackStart === -1) return;
+                searchSection = afterFileRead.substring(fallbackStart);
+            }
+
+            let jsonStart = searchSection.indexOf('[');
+            if (jsonStart === -1) return;
+
+            let bracketCount = 0, inString = false, escape = false, jsonEnd = -1;
+            for (let i = jsonStart; i < searchSection.length; i++) {
+                let c = searchSection[i];
+                if (escape) { escape = false; continue; }
+                if (c === '\\') { escape = true; continue; }
+                if (c === '"') { inString = !inString; continue; }
+                if (!inString) {
+                    if (c === '[') bracketCount++;
+                    if (c === ']') { bracketCount--; if (bracketCount === 0) { jsonEnd = i; break; } }
+                }
+            }
+            if (jsonEnd === -1) return;
+
+            let jsonString = searchSection.substring(jsonStart, jsonEnd + 1);
+            try {
+                let configData = JSON.parse(jsonString);
+                if (!Array.isArray(configData) || configData.length < 3 || configData[0]?.name !== 'ssid') return;
+
+                // Apply each config value by name
+                // Some config keys differ from their HTML element id (legacy naming).
+                const idMap = { "wifipassword": "wifiPassword" };
+                for (const item of configData) {
+                    if (item.name && item.value !== undefined) {
+                        const elId = idMap[item.name] || item.name;
+                        const el = document.getElementById(elId);
+                        if (el) el.value = item.value;
+                        const entry = config.find(c => c.name === item.name);
+                        if (entry) entry.value = item.value;
+                    }
+                }
+
+                serialBuffer = '';
+                const successMsg = document.createElement('span');
+                successMsg.style.color = '#00ff00';
+                successMsg.textContent = '\n✓ Data loaded\n';
+                consoleDebug.appendChild(successMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+
+                setTimeout(() => {
+                    const btn = document.getElementById('read-config-button');
+                    btn.disabled = false;
+                    btn.textContent = '📖 Read Config';
+                }, 3000);
+            } catch (e) {
+                console.log('JSON parse failed:', e, jsonString);
+                const errorMsg = document.createElement('span');
+                errorMsg.style.color = '#ff4444';
+                errorMsg.textContent = '⚠️ Config data is corrupted on device. Please fill in the fields and write new config.\n';
+                consoleDebug.appendChild(errorMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                serialBuffer = '';
+            }
+        }
+
+        // ── Button handlers ────────────────────────────────────────────────────
+
+        async function onConnectButtonClick() {
+            console.log("Connect button clicked!");
+
+            if (navigator.serial) {
+                if (!serial.isOpen()) {
+                    await serial.connectAndOpen(null, {
+                        baudRate: 115200,
+                        flowControl: 'none',
+                        bufferSize: 16384
+                    });
+                } else {
+                    console.log("The serial connection appears already open");
+                }
+            } else {
+                alert('⚠️ The Web Serial API does not appear supported on this web browser.');
+            }
+        }
+
+        async function onReadConfigButtonClick() {
+            const btn = document.getElementById('read-config-button');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = '⏳ Reading...';
+            serialBuffer = '';
+            await serial.writeLine('/file-read config.json');
+            // Auto-retry once after 2s (USB CDC can drop the first chunk)
+            setTimeout(async () => {
+                if (btn.textContent === '⏳ Reading...') {
+                    serialBuffer = '';
+                    await serial.writeLine('/file-read config.json');
+                }
+            }, 2000);
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = '📖 Read Config';
+            }, 7000);
+        }
+
+        async function onWriteConfigButtonClick() {
+            if (!serial.isOpen()) return;
+            if (!configModeVerified) {
+                alert('⚠️ Config Mode Required\n\nThe device must be in SERIAL CONFIG MODE.\n\nPlease:\n1. Disconnect\n2. Enter config mode (tap screen 5× quickly, hold on the 5th tap ≥2 s — or hold BOOT button 5 s)\n3. Reconnect and try again');
+                const errorMsg = document.createElement('span');
+                errorMsg.style.color = '#ff4444';
+                errorMsg.textContent = '⚠️ Not in config mode - write aborted\n';
+                consoleDebug.appendChild(errorMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                return;
+            }
+            syncConfigFromUI();
+            const ssidVal = config.find(c => c.name === 'ssid')?.value?.trim() || '';
+            const socketVal = config.find(c => c.name === 'socket')?.value?.trim() || '';
+            if (!ssidVal || !socketVal) {
+                alert('⚠️ Validation Error\n\nThe following fields are required:\n- WiFi SSID\n- Device settings string');
+                return;
+            }
+            await serial.writeLine('/file-remove config.json');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const fullCommand = '/file-append config.json ' + JSON.stringify(config) + '\n';
+            const chunkSize = 128;
+            for (let i = 0; i < fullCommand.length; i += chunkSize) {
+                await serial.write(fullCommand.substring(i, Math.min(i + chunkSize, fullCommand.length)));
+                await new Promise(resolve => setTimeout(resolve, 15));
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const successMsg = document.createElement('span');
+            successMsg.style.color = '#00ff00';
+            successMsg.textContent = '✓ Data written\n\n⚠️ To apply changes:\n- Press 🔄 Restart (if in Config Mode), or\n- Press 🔌 Disconnect and reset device manually\n';
+            consoleDebug.appendChild(successMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+        }
+
+        async function onSoftResetButtonClick() {
+            if (!serial.isOpen()) return;
+            const resetMsg = document.createElement('span');
+            resetMsg.style.color = '#ffaa00';
+            if (configModeVerified) {
+                resetMsg.textContent = 'Sending software restart command...\n';
+                consoleDebug.appendChild(resetMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                serial.writeLine('/config-soft-reset');
+                configModeVerified = false;
+                justRestarted = true;
+                document.getElementById('read-config-button').disabled = true;
+                document.getElementById('write-config-button').disabled = true;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                const doneMsg = document.createElement('span');
+                doneMsg.style.color = '#00ff00';
+                doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (tap screen 5× quickly, hold on the 5th tap ≥2 s — or hold BOOT 5 s)\n';
+                consoleDebug.appendChild(doneMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            } else {
+                resetMsg.textContent = 'Performing hardware reset...\n';
+                consoleDebug.appendChild(resetMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                try {
+                    await serial.hardwareReset();
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    const doneMsg = document.createElement('span');
+                    doneMsg.style.color = '#00ff00';
+                    doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing boot logs\n';
+                    consoleDebug.appendChild(doneMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                } catch (error) {
+                    const errorMsg = document.createElement('span');
+                    errorMsg.style.color = '#ff0000';
+                    errorMsg.textContent = '✗ Hardware reset failed: ' + error.message + '\n';
+                    consoleDebug.appendChild(errorMsg);
+                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                }
+            }
+        }
+
+        async function onRestartButtonClick() {
+            const restartMsg = document.createElement('span');
+            restartMsg.style.color = '#ffaa00';
+            restartMsg.textContent = 'Disconnecting...\n';
+            consoleDebug.appendChild(restartMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            if (serial.isOpen()) {
+                await serial.close();
+                consoleDebug.innerHTML += '<b>Connection closed.</b><br>';
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            }
+        }
+
+        function syncConfigFromUI() {
+            const map = {
+                "ssid":            ssid.value,
+                "wifipassword":    wifiPassword.value,
+                "socket":          socket.value,
+                "qrFormat":        (document.getElementById('qrFormat') || {value: "bech32"}).value,
+                "orientation":     (document.getElementById('orientation') || {value: "h"}).value,
+                "specialMode":     specialMode.value,
+                "frequency":       frequency.value || "1.0",
+                "dutyCycleRatio":  dutyCycleRatio.value || "1.0",
+                "thresholdKey":    thresholdKey.value,
+                "thresholdAmount": thresholdAmount.value,
+                "thresholdPin":    thresholdPin.value,
+                "thresholdTime":   thresholdTime.value,
+                "thresholdLnurl":  thresholdLnurl.value,
+                "theme":           theme.value,
+                "screensaver":     screensaver.value,
+                "deepSleep":       deepSleep.value,
+                "activationTime":  (document.getElementById('activationTime') || {value: "5"}).value,
+                "deepSleepTime":   deepSleepTime.value,
+                "btcTicker":       (document.getElementById('btcTicker') || {value: "selecting"}).value,
+                "currency":        (document.getElementById('currency') || {value: "USD"}).value
+            };
+            for (const entry of config) {
+                if (map.hasOwnProperty(entry.name)) {
+                    entry.value = map[entry.name];
+                }
+            }
+        }
+
+        function printLogs() {
+            const installerTitle = 'ZAPBOX\u26A1 WEB INSTALLER (Touch 3.5")';
+            const ts = new Date().toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' });
+            const url = window.location.href;
+            const logEl = document.getElementById('consoleDebug');
+            const logHtml = (logEl && logEl.innerHTML.trim()) ? logEl.innerHTML : '<span style="color:#888">(no logs)</span>';
+            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + installerTitle + ' \u2013 Log Export</title>' +
+                '<style>' +
+                'body{background:#1a1a1a;color:#e0e0e0;font-family:monospace;font-size:13px;margin:0;padding:20px;}' +
+                '.log-header{background:#2a2a2a;border-bottom:2px solid #f7931a;padding:16px 24px;margin:-20px -20px 20px -20px;}' +
+                '.log-header h1{margin:0 0 4px 0;font-size:18px;color:#f7931a;}' +
+                '.log-header .sub{color:#aaa;font-size:12px;}' +
+                '.log-box{background:#000;color:#d0d0d0;padding:16px;border-radius:6px;white-space:pre-wrap;word-break:break-all;line-height:1.5;}' +
+                '.log-footer{margin-top:16px;padding-top:10px;border-top:1px solid #444;color:#666;font-size:11px;}' +
+                '@media print{body{background:#fff !important;color:#111 !important;}' +
+                '.log-header{background:#f0f0f0 !important;border-bottom-color:#f7931a !important;}' +
+                '.log-header h1{color:#f7931a !important;}.log-header .sub{color:#555 !important;}' +
+                '.log-box{background:#f8f8f8 !important;color:#222 !important;border:1px solid #ddd;}' +
+                '.log-footer{color:#999 !important;border-top-color:#ccc !important;}}' +
+                '</style></head><body>' +
+                '<div class="log-header"><h1>' + installerTitle + '</h1><div class="sub">Serial Log Export</div></div>' +
+                '<div class="log-box">' + logHtml + '</div>' +
+                '<div class="log-footer">Created: ' + ts + ' \u00B7 ZapBox Web Installer \u00B7 ' + url + '</div>' +
+                '</body></html>';
+            const newWin = window.open('', '_blank');
+            if (newWin) { newWin.document.write(html); newWin.document.close(); }
+        }
+
+        function downloadLogs() {
+            const text = consoleDebug.innerText;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'zapbox-touch35-logs.txt';
+            a.click();
+        }
+
+        function printConfig() {
+            const printWifi   = document.getElementById('print-wifi').checked;
+            const printSocket = document.getElementById('print-device-string').checked;
+            function selText(id) { const el = document.getElementById(id); return el ? el.options[el.selectedIndex].text : ''; }
+            function inputVal(id) { const el = document.getElementById(id); return el ? (el.value.trim() || '') : ''; }
+            const installerTitle = 'ZAPBOX\u26A1 WEB INSTALLER (Touch 3.5")';
+            const fwSel = document.getElementById('firmware-version-touch35');
+            const fwSelected = fwSel ? fwSel.options[fwSel.selectedIndex].text : '';
+            const now = new Date();
+            const ts = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const hidden = '<span style="color:#aaa;font-style:italic;">&#8212; (not printed)</span>';
+            function row(label, value) { return '<tr><td class="lbl">' + label + '</td><td class="val">' + (value !== '' ? value : '<span style="color:#aaa;">&#8212;</span>') + '</td></tr>'; }
+            function section(title, rows) { return '<h3 class="sec">' + title + '</h3><table class="pt"><tbody>' + rows + '</tbody></table>'; }
+            let sections = '';
+            sections += section('WiFi &amp; Device',
+                row('WiFi SSID', printWifi ? (inputVal('ssid') || '&#8212;') : hidden) +
+                row('WiFi Password', printWifi ? (inputVal('wifiPassword') || '&#8212;') : hidden) +
+                row('Device Settings String', printSocket ? (inputVal('socket') || '&#8212;') : hidden));
+            sections += section('Display &amp; Theme',
+                row('Theme', selText('theme')) +
+                row('Screensaver', selText('screensaver')) +
+                row('Deep Sleep', selText('deepSleep')) +
+                row('Deep Sleep Timeout (min)', inputVal('deepSleepTime')));
+            sections += section('Relay &amp; Special Mode',
+                row('Special Mode', selText('specialMode')));
+            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + installerTitle + ' \u2013 Config</title>' +
+                '<style>body{font-family:Arial,sans-serif;font-size:13px;color:#222;margin:0;padding:20px;}' +
+                '.cfg-header{border-bottom:2px solid #f7931a;padding-bottom:12px;margin-bottom:20px;}' +
+                '.cfg-header h1{margin:0 0 4px 0;font-size:18px;color:#f7931a;}' +
+                '.cfg-header .sub{color:#888;font-size:12px;}' +
+                'h3.sec{margin:18px 0 6px 0;font-size:13px;color:#555;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;padding-bottom:4px;}' +
+                'table.pt{border-collapse:collapse;width:100%;margin-bottom:10px;}' +
+                'table.pt td{padding:4px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top;}' +
+                'table.pt td.lbl{width:40%;color:#555;font-weight:600;}table.pt td.val{color:#222;}' +
+                '.cfg-footer{margin-top:20px;padding-top:10px;border-top:1px solid #ddd;color:#aaa;font-size:11px;}' +
+                '</style></head><body>' +
+                '<div class="cfg-header"><h1>' + installerTitle + '</h1>' +
+                '<div class="sub">Configuration saved: ' + ts + '</div>' +
+                '<div class="sub">Firmware: ' + fwSelected + '</div></div>' +
+                sections +
+                '<div class="cfg-footer">' + window.location.href + '</div>' +
+                '</body></html>';
+            const newWin = window.open('', '_blank');
+            if (newWin) { newWin.document.write(html); newWin.document.close(); }
+        }
+
+        function closeHelpModal() {
+            document.getElementById('help-image-modal').style.display = 'none';
+        }
+
+        document.getElementById('help-device-string-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('help-image-modal').style.display = 'flex';
+        });
+    </script>
+</body>
+</html>

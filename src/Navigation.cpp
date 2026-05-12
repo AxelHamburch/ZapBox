@@ -5,7 +5,11 @@
 #include "Display.h"
 #include "Payment.h"
 #include "UI.h"
-#include "TouchCST816S.h"
+#ifdef BOARD_JC3248W535C
+  #include "TouchAXS15231B.h"
+#else
+  #include "TouchCST816S.h"
+#endif
 #include "SerialConfig.h"
 #include "ServoControl.h"
 #include <Arduino.h>
@@ -22,7 +26,11 @@ extern ProductSelectionState productSelectionState;
 extern PowerConfig powerConfig;
 extern ActivityTracking activityTracking;
 extern TouchState touchState;
+#ifdef BOARD_JC3248W535C
+extern TouchAXS15231B touch;
+#else
 extern TouchCST816S touch;
+#endif
 extern DisplayConfig displayConfig;
 extern unsigned long configModeStartTime;
 extern bool labelsLoadedSuccessfully;
@@ -275,15 +283,84 @@ void navigateToNextProduct() {
   }
 }
 
+// Touch pin state helpers.
+// JC3248W535C: AXS15231B has no INT pin connected to any GPIO — use I2C polling.
+// All other boards: use digitalRead(PIN_TOUCH_INT) (CST816S/CST328 interrupt on GPIO 16).
+static bool touchPinLow() {
+#ifdef BOARD_JC3248W535C
+  return touch.isPressed();
+#else
+  return digitalRead(PIN_TOUCH_INT) == LOW;
+#endif
+}
+static bool touchPinHigh() {
+#ifdef BOARD_JC3248W535C
+  return !touch.isPressed();
+#else
+  return digitalRead(PIN_TOUCH_INT) == HIGH;
+#endif
+}
+
 /**
  * Handle touch button interactions.
  */
 void handleTouchButton()
 {
+#ifdef BOARD_JC3248W535C
+  // JC3248W535C: 5 rapid taps + hold on 5th tap (≥2 s) → Config Mode.
+  // Taps 1-4 must each arrive within 3 s of the first tap (rising-edge only).
+  // On the 5th tap the finger must be held for at least 2 s without releasing;
+  // releasing early resets the sequence so accidental multi-taps are ignored.
+  {
+    static bool     tapLastPressed  = false;
+    static uint8_t  tapCount        = 0;
+    static unsigned long tapFirstTime  = 0;
+    static unsigned long tap5HoldStart = 0;
+    static bool     waitingFor5Hold = false;
+
+    bool tapNow = touch.isPressed();
+
+    if (tapNow && !tapLastPressed) {           // rising edge = new tap
+      unsigned long now = millis();
+      if (tapCount == 0 || (now - tapFirstTime) > 3000) {
+        tapCount = 1;
+        tapFirstTime = now;
+        waitingFor5Hold = false;
+      } else {
+        tapCount++;
+      }
+      Serial.printf("[CONFIG_TAP] tap %u/5 (%lu ms)\n", tapCount, now - tapFirstTime);
+      if (tapCount >= 5) {
+        // Don't trigger yet — wait for hold
+        tap5HoldStart   = now;
+        waitingFor5Hold = true;
+        Serial.println("[CONFIG_TAP] 5th tap detected - hold for 2 s to enter Config Mode");
+      }
+    } else if (!tapNow && tapLastPressed && waitingFor5Hold) {
+      // Finger lifted before 2 s hold → abort
+      Serial.println("[CONFIG_TAP] Released too early - Config Mode aborted, resetting");
+      tapCount        = 0;
+      waitingFor5Hold = false;
+    } else if (tapNow && waitingFor5Hold) {
+      // Finger still held — check if 2 s elapsed
+      if (millis() - tap5HoldStart >= 2000) {
+        tapCount        = 0;
+        waitingFor5Hold = false;
+        Serial.println("[CONFIG_TAP] 2 s hold confirmed -> Config Mode");
+        configMode();
+        tapLastPressed = tapNow;
+        return;
+      }
+    }
+
+    tapLastPressed = tapNow;
+  }
+#endif
+
   // If in Help mode: Allow second click to switch to Report
   if (deviceState.isInState(DeviceState::HELP_SCREEN)) {
     // Check for new button press
-    if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
+    if (touchPinLow() && !touchState.pressed) {
       touchState.pressed = true;
       touchState.pressStartTime = millis();
       
@@ -315,7 +392,7 @@ void handleTouchButton()
       // No display touch -> Report Mode
       reportMode();
     }
-    else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchState.pressed) {
+    else if (touchPinHigh() && touchState.pressed) {
       touchState.pressed = false;
     }
     return;
@@ -323,12 +400,12 @@ void handleTouchButton()
   
   // If in Report mode: Button press aborts
   if (deviceState.isInState(DeviceState::REPORT_SCREEN)) {
-    if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
+    if (touchPinLow() && !touchState.pressed) {
       LOG_INFO("Touch", "Button press during Report - ABORTING");
       deviceState.transition(DeviceState::READY);
       touchState.pressed = true;
     }
-    else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchState.pressed) {
+    else if (touchPinHigh() && touchState.pressed) {
       touchState.pressed = false;
     }
     touchState.clickCount = 0;
@@ -370,15 +447,15 @@ void handleTouchButton()
   
   // Config Mode Touch Exit: Any touch after 2s exits config mode
   if (deviceState.isInState(DeviceState::CONFIG_MODE) && configModeStartTime > 0 && (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
-    if (digitalRead(PIN_TOUCH_INT) == LOW) {
+    if (touchPinLow()) {
       LOG_INFO("Touch", "Touch detected - exiting config mode");
       delay(100);
       ESP.restart();
     }
   }
   
-  // Check if touch interrupt is triggered (GPIO 16 LOW when touched)
-  if (digitalRead(PIN_TOUCH_INT) == LOW && !touchState.pressed) {
+  // Check if touch is active (GPIO INT or I2C polling depending on board)
+  if (touchPinLow() && !touchState.pressed) {
     // Touch detected - read coordinates to check if it's the button area
     uint16_t touchX = touch.getX();
     uint16_t touchY = touch.getY();
@@ -446,7 +523,7 @@ void handleTouchButton()
     }
     // For clicks 1, 2, and 3: Do nothing, let timeout handler decide
   }
-  else if (digitalRead(PIN_TOUCH_INT) == HIGH && touchState.pressed) {
+  else if (touchPinHigh() && touchState.pressed) {
     // Touch released
     touchState.pressed = false;
     unsigned long pressDuration = millis() - touchState.pressStartTime;

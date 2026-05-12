@@ -3,7 +3,11 @@
 #include "FS.h"
 #include "FFat.h"
 #include "SerialConfig.h"
-#include "TouchCST816S.h"
+#ifdef BOARD_JC3248W535C
+  #include "TouchAXS15231B.h"
+#else
+  #include "TouchCST816S.h"
+#endif
 #include "DeviceState.h"
 #include "GlobalState.h"
 #include "PinConfig.h"
@@ -173,6 +177,19 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
     delay(50);
     while (Serial.available()) Serial.read();
 
+    // Capture the current touch state so the guard loop uses rising-edge
+    // detection.  The AXS15231B keeps reporting isPressed()==true until the
+    // data is consumed; without this snapshot the stale 5th-tap event fires
+    // immediately after the 2 s guard expires and exits config mode at once.
+    bool touchLastPressed = false;
+    if (touchControllerPtr != nullptr) {
+#ifdef BOARD_JC3248W535C
+        touchLastPressed = ((TouchAXS15231B*)touchControllerPtr)->isPressed();
+#else
+        touchLastPressed = ((TouchCST816S*)touchControllerPtr)->isPressed();
+#endif
+    }
+
     unsigned long lastActivity = millis(); // Track last serial activity
     const unsigned long inactivityTimeout = 180000; // 180 seconds
 
@@ -210,17 +227,29 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
             ESP.restart();
         }
         
-        // Check for touch exit (any touch after 2s in config mode)
-        if (touchControllerPtr != nullptr && configModeStartTime > 0 && (millis() - configModeStartTime) > 0)
+        // Check for touch exit only after the normal guard period and only on
+        // a rising edge (new press). The AXS15231B keeps reporting the last
+        // touch until data is consumed, so we require a transition from
+        // not-pressed → pressed to avoid the stale 5th-tap event triggering
+        // an immediate exit right after the guard expires.
+        if (touchControllerPtr != nullptr &&
+            configModeStartTime > 0 &&
+            (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS)
         {
+#ifdef BOARD_JC3248W535C
+            TouchAXS15231B* touch = (TouchAXS15231B*)touchControllerPtr;
+#else
             TouchCST816S* touch = (TouchCST816S*)touchControllerPtr;
-            if (touch->available())
+#endif
+            bool touchNow = touch->isPressed();
+            if (touchNow && !touchLastPressed)
             {
                 serialPrintln("[CONFIG] Touch detected - exiting config mode");
                 serialPrintln("[CONFIG_MODE_EXIT]");
                 delay(500);
                 ESP.restart();
             }
+            touchLastPressed = touchNow;
         }
         
         // Check for inactivity timeout - only if existing data is present
