@@ -585,7 +585,7 @@ void stepThreeScreen() {
 // ACTION TIME — "ACTION" big at top, "TIME" in inverted box, countdown sides
 // ============================================================================
 // Layout on 480×320:
-//   y= 70    "ACTION"           size 6 (centered)
+//   y= 85    "ACTION"           size 6 (centered)
 //   y=130..210  TIME box (220×80, x=130..350)
 //      y=170  "TIME" inside box, size 5
 //   countdown:
@@ -603,7 +603,7 @@ void stepThreeScreen() {
 void actionTimeScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, 70, "ACTION", themeForeground, themeBackground, 6);
+  drawCenter(SCR_W / 2, 85, "ACTION", themeForeground, themeBackground, 6);
   fillRect(AT_BOX_X, AT_BOX_Y, AT_BOX_W, AT_BOX_H, themeForeground);
   drawCenter(SCR_W / 2, AT_LABEL_Y, "TIME",
              themeBackground, themeForeground, 5);
@@ -875,10 +875,22 @@ void showProductQRScreen(String label, int pin) {
   int wordCount;
   splitLabelWords(label, pin, words, wordCount);
 
-  fillScreen(themeBackground);
-  drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE,
-           themeForeground, themeBackground);
-  drawLabelBox(words, wordCount, themeForeground, themeBackground);
+  // Invert QR screen for themes where fg is dark-on-light:
+  // QR modules must be dark on a light background to be scannable.
+  // Convention: first value = text color, second = background color;
+  // on the QR page those are flipped so the QR area becomes light.
+  uint16_t qrFg = themeForeground;
+  uint16_t qrBg = themeBackground;
+  if (displayConfig.theme == "btcorange-black" ||
+      displayConfig.theme == "zapbox" ||
+      displayConfig.theme == "white-navy") {
+    qrFg = themeBackground;   // dark modules
+    qrBg = themeForeground;   // light/colored background
+  }
+
+  fillScreen(qrBg);
+  drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+  drawLabelBox(words, wordCount, qrFg, qrBg);
   flushDisplay();
 }
 
@@ -901,11 +913,20 @@ void showSpecialModeQRScreen() {
 void showThresholdQRScreen() {
   DisplayLock l;
   if (!_gfx) return;
-  fillScreen(themeBackground);
-  drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE,
-           themeForeground, themeBackground);
+
+  uint16_t qrFg = themeForeground;
+  uint16_t qrBg = themeBackground;
+  if (displayConfig.theme == "btcorange-black" ||
+      displayConfig.theme == "zapbox" ||
+      displayConfig.theme == "white-navy") {
+    qrFg = themeBackground;
+    qrBg = themeForeground;
+  }
+
+  fillScreen(qrBg);
+  drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
   String words[3] = {"READY", "4 TH", "ACTION"};
-  drawLabelBox(words, 3, themeForeground, themeBackground);
+  drawLabelBox(words, 3, qrFg, qrBg);
   flushDisplay();
 }
 
