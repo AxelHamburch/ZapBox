@@ -339,6 +339,10 @@ void executeCommand(String commandName, String commandData)
         Serial.print(logo);
         Serial.flush();
         delay(50);
+        // Resend CONFIG_MODE_ENTER so the installer detects config mode even if
+        // it connected AFTER the initial signals were sent at startup.
+        // executeCommand() is only called from executeConfig(), so this is always correct.
+        serialPrintln("[CONFIG_MODE_ENTER]");
         return;
     }
     if (commandName == "/config-restart")
