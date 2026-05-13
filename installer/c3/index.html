@@ -51,7 +51,7 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version-c3" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="../firmware/v949278c/manifest.json">v949278c (Latest - GPIO5 co-trigger, LED fix)</option>
+                <option value="../firmware/v949278c/manifest.json">v949278c (Latest - almost working version)</option>
                 <option value="../firmware/v949107c/manifest.json">v949107c</option>
             </select>
             <esp-web-install-button id="flash-button-c3" manifest="../firmware/v949278c/manifest.json">
@@ -522,7 +522,7 @@
             let out = '=== ZapBox ESP32-C3-21-1 Config ===\n';
             if (printWifi)  out += `SSID: ${ssid.value}\nPassword: ${wifiPassword.value}\n`;
             if (printDev)   out += `Device string: ${socket.value}\n`;
-            out += `Special Mode: ${specialMode.value}\nDeep Sleep: ${deepSleep.value} (${deepSleepTime.value} min)\n`;
+            out += `Special Mode: ${specialMode.value}\n`;
             const w = window.open('', '_blank');
             w.document.write('<pre>' + out + '</pre>');
             w.print();
