@@ -30,7 +30,7 @@
         <noscript><p>JavaScript must be enabled for this to work.</p></noscript>
 
         <h1 style="margin-bottom: 5px;">ZAPBOX⚡️WEB INSTALLER (ESP32-C3-21-1)</h1>
-        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with <strong>ESP32-C3-WROOM-02</strong> board "esp32-c3-21-1" from Hans Wurst<br><br>
+        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with <strong>esp32-c3-21-1</strong> (ESP32-C3-WROOM-02 with board design by Hans Wurst)<br><br>
             Alternative Web Installer: <br>
             <a href="../">T-Display-S3</a>&nbsp;|&nbsp;<a href="../headless/">Headless</a>&nbsp;|&nbsp;<a href="../touch3.5/">Touch 3.5"</a>.</i></p>
         <div style="float: right; text-align: center; margin: 0 0 10px 20px;">
@@ -213,24 +213,7 @@
                 </div>
             </div>
 
-            <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
-            <!-- Deep Sleep -->
-            <div class="input-wrapper">
-                <div>
-                    <label for="deepSleep">Deep sleep</label>
-                    <select name="deepSleep" id="deepSleep">
-                        <option value="off" selected>Off (default)</option>
-                        <option value="light">Light sleep</option>
-                        <option value="freeze">Freeze (~0.01-0.15mA)</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="deepSleepTime">Time until activation (minutes)</label>
-                    <input type="number" name="deepSleepTime" id="deepSleepTime" min="1" max="120" placeholder="30" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">1-120 minutes (default: 30)</p>
-                </div>
-            </div>
         </div>
 
         <!-- Troubleshoot -->
@@ -273,9 +256,6 @@
         const thresholdPin    = document.getElementById('thresholdPin');
         const thresholdTime   = document.getElementById('thresholdTime');
         const thresholdLnurl  = document.getElementById('thresholdLnurl');
-        const deepSleep       = document.getElementById('deepSleep');
-        const deepSleepTime   = document.getElementById('deepSleepTime');
-
         specialMode.addEventListener('change', function() {
             frequencyDiv.style.display = specialMode.value === 'custom' ? 'block' : 'none';
             dutyCycleDiv.style.display = specialMode.value === 'custom' ? 'block' : 'none';
@@ -319,29 +299,33 @@
 
         let configModeCheckTimeout = null;
         let configModeVerified     = false;
+        let helloSendTimeout       = null;
 
         function onSerialConnectionOpened(eventSender) {
-            document.getElementById('connect-button').textContent = '🔌 Disconnect';
-            document.getElementById('read-config-button').disabled   = false;
-            document.getElementById('write-config-button').disabled  = false;
-            document.getElementById('soft-reset-button').disabled    = false;
+            document.getElementById('connect-button').disabled       = true;
+            document.getElementById('read-config-button').disabled   = true;
+            document.getElementById('write-config-button').disabled  = true;
+            document.getElementById('soft-reset-button').disabled    = true;
             document.getElementById('restart-button').disabled       = false;
             document.getElementById('connection-status').style.backgroundColor = '#00CC00';
             document.getElementById('connection-status').style.color = '#fff';
             document.getElementById('connection-status').textContent = '✅ Connected';
             configModeVerified = false;
-            configModeCheckTimeout = setTimeout(() => {
-                if (!configModeVerified) {
-                    document.getElementById('config-mode-status').style.backgroundColor = '#FF4444';
-                    document.getElementById('config-mode-status').style.color = '#fff';
-                    document.getElementById('config-mode-status').textContent = '❌ No config mode';
-                }
-            }, 5000);
-            logToConsole('Connected', 'success');
+            // Send /hello after 3 s to trigger config mode detection
+            helloSendTimeout = setTimeout(() => {
+                if (!configModeVerified) serial.writeLine('/hello');
+            }, 3000);
+            logToConsole('Connecting…', 'info');
         }
 
         function onSerialConnectionClosed(eventSender) {
-            document.getElementById('connect-button').textContent = '🔌 Connect';
+            clearTimeout(helloSendTimeout);
+            clearTimeout(configModeCheckTimeout);
+            helloSendTimeout = null;
+            configModeCheckTimeout = null;
+            configModeVerified = false;
+            serialBuffer = '';
+            document.getElementById('connect-button').disabled      = false;
             document.getElementById('read-config-button').disabled  = true;
             document.getElementById('write-config-button').disabled = true;
             document.getElementById('soft-reset-button').disabled   = true;
@@ -361,12 +345,38 @@
             serialBuffer += newData;
             logToConsole(newData.trim(), 'info');
 
-            if (serialBuffer.includes('SERIAL CONFIG MODE')) {
+            // Detect config mode exit
+            if (newData.includes('[CONFIG_MODE_EXIT]')) {
+                configModeVerified = false;
+                document.getElementById('read-config-button').disabled  = true;
+                document.getElementById('write-config-button').disabled = true;
+                document.getElementById('config-mode-status').style.backgroundColor = '#e0e0e0';
+                document.getElementById('config-mode-status').style.color = '#888';
+                document.getElementById('config-mode-status').textContent = '❌ No config mode';
+            }
+
+            // Detect config mode: [CONFIG_MODE_ENTER] marker or fallback trigger lines
+            const hasConfigModeEnter = newData.includes('[CONFIG_MODE_ENTER]') ||
+                                       serialBuffer.includes('[CONFIG_MODE_ENTER]');
+            const hasConfigTriggerLog = newData.includes('Serial Config Mode Active') ||
+                                        newData.includes('Waiting for commands');
+            if ((hasConfigModeEnter || hasConfigTriggerLog) && !configModeVerified) {
                 configModeVerified = true;
                 clearTimeout(configModeCheckTimeout);
-                document.getElementById('config-mode-status').style.backgroundColor = '#00CC00';
-                document.getElementById('config-mode-status').style.color = '#fff';
-                document.getElementById('config-mode-status').textContent = '✅ Config mode active';
+                clearTimeout(helloSendTimeout);
+                configModeCheckTimeout = null;
+                helloSendTimeout = null;
+                document.getElementById('soft-reset-button').disabled = false;
+                document.getElementById('restart-button').disabled    = false;
+                // Defer 800 ms so ESP32 finishes RX drain before any command arrives
+                setTimeout(() => {
+                    if (!configModeVerified) return;
+                    document.getElementById('config-mode-status').style.backgroundColor = '#00CC00';
+                    document.getElementById('config-mode-status').style.color = '#fff';
+                    document.getElementById('config-mode-status').textContent = '✅ Config mode active';
+                    document.getElementById('read-config-button').disabled  = false;
+                    document.getElementById('write-config-button').disabled = false;
+                }, 800);
             }
 
             let configStart = serialBuffer.lastIndexOf('[{"name":"ssid"');
@@ -397,8 +407,6 @@
             thresholdPin.value    = getVal('thresholdPin');
             thresholdTime.value   = getVal('thresholdTime');
             thresholdLnurl.value  = getVal('thresholdLnurl');
-            deepSleep.value       = getVal('deepSleep')     || 'off';
-            deepSleepTime.value   = getVal('deepSleepTime') || '30';
             frequencyDiv.style.display = specialMode.value === 'custom' ? 'block' : 'none';
             dutyCycleDiv.style.display = specialMode.value === 'custom' ? 'block' : 'none';
         }
@@ -416,33 +424,55 @@
             set('thresholdPin',    thresholdPin.value);
             set('thresholdTime',   thresholdTime.value);
             set('thresholdLnurl',  thresholdLnurl.value.trim());
-            set('deepSleep',       deepSleep.value);
-            set('deepSleepTime',   deepSleepTime.value || '30');
+            // deepSleep / deepSleepTime: no wake source on C3 (no touch/button) — always off/30
         }
 
         async function onConnectButtonClick() {
-            if (serial.isOpen()) { await serial.disconnect(); return; }
-            await connectAndOpen(serial);
+            if (!navigator.serial) {
+                alert('⚠️ The Web Serial API does not appear supported on this web browser.');
+                return;
+            }
+            await serial.connectAndOpen(null, {
+                baudRate: 115200,
+                flowControl: 'none',
+                bufferSize: 16384
+            });
         }
 
         async function onReadConfigButtonClick() {
             if (!serial.isOpen()) return;
-            await serial.writeLine('read');
+            serialBuffer = '';
+            await serial.writeLine('/file-read config.json');
             logToConsole('Read config requested…', 'info');
         }
 
         async function onWriteConfigButtonClick() {
             if (!serial.isOpen()) return;
+            if (!configModeVerified) {
+                alert('⚠️ Config Mode Required\n\nPlease enter config mode first (hold IO9/BOOT for 5 seconds).');
+                return;
+            }
             syncConfigFromUI();
-            const json = JSON.stringify(config);
-            await serial.writeLine(json);
-            logToConsole('Config written ✅', 'success');
+            // Remove old file, then append new config in 128-byte chunks with 15ms pacing
+            await serial.writeLine('/file-remove config.json');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const fullCommand = '/file-append config.json ' + JSON.stringify(config) + '\n';
+            const chunkSize = 128;
+            for (let i = 0; i < fullCommand.length; i += chunkSize) {
+                await serial.write(fullCommand.substring(i, Math.min(i + chunkSize, fullCommand.length)));
+                await new Promise(resolve => setTimeout(resolve, 15));
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+            logToConsole('Config written ✅ — press 🔄 Restart to apply', 'success');
         }
 
         async function onSoftResetButtonClick() {
             if (!serial.isOpen()) return;
-            await serial.writeLine('restart');
-            logToConsole('Restart requested…', 'info');
+            await serial.writeLine('/config-soft-reset');
+            configModeVerified = false;
+            document.getElementById('read-config-button').disabled  = true;
+            document.getElementById('write-config-button').disabled = true;
+            logToConsole('Restart command sent…', 'info');
         }
 
         async function onRestartButtonClick() {
@@ -458,7 +488,26 @@
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
         }
 
-        function printLogs()    { window.print(); }
+        function printLogs() {
+            const ts = new Date().toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' });
+            const logEl = document.getElementById('consoleDebug');
+            const logHtml = (logEl && logEl.innerHTML.trim()) ? logEl.innerHTML : '<span style="color:#888">(no logs)</span>';
+            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ZapBox C3 Log Export</title>' +
+                '<style>body{background:#1a1a1a;color:#e0e0e0;font-family:monospace;font-size:13px;margin:0;padding:20px;}' +
+                '.hdr{background:#2a2a2a;border-bottom:2px solid #f7931a;padding:16px 24px;margin:-20px -20px 20px -20px;}' +
+                '.hdr h1{margin:0 0 4px 0;font-size:18px;color:#f7931a;}.hdr .sub{color:#aaa;font-size:12px;}' +
+                '.log-box{background:#000;color:#d0d0d0;padding:16px;border-radius:6px;white-space:pre-wrap;word-break:break-all;line-height:1.5;}' +
+                '.ftr{margin-top:16px;padding-top:10px;border-top:1px solid #444;color:#666;font-size:11px;}' +
+                '@media print{body{background:#fff !important;color:#111 !important;}' +
+                '.log-box{background:#f8f8f8 !important;color:#222 !important;border:1px solid #ddd;}}' +
+                '</style></head><body>' +
+                '<div class="hdr"><h1>ZAPBOX⚡ WEB INSTALLER (ESP32-C3-21-1)</h1><div class="sub">Serial Log Export</div></div>' +
+                '<div class="log-box">' + logHtml + '</div>' +
+                '<div class="ftr">Created: ' + ts + ' · ZapBox Web Installer · ' + window.location.href + '</div>' +
+                '</body></html>';
+            const w = window.open('', '_blank');
+            if (w) { w.document.write(html); w.document.close(); }
+        }
         function downloadLogs() {
             const text = Array.from(consoleDebug.children).map(d => d.textContent).join('\n');
             const a = document.createElement('a');
