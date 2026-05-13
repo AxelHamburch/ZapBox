@@ -94,6 +94,10 @@ bool isReadyForReceive() {
  */
 void updateReadyLed() {
 #if !ENABLE_DISPLAY
+  // No LED pin on this board (PIN_LED_BUTTON_LED == -1) — skip all LED logic
+  #if PIN_LED_BUTTON_LED < 0
+  return;
+  #endif
   // Skip LED updates when in CONFIG_MODE to prevent race condition with config blink on other core
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
 

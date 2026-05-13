@@ -56,7 +56,13 @@ bool initializationActive = true; // Startup/initialization phase flag for LED c
 
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
+#if ENABLE_DISPLAY
+// PIN_BUTTON_2 = GPIO 14, which is SPI Flash IO1 on ESP32-C3-WROOM-02.
+// Declaring this globally causes OneButton's constructor to call pinMode(14, ...)
+// BEFORE setup() runs, crashing the C3 before any serial output.
+// All rightButton usages are already guarded by #if ENABLE_DISPLAY.
 OneButton rightButton(PIN_BUTTON_2, true);
+#endif
 
 #ifdef ENABLE_DISPLAY
 // Touch controller (only for T-Display-S3)
@@ -1055,12 +1061,18 @@ void setup()
 
   int timer = 0;
 
+#if PIN_POWER_ON >= 0
+  // NOTE: GPIO 11-17 on ESP32-C3-WROOM-02 are SPI flash pins — never configure
+  // them as GPIO output. PIN_POWER_ON is set to -1 for BOARD_ESP32C3_21_1.
   pinMode(PIN_POWER_ON, OUTPUT);
   digitalWrite(PIN_POWER_ON, HIGH);
+#endif
 
   // External LED-button wiring: source 3.3V on LED pin when ready; input uses pull-up
+  #if PIN_LED_BUTTON_LED >= 0
   pinMode(PIN_LED_BUTTON_LED, OUTPUT);
   digitalWrite(PIN_LED_BUTTON_LED, LOW); // LED off until device is ready
+  #endif
   #ifdef PIN_ONBOARD_LED
   pinMode(PIN_ONBOARD_LED, OUTPUT);
   digitalWrite(PIN_ONBOARD_LED, LOW); // Onboard LED off until device is ready
@@ -1082,12 +1094,16 @@ void setup()
 
   // Boot indicator: Blink LEDs 3 times quickly to show device is starting
   for (int i = 0; i < 3; i++) {
+    #if PIN_LED_BUTTON_LED >= 0
     digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    #endif
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, HIGH);
     #endif
     delay(100); // 100ms on
+    #if PIN_LED_BUTTON_LED >= 0
     digitalWrite(PIN_LED_BUTTON_LED, LOW);
+    #endif
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, LOW);
     #endif
@@ -1174,12 +1190,16 @@ void setup()
   // probe fails.
   Wire.begin(18, 17, 100000);
 #endif
+#ifndef BOARD_ESP32C3_21_1
+  // ESP32-C3-21-1 has no touch controller and no I2C pullups — skip entirely
+  // to avoid Wire.begin() hanging the bus and triggering the watchdog.
   touchState.available = touch.begin();
   if (touchState.available) {
     Serial.println("[TOUCH] ✓ Touch controller initialized successfully!");
   } else {
     Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
   }
+#endif
 
   // IOExpander init: Wire (SDA=18, SCL=17) is now ready after touch.begin()
 #if ENABLE_DISPLAY
@@ -1723,12 +1743,16 @@ void loop()
         nfcPendingScreenShown = false;
         // Blink LED 3 times to signal failure
         for (int i = 0; i < 3; i++) {
+          #if PIN_LED_BUTTON_LED >= 0
           digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+          #endif
           #ifdef PIN_ONBOARD_LED
           digitalWrite(PIN_ONBOARD_LED, HIGH);
           #endif
           delay(100);
+          #if PIN_LED_BUTTON_LED >= 0
           digitalWrite(PIN_LED_BUTTON_LED, LOW);
+          #endif
           #ifdef PIN_ONBOARD_LED
           digitalWrite(PIN_ONBOARD_LED, LOW);
           #endif
@@ -1775,12 +1799,16 @@ void loop()
           nfcPendingScreenShown = false;
           // Blink LED 3 times to signal failure
           for (int i = 0; i < 3; i++) {
+            #if PIN_LED_BUTTON_LED >= 0
             digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+            #endif
             #ifdef PIN_ONBOARD_LED
             digitalWrite(PIN_ONBOARD_LED, HIGH);
             #endif
             delay(100);
+            #if PIN_LED_BUTTON_LED >= 0
             digitalWrite(PIN_LED_BUTTON_LED, LOW);
+            #endif
             #ifdef PIN_ONBOARD_LED
             digitalWrite(PIN_ONBOARD_LED, LOW);
             #endif
@@ -3416,6 +3444,14 @@ static void processNormalPayment(int pin, int duration)
       pinMode(pin, OUTPUT);
       digitalWrite(pin, HIGH);
       Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
+      // ESP32-C3-21-1: GPIO5 (SSR) always fires together with GPIO4 (Relay)
+      #ifdef BOARD_ESP32C3_21_1
+      if (pin == PIN_RELAY) {
+        pinMode(PIN_SSR, OUTPUT);
+        digitalWrite(PIN_SSR, HIGH);
+        Serial.printf("[RELAY] GPIO%d (SSR) set HIGH (synced with GPIO%d Relay)\n", PIN_SSR, PIN_RELAY);
+      }
+      #endif
     }
 
     if (multiChannelConfig.mode == "off" && pin == 12) {
@@ -3439,12 +3475,16 @@ static void processNormalPayment(int pin, int duration)
 
     // Action start indicator: briefly turn off status LEDs for 300ms so the
     // onboard LED (GPIO 2) signals that the relay/action has just fired.
+    #if PIN_LED_BUTTON_LED >= 0
     digitalWrite(PIN_LED_BUTTON_LED, LOW);
+    #endif
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, LOW);
     #endif
     delay(300);
+    #if PIN_LED_BUTTON_LED >= 0
     digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    #endif
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, HIGH);
     #endif
@@ -3484,6 +3524,13 @@ static void processNormalPayment(int pin, int duration)
     } else {
       digitalWrite(pin, LOW);
       Serial.printf("[RELAY] Pin %d set LOW\n", pin);
+      // ESP32-C3-21-1: GPIO5 (SSR) off together with GPIO4 (Relay)
+      #ifdef BOARD_ESP32C3_21_1
+      if (pin == PIN_RELAY) {
+        digitalWrite(PIN_SSR, LOW);
+        Serial.printf("[RELAY] GPIO%d (SSR) set LOW (synced with GPIO%d Relay)\n", PIN_SSR, PIN_RELAY);
+      }
+      #endif
     }
 
     if (multiChannelConfig.mode == "off" && pin == 12) {

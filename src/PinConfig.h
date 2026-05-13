@@ -109,7 +109,7 @@
   #define PIN_RELAY_CH04 16
 #endif
 
-#if !ENABLE_DISPLAY
+#if !ENABLE_DISPLAY && !defined(BOARD_ESP32C3_21_1)
   // Extra relay channels available on ESP32 Dev Module (no display pins consumed)
   #define PIN_RELAY_CH05 19
   #define PIN_RELAY_CH06 22
@@ -126,7 +126,7 @@
     PIN_RELAY_CH05, PIN_RELAY_CH06, PIN_RELAY_CH07, PIN_RELAY_CH08,
     PIN_RELAY_CH09, PIN_RELAY_CH10, PIN_RELAY_CH11, PIN_RELAY_CH12
   };
-#elif !defined(BOARD_JC3248W535C)
+#elif !defined(BOARD_JC3248W535C) && !defined(BOARD_ESP32C3_21_1)
   #define RELAY_CHANNEL_MAX 4
   static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
     PIN_RELAY_CH01, PIN_RELAY_CH02, PIN_RELAY_CH03, PIN_RELAY_CH04
@@ -272,14 +272,44 @@ static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
 // IO0, IO1, IO2, IO3 — unassigned
 // IO18 — unassigned
 
+// ── BOOT button (IO9) ────────────────────────────────────────────────────
+// ESP32-C3-WROOM-02: IO9 is the BOOT/strapping pin (active LOW, internal pull-up).
+// Pressing the physical BOOT button pulls IO9 LOW → leftButton detects long press.
+// (T-Display-S3 default PIN_BUTTON_1=0 does NOT map to the C3 BOOT button.)
+#undef  PIN_BUTTON_1
+#define PIN_BUTTON_1 9   // IO9 = BOOT button (active LOW)
+
 // ── UART (via pin header: TX=TXD, RX=RXD) ───────────────────────────────
 // TXD and RXD are the hardware UART0 pins (default Serial)
 
 // ── LED button / wake ────────────────────────────────────────────────────
-// No LED button on this board.
+// No LED button on this board. GPIO21 is not routed on the PCB.
+// LED2 (power) is hardwired to 3.3V regulator — not GPIO-controlled.
+// LED3 (relay indicator) is hardwired to the K1 relay coil (5V/330Ω) — lights
+// automatically when GPIO4 fires the relay, not separately controllable.
 #define PIN_LED_BTN  -1
+#undef  PIN_LED_BUTTON_LED
+#define PIN_LED_BUTTON_LED -1  // GPIO21 not routed on this PCB
+#undef  PIN_ONBOARD_LED        // GPIO2 not connected to any LED on this PCB
 
 // ── Relay channel array (single relay + single SSR) ──────────────────────
 const int RELAY_PINS[] = { PIN_RELAY, PIN_SSR };
+
+// ── RELAY_CHANNEL_PINS / RELAY_CHANNEL_MAX for C3 (2 channels: relay + SSR) ─
+// The headless ESP32-Dev block above is excluded for C3 (GPIOs 22-33 don't
+// exist on ESP32-C3). Define the 2-entry array here instead.
+#undef RELAY_CHANNEL_MAX
+#define RELAY_CHANNEL_MAX 2
+static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = { PIN_RELAY, PIN_SSR };
+
+// ── Power-on pin — NOT available on C3 ─────────────────────────────────
+// GPIO 15 on ESP32-C3-WROOM-02 = SPI Flash WP (internal flash pin).
+// NEVER configure GPIO 11-17 as output on C3 — doing so corrupts flash
+// SPI and causes an immediate panic/reboot.
+#undef  PIN_POWER_ON
+#define PIN_POWER_ON -1   // No power-on pin on C3-21-1 (setup() checks >= 0)
+
+// NOTE: No I2C on this board — touch.begin() is skipped in main.cpp
+// (see #ifndef BOARD_ESP32C3_21_1 guard around touchState.available = touch.begin())
 
 #endif  // BOARD_ESP32C3_21_1

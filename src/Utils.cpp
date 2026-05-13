@@ -86,6 +86,17 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     pinMode(13, OUTPUT);
     Serial.println("[SPECIAL] Pin 13 will be controlled in parallel to Pin 12 (Single mode)");
   }
+
+  // ESP32-C3-21-1: GPIO5 (SSR) always fires together with GPIO4 (Relay)
+  #ifdef BOARD_ESP32C3_21_1
+  bool parallelSsr = (pin == PIN_RELAY);
+  if (parallelSsr) {
+    pinMode(PIN_SSR, OUTPUT);
+    Serial.printf("[SPECIAL] GPIO%d (SSR) will be controlled in parallel to GPIO%d (Relay)\n", PIN_SSR, PIN_RELAY);
+  }
+  #else
+  bool parallelSsr = false;
+  #endif
   
   // Relay output mode: GPIO 22/23 switch together with Pin 12 (headless only)
   #if !ENABLE_DISPLAY
@@ -104,6 +115,7 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
       if (parallelPin13) {
         digitalWrite(13, LOW);
       }
+      if (parallelSsr) digitalWrite(PIN_SSR, LOW);
       #if !ENABLE_DISPLAY
       if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
       if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
@@ -118,6 +130,7 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     if (parallelPin13) {
       digitalWrite(13, HIGH);
     }
+    if (parallelSsr) digitalWrite(PIN_SSR, HIGH);
     #if !ENABLE_DISPLAY
     if (relayOut1) digitalWrite(PIN_SENSOR_1, HIGH);
     if (relayOut2) digitalWrite(PIN_SENSOR_2, HIGH);
@@ -134,6 +147,7 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
         if (parallelPin13) {
           digitalWrite(13, LOW);
         }
+        if (parallelSsr) digitalWrite(PIN_SSR, LOW);
         #if !ENABLE_DISPLAY
         if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
         if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
@@ -157,6 +171,7 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     if (parallelPin13) {
       digitalWrite(13, LOW);
     }
+    if (parallelSsr) digitalWrite(PIN_SSR, LOW);
     #if !ENABLE_DISPLAY
     if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
     if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);

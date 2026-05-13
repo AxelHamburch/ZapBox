@@ -29,7 +29,10 @@ static bool checkButtonExit() {
     // This prevents triggering exit if buttons are already pressed when config mode starts
     if (!initialized) {
         prevNextState = digitalRead(PIN_BUTTON_1);
+        #ifndef BOARD_ESP32C3_21_1
+        // PIN_BUTTON_2 = GPIO14 = SPI Flash IO1 on ESP32-C3 — never read as GPIO
         prevHelpState = digitalRead(PIN_BUTTON_2);
+        #endif
         #ifdef PIN_LED_BUTTON_SW
         prevExtState = digitalRead(PIN_LED_BUTTON_SW);
         #else
@@ -54,6 +57,8 @@ static bool checkButtonExit() {
     prevNextState = nextState;
     
     // Check HELP button (PIN_BUTTON_2)
+    // On ESP32-C3-21-1, PIN_BUTTON_2 = GPIO14 = SPI Flash IO1 — skip to avoid spurious exits
+    #ifndef BOARD_ESP32C3_21_1
     int helpState = digitalRead(PIN_BUTTON_2);
     if (prevHelpState == HIGH && helpState == LOW) { // Negative edge (button pressed)
         Serial.println("[CONFIG] HELP button pressed - exiting config mode");
@@ -62,6 +67,7 @@ static bool checkButtonExit() {
         return true;
     }
     prevHelpState = helpState;
+    #endif
     
     // Check EXTERNAL button (PIN_LED_BUTTON_SW) - only if available
     #ifdef PIN_LED_BUTTON_SW
