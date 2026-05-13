@@ -19,6 +19,7 @@ This becomes your version number: `vBLOCKHEIGHT` (e.g., v936746)
   - **Standard** (T-Display-S3): `vBLOCKHEIGHT` format
   - **Headless** (ESP32 Dev): `vBLOCKHEIGHTh` suffix (note the 'h')
   - **Touch 3.5"** (JC3248W535C): `vBLOCKHEIGHTt` suffix (note the 't')
+  - **ESP32-C3-21-1** (ESP32-C3-WROOM-02): `vBLOCKHEIGHTc` suffix (note the 'c')
 - **Release Approach:** Versions can be released individually (e.g., touch3.5 only) or as a group
 - **Binary files:** Copied WITHOUT any suffix (just `bootloader.bin`, `partitions.bin`, `firmware.bin`)
 
@@ -37,6 +38,7 @@ Update the VERSION flag with the block height from step above:
 mkdir installer/firmware/v936746      # Standard version
 mkdir installer/firmware/v936746h     # Headless version (note the 'h' suffix)
 mkdir installer/firmware/v936746t     # Touch 3.5" version (note the 't' suffix)
+mkdir installer/firmware/v936746c     # ESP32-C3-21-1 version (note the 'c' suffix)
 ```
 
 Create only the directories needed for the current release.
@@ -100,11 +102,31 @@ Create only the directories needed for the current release.
 }
 ```
 
+**ESP32-C3-21-1 version** - Create `installer/firmware/v936746c/manifest.json`:
+```json
+{
+  "name": "ZapBox esp32-c3-21-1",
+  "version": "v936746c",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-C3",
+      "parts": [
+        { "path": "bootloader.bin", "offset": 0 },
+        { "path": "partitions.bin", "offset": 32768 },
+        { "path": "firmware.bin",   "offset": 65536 }
+      ]
+    }
+  ]
+}
+```
+
 **⚠️ Important differences:**
 - Headless uses `"chipFamily": "ESP32"` (not ESP32-S3)
 - Headless bootloader offset is `4096` (not 0)
 - Touch 3.5" uses `"chipFamily": "ESP32-S3"`
 - Touch 3.5" manifest name should clearly identify the hardware
+- ESP32-C3-21-1 uses `"chipFamily": "ESP32-C3"`, bootloader offset `0`
 
 ### 4. Update Web Installer (match the installer page to the released variant)
 
@@ -145,6 +167,19 @@ Remove `(Latest)` from the previous top touch3.5 version.
 <esp-web-install-button id="flash-button-touch35" manifest="../firmware/v936746t/manifest.json">
 ```
 
+**C3 installer (`installer/c3/index.html`) - 2 locations total**
+
+**Location 1: C3 version dropdown** - Add new version at TOP:
+```html
+<option value="../firmware/v936746c/manifest.json">v936746c (Latest - Short description)</option>
+```
+Remove `(Latest)` from the previous top C3 version.
+
+**Location 2: C3 flash button** - Update manifest path:
+```html
+<esp-web-install-button id="flash-button-c3" manifest="../firmware/v936746c/manifest.json">
+```
+
 ### 5. Compile Firmware (for the variants you are releasing)
 
 **Standard version (T-Display-S3):**
@@ -160,6 +195,11 @@ C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e esp32dev
 **Touch 3.5" version (JC3248W535C):**
 ```powershell
 C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e jc3248w535c
+```
+
+**ESP32-C3-21-1 version:**
+```powershell
+C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e esp32-c3-21-1
 ```
 
 ### 6. Copy Binary Files
@@ -187,7 +227,14 @@ Copy-Item -Path ".pio\build\jc3248w535c\partitions.bin" -Destination "installer\
 Copy-Item -Path ".pio\build\jc3248w535c\firmware.bin" -Destination "installer\firmware\v936746t\firmware.bin"
 ```
 
-**Note:** The directory may have the `h` or `t` suffix, but the filenames do NOT!
+**ESP32-C3-21-1 version (esp32-c3-21-1) → v936746c/:**
+```powershell
+Copy-Item -Path ".pio\build\esp32-c3-21-1\bootloader.bin" -Destination "installer\firmware\v936746c\bootloader.bin"
+Copy-Item -Path ".pio\build\esp32-c3-21-1\partitions.bin" -Destination "installer\firmware\v936746c\partitions.bin"
+Copy-Item -Path ".pio\build\esp32-c3-21-1\firmware.bin" -Destination "installer\firmware\v936746c\firmware.bin"
+```
+
+**Note:** The directory may have the `h`, `t`, or `c` suffix, but the filenames do NOT!
 
 ### 7. Generate Release Description
 
@@ -229,6 +276,12 @@ git add platformio.ini installer/firmware/v936746t/ installer/touch3.5/index.htm
 git commit -m "Release v936746t: <short description in English>"
 ```
 
+**ESP32-C3-21-1 only example:**
+```bash
+git add platformio.ini installer/firmware/v936746c/ installer/c3/index.html FIRMWARE.md
+git commit -m "Release v936746c: <short description in English>"
+```
+
 ### 9. Inform User
 
 Tell user:
@@ -259,10 +312,11 @@ Tell user:
 1. ❌ **DON'T** add "-headless" suffix to binary filenames
 2. ❌ **DON'T** forget the 'h' suffix in the headless directory name (v936746h)
 3. ❌ **DON'T** forget the 't' suffix in the Touch 3.5" directory name (v936746t)
-4. ❌ **DON'T** use same chipFamily for all variants (ESP32-S3 vs ESP32)
-5. ❌ **DON'T** use same bootloader offset for headless and ESP32-S3 variants (4096 vs 0)
-6. ❌ **DON'T** update the wrong installer page (`installer/index.html` vs `installer/touch3.5/index.html`)
-7. ❌ **DON'T** look at HEADLESS_DEPLOYMENT.md (it's outdated/deleted)
+4. ❌ **DON'T** forget the 'c' suffix in the ESP32-C3-21-1 directory name (v936746c)
+5. ❌ **DON'T** use same chipFamily for all variants (ESP32-S3 vs ESP32 vs ESP32-C3)
+6. ❌ **DON'T** use same bootloader offset for headless and ESP32-S3/C3 variants (4096 vs 0)
+7. ❌ **DON'T** update the wrong installer page (`installer/index.html` vs `installer/touch3.5/index.html` vs `installer/c3/index.html`)
+8. ❌ **DON'T** look at HEADLESS_DEPLOYMENT.md (it's outdated/deleted)
 
 ## Binary File Locations
 
@@ -282,6 +336,12 @@ After `pio run`:
 
 # Touch 3.5" version (jc3248w535c):
 .pio/build/jc3248w535c/
+├── bootloader.bin
+├── partitions.bin
+└── firmware.bin
+
+# ESP32-C3-21-1 version (esp32-c3-21-1):
+.pio/build/esp32-c3-21-1/
 ├── bootloader.bin
 ├── partitions.bin
 └── firmware.bin
@@ -310,6 +370,14 @@ installer/firmware/
   ├── partitions.bin
   ├── firmware.bin
   └── manifest.json
+
+# ESP32-C3-21-1 release example:
+installer/firmware/
+└── v936746c/                   # ESP32-C3-21-1 version (note 'c' suffix in directory)
+  ├── bootloader.bin
+  ├── partitions.bin
+  ├── firmware.bin
+  └── manifest.json
 ```
 
 ## GitHub Release Template
@@ -329,6 +397,9 @@ Use this template for GitHub releases:
 
 ### 🖥️ Touch 3.5" Version (vXXXXXXt)
 - Touch-specific improvements
+
+### ⚡ ESP32-C3-21-1 Version (vXXXXXXc)
+- C3-specific improvements
 
 ### 🛠️ Technical Details
 - Updated to Bitcoin block height XXXXXX
