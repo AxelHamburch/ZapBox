@@ -109,7 +109,7 @@
   #define PIN_RELAY_CH04 16
 #endif
 
-#if !ENABLE_DISPLAY
+#if !ENABLE_DISPLAY && !defined(BOARD_ESP32C3_21_1)
   // Extra relay channels available on ESP32 Dev Module (no display pins consumed)
   #define PIN_RELAY_CH05 19
   #define PIN_RELAY_CH06 22
@@ -126,7 +126,7 @@
     PIN_RELAY_CH05, PIN_RELAY_CH06, PIN_RELAY_CH07, PIN_RELAY_CH08,
     PIN_RELAY_CH09, PIN_RELAY_CH10, PIN_RELAY_CH11, PIN_RELAY_CH12
   };
-#elif !defined(BOARD_JC3248W535C)
+#elif !defined(BOARD_JC3248W535C) && !defined(BOARD_ESP32C3_21_1)
   #define RELAY_CHANNEL_MAX 4
   static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
     PIN_RELAY_CH01, PIN_RELAY_CH02, PIN_RELAY_CH03, PIN_RELAY_CH04
@@ -252,3 +252,81 @@ static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
 // No external LED button — capacitive touch screen handles wake-up.
 
 #endif  // BOARD_JC3248W535C
+
+// ════════════════════════════════════════════════════════════════════════════
+// Board: ESP32-C3-WROOM-02 "esp32-c3-21-1"
+// ESP32-C3, single core RISC-V 160 MHz, 4 MB Flash
+// Native USB CDC/JTAG on GPIO19(D-)/GPIO20(D+) — no external UART chip.
+// IO9 = BOOT: hold LOW during reset to enter download mode.
+// ════════════════════════════════════════════════════════════════════════════
+#ifdef BOARD_ESP32C3_21_1
+
+// ── Relay output (HFD3/5 — 1A 30VDC / 0.5A 125VAC) ─────────────────────
+#define PIN_RELAY    4   // IO4 → Relay coil driver
+
+// ── Status / Ready LED ───────────────────────────────────────────────────
+// GPIO5 is a status LED output (like GPIO21 on the headless esp32dev board).
+// Solid ON = WiFi connected & ready  |  Slow blink = config mode
+// Fast blink = error / payment received
+#undef  PIN_LED_BUTTON_LED
+#define PIN_LED_BUTTON_LED 5  // IO5 → status LED
+
+// ── Flex channels (configurable as relay / servo / sensor) ───────────────
+// GPIO6 and GPIO7 are secondary actuator / sensor channels.
+// Each is configured independently in the web installer (modes below).
+// Both channels are triggered together with GPIO4 when in actor mode.
+//   relay    — secondary relay output, fires together with GPIO4
+//   servo180 — 180° positional servo
+//   servo360 — 360° continuous servo
+//   yes      — sensor: stop relay action when triggered (INPUT_PULLUP, active LOW)
+//   monitor  — sensor: block next payment until path cleared
+//   level    — sensor: block payments when bin is empty (HIGH = empty)
+#define PIN_FLEX_CH01  6  // IO6 → flex channel 1 (output or input)
+#define PIN_FLEX_CH02  7  // IO7 → flex channel 2 (output or input)
+
+// ── NFC IRQ (PN532 Bolt Card reader) ─────────────────────────────────────
+// IO10 is free and close to the I2C header — used as PN532 IRQ/RSTPDN line.
+#undef  PIN_NFC_IRQ
+#define PIN_NFC_IRQ 10  // IO10 → PN532 IRQ (active LOW)
+
+// ── Free GPIOs ───────────────────────────────────────────────────────────
+// IO0, IO1, IO2, IO3, IO18 — unassigned (available for future use)
+
+// ── BOOT button (IO9) ────────────────────────────────────────────────────
+// ESP32-C3-WROOM-02: IO9 is the BOOT/strapping pin (active LOW, internal pull-up).
+// Pressing the physical BOOT button pulls IO9 LOW → leftButton detects long press.
+// (T-Display-S3 default PIN_BUTTON_1=0 does NOT map to the C3 BOOT button.)
+#undef  PIN_BUTTON_1
+#define PIN_BUTTON_1 9   // IO9 = BOOT button (active LOW)
+
+// ── UART / I2C (via pin header: TX=GPIO21, RX=GPIO20) ──────────────────────
+// GPIO20 (RXD) and GPIO21 (TXD) are exposed on the pin header.
+// With ARDUINO_USB_CDC_ON_BOOT=1, Serial goes over USB — UART0 is idle,
+// so GPIO20/21 are free for I2C (SDA=GPIO20, SCL=GPIO21).
+#undef  PIN_IIC_SDA
+#define PIN_IIC_SDA 20  // I2C data  (header pin: RXD)
+#undef  PIN_IIC_SCL
+#define PIN_IIC_SCL 21  // I2C clock (header pin: TXD)
+
+#define PIN_LED_BTN  -1
+#undef  PIN_ONBOARD_LED        // GPIO2 not connected to any LED on this PCB
+
+// ── Relay channel array (single primary relay on GPIO4) ──────────────────
+// GPIO6/GPIO7 flex channels are not LNbits payment channels — they always
+// fire together with GPIO4 based on their configured mode (relay/servo/sensor).
+#undef RELAY_CHANNEL_MAX
+#define RELAY_CHANNEL_MAX 1
+static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = { PIN_RELAY };
+
+// ── Power-on pin — NOT available on C3 ─────────────────────────────────
+// GPIO 15 on ESP32-C3-WROOM-02 = SPI Flash WP (internal flash pin).
+// NEVER configure GPIO 11-17 as output on C3 — doing so corrupts flash
+// SPI and causes an immediate panic/reboot.
+#undef  PIN_POWER_ON
+#define PIN_POWER_ON -1   // No power-on pin on C3-21-1 (setup() checks >= 0)
+
+// NOTE: I2C on this board uses GPIO20 (SDA) / GPIO21 (SCL) via pin header.
+// touch.begin() is skipped in main.cpp — no touch controller on this board.
+// Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL) is called explicitly in setup().
+
+#endif  // BOARD_ESP32C3_21_1
