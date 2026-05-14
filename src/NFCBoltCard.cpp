@@ -447,7 +447,7 @@ static void nfc_task_code(void *pvParams)
 bool nfcBoltCardInit()
 {
     LOG_INFO("NFC", "Initializing PN532 Bolt Card reader...");
-    LOG_INFO("NFC", "  I2C: SDA=GPIO18, SCL=GPIO17  (shared with Touch controller)");
+    LOG_INFO("NFC", String("  I2C: SDA=GPIO") + String(PIN_IIC_SDA) + ", SCL=GPIO" + String(PIN_IIC_SCL));
     LOG_INFO("NFC", String("  IRQ: GPIO") + String(PIN_NFC_IRQ) + " (active LOW, INPUT_PULLUP)");
     LOG_INFO("NFC", "  I2C address: 0x24");
 
@@ -457,7 +457,7 @@ bool nfcBoltCardInit()
     // Only call Wire.begin() if the bus is not already running (touch.begin() initializes it).
     // Calling Wire.begin() on an already-running bus can disrupt ongoing I2C operations.
     #if !ENABLE_DISPLAY
-    Wire.begin(18, 17); // headless: no touch controller initializes Wire, so do it here
+    Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL); // headless: use board-specific I²C pins (PinConfig.h)
     #endif
     Wire.beginTransmission(0x24);
     uint8_t probeResult = Wire.endTransmission();

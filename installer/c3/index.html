@@ -51,11 +51,12 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version-c3" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-                <option value="../firmware/v949278c/manifest.json">v949278c (Latest - almost working version)</option>
+                <option value="../firmware/v949417c/manifest.json">v949417c 👑 (Latest - Supreme: Servo + Sensor-Stop)</option>
+                <option value="../firmware/v949278c/manifest.json">v949278c</option>
                 <option value="../firmware/v949107c/manifest.json">v949107c</option>
             </select>
-            <esp-web-install-button id="flash-button-c3" manifest="../firmware/v949278c/manifest.json">
-                <button slot="activate">🔥 Flash ESP32-C3-21-1</button>
+            <esp-web-install-button id="flash-button-c3" manifest="../firmware/v949417c/manifest.json">
+                <button slot="activate">🔥 Flash ESP32-C3</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
             </esp-web-install-button>
@@ -157,10 +158,116 @@
             <!-- Outputs -->
             <p style="margin-top: 24px;"><strong>Outputs</strong></p>
             <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>IO4</strong></td><td>Relay — HFD3/5 (1A 30VDC / 0.5A 125VAC)</td></tr>
-                <tr><td style="padding: 2px 12px 2px 0;"><strong>IO5</strong></td><td>SSR — Letex LT218 (Solid State Relay)</td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>IO4</strong></td><td>Relay — HFD3/5 (1A 30VDC / 0.5A 125VAC) — main payment relay</td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>IO5</strong></td><td>Status / Ready LED — solid ON when ready, blinks in config/error mode</td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>IO6</strong></td><td>Flex channel 1 — configurable as relay, servo, or sensor (see below)</td></tr>
+                <tr><td style="padding: 2px 12px 2px 0;"><strong>IO7</strong></td><td>Flex channel 2 — configurable as relay, servo, or sensor (see below)</td></tr>
             </table>
-            <p style="margin-top: 10px; color: #888; font-style: italic; font-size: 13px;">Configure the GPIO pin in your LNbits extension (bitcoinswitch / zapbox_extension) per switch/channel.</p>
+            <p style="margin-top: 10px; color: #888; font-style: italic; font-size: 13px;">Configure the main payment pin in your LNbits extension (bitcoinswitch / zapbox_extension) — use GPIO 4 for the primary relay. IO6 and IO7 always trigger together with IO4.</p>
+
+            <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- GPIO 6 / 7 Flex Channels -->
+            <p style="margin-top: 10px;"><strong>Flex Channels — GPIO 6 &amp; GPIO 7</strong></p>
+            <p style="margin-top: 10px; color: #888;"><i>Both flex channels are triggered together with GPIO 4 when configured as actor (relay / servo). In sensor mode, they block or stop payments based on the sensor input (INPUT_PULLUP, active LOW — connect sensor signal to GND when triggered).</i></p>
+
+            <div class="input-wrapper">
+                <div>
+                    <label for="gpio6Mode">Mode GPIO 6 (IO6)</label>
+                    <select name="gpio6Mode" id="gpio6Mode">
+                        <option value="no" selected>No function (default)</option>
+                        <option value="relay">Relay function (external relay)</option>
+                        <option value="servo180">180° servo (0°–180° positioning)</option>
+                        <option value="servo360">360° servo (360° rotation)</option>
+                        <option value="yes">Sensor — Stop the advance (Product ejected)</option>
+                        <option value="monitor">Sensor — Monitoring product blockage</option>
+                        <option value="level">Sensor — Level monitoring (empty bin)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for GPIO pin 6 (flex channel 1)</p>
+                </div>
+            </div>
+
+            <!-- GPIO 6 Servo Sub-sections -->
+            <div id="gpio6-servo180-sub" class="input-wrapper" style="display: none; background: #fffde7; padding: 16px; border-radius: 6px; margin-top: 8px;">
+                <p style="margin: 0 0 12px 0; font-weight: 600; font-size: 13px;">GPIO 6 — 180° Servo settings</p>
+                <div>
+                    <label for="gpio6S180Start">Start angle (0–180°)</label>
+                    <input type="number" id="gpio6S180Start" placeholder="e.g. 0" min="0" max="180" autocomplete="off">
+                </div>
+                <div>
+                    <label for="gpio6S180End">End angle (0–180°)</label>
+                    <input type="number" id="gpio6S180End" placeholder="e.g. 180" min="0" max="180" autocomplete="off">
+                </div>
+                <div>
+                    <label for="gpio6S180Duration">Duration (ms)</label>
+                    <input type="number" id="gpio6S180Duration" placeholder="e.g. 500" min="0" max="10000" autocomplete="off">
+                </div>
+            </div>
+            <div id="gpio6-servo360-sub" class="input-wrapper" style="display: none; background: #fffde7; padding: 16px; border-radius: 6px; margin-top: 8px;">
+                <p style="margin: 0 0 12px 0; font-weight: 600; font-size: 13px;">GPIO 6 — 360° Servo settings</p>
+                <div>
+                    <label for="gpio6S360Speed">Speed (0–180, 90=stop)</label>
+                    <input type="number" id="gpio6S360Speed" placeholder="e.g. 120" min="0" max="180" autocomplete="off">
+                </div>
+                <div>
+                    <label for="gpio6S360Duration">Duration (ms)</label>
+                    <input type="number" id="gpio6S360Duration" placeholder="e.g. 1000" min="0" max="10000" autocomplete="off">
+                </div>
+            </div>
+
+            <div class="input-wrapper">
+                <div>
+                    <label for="gpio7Mode">Mode GPIO 7 (IO7)</label>
+                    <select name="gpio7Mode" id="gpio7Mode">
+                        <option value="no" selected>No function (default)</option>
+                        <option value="relay">Relay function (external relay)</option>
+                        <option value="servo180">180° servo (0°–180° positioning)</option>
+                        <option value="servo360">360° servo (360° rotation)</option>
+                        <option value="yes">Sensor — Stop the advance (Product ejected)</option>
+                        <option value="monitor">Sensor — Monitoring product blockage</option>
+                        <option value="level">Sensor — Level monitoring (empty bin)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Function for GPIO pin 7 (flex channel 2)</p>
+                </div>
+            </div>
+
+            <!-- GPIO 7 Servo Sub-sections -->
+            <div id="gpio7-servo180-sub" class="input-wrapper" style="display: none; background: #fffde7; padding: 16px; border-radius: 6px; margin-top: 8px;">
+                <p style="margin: 0 0 12px 0; font-weight: 600; font-size: 13px;">GPIO 7 — 180° Servo settings</p>
+                <div>
+                    <label for="gpio7S180Start">Start angle (0–180°)</label>
+                    <input type="number" id="gpio7S180Start" placeholder="e.g. 0" min="0" max="180" autocomplete="off">
+                </div>
+                <div>
+                    <label for="gpio7S180End">End angle (0–180°)</label>
+                    <input type="number" id="gpio7S180End" placeholder="e.g. 180" min="0" max="180" autocomplete="off">
+                </div>
+                <div>
+                    <label for="gpio7S180Duration">Duration (ms)</label>
+                    <input type="number" id="gpio7S180Duration" placeholder="e.g. 500" min="0" max="10000" autocomplete="off">
+                </div>
+            </div>
+            <div id="gpio7-servo360-sub" class="input-wrapper" style="display: none; background: #fffde7; padding: 16px; border-radius: 6px; margin-top: 8px;">
+                <p style="margin: 0 0 12px 0; font-weight: 600; font-size: 13px;">GPIO 7 — 360° Servo settings</p>
+                <div>
+                    <label for="gpio7S360Speed">Speed (0–180, 90=stop)</label>
+                    <input type="number" id="gpio7S360Speed" placeholder="e.g. 120" min="0" max="180" autocomplete="off">
+                </div>
+                <div>
+                    <label for="gpio7S360Duration">Duration (ms)</label>
+                    <input type="number" id="gpio7S360Duration" placeholder="e.g. 1000" min="0" max="10000" autocomplete="off">
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>Operating modes explained:</strong></i></p>
+            <table style="margin-top: 8px; color: #888; font-style: italic; font-size: 13px; border-collapse: collapse;">
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Relay function</strong></td><td>Switches an external relay together with IO4 on every payment activation.</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>180° servo</strong></td><td>Moves a positional servo from start angle to end angle over the configured duration. Returns to start angle after duration.</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>360° servo</strong></td><td>Runs a continuous rotation servo at the configured speed for the configured duration (90 = stop, &lt;90 = CCW, &gt;90 = CW).</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Stop the advance</strong></td><td>Stops the relay action when the sensor detects a product (LOW signal). Minimum action time of 2 seconds before the sensor can trigger.</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Monitoring product blockage</strong></td><td>After a payment, checks if the product exit is blocked (sensor LOW). Blocks further payments until the path is cleared.</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; vertical-align: top;"><strong>Level monitoring</strong></td><td>Continuously monitors the supply bin fill level. When the sensor goes HIGH (no product detected), the bin is considered empty and payments are blocked until restocked.</td></tr>
+            </table>
 
             <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
@@ -202,7 +309,7 @@
                 <div>
                     <label for="thresholdPin">GPIO pin to be controlled</label>
                     <input type="number" name="thresholdPin" id="thresholdPin" placeholder="e.g. 4" value="4" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">4 = Relay (default), 5 = SSR</p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">4 = Relay (default)</p>
                 </div>
                 <div>
                     <label for="thresholdTime">Control time for GPIO pin (ms)</label>
@@ -214,7 +321,120 @@
                 </div>
             </div>
 
+            <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
+            <!-- NFC-Module Section -->
+            <h3 style="margin: 0 0 10px 0;">NFC-Module</h3>
+            <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server — no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
+            <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
+            <div style="display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start; margin-top: 16px;">
+                <a href="../assets/NFC-Module-PN532.webp" target="_blank">
+                    <img src="../assets/NFC-Module-PN532.webp" alt="PN532 NFC Module wiring" style="height: 220px; width: auto; display: block;" />
+                </a>
+                <a href="../assets/NFC-Tag-2.webp" target="_blank">
+                    <img src="../assets/NFC-Tag-2.webp" alt="NFC Tag 2 / NT3H2111 wiring" style="height: 220px; width: auto; display: block;" />
+                </a>
+            </div>
+            <p style="margin-top: 15px; color: #888;"><i><b>Bolt Cards &amp; NTAG 21x (PN532, I²C 0x24)</b> — Active NFC reader: the PN532 generates its own magnetic field and reads cards placed on it. Supports pre-programmed Bolt Cards for contactless Lightning payment. Also reads passive NFC tags of type NTAG 213, 215 and 216 — e.g. for LNURL-based payment tags. Works with all major Lightning wallets and PoS systems. No configuration required — the module is auto-detected on the I²C bus at startup.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i><b>Mobile Phones (NFC Tag 2 / NT3H2111, I²C 0x55)</b> — Passive NFC tag: unlike the PN532, the NT3H2111 generates no field of its own. It is a true NTAG chip that delivers the LNURL autonomously as soon as the active field of an approaching mobile phone is detected. The ZapBox writes the current LNURL to the chip via I²C — the ESP32 is not involved during the tap. Compatible with Android NFC Tools and wallets that support LNURL via NFC (e.g. Phoenix). No configuration required — auto-detected at startup.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i>Both modules operate independently and in parallel on the shared I²C bus (<strong>GPIO 20 SDA / GPIO 21 SCL</strong> — pin header on the ESP32-C3-21-1 board). If a module is not connected, it is simply skipped — normal operation is not affected. The PN532 IRQ line connects to <strong>GPIO 10</strong>.</i></p>
+
+        </div>
+
+        <!-- Error Detection Section -->
+        <div style="background-color: #FFFFCC; padding: 30px 20px; margin: 0 -20px;">
+            <h2 id="error-detection">Error Detection & Report</h2>
+
+            <p>The ZapBox features a hierarchical error detection system with automatic diagnostics. Error states show distinct blink patterns on <strong>IO5 (status LED)</strong>:</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+                <tr style="background-color: #f0f0f0;">
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Priority</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Error Type</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">LED Pattern</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">1 (Highest)</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WIFI</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">1 blink</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">WiFi network not connected<br>→ Wifi data correct?<br>→ WiFi signal too weak?</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="border: 1px solid #ddd; padding: 8px;">2</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO INTERNET</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">2 blinks</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">Internet connectivity lost<br>→ Internet accessible?</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">3</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO SERVER</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">3 blinks</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">LNbits server unreachable<br>→ Server hardware down?<br>→ Device string correct?</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="border: 1px solid #ddd; padding: 8px;">4 (Lowest)</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;"><strong>NO WEBSOCKET</strong></td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">4 blinks</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">WebSocket protocol/handshake failure<br>→ LNbits down?<br>→ Device string correct?</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p><i><strong>Note:</strong> Higher priority errors override lower priority error displays. Each error pattern has a 2 second pause between sequences. Use the serial terminal to monitor detailed error messages.</i></p>
+
+        <h3>LED Status Indicators (IO5)</h3>
+
+        <ul>
+            <li><strong>3 fast blinks:</strong> Device boot indicator</li>
+            <li><strong>Fast blinking:</strong> Initialization in progress</li>
+            <li><strong>Slow blinking:</strong> Config mode active</li>
+            <li><strong>Solid ON:</strong> ZapBox ready</li>
+            <li><strong>Brief OFF (300ms):</strong> Action started – LED dips briefly to confirm relay/servo has fired, then returns to solid ON</li>
+            <li><strong>200ms ON / 800ms OFF blink:</strong> NFC payment pending – waiting for invoice settlement</li>
+            <li><strong>2× fast blink (100ms ON/OFF) + solid ON:</strong> NFC payment confirmed – relay fires</li>
+            <li><strong>3× fast blink (100ms ON/OFF) + solid ON:</strong> NFC timeout (60s) or error – returns to ready</li>
+        </ul>
+
+        <p><i><strong>Note:</strong> The ESP32-C3-21-1 has no display — there is no visual Report page. Use the serial terminal to monitor all errors and status messages.</i></p>
+
+        <h3>Common Wallet Error</h3>
+
+        <p>If a wallet scanning the QR code shows an error message, here's what it means:</p>
+
+        <p><strong>"bitcoinswitch ... is disabled"</strong> → The Bitcoin Switch was actively disabled in LNbits</p>
+
+        <p><strong>"No active bitcoinswitch connections"</strong> → The handshake between the wallet and ZapBox failed. → Wait or restart the ZapBox to re-establish the connection.</p>
+
+        <h3>Other Errors</h3>
+
+        <p><strong>Relay does not switch, but payment was successful</strong> → Wrong GPIO pin configured in LNbits?</p>
+
+        <h3>NFC Extension Mismatch</h3>
+
+        <p>If you tap an NFC Bolt Card or NTAG21x tag and the serial log shows:</p>
+
+        <pre style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 13px;">[WARN][NFC] Bolt Card tap detected – NFC is not supported by the active extension (bitcoinswitch).
+[WARN][NFC] To use NFC / Bolt Cards, switch to zapbox_extension (apiPath = "zapbox").</pre>
+
+        <p>This means the device is configured with the <strong>bitcoinswitch_extension</strong>, which does not have an NFC endpoint (<code>/api/v1/nfc/</code>). NFC payments are only supported by the <strong>zapbox_extension</strong>.</p>
+
+        <p><strong>Solution:</strong></p>
+        <ul>
+            <li>In LNbits, create a device using the <strong>zapbox_extension</strong> instead of bitcoinswitch</li>
+            <li>Copy the new device string and reconfigure the ZapBox</li>
+            <li>The device string format is the same – only the server-side extension changes</li>
+        </ul>
+
+        <p><i>This is <strong>not</strong> a hardware problem – the NFC reader works fine. It's purely a server-side configuration issue.</i></p>
+
+        <h3>Typical NFC Error Messages</h3>
+
+        <p><strong><code>{"detail":"LNURLW callback error: Payment failed - "}</code></strong><br>
+        The sending wallet and the receiving wallet in LNbits are the same. The Bolt Card wallet and the receiving wallet must be <strong>different</strong> wallets in LNbits.</p>
         </div>
 
         <!-- Troubleshoot -->
@@ -228,6 +448,18 @@
                 <li>Release IO9 — board is now in download mode</li>
                 <li><a href="#flash">Retry step 1</a></li>
             </ul>
+
+            <h3 id="mostimportant">Connection problems:</h3>
+            <ul>
+                <li>Check that the USB cable is plugged directly into the USB-C port of the ESP32-C3-21-1 board.</li>
+                <li>Check/replace the cable. There are USB cables that have no data lines and are only for power supply.</li>
+                <li>If you encounter connection problems due to interface drivers with the pop-up window and the message "No port selected" please read this help page: <a href="https://ereignishorizont.xyz/en/bitcoinswitch_en/#76_Notes_on_Setting_Up_and_Checking_Drivers" target="_blank" rel="noopener noreferrer">"7.6 Notes on Setting Up and Checking Drivers"</a></li>
+                <li>Double connection: Check whether a connection already exists via another browser window. Close one window.</li>
+                <li>A website refresh with CTRL+F5 or CTRL+SHIFT+R can also help.</li>
+                <li>Message: "Installation failed ⚠️ Your ESP32 board is not supported" → The firmware you want to flash is not compatible with the hardware. Check that you are using the correct web installer.</li>
+                <li>If nothing else helps, do a complete restart by erasing all data on the ESP32. Use <a href="https://espressif.github.io/esptool-js/" target="_blank" rel="noopener noreferrer">https://espressif.github.io/esptool-js/</a>. → Press: <strong>Connect</strong> > <strong>Erase Flash</strong> and reflash the ZapBox.</li>
+            </ul>
+
             <h3>Helpful links</h3>
             <p>
                 Main page: <a href="https://zapbox.space" target="_blank" rel="noopener noreferrer">https://zapbox.space</a><br>
@@ -257,10 +489,22 @@
         const thresholdPin    = document.getElementById('thresholdPin');
         const thresholdTime   = document.getElementById('thresholdTime');
         const thresholdLnurl  = document.getElementById('thresholdLnurl');
+        const gpio6Mode       = document.getElementById('gpio6Mode');
+        const gpio7Mode       = document.getElementById('gpio7Mode');
+
         specialMode.addEventListener('change', function() {
             frequencyDiv.style.display = specialMode.value === 'custom' ? 'block' : 'none';
             dutyCycleDiv.style.display = specialMode.value === 'custom' ? 'block' : 'none';
         });
+
+        function updateFlexSubSections() {
+            document.getElementById('gpio6-servo180-sub').style.display = gpio6Mode.value === 'servo180' ? 'block' : 'none';
+            document.getElementById('gpio6-servo360-sub').style.display = gpio6Mode.value === 'servo360' ? 'block' : 'none';
+            document.getElementById('gpio7-servo180-sub').style.display = gpio7Mode.value === 'servo180' ? 'block' : 'none';
+            document.getElementById('gpio7-servo360-sub').style.display = gpio7Mode.value === 'servo360' ? 'block' : 'none';
+        }
+        gpio6Mode.addEventListener('change', updateFlexSubSections);
+        gpio7Mode.addEventListener('change', updateFlexSubSections);
 
         // Config array — indices must match firmware positional parser (doc[N]["value"])
         let config = [
@@ -287,7 +531,19 @@
             { "name": "currency",        "value": "USD" },        // idx 20 (placeholder)
             { "name": "externalButton",  "value": "no" },         // idx 21 (placeholder)
             { "name": "ambientLight",    "value": "off" },        // idx 22 (placeholder)
-            { "name": "deepSleepTime",   "value": "30" }          // idx 23
+            { "name": "deepSleepTime",   "value": "30" },         // idx 23
+            { "name": "gpio6Mode",       "value": "no" },         // idx 24 — GPIO6 flex channel mode
+            { "name": "gpio7Mode",       "value": "no" },         // idx 25 — GPIO7 flex channel mode
+            { "name": "gpio6S180Start",  "value": "0" },          // idx 26 — GPIO6 servo180 start angle
+            { "name": "gpio6S180End",    "value": "0" },          // idx 27 — GPIO6 servo180 end angle
+            { "name": "gpio6S180Dur",    "value": "0" },          // idx 28 — GPIO6 servo180 duration (ms)
+            { "name": "gpio6S360Speed",  "value": "0" },          // idx 29 — GPIO6 servo360 speed (0-180)
+            { "name": "gpio6S360Dur",    "value": "0" },          // idx 30 — GPIO6 servo360 duration (ms)
+            { "name": "gpio7S180Start",  "value": "0" },          // idx 31 — GPIO7 servo180 start angle
+            { "name": "gpio7S180End",    "value": "0" },          // idx 32 — GPIO7 servo180 end angle
+            { "name": "gpio7S180Dur",    "value": "0" },          // idx 33 — GPIO7 servo180 duration (ms)
+            { "name": "gpio7S360Speed",  "value": "0" },          // idx 34 — GPIO7 servo360 speed (0-180)
+            { "name": "gpio7S360Dur",    "value": "0" }           // idx 35 — GPIO7 servo360 duration (ms)
         ];
 
         const serial = new Serial();
@@ -385,7 +641,15 @@
                 let potentialJson = serialBuffer.substring(configStart);
                 try {
                     let configData = JSON.parse(potentialJson);
-                    config = configData;
+                    // Merge device values into installer config by name.
+                    // Preserves all 36 installer entries (including new flex
+                    // channel fields at indices 24–35 that older device configs
+                    // don't have yet). Replacing config = configData would drop
+                    // those entries and make setIdx(24, ...) silently do nothing.
+                    configData.forEach(deviceEntry => {
+                        const entry = config.find(c => c.name === deviceEntry.name);
+                        if (entry) entry.value = deviceEntry.value;
+                    });
                     populateUIFromConfig();
                     logToConsole('Config loaded from device ✅', 'success');
                     serialBuffer = '';
@@ -397,6 +661,7 @@
 
         function populateUIFromConfig() {
             const getVal = name => { const e = config.find(c => c.name === name); return e ? e.value : ''; };
+            const getIdx = idx  => { return (config[idx] && config[idx].value != null) ? config[idx].value : ''; };
             ssid.value          = getVal('ssid');
             wifiPassword.value  = getVal('wifipassword');
             socket.value        = getVal('socket');
@@ -410,10 +675,25 @@
             thresholdLnurl.value  = getVal('thresholdLnurl');
             frequencyDiv.style.display = specialMode.value === 'custom' ? 'block' : 'none';
             dutyCycleDiv.style.display = specialMode.value === 'custom' ? 'block' : 'none';
+            // Flex channels (idx 24-35)
+            gpio6Mode.value = getIdx(24) || 'no';
+            gpio7Mode.value = getIdx(25) || 'no';
+            document.getElementById('gpio6S180Start').value    = getIdx(26) || '';
+            document.getElementById('gpio6S180End').value      = getIdx(27) || '';
+            document.getElementById('gpio6S180Duration').value = getIdx(28) || '';
+            document.getElementById('gpio6S360Speed').value    = getIdx(29) || '';
+            document.getElementById('gpio6S360Duration').value = getIdx(30) || '';
+            document.getElementById('gpio7S180Start').value    = getIdx(31) || '';
+            document.getElementById('gpio7S180End').value      = getIdx(32) || '';
+            document.getElementById('gpio7S180Duration').value = getIdx(33) || '';
+            document.getElementById('gpio7S360Speed').value    = getIdx(34) || '';
+            document.getElementById('gpio7S360Duration').value = getIdx(35) || '';
+            updateFlexSubSections();
         }
 
         function syncConfigFromUI() {
-            const set = (name, val) => { const e = config.find(c => c.name === name); if (e) e.value = val; };
+            const set    = (name, val) => { const e = config.find(c => c.name === name); if (e) e.value = val; };
+            const setIdx = (idx, val)  => { if (config[idx]) config[idx].value = val; };
             set('ssid',           ssid.value.trim());
             set('wifipassword',   wifiPassword.value);
             set('socket',         socket.value.trim());
@@ -425,6 +705,19 @@
             set('thresholdPin',    thresholdPin.value);
             set('thresholdTime',   thresholdTime.value);
             set('thresholdLnurl',  thresholdLnurl.value.trim());
+            // Flex channels (idx 24-35)
+            setIdx(24, gpio6Mode.value || 'no');
+            setIdx(25, gpio7Mode.value || 'no');
+            setIdx(26, document.getElementById('gpio6S180Start').value    || '0');
+            setIdx(27, document.getElementById('gpio6S180End').value      || '0');
+            setIdx(28, document.getElementById('gpio6S180Duration').value || '0');
+            setIdx(29, document.getElementById('gpio6S360Speed').value    || '0');
+            setIdx(30, document.getElementById('gpio6S360Duration').value || '0');
+            setIdx(31, document.getElementById('gpio7S180Start').value    || '0');
+            setIdx(32, document.getElementById('gpio7S180End').value      || '0');
+            setIdx(33, document.getElementById('gpio7S180Duration').value || '0');
+            setIdx(34, document.getElementById('gpio7S360Speed').value    || '0');
+            setIdx(35, document.getElementById('gpio7S360Duration').value || '0');
             // deepSleep / deepSleepTime: no wake source on C3 (no touch/button) — always off/30
         }
 
@@ -517,15 +810,107 @@
             a.click();
         }
         function printConfig() {
+            const now = new Date();
+            const ts = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
             const printWifi = document.getElementById('print-wifi').checked;
             const printDev  = document.getElementById('print-device-string').checked;
-            let out = '=== ZapBox ESP32-C3-21-1 Config ===\n';
-            if (printWifi)  out += `SSID: ${ssid.value}\nPassword: ${wifiPassword.value}\n`;
-            if (printDev)   out += `Device string: ${socket.value}\n`;
-            out += `Special Mode: ${specialMode.value}\n`;
+
+            function selText(id) {
+                const el = document.getElementById(id);
+                return el ? el.options[el.selectedIndex].text : '';
+            }
+            function inputVal(id) {
+                const el = document.getElementById(id);
+                return el ? (el.value.trim() || '') : '';
+            }
+            function row(label, value) {
+                return '<tr><td class="lbl">' + label + '</td><td class="val">' + (value !== '' ? value : '<span style="color:#aaa;">&#8212;</span>') + '</td></tr>';
+            }
+            function section(title, rows) {
+                return '<h3 class="sec">' + title + '</h3><table class="pt"><tbody>' + rows + '</tbody></table>';
+            }
+
+            const hiddenLabel = '<span style="color:#aaa;font-style:italic;font-weight:normal;">&#8212; (not selected for printing)</span>';
+            const fwSel = document.getElementById('firmware-version-c3');
+            const fwSelected = fwSel ? fwSel.options[fwSel.selectedIndex].text : '';
+            const specialModeVal = document.getElementById('specialMode').value;
+            const thresholdKeyVal = inputVal('thresholdKey');
+
+            let sections = '';
+
+            sections += section('WiFi &amp; Device',
+                row('WiFi SSID',            printWifi ? (inputVal('ssid')          || '&#8212;') : hiddenLabel) +
+                row('WiFi Password',         printWifi ? (inputVal('wifiPassword')  || '&#8212;') : hiddenLabel) +
+                row('Device Settings String', printDev ? (inputVal('socket')        || '&#8212;') : hiddenLabel)
+            );
+
+            let specialRows = row('Special Mode', selText('specialMode'));
+            if (specialModeVal === 'custom') {
+                specialRows += row('Frequency (Hz)',    inputVal('frequency'));
+                specialRows += row('Duty Cycle Ratio',  inputVal('dutyCycleRatio'));
+            }
+            sections += section('Special Mode', specialRows);
+
+            const gpio6Val = document.getElementById('gpio6Mode').value;
+            const gpio7Val = document.getElementById('gpio7Mode').value;
+            let flexRows = row('GPIO 6 Mode', selText('gpio6Mode'));
+            if (gpio6Val === 'servo180') {
+                flexRows += row('GPIO 6 — Servo180 Start', inputVal('gpio6S180Start') + '°');
+                flexRows += row('GPIO 6 — Servo180 End',   inputVal('gpio6S180End')   + '°');
+                flexRows += row('GPIO 6 — Servo180 Duration', inputVal('gpio6S180Duration') + ' ms');
+            } else if (gpio6Val === 'servo360') {
+                flexRows += row('GPIO 6 — Servo360 Speed',    inputVal('gpio6S360Speed'));
+                flexRows += row('GPIO 6 — Servo360 Duration', inputVal('gpio6S360Duration') + ' ms');
+            }
+            flexRows += row('GPIO 7 Mode', selText('gpio7Mode'));
+            if (gpio7Val === 'servo180') {
+                flexRows += row('GPIO 7 — Servo180 Start', inputVal('gpio7S180Start') + '°');
+                flexRows += row('GPIO 7 — Servo180 End',   inputVal('gpio7S180End')   + '°');
+                flexRows += row('GPIO 7 — Servo180 Duration', inputVal('gpio7S180Duration') + ' ms');
+            } else if (gpio7Val === 'servo360') {
+                flexRows += row('GPIO 7 — Servo360 Speed',    inputVal('gpio7S360Speed'));
+                flexRows += row('GPIO 7 — Servo360 Duration', inputVal('gpio7S360Duration') + ' ms');
+            }
+            if (gpio6Val !== 'no' || gpio7Val !== 'no') sections += section('Flex Channels (GPIO 6 / 7)', flexRows);
+
+            if (thresholdKeyVal) {
+                sections += section('Threshold Mode',
+                    row('Wallet Invoice/Read Key',       thresholdKeyVal) +
+                    row('Threshold Value (satoshi)',      inputVal('thresholdAmount')) +
+                    row('GPIO Pin',                       inputVal('thresholdPin')) +
+                    row('Control Time (ms)',              inputVal('thresholdTime')) +
+                    row('LNURL / Lightning Address',      inputVal('thresholdLnurl'))
+                );
+            }
+
+            const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
+                '<title>ZapBox C3 Config &ndash; ' + ts + '</title>' +
+                '<style>' +
+                'body{font-family:Arial,sans-serif;font-size:13px;color:#222;margin:30px;max-width:800px;}' +
+                '.hdr{border-bottom:2px solid #f7931a;padding-bottom:12px;margin-bottom:20px;}' +
+                '.hdr h1{font-size:20px;margin:0 0 4px 0;}' +
+                '.hdr .fw{color:#333;font-size:12px;margin:5px 0 0 0;}' +
+                '.params-title{font-size:16px;font-weight:bold;margin:22px 0 6px 0;border-bottom:2px solid #f7931a;padding-bottom:4px;}' +
+                'h3.sec{font-size:13px;font-weight:bold;margin:18px 0 0 0;padding:4px 8px;background:#f0f0f0;border-left:3px solid #f7931a;}' +
+                'table.pt{width:100%;border-collapse:collapse;margin-bottom:2px;}' +
+                'table.pt td{padding:4px 8px;border-bottom:1px solid #eee;vertical-align:top;}' +
+                'td.lbl{width:42%;color:#555;font-size:12px;}' +
+                'td.val{font-weight:bold;font-size:12px;word-break:break-all;}' +
+                '.ftr{margin-top:30px;border-top:1px solid #ccc;padding-top:8px;color:#888;font-size:11px;}' +
+                '@media print{body{margin:12mm;}h3.sec{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}' +
+                '</style></head><body>' +
+                '<div class="hdr">' +
+                '<h1>ZAPBOX&#x26A1;&#xFE0F; WEB INSTALLER (ESP32-C3-21-1)</h1>' +
+                '<div class="fw"><strong>Firmware selected:</strong> ' + fwSelected + '</div>' +
+                '</div>' +
+                '<div class="params-title">Parameter Overview</div>' +
+                sections +
+                '<div class="ftr">Created: ' + ts + ' &middot; ZapBox Web Installer &middot; ' + window.location.href + '</div>' +
+                '</body></html>';
+
             const w = window.open('', '_blank');
-            w.document.write('<pre>' + out + '</pre>');
-            w.print();
+            if (w) { w.document.write(html); w.document.close(); }
         }
 
         function openHelpModal()  { document.getElementById('help-image-modal').style.display = 'flex'; }

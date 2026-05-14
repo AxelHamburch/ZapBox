@@ -87,15 +87,15 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     Serial.println("[SPECIAL] Pin 13 will be controlled in parallel to Pin 12 (Single mode)");
   }
 
-  // ESP32-C3-21-1: GPIO5 (SSR) always fires together with GPIO4 (Relay)
+  // ESP32-C3-21-1: GPIO6/GPIO7 relay-mode channels fire together with GPIO4
   #ifdef BOARD_ESP32C3_21_1
-  int parallelSsrPin = (pin == PIN_RELAY) ? PIN_SSR : -1;
-  if (parallelSsrPin >= 0) {
-    pinMode(parallelSsrPin, OUTPUT);
-    Serial.printf("[SPECIAL] GPIO%d (SSR) will be controlled in parallel to GPIO%d (Relay)\n", parallelSsrPin, pin);
-  }
+  bool c3FlexCh01Active = (pin == PIN_RELAY && c3FlexConfig.gpio6Relay);
+  bool c3FlexCh02Active = (pin == PIN_RELAY && c3FlexConfig.gpio7Relay);
+  if (c3FlexCh01Active) Serial.printf("[SPECIAL] GPIO%d (flex CH01 relay) will be controlled in parallel to GPIO%d\n", PIN_FLEX_CH01, pin);
+  if (c3FlexCh02Active) Serial.printf("[SPECIAL] GPIO%d (flex CH02 relay) will be controlled in parallel to GPIO%d\n", PIN_FLEX_CH02, pin);
   #else
-  int parallelSsrPin = -1;
+  bool c3FlexCh01Active = false;
+  bool c3FlexCh02Active = false;
   #endif
   
   // Relay output mode: GPIO 22/23 switch together with Pin 12 (headless only)
@@ -115,7 +115,8 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
       if (parallelPin13) {
         digitalWrite(13, LOW);
       }
-      if (parallelSsrPin >= 0) digitalWrite(parallelSsrPin, LOW);
+      if (c3FlexCh01Active) digitalWrite(PIN_FLEX_CH01, LOW);
+      if (c3FlexCh02Active) digitalWrite(PIN_FLEX_CH02, LOW);
       #if !ENABLE_DISPLAY
       if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
       if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
@@ -130,7 +131,8 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     if (parallelPin13) {
       digitalWrite(13, HIGH);
     }
-    if (parallelSsrPin >= 0) digitalWrite(parallelSsrPin, HIGH);
+    if (c3FlexCh01Active) digitalWrite(PIN_FLEX_CH01, HIGH);
+    if (c3FlexCh02Active) digitalWrite(PIN_FLEX_CH02, HIGH);
     #if !ENABLE_DISPLAY
     if (relayOut1) digitalWrite(PIN_SENSOR_1, HIGH);
     if (relayOut2) digitalWrite(PIN_SENSOR_2, HIGH);
@@ -147,7 +149,8 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
         if (parallelPin13) {
           digitalWrite(13, LOW);
         }
-        if (parallelSsrPin >= 0) digitalWrite(parallelSsrPin, LOW);
+        if (c3FlexCh01Active) digitalWrite(PIN_FLEX_CH01, LOW);
+        if (c3FlexCh02Active) digitalWrite(PIN_FLEX_CH02, LOW);
         #if !ENABLE_DISPLAY
         if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
         if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
@@ -171,7 +174,8 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     if (parallelPin13) {
       digitalWrite(13, LOW);
     }
-    if (parallelSsrPin >= 0) digitalWrite(parallelSsrPin, LOW);
+    if (c3FlexCh01Active) digitalWrite(PIN_FLEX_CH01, LOW);
+    if (c3FlexCh02Active) digitalWrite(PIN_FLEX_CH02, LOW);
     #if !ENABLE_DISPLAY
     if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
     if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);

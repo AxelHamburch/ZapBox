@@ -557,9 +557,53 @@ void readFiles()
         LOG_INFO("Config", "===========================");
       }
 #else
-      // Headless version: Index 17 = mode ("servo180"/"servo360"), no pin13Mode string.
-      // Servo 1 params (Pin 12, 180° positional) stored directly at indices 24/25/26.
-      // Servo 2 params (Pin 12, 360° continuous) stored at indices 27/28.
+      // Headless version (esp32dev / esp32-c3-21-1):
+#ifdef BOARD_ESP32C3_21_1
+      // ESP32-C3-21-1: GPIO6 and GPIO7 flex channel modes (indices 24/25)
+      // and their servo params (indices 26-35).
+      {
+        auto parseFlexMode = [](const String& m, bool& relay, bool& s180, bool& s360,
+                                 bool& stop, bool& mon, bool& lvl) {
+          relay = (m == "relay");
+          s180  = (m == "servo180");
+          s360  = (m == "servo360");
+          stop  = (m == "yes");
+          mon   = (m == "monitor");
+          lvl   = (m == "level");
+        };
+        c3FlexConfig.gpio6Mode = readStr(24);
+        parseFlexMode(c3FlexConfig.gpio6Mode, c3FlexConfig.gpio6Relay, c3FlexConfig.gpio6Servo180,
+                      c3FlexConfig.gpio6Servo360, c3FlexConfig.gpio6SensorStop,
+                      c3FlexConfig.gpio6SensorMonitor, c3FlexConfig.gpio6SensorLevel);
+        if (c3FlexConfig.gpio6Servo180) {
+          c3FlexConfig.gpio6S180Start    = readInt(26, 0, 180, 0);
+          c3FlexConfig.gpio6S180End      = readInt(27, 0, 180, 0);
+          c3FlexConfig.gpio6S180Duration = readInt(28, 0, 10000, 0);
+        }
+        if (c3FlexConfig.gpio6Servo360) {
+          c3FlexConfig.gpio6S360Speed    = readInt(29, 0, 180, 0);
+          c3FlexConfig.gpio6S360Duration = readInt(30, 0, 10000, 0);
+        }
+        c3FlexConfig.gpio7Mode = readStr(25);
+        parseFlexMode(c3FlexConfig.gpio7Mode, c3FlexConfig.gpio7Relay, c3FlexConfig.gpio7Servo180,
+                      c3FlexConfig.gpio7Servo360, c3FlexConfig.gpio7SensorStop,
+                      c3FlexConfig.gpio7SensorMonitor, c3FlexConfig.gpio7SensorLevel);
+        if (c3FlexConfig.gpio7Servo180) {
+          c3FlexConfig.gpio7S180Start    = readInt(31, 0, 180, 0);
+          c3FlexConfig.gpio7S180End      = readInt(32, 0, 180, 0);
+          c3FlexConfig.gpio7S180Duration = readInt(33, 0, 10000, 0);
+        }
+        if (c3FlexConfig.gpio7Servo360) {
+          c3FlexConfig.gpio7S360Speed    = readInt(34, 0, 180, 0);
+          c3FlexConfig.gpio7S360Duration = readInt(35, 0, 10000, 0);
+        }
+        LOG_INFO("Config", String("C3 GPIO6 mode: ") + c3FlexConfig.gpio6Mode);
+        LOG_INFO("Config", String("C3 GPIO7 mode: ") + c3FlexConfig.gpio7Mode);
+      }
+#else
+      // Classic headless (esp32dev): Index 17 = mode ("servo180"/"servo360").
+      // Servo 1 params (Pin 12, 180° positional) at indices 24/25/26.
+      // Servo 2 params (Pin 12, 360° continuous) at indices 27/28.
       if (multiChannelConfig.mode == "servo180") {
         servoConfig.servo1Start    = readInt(24, 0, 180, 0);
         servoConfig.servo1End      = readInt(25, 0, 180, 0);
@@ -585,14 +629,17 @@ void readFiles()
         servoConfig.servo2Speed    = 0;
         servoConfig.servo2Duration = 0;
       }
-#endif
+#endif  // BOARD_ESP32C3_21_1
+#endif  // ENABLE_DISPLAY
 
-      // Index 30: relay activation mode — same for both Display and Headless
-      // ("one-for-all"/"relay1"/"both"/"off")
+      // Index 30: relay activation mode — for Display and headless esp32dev only
+      // (On C3, idx 30 = gpio6S360Duration — relay mode not applicable for single-channel)
+      #ifndef BOARD_ESP32C3_21_1
       {
         String sr = readStr(30);
         if (sr.length() > 0) servoConfig.relayMode = sr;
       }
+      #endif
     }
 
     // Read GPIO 3 function configuration (index 37)
@@ -1129,6 +1176,13 @@ void setup()
   if (multiChannelConfig.mode == "servo" || multiChannelConfig.mode == "servo180" || multiChannelConfig.mode == "servo360") {
     initServos();
   }
+#ifdef BOARD_ESP32C3_21_1
+  // C3: init flex channel servos independently of multiChannelConfig.mode
+  else if (c3FlexConfig.gpio6Servo180 || c3FlexConfig.gpio6Servo360 ||
+           c3FlexConfig.gpio7Servo180 || c3FlexConfig.gpio7Servo360) {
+    initServos();
+  }
+#endif
 
 #if !ENABLE_DISPLAY
   // Vending machine sensor / relay-output init (headless — GPIO 22/23)
@@ -1177,6 +1231,33 @@ void setup()
     digitalWrite(p, LOW);
   }
   Serial.println("[RELAY] Relay channels initialized");
+
+  // ESP32-C3-21-1: initialize GPIO6/GPIO7 flex channels based on configured mode
+  #ifdef BOARD_ESP32C3_21_1
+  // GPIO5 — status LED (initialized as OUTPUT, driven by existing LED logic)
+  pinMode(PIN_LED_BUTTON_LED, OUTPUT);
+  digitalWrite(PIN_LED_BUTTON_LED, LOW);
+  Serial.printf("[RELAY] GPIO%d (status LED) initialized\n", PIN_LED_BUTTON_LED);
+  // GPIO6 / GPIO7 — mode-dependent
+  auto initFlexPin = [](int gpio, bool isActor, bool isSensor) {
+    if (isSensor) {
+      pinMode(gpio, INPUT_PULLUP);
+      Serial.printf("[FLEX] GPIO%d configured as INPUT_PULLUP (sensor)\n", gpio);
+    } else if (isActor) {
+      pinMode(gpio, OUTPUT);
+      digitalWrite(gpio, LOW);
+      Serial.printf("[FLEX] GPIO%d configured as OUTPUT (actor)\n", gpio);
+    } else {
+      Serial.printf("[FLEX] GPIO%d: no function (skipped)\n", gpio);
+    }
+  };
+  initFlexPin(PIN_FLEX_CH01,
+    c3FlexConfig.gpio6Relay,  // servo pins already configured by initServos() — skip OUTPUT override
+    c3FlexConfig.gpio6SensorStop || c3FlexConfig.gpio6SensorMonitor || c3FlexConfig.gpio6SensorLevel);
+  initFlexPin(PIN_FLEX_CH02,
+    c3FlexConfig.gpio7Relay,  // servo pins already configured by initServos() — skip OUTPUT override
+    c3FlexConfig.gpio7SensorStop || c3FlexConfig.gpio7SensorMonitor || c3FlexConfig.gpio7SensorLevel);
+  #endif
 #endif
 
   initDisplayMutex(); // MUST be called before any display function (thread-safe SPI)
@@ -1190,16 +1271,19 @@ void setup()
   // probe fails.
   Wire.begin(18, 17, 100000);
 #endif
-#ifndef BOARD_ESP32C3_21_1
-  // ESP32-C3-21-1 has no touch controller and no I2C pullups — skip entirely
-  // to avoid Wire.begin() hanging the bus and triggering the watchdog.
+#ifdef BOARD_ESP32C3_21_1
+  // ESP32-C3-21-1: I2C on GPIO20 (SDA) / GPIO21 (SCL) via pin header.
+  // No touch controller on this board — only Wire bus init.
+  Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL, 100000);
+#else
+  // Other boards: touch controller initializes the Wire bus via touch.begin().
   touchState.available = touch.begin();
   if (touchState.available) {
     Serial.println("[TOUCH] ✓ Touch controller initialized successfully!");
   } else {
     Serial.println("[TOUCH] ✗ Touch controller NOT available (non-touch version)");
   }
-#endif
+#endif  // BOARD_ESP32C3_21_1 / else
 
   // IOExpander init: Wire (SDA=18, SCL=17) is now ready after touch.begin()
 #if ENABLE_DISPLAY
@@ -2981,6 +3065,17 @@ inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
   }
   #endif
 
+  #ifdef BOARD_ESP32C3_21_1
+  if (c3FlexConfig.gpio6SensorStop && digitalRead(PIN_FLEX_CH01) == LOW) {
+    Serial.printf("[FLEX] GPIO6 sensor-stop triggered after %lu ms\n", elapsed);
+    return true;
+  }
+  if (c3FlexConfig.gpio7SensorStop && digitalRead(PIN_FLEX_CH02) == LOW) {
+    Serial.printf("[FLEX] GPIO7 sensor-stop triggered after %lu ms\n", elapsed);
+    return true;
+  }
+  #endif
+
   return false;
 }
 
@@ -3260,6 +3355,35 @@ static void oneForAllActivationTask(void* pvParams) {
     digitalWrite(pin, LOW);
     Serial.printf("[OFA] Pin %d set LOW\n", pin);
   }
+#ifdef BOARD_ESP32C3_21_1
+  else if (pin == PIN_FLEX_CH01) {
+    if (c3FlexConfig.gpio6Servo180) {
+      activateServo(PIN_FLEX_CH01); // sweep start → end
+      int holdTime = fallback - c3FlexConfig.gpio6S180Duration;
+      if (holdTime > 0) {
+        unsigned long t0 = millis();
+        while (!g_ofaStop && (millis() - t0 < (unsigned long)holdTime))
+          vTaskDelay(pdMS_TO_TICKS(10));
+      }
+      deactivateServo(PIN_FLEX_CH01); // sweep end → start
+    } else if (c3FlexConfig.gpio6Servo360) {
+      activateServo(PIN_FLEX_CH01); // spin, self-stops when duration > 0
+    }
+  } else if (pin == PIN_FLEX_CH02) {
+    if (c3FlexConfig.gpio7Servo180) {
+      activateServo(PIN_FLEX_CH02);
+      int holdTime = fallback - c3FlexConfig.gpio7S180Duration;
+      if (holdTime > 0) {
+        unsigned long t0 = millis();
+        while (!g_ofaStop && (millis() - t0 < (unsigned long)holdTime))
+          vTaskDelay(pdMS_TO_TICKS(10));
+      }
+      deactivateServo(PIN_FLEX_CH02);
+    } else if (c3FlexConfig.gpio7Servo360) {
+      activateServo(PIN_FLEX_CH02);
+    }
+  }
+#endif
 
   vTaskDelete(nullptr);
 }
@@ -3409,6 +3533,27 @@ static void processNormalPayment(int pin, int duration)
       }
     }
   }
+  // C3: launch flex channel servo tasks concurrently with the main payment action
+  #ifdef BOARD_ESP32C3_21_1
+  if (pin == PIN_RELAY) {
+    if (c3FlexConfig.gpio6Servo180 || c3FlexConfig.gpio6Servo360) {
+      OFATaskParams* p6 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+      if (p6) {
+        p6->pin = PIN_FLEX_CH01; p6->fallbackDuration = duration;
+        xTaskCreate(oneForAllActivationTask, "ofa_flex6", 4096, p6, 2, nullptr);
+        Serial.printf("[FLEX-OFA] Launched GPIO6 servo task (dur=%d ms)\n", duration);
+      }
+    }
+    if (c3FlexConfig.gpio7Servo180 || c3FlexConfig.gpio7Servo360) {
+      OFATaskParams* p7 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+      if (p7) {
+        p7->pin = PIN_FLEX_CH02; p7->fallbackDuration = duration;
+        xTaskCreate(oneForAllActivationTask, "ofa_flex7", 4096, p7, 2, nullptr);
+        Serial.printf("[FLEX-OFA] Launched GPIO7 servo task (dur=%d ms)\n", duration);
+      }
+    }
+  }
+  #endif
 
   if (useSpecialMode) {
     Serial.println("[NORMAL] Using special mode: " + specialModeConfig.mode);
@@ -3444,12 +3589,19 @@ static void processNormalPayment(int pin, int duration)
       pinMode(pin, OUTPUT);
       digitalWrite(pin, HIGH);
       Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
-      // ESP32-C3-21-1: GPIO5 (SSR) always fires together with GPIO4 (Relay)
+      // ESP32-C3-21-1: activate GPIO6/GPIO7 flex channels together with GPIO4
       #ifdef BOARD_ESP32C3_21_1
       if (pin == PIN_RELAY) {
-        pinMode(PIN_SSR, OUTPUT);
-        digitalWrite(PIN_SSR, HIGH);
-        Serial.printf("[RELAY] GPIO%d (SSR) set HIGH (synced with GPIO%d Relay)\n", PIN_SSR, PIN_RELAY);
+        if (c3FlexConfig.gpio6Relay) {
+          pinMode(PIN_FLEX_CH01, OUTPUT);
+          digitalWrite(PIN_FLEX_CH01, HIGH);
+          Serial.printf("[RELAY] GPIO%d (flex CH01 relay) set HIGH\n", PIN_FLEX_CH01);
+        }
+        if (c3FlexConfig.gpio7Relay) {
+          pinMode(PIN_FLEX_CH02, OUTPUT);
+          digitalWrite(PIN_FLEX_CH02, HIGH);
+          Serial.printf("[RELAY] GPIO%d (flex CH02 relay) set HIGH\n", PIN_FLEX_CH02);
+        }
       }
       #endif
     }
@@ -3524,11 +3676,17 @@ static void processNormalPayment(int pin, int duration)
     } else {
       digitalWrite(pin, LOW);
       Serial.printf("[RELAY] Pin %d set LOW\n", pin);
-      // ESP32-C3-21-1: GPIO5 (SSR) off together with GPIO4 (Relay)
+      // ESP32-C3-21-1: deactivate GPIO6/GPIO7 flex channels together with GPIO4
       #ifdef BOARD_ESP32C3_21_1
       if (pin == PIN_RELAY) {
-        digitalWrite(PIN_SSR, LOW);
-        Serial.printf("[RELAY] GPIO%d (SSR) set LOW (synced with GPIO%d Relay)\n", PIN_SSR, PIN_RELAY);
+        if (c3FlexConfig.gpio6Relay) {
+          digitalWrite(PIN_FLEX_CH01, LOW);
+          Serial.printf("[RELAY] GPIO%d (flex CH01 relay) set LOW\n", PIN_FLEX_CH01);
+        }
+        if (c3FlexConfig.gpio7Relay) {
+          digitalWrite(PIN_FLEX_CH02, LOW);
+          Serial.printf("[RELAY] GPIO%d (flex CH02 relay) set LOW\n", PIN_FLEX_CH02);
+        }
       }
       #endif
     }

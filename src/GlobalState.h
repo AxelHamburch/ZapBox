@@ -239,6 +239,64 @@ struct Gpio3Config {
 extern Gpio3Config gpio3Config;
 
 // ============================================================================
+// C3 FLEX CHANNEL CONFIGURATION (ESP32-C3-21-1 only)
+// GPIO6 (PIN_FLEX_CH01) and GPIO7 (PIN_FLEX_CH02) can each be independently
+// configured as secondary actuator or sensor inputs.
+//   relay    — secondary relay output, fires together with GPIO4
+//   servo180 — 180° positional servo (0°–180°)
+//   servo360 — 360° continuous servo (speed + duration)
+//   yes      — sensor: stop relay action when triggered (INPUT_PULLUP, active LOW)
+//   monitor  — sensor: block next payment until path is cleared
+//   level    — sensor: block payments when bin is empty (HIGH = empty / no product)
+// ============================================================================
+#ifdef BOARD_ESP32C3_21_1
+struct C3FlexChannelConfig {
+  // ── GPIO6 (flex channel 1) ──────────────────────────────────────────
+  String gpio6Mode = "no";
+  bool gpio6Relay        = false;
+  bool gpio6Servo180     = false;
+  bool gpio6Servo360     = false;
+  bool gpio6SensorStop   = false;   // mode == "yes"
+  bool gpio6SensorMonitor = false;  // mode == "monitor"
+  bool gpio6SensorLevel  = false;   // mode == "level"
+  // Servo params — GPIO6 as 180° servo
+  int gpio6S180Start    = 0;
+  int gpio6S180End      = 0;
+  int gpio6S180Duration = 0;
+  // Servo params — GPIO6 as 360° servo
+  int gpio6S360Speed    = 0;
+  int gpio6S360Duration = 0;
+  // Runtime sensor state — GPIO6
+  bool gpio6Blocked  = false;   // monitor mode: product blocking output
+  bool gpio6BinEmpty = false;   // level mode: supply bin empty
+
+  // ── GPIO7 (flex channel 2) ──────────────────────────────────────────
+  String gpio7Mode = "no";
+  bool gpio7Relay        = false;
+  bool gpio7Servo180     = false;
+  bool gpio7Servo360     = false;
+  bool gpio7SensorStop   = false;
+  bool gpio7SensorMonitor = false;
+  bool gpio7SensorLevel  = false;
+  int gpio7S180Start    = 0;
+  int gpio7S180End      = 0;
+  int gpio7S180Duration = 0;
+  int gpio7S360Speed    = 0;
+  int gpio7S360Duration = 0;
+  bool gpio7Blocked  = false;
+  bool gpio7BinEmpty = false;
+
+  // ── Helpers ─────────────────────────────────────────────────────────
+  bool isAnyBlocking() const { return gpio6Blocked || gpio6BinEmpty || gpio7Blocked || gpio7BinEmpty; }
+  bool isAnySensor()   const { return gpio6SensorStop || gpio6SensorMonitor || gpio6SensorLevel ||
+                                      gpio7SensorStop || gpio7SensorMonitor || gpio7SensorLevel; }
+  bool isAnyActor()    const { return gpio6Relay || gpio6Servo180 || gpio6Servo360 ||
+                                      gpio7Relay || gpio7Servo180 || gpio7Servo360; }
+};
+extern C3FlexChannelConfig c3FlexConfig;
+#endif  // BOARD_ESP32C3_21_1
+
+// ============================================================================
 // EXTENSION / API PATH CONFIGURATION
 // ============================================================================
 
