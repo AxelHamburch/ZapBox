@@ -1603,7 +1603,7 @@ void setup()
     } else {
       SETUP_PRINT("[STARTUP] Single mode (SELECTING/OFF) - showing QR screen");
       // Show normal or special QR for single mode
-      ensureQrForPin(12);
+      ensureQrForPin(RELAY_CHANNEL_PINS[0]);
       if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
         showSpecialModeQRScreen();
       } else {
@@ -2160,7 +2160,7 @@ void loop()
                 // Already showing ticker - skip back to QR
                 Serial.println("Skip from ticker to QR (Single mode)");
                 multiChannelConfig.btcTickerActive = false;
-                ensureQrForPin(12);
+                ensureQrForPin(RELAY_CHANNEL_PINS[0]);
                 if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
                   showSpecialModeQRScreen();
                 } else {
@@ -2181,7 +2181,7 @@ void loop()
                 // Showing ticker - switch to QR on touch
                 Serial.println("Touch detected - switching from ticker to QR (ALWAYS mode)");
                 multiChannelConfig.btcTickerActive = false;
-                ensureQrForPin(12);
+                ensureQrForPin(RELAY_CHANNEL_PINS[0]);
                 if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
                   showSpecialModeQRScreen();
                 } else {
@@ -2335,7 +2335,7 @@ void loop()
               Serial.println("[SCREEN] Timeout reached - returning to Product No.1 (OFF mode - Duo/Quattro)");
               multiChannelConfig.currentProduct = 1;
               deviceState.transition(DeviceState::READY);
-              int pin = (multiChannelConfig.mode == "servo") ? servoConfig.productToPin(1) : 12;
+              int pin = (multiChannelConfig.mode == "servo") ? servoConfig.productToPin(1) : RELAY_CHANNEL_PINS[0];
               ensureQrForPin(pin);
               int pinIndex = getPinIndex(pin);
               String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
@@ -2353,7 +2353,7 @@ void loop()
             Serial.println("[SCREEN] Hiding Bitcoin ticker after ticker timeout (SELECTING mode - Single)");
             multiChannelConfig.btcTickerActive = false;
             // Show normal QR screen
-            ensureQrForPin(12);
+            ensureQrForPin(RELAY_CHANNEL_PINS[0]);
             if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
               showSpecialModeQRScreen();
             } else {
@@ -2400,7 +2400,7 @@ void loop()
                 Serial.println("[SCREEN] Timeout reached - returning to Product No.1 (SELECTING mode - Duo/Quattro)");
                 multiChannelConfig.currentProduct = 1;
                 deviceState.transition(DeviceState::READY);
-                int pin = (multiChannelConfig.mode == "servo") ? servoConfig.productToPin(1) : 12;
+                int pin = (multiChannelConfig.mode == "servo") ? servoConfig.productToPin(1) : RELAY_CHANNEL_PINS[0];
                 ensureQrForPin(pin);
                 int pinIndex = getPinIndex(pin);
                 String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)

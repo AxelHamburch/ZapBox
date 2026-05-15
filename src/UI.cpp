@@ -447,8 +447,8 @@ void redrawQRScreen() {
 
   // Single mode (1-channel)
   if (specialModeConfig.mode != "standard") {
-    // SPECIAL MODE: ensure LNURL for pin 12 is up-to-date, then show special QR
-    ensureQrForPin(12);
+    // SPECIAL MODE: ensure LNURL for primary channel is up-to-date, then show special QR
+    ensureQrForPin(RELAY_CHANNEL_PINS[0]);
     showSpecialModeQRScreen();
     multiChannelConfig.btcTickerActive = false;
     LOG_DEBUG("Display", "Special mode QR screen displayed (single mode)");
@@ -471,7 +471,7 @@ void redrawQRScreen() {
     deviceState.transition(DeviceState::READY);
     return;
   } else {
-    ensureQrForPin(12);
+    ensureQrForPin(RELAY_CHANNEL_PINS[0]);
     showQRScreen();
     LOG_DEBUG("Display", "QR screen displayed (single mode)");
     deviceState.transition(DeviceState::READY);
@@ -499,7 +499,7 @@ void showInitialScreenAfterConnections() {
       productSelectionState.showTime = millis();
     } else {
       // SELECTING or OFF: show QR screen (BoltCard reader runs in background for both-boltcard)
-      ensureQrForPin(12);
+      ensureQrForPin(RELAY_CHANNEL_PINS[0]);
       if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
         showSpecialModeQRScreen();
       } else {

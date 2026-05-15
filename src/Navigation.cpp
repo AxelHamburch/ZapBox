@@ -74,7 +74,7 @@ void navigateToNextProduct() {
       if (multiChannelConfig.btcTickerActive) {
         LOG_INFO("Navigation", "Single mode ALWAYS - Switching from ticker to QR");
         multiChannelConfig.btcTickerActive = false;
-        ensureQrForPin(12);
+        ensureQrForPin(RELAY_CHANNEL_PINS[0]);
         if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
           showSpecialModeQRScreen();
         } else {
@@ -92,7 +92,7 @@ void navigateToNextProduct() {
         // Already showing ticker - skip back to QR immediately
         LOG_INFO("Navigation", "Single mode SELECTING - Skipping from ticker to QR");
         multiChannelConfig.btcTickerActive = false;
-        ensureQrForPin(12);
+        ensureQrForPin(RELAY_CHANNEL_PINS[0]);
         if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
           showSpecialModeQRScreen();
         } else {
@@ -130,7 +130,7 @@ void navigateToNextProduct() {
     vTaskDelay(pdMS_TO_TICKS(50));
     int pin = (multiChannelConfig.mode == "servo")
               ? servoConfig.productToPin(1)
-              : 12;
+              : RELAY_CHANNEL_PINS[0];
     ensureQrForPin(pin);
     int pinIndex = getPinIndex(pin);
     String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)

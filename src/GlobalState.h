@@ -360,6 +360,9 @@ extern ProductLabels productLabels;
 // Returns -1 if pin is not a relay channel.
 inline int getPinIndex(int pin) {
   switch (pin) {
+#ifdef BOARD_ESP32C3_21_1
+    case 4:  return 0;  // ESP32-C3-21-1: GPIO4 = primary relay (CH01)
+#endif
     case 12: return 0;
     case 13: return 1;
 #if ENABLE_DISPLAY
