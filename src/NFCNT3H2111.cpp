@@ -145,25 +145,40 @@ static bool nt3hWriteNdef(const char* uri) {
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 bool nfcNT3H2111Init() {
-    // If the touch controller was not found (non-touch board), Wire may not have
-    // been initialized yet. Re-calling Wire.begin() on an already-running bus is
-    // harmless on ESP32 Arduino core, so we do it unconditionally to be safe.
+    // Wire.begin() on an already-running bus is harmless — just logs a warning.
+    // NOTE: Wire.setClock() is intentionally NOT called here. On ESP32, setClock()
+    // internally resets the I2C peripheral, which can hang the bus. 100kHz is within
+    // the NT3H2111 spec and sufficient for reliable communication.
 #if !ENABLE_DISPLAY
     Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL, 400000);
 #endif
 
-    // Probe chip with up to 3 attempts (50 ms apart).
-    // The NT3H2111 may need a moment after power-on before it ACKs on I²C.
+    // Probe chip with up to 6 attempts (150 ms apart).
+    // Brief settle so the PN532 FreeRTOS task (just created) can claim its
+    // first I2C slot before we start probing — avoids a race on the shared bus.
+    delay(300);
     uint8_t probe = 0xFF;
-    for (int attempt = 1; attempt <= 3; attempt++) {
+    for (int attempt = 1; attempt <= 6; attempt++) {
         Wire.beginTransmission(NT3H_ADDR);
         probe = Wire.endTransmission();
         if (probe == 0) break;
-        LOG_INFO("NT3H", String("Probe attempt ") + String(attempt) + "/3 failed (err=" + String(probe) + ") — retrying...");
-        delay(50);
+        LOG_INFO("NT3H", String("Probe attempt ") + String(attempt) + "/6 failed (err=" + String(probe) + ") — retrying...");
+        delay(150);
     }
     if (probe != 0) {
         LOG_WARN("NT3H", String("NT3H2111 not found at I\xC2\xB2\x43 0x55 (err=") + String(probe) + ")");
+        // I2C bus scan — log every address that ACKs to help diagnose wiring issues
+        LOG_INFO("NT3H", "Running I2C bus scan (0x01..0x7F):");
+        String found = "";
+        for (uint8_t addr = 8; addr < 128; addr++) {  // skip reserved 0x00-0x07
+            Wire.beginTransmission(addr);
+            if (Wire.endTransmission() == 0) {
+                char buf[8];
+                snprintf(buf, sizeof(buf), "0x%02X ", addr);
+                found += buf;
+            }
+        }
+        LOG_INFO("NT3H", found.length() > 0 ? ("Devices found: " + found) : "No I2C devices found on bus");
         return false;
     }
     LOG_INFO("NT3H", "NT3H2111 detected at I\xC2\xB2\x43 0x55");
@@ -171,13 +186,25 @@ bool nfcNT3H2111Init() {
     // Read block 0: verify Capability Container (bytes 12–15) and log raw bytes
     uint8_t blk0[NT3H_BLOCK_SIZE] = {};
     if (nt3hReadBlock(0x00, blk0)) {
-        char hexbuf[64];
+        char hexbuf[96];
+        // Show all 16 bytes: UID(0-7) | Lock(8-11) | CC(12-15)
         snprintf(hexbuf, sizeof(hexbuf),
-                 "%02X %02X %02X %02X %02X %02X %02X %02X | CC: %02X %02X %02X %02X",
+                 "%02X %02X %02X %02X %02X %02X %02X %02X | Lock: %02X %02X %02X %02X | CC: %02X %02X %02X %02X",
                  blk0[0], blk0[1], blk0[2], blk0[3],
                  blk0[4], blk0[5], blk0[6], blk0[7],
+                 blk0[8], blk0[9], blk0[10], blk0[11],
                  blk0[12], blk0[13], blk0[14], blk0[15]);
         LOG_INFO("NT3H", String("Block 0: ") + String(hexbuf));
+        // Read configuration register (block 0x38) — NC_REG byte 0, NS_REG byte 8
+        uint8_t cfg[NT3H_BLOCK_SIZE] = {};
+        if (nt3hReadBlock(0x38, cfg)) {
+            char cfgbuf[48];
+            snprintf(cfgbuf, sizeof(cfgbuf), "NC_REG=0x%02X NS_REG=0x%02X", cfg[0], cfg[8]);
+            LOG_INFO("NT3H", String("Config reg: ") + String(cfgbuf));
+            if (cfg[8] & 0x40) LOG_WARN("NT3H", "NS_REG: RF_LOCKED — RF session active, I2C writes may fail");
+        } else {
+            LOG_WARN("NT3H", "Config register (0x38) read failed");
+        }
         bool ccOk = (blk0[12] == CC_EXPECTED[0] &&
                      blk0[13] == CC_EXPECTED[1] &&
                      blk0[14] == CC_EXPECTED[2] &&
