@@ -1278,7 +1278,8 @@ Electrical design and housing variants, see table.
 | e946465 | Servo | Update with wide-range voltage input and NFC-plug | 
 | e947689 | Compact-Ext | Special version with external guided switching contact | 
 | e948960 | Headless Servo |  Add NFC Tag 2 module |
-| e948971 | Headless |  Add NFC Tag 2 module | 
+| e948971 | Headless |  Add NFC Tag 2 module |
+| e949393 | esp32-c3-21-1 |  Add special Hans Wurst version |
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
@@ -1312,6 +1313,7 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Servo.png](assets/electric/E-Layout-ZapBox-Servo.png)
 - [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
 - [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
+- [E-Layout-ZapBox-esp32-c3-21-1.png](assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png)
 
 Miscellaneous:
 
