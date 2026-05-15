@@ -49,7 +49,10 @@
         </noscript>
 
         <h1 style="margin-bottom: 5px;">ZAPBOX⚡️WEB INSTALLER (with Display)</h1>
-        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with LILYGO T-Display-S3. Headless version <a href="./headless/">see here</a>.</i></p>
+        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with <strong>LILYGO T-Display-S3</strong> <br>
+            (ESP32-S3 with 170x320 ST7789 display; touch and non-touch variants).<br><br>
+            Other web installers: <br>
+            <a href="./headless/">Headless</a>&nbsp;|&nbsp;<a href="./touch3.5/">Touch 3.5"</a>&nbsp;|&nbsp;<a href="./c3/">ESP32-C3-21-1</a>.</i></p>
         <div style="float: right; text-align: center; margin: 0 0 10px 20px;">
             <a href="./assets/e-layout-viewer.html" target="_blank">
                 <img src="./assets/E-Layout-ZapBox-Compact.webp" alt="E-Layout ZapBox Compact" style="max-width: 167px; width: 100%; border-radius: 6px; display: block;">
@@ -660,14 +663,20 @@
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
         <!-- I/O-Expander Section (PCF8574) -->
-            <div class="input-wrapper">
-                <div>
+            <div class="input-wrapper" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                <div style="flex: 2; min-width: 280px;">
                     <label for="ioExpander">I/O-Expander (PCF8574)</label>
                     <select name="ioExpander" id="ioExpander">
                         <option value="no" selected>No (default)</option>
                         <option value="yes">Yes - CH05–CH12</option>
                     </select>
                     <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I2C (SDA=GPIO18, SCL=GPIO17) – address 0x20 (A0/A1/A2 all to GND)</p>
+                </div>
+                <div style="flex: 1; max-width: 260px; margin-top: 2px; text-align: right;">
+                    <a href="./assets/IO-Expander-PCF8574.webp" target="_blank" rel="noopener noreferrer">
+                        <img src="./assets/IO-Expander-PCF8574.webp" alt="I/O-Expander PCF8574 wiring" style="width: 100%; max-width: 240px; height: auto; border-radius: 6px; display: inline-block;">
+                    </a>
+                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #888;"><i>PCF8574 wiring example</i></p>
                 </div>
             </div>
 

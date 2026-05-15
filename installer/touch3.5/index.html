@@ -55,8 +55,8 @@
         </noscript>
 
         <h1 style="margin-bottom: 5px;">ZAPBOX⚡️WEB INSTALLER (Touch 3.5")</h1>
-        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with <strong>JC3248W535C</strong> (ESP32-S3, 3.5" QSPI touch display, 480×320).</br></br>
-            Alternative Web Installer: <br>
+        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with <strong>JC3248W535C</strong> (ESP32-S3, 3.5" QSPI touch display, 480×320).<br><br>
+            Other web installers: <br>
             <a href="../">T-Display-S3</a>&nbsp;|&nbsp;<a href="../headless/">Headless</a>&nbsp;|&nbsp;<a href="../c3/">ESP32-C3-21-1</a></i></p>
         <div style="margin-bottom: 30px;"></div>
 
@@ -407,6 +407,121 @@
             <p style="margin-top: 5px; color: #888;"><i><b>Mobile Phones (NFC Tag 2 / NT3H2111, I²C 0x55)</b> — Passive NFC tag: unlike the PN532, the NT3H2111 generates no field of its own. It is a true NTAG chip that delivers the LNURL autonomously as soon as the active field of an approaching mobile phone is detected. The ZapBox writes the current LNURL to the chip via I²C — the ESP32 is not involved during the tap. Compatible with Android NFC Tools and wallets that support LNURL via NFC (e.g. Phoenix). No configuration required — auto-detected at startup.</i></p>
             <p style="margin-top: 5px; color: #888;"><i>Both modules operate independently and in parallel on the shared I²C bus (GPIO 17 SCL / GPIO 18 SDA — same bus as the touch controller). If a module is not connected, it is simply skipped — normal operation is not affected.</i></p>
 
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- I/O-Expander Section (PCF8574) -->
+            <div class="input-wrapper" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                <div style="flex: 2; min-width: 280px;">
+                    <label for="ioExpander">I/O-Expander (PCF8574)</label>
+                    <select name="ioExpander" id="ioExpander">
+                        <option value="no" selected>No (default)</option>
+                        <option value="yes">Yes - CH05–CH12 (virtual pins 200–207)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I2C (SDA=GPIO18, SCL=GPIO17) – address 0x20 (A0/A1/A2 all to GND)</p>
+                </div>
+                <div style="flex: 1; max-width: 260px; margin-top: 2px; text-align: right;">
+                    <a href="../assets/IO-Expander-PCF8574.webp" target="_blank" rel="noopener noreferrer">
+                        <img src="../assets/IO-Expander-PCF8574.webp" alt="I/O-Expander PCF8574 wiring" style="width: 100%; max-width: 240px; height: auto; border-radius: 6px; display: inline-block;">
+                    </a>
+                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #888;"><i>PCF8574 wiring example</i></p>
+                </div>
+            </div>
+
+            <!-- I/O-Expander channel configuration (visible only when "Yes" is selected) -->
+            <div id="ioExpanderChannels" style="display: none; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
+                <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">I/O-Expander Channel Configuration (CH05–CH12)</p>
+                <p style="margin: 0 0 15px 0; color: #888; font-size: 11px;"><i>
+                    Virtual channels CH05–CH12 are mapped to PCF8574 ports P0–P7 (virtual pins 200–207).<br>
+                    Connect PCF8574 to I2C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V), address <strong>0x20</strong>.<br>
+                    Relay outputs: low-level trigger (active LOW).<br>
+                    Sensor inputs: NPN type, active LOW (pulls pin to GND when active).
+                </i></p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px;">
+                    <div>
+                        <label for="ch05Mode">CH05 (PCF8574 P0)</label>
+                        <select name="ch05Mode" id="ch05Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="ch06Mode">CH06 (PCF8574 P1)</label>
+                        <select name="ch06Mode" id="ch06Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label for="ch07Mode">CH07 (PCF8574 P2)</label>
+                        <select name="ch07Mode" id="ch07Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label for="ch08Mode">CH08 (PCF8574 P3)</label>
+                        <select name="ch08Mode" id="ch08Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label for="ch09Mode">CH09 (PCF8574 P4)</label>
+                        <select name="ch09Mode" id="ch09Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label for="ch10Mode">CH10 (PCF8574 P5)</label>
+                        <select name="ch10Mode" id="ch10Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label for="ch11Mode">CH11 (PCF8574 P6)</label>
+                        <select name="ch11Mode" id="ch11Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label for="ch12Mode">CH12 (PCF8574 P7)</label>
+                        <select name="ch12Mode" id="ch12Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay function (low-level trigger)</option>
+                            <option value="sensor-stop">Sensor - Stop the advance</option>
+                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor - Level monitoring</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- Error Detection Section -->
@@ -566,6 +681,7 @@
         const screensaver     = document.getElementById('screensaver');
         const deepSleep       = document.getElementById('deepSleep');
         const deepSleepTime   = document.getElementById('deepSleepTime');
+        const ioExpander      = document.getElementById('ioExpander');
 
         // Show/hide custom frequency/duty cycle inputs
         specialMode.addEventListener('change', function() {
@@ -605,7 +721,33 @@
             { "name": "externalButton",  "value": "no" },
             // index 22: ambientLight — not used on JC3248W535C, placeholder keeps firmware indices aligned
             { "name": "ambientLight",    "value": "off" },
-            { "name": "deepSleepTime",   "value": "30" }
+            { "name": "deepSleepTime",   "value": "30" },
+            // indices 24-37: placeholders to keep firmware index alignment for display builds
+            { "name": "pin13Mode",             "value": "off" },
+            { "name": "pin13Servo180Start",    "value": "0" },
+            { "name": "pin13Servo180End",      "value": "0" },
+            { "name": "pin13Servo180Duration", "value": "0" },
+            { "name": "pin13Servo360Speed",    "value": "0" },
+            { "name": "pin13Servo360Duration", "value": "0" },
+            { "name": "servoRelayMode",        "value": "one-for-all" },
+            { "name": "pin10Mode",             "value": "off" },
+            { "name": "pin10Servo180Start",    "value": "0" },
+            { "name": "pin10Servo180End",      "value": "0" },
+            { "name": "pin10Servo180Duration", "value": "0" },
+            { "name": "pin10Servo360Speed",    "value": "0" },
+            { "name": "pin10Servo360Duration", "value": "0" },
+            { "name": "gpio3Function",         "value": "no" },
+            // index 38 – I/O-Expander enabled flag
+            { "name": "ioExpander",            "value": "no" },
+            // indices 39-46 – CH05-CH12 modes
+            { "name": "ch05Mode", "value": "off" },
+            { "name": "ch06Mode", "value": "off" },
+            { "name": "ch07Mode", "value": "off" },
+            { "name": "ch08Mode", "value": "off" },
+            { "name": "ch09Mode", "value": "off" },
+            { "name": "ch10Mode", "value": "off" },
+            { "name": "ch11Mode", "value": "off" },
+            { "name": "ch12Mode", "value": "off" }
         ];
 
         // Setup Web Serial using serial.js
@@ -995,7 +1137,16 @@
                 "activationTime":  (document.getElementById('activationTime') || {value: "5"}).value,
                 "deepSleepTime":   deepSleepTime.value,
                 "btcTicker":       (document.getElementById('btcTicker') || {value: "selecting"}).value,
-                "currency":        (document.getElementById('currency') || {value: "USD"}).value
+                "currency":        (document.getElementById('currency') || {value: "USD"}).value,
+                "ioExpander":      (document.getElementById('ioExpander') || {value: "no"}).value,
+                "ch05Mode":        (document.getElementById('ch05Mode') || {value: "off"}).value,
+                "ch06Mode":        (document.getElementById('ch06Mode') || {value: "off"}).value,
+                "ch07Mode":        (document.getElementById('ch07Mode') || {value: "off"}).value,
+                "ch08Mode":        (document.getElementById('ch08Mode') || {value: "off"}).value,
+                "ch09Mode":        (document.getElementById('ch09Mode') || {value: "off"}).value,
+                "ch10Mode":        (document.getElementById('ch10Mode') || {value: "off"}).value,
+                "ch11Mode":        (document.getElementById('ch11Mode') || {value: "off"}).value,
+                "ch12Mode":        (document.getElementById('ch12Mode') || {value: "off"}).value
             };
             for (const entry of config) {
                 if (map.hasOwnProperty(entry.name)) {
@@ -1003,6 +1154,34 @@
                 }
             }
         }
+
+        function updateIOExpanderFieldState() {
+            const enabled = (document.getElementById('ioExpander') || { value: 'no' }).value === 'yes';
+            const channels = document.getElementById('ioExpanderChannels');
+            if (channels) channels.style.display = enabled ? 'block' : 'none';
+        }
+
+        if (ioExpander) {
+            ioExpander.addEventListener('change', (event) => {
+                const ioCfg = config.find(c => c.name === 'ioExpander');
+                if (ioCfg) ioCfg.value = event.target.value;
+                updateIOExpanderFieldState();
+            });
+        }
+
+        (function() {
+            const ioChIds = ['ch05Mode', 'ch06Mode', 'ch07Mode', 'ch08Mode', 'ch09Mode', 'ch10Mode', 'ch11Mode', 'ch12Mode'];
+            ioChIds.forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('change', (event) => {
+                    const cfg = config.find(c => c.name === id);
+                    if (cfg) cfg.value = event.target.value;
+                });
+            });
+        })();
+
+        updateIOExpanderFieldState();
 
         function printLogs() {
             const installerTitle = 'ZAPBOX\u26A1 WEB INSTALLER (Touch 3.5")';
