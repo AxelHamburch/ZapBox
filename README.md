@@ -12,8 +12,10 @@ The Lightning ZapBox is a compact device that controls a USB output via Bitcoin 
 Ease of use, verifiability and reliability are paramount – all in one package.
 
 **Supported Hardware:**
-- **LilyGo T-Display-S3**: Full-featured version with integrated display (Touch and Non-Touch variants)
+- **LilyGo T-Display-S3**: Full-featured version with integrated 170x320 display (Touch and Non-Touch variants)
+- **JC3248W535C Touch 3.5"**: ESP32-S3 variant with 3.5" QSPI touch display (480×320) for larger interface
 - **ESP32 Dev Module**: Headless version for embedded applications (no display, status LED only)
+- **ESP32-C3-21-1**: Compact headless variant with ultra-low power consumption and minimal footprint
 
 Detailed descriptions, images and application examples can be found at [zapbox.space](https://zapbox.space/), [ereignishorizont.xyz](https://ereignishorizont.xyz/en/zapbox-en/) or in the [white paper](https://github.com/AxelHamburch/ZapBox/tree/main/assets/white-paper).
 
@@ -90,6 +92,45 @@ Device String (switchStr)
   - Supports **Bolt Cards** (NTAG424 DNA) and **NTAG21x (213/215/216) / LNURL tags**
   - Tap-to-pay with automatic card removal detection and payment timeout
   - Note: The LNbits [ZapBox extension](https://github.com/AxelHamburch/zapbox_extension) is required for the NFC function.
+
+### JC3248W535C Touch 3.5" (Large Display Version)
+
+- **Microcontroller**: ESP32-S3-WROOM-1 with integrated 3.5" QSPI touch display
+- **Display**: 480×320 pixel AXS15231B IPS QSPI display with capacitive multi-touch
+  - Higher resolution than T-Display-S3 for expanded UI space
+  - Landscape orientation (480 wide × 320 tall)
+  - Fast QSPI interface via 4-lane parallel data bus
+- **Memory**: 16MB Flash, 8MB OPI PSRAM
+- **Relay Module**: Switches the USB output
+- **USB Output Socket**: Provides 5V for connected devices
+- **Touch Interface**: Multi-touch enabled — 5 rapid taps anywhere on screen + 2-second hold to enter Config mode
+- **3-Position Switch**:
+  - **Position 0**: Everything off
+  - **Position 1**: Output permanently on (bypass mode)
+  - **Position A**: Automatic mode - ESP32 active, waiting for Lightning payment
+- **PN532 NFC Reader** (Optional): For contactless NFC card/tag payment
+  - Connected via I2C bus
+  - Supports **Bolt Cards** (NTAG424 DNA) and **NTAG21x (213/215/216) / LNURL tags**
+  - Tap-to-pay with automatic card removal detection
+  - Requires LNbits [ZapBox extension](https://github.com/AxelHamburch/zapbox_extension) for full NFC support
+- **Use Cases**: Larger payment terminals, public vending installations, kiosk-style deployments, high-visibility applications
+
+### ESP32-C3-21-1 (Compact Headless Version)
+
+- **Microcontroller**: ESP32-C3-WROOM-02 — Single-core 160 MHz RISC-V processor
+- **Memory**: 4MB Flash, 400KB SRAM
+- **Operation**: Fully functional headless mode - all core features work via serial configuration
+- **Status LED**: GPIO 21 with distinct blink patterns for network and payment status
+- **Compact Footprint**: Smallest ZapBox variant — ideal for tight spaces and minimal housing
+- **Ultra-Low Power**: RISC-V architecture consumes less power than Xtensa-based ESP32
+- **NFC Support**: Optional PN532 reader support for contactless payments (GPIO 17/18 I2C, GPIO 4 IRQ)
+- **Use Cases**: 
+  - Extremely space-constrained installations (embedded relays, pole mounts)
+  - Battery-powered applications
+  - High-volume cost-sensitive deployments
+  - IoT/automation integrations
+- **Configuration**: Serial terminal for WiFi, LNbits, and device settings
+- **Advantages**: Lowest cost, smallest PCB footprint, efficient single-core processor, native Bluetooth support (not currently used)
 
 ### ESP32 Dev Module (Headless Version)
 
@@ -193,18 +234,20 @@ Device String (switchStr)
 
 #### Key Differences Between Variants
 
-| Feature | T-Display-S3 | ESP32 Dev |
-|---------|--------------|-----------|
-| Display | LCD (170x320) | None (Headless) |
-| Touch | CST816S/CST328 | N/A |
-| External LED Button | Supported (GPIO 43/44) | N/A |
-| Light Barrier | Supported (GPIO 2) | Dual sensors (GPIO 22/23) |
-| Status Indication | Display + LED | LED only (GPIO 21 and onboard LED GPIO 2) |
-| Action LED | N/A | GPIO 13 (ACTION LED – reserved, always switches with GPIO 12) |
-| NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 4, 17, 18) |
-| Power Consumption | ~150-250mA | Lower (no display overhead) |
-| Configuration Method | Web Installer + Serial | Web Installer + Serial |
-| Deep Sleep Wake | GPIO 0, 14 (not 43/44) | N/A |
+| Feature | T-Display-S3 | JC3248W535C Touch 3.5" | ESP32 Dev | ESP32-C3-21-1 |
+|---------|--------------|------------------------|-----------|--------------|
+| Processor | ESP32-S3 Dual-Core | ESP32-S3 Dual-Core | ESP32 Dual-Core | ESP32-C3 Single-Core RISC-V |
+| Display | LCD (170x320) | QSPI Touch (480x320) | None (Headless) | None (Headless) |
+| Memory | 16MB Flash, 8MB PSRAM | 16MB Flash, 8MB OPI PSRAM | 4MB Flash, 512KB SRAM | 4MB Flash, 400KB SRAM |
+| Touch | CST816S/CST328 | AXS15231B (capacitive) | N/A | N/A |
+| External LED Button | Supported (GPIO 43/44) | N/A | N/A | N/A |
+| Status Indication | Display + LED | Display + LED | LED only (GPIO 21) | LED only (GPIO 21) |
+| NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 1, 17, 18) | Yes (GPIO 4, 17, 18) | Yes (GPIO 4, 17, 18) |
+| Power Consumption | ~150-250mA | ~200-350mA | ~100-150mA | ~80-120mA (single-core) |
+| Flash Memory | 16MB | 16MB | 4MB | 4MB |
+| Relay Channels | 4 (GPIO 12,13,10,11) | 4 (GPIO 12,13,10,11) | 12 extended channels | 4 base channels |
+| Configuration | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial |
+| Typical Use Case | General retail vending | Large kiosk terminals | Embedded installations | Space-critical, low-power apps |
 
 ### Vending Machine Light Barrier (Optional)
 
@@ -1210,7 +1253,7 @@ Electrical design and housing variants, see table.
 
 -> Find all versions here: [./assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
-### Electrical layout / circuit diagram (Inkscape)
+### Electrical layout / circuit diagram (Inkscape)  
 
 | Version | Type | Comment |
 |---------|------|---------|
