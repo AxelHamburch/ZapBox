@@ -11,6 +11,7 @@
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 static constexpr uint8_t  NT3H_ADDR        = 0x55;  // 7-bit I²C address
+static constexpr uint8_t  NT3H_ADDR_DEFAULT_BYTE = 0xAA; // byte0 in block0 for address 0x55
 static constexpr uint8_t  NT3H_BLOCK_SIZE  = 16;    // bytes per I²C block
 static constexpr uint8_t  NT3H_USER_START  = 0x01;  // first user-memory block
 static constexpr uint32_t NT3H_WRITE_DELAY = 20;    // ms — NT3H2111 needs ≤5 ms per 4-byte NFC page; 16-byte I²C block = 4 pages → ≤20 ms
@@ -27,33 +28,71 @@ static char lastWritten[300] = "";  // last URL written to chip
 // ─── I²C helpers ─────────────────────────────────────────────────────────────
 
 /** Write 16 bytes to one NT3H2111 block. */
-static bool nt3hWriteBlock(uint8_t block, const uint8_t data[NT3H_BLOCK_SIZE]) {
-    Wire.beginTransmission(NT3H_ADDR);
+static bool nt3hProbeAddr(uint8_t addr) {
+    Wire.beginTransmission(addr);
+    return Wire.endTransmission() == 0;
+}
+
+/** Write 16 bytes to one NT3H2111 block at a given I2C address. */
+static bool nt3hWriteBlockAtAddr(uint8_t addr, uint8_t block, const uint8_t data[NT3H_BLOCK_SIZE]) {
+    Wire.beginTransmission(addr);
     Wire.write(block);
     Wire.write(data, NT3H_BLOCK_SIZE);
     uint8_t err = Wire.endTransmission();
     if (err != 0) {
-        LOG_WARN("NT3H", String("writeBlock b=") + String(block) + " err=" + String(err));
+        LOG_WARN("NT3H", String("writeBlock addr=0x") + String(addr, HEX) + " b=" + String(block) + " err=" + String(err));
         return false;
     }
     delay(NT3H_WRITE_DELAY);
     return true;
 }
 
+/** Write 16 bytes to one NT3H2111 block at default address. */
+static bool nt3hWriteBlock(uint8_t block, const uint8_t data[NT3H_BLOCK_SIZE]) {
+    return nt3hWriteBlockAtAddr(NT3H_ADDR, block, data);
+}
+
 /** Read 16 bytes from one NT3H2111 block.
  * Uses two separate I²C transactions (WRITE block addr + STOP, then READ)
  * instead of repeated-start, which is unreliable on some ESP32 Wire builds. */
-static bool nt3hReadBlock(uint8_t block, uint8_t out[NT3H_BLOCK_SIZE]) {
+static bool nt3hReadBlockAtAddr(uint8_t addr, uint8_t block, uint8_t out[NT3H_BLOCK_SIZE]) {
     // Transaction 1: write block address, then STOP
-    Wire.beginTransmission(NT3H_ADDR);
+    Wire.beginTransmission(addr);
     Wire.write(block);
     if (Wire.endTransmission(true) != 0) return false;  // true = STOP
     delayMicroseconds(200);  // brief settle before re-addressing
     // Transaction 2: read 16 bytes
-    uint8_t n = Wire.requestFrom((uint8_t)NT3H_ADDR, (uint8_t)NT3H_BLOCK_SIZE);
+    uint8_t n = Wire.requestFrom((uint8_t)addr, (uint8_t)NT3H_BLOCK_SIZE);
     if (n != NT3H_BLOCK_SIZE) return false;
     for (uint8_t i = 0; i < NT3H_BLOCK_SIZE; i++) out[i] = Wire.read();
     return true;
+}
+
+/** Read 16 bytes from one NT3H2111 block at default address. */
+static bool nt3hReadBlock(uint8_t block, uint8_t out[NT3H_BLOCK_SIZE]) {
+    return nt3hReadBlockAtAddr(NT3H_ADDR, block, out);
+}
+
+/** Basic NTAG fingerprint from block 0: UID0=0x04 and lock byte 0=0x44. */
+static bool nt3hLooksLikeTagAtAddr(uint8_t addr) {
+    uint8_t blk0[NT3H_BLOCK_SIZE] = {};
+    if (!nt3hReadBlockAtAddr(addr, 0x00, blk0)) return false;
+    return blk0[0] == 0x04 && blk0[8] == 0x44;
+}
+
+/** Restore tag address to default 0x55 by writing byte0=0xAA in block 0 at current address. */
+static bool nt3hRecoverToDefaultAddr(uint8_t fromAddr) {
+    if (fromAddr == NT3H_ADDR) return true;
+
+    uint8_t blk0[NT3H_BLOCK_SIZE] = {};
+    if (!nt3hReadBlockAtAddr(fromAddr, 0x00, blk0)) return false;
+
+    blk0[0] = NT3H_ADDR_DEFAULT_BYTE;
+    LOG_WARN("NT3H", String("Recovering I2C addr: 0x") + String(fromAddr, HEX) + " -> 0x55");
+    if (!nt3hWriteBlockAtAddr(fromAddr, 0x00, blk0)) return false;
+
+    delay(10);
+    return nt3hProbeAddr(NT3H_ADDR);
 }
 
 // ─── NDEF builder ─────────────────────────────────────────────────────────────
@@ -145,25 +184,54 @@ static bool nt3hWriteNdef(const char* uri) {
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 bool nfcNT3H2111Init() {
-    // If the touch controller was not found (non-touch board), Wire may not have
-    // been initialized yet. Re-calling Wire.begin() on an already-running bus is
-    // harmless on ESP32 Arduino core, so we do it unconditionally to be safe.
+    // Wire.begin() on an already-running bus is harmless — just logs a warning.
+    // NOTE: Wire.setClock() is intentionally NOT called here. On ESP32, setClock()
+    // internally resets the I2C peripheral, which can hang the bus. 100kHz is within
+    // the NT3H2111 spec and sufficient for reliable communication.
 #if !ENABLE_DISPLAY
     Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL, 400000);
 #endif
 
-    // Probe chip with up to 3 attempts (50 ms apart).
-    // The NT3H2111 may need a moment after power-on before it ACKs on I²C.
+    // Probe chip with up to 6 attempts (150 ms apart).
+    // Brief settle so the PN532 FreeRTOS task (just created) can claim its
+    // first I2C slot before we start probing — avoids a race on the shared bus.
+    delay(300);
     uint8_t probe = 0xFF;
-    for (int attempt = 1; attempt <= 3; attempt++) {
-        Wire.beginTransmission(NT3H_ADDR);
-        probe = Wire.endTransmission();
+    for (int attempt = 1; attempt <= 6; attempt++) {
+        probe = nt3hProbeAddr(NT3H_ADDR) ? 0 : 2;
         if (probe == 0) break;
-        LOG_INFO("NT3H", String("Probe attempt ") + String(attempt) + "/3 failed (err=" + String(probe) + ") — retrying...");
-        delay(50);
+        LOG_INFO("NT3H", String("Probe attempt ") + String(attempt) + "/6 failed (err=" + String(probe) + ") — retrying...");
+        delay(150);
     }
+
+    // If not at default address, scan all addresses and try to recover to 0x55.
+    if (probe != 0) {
+        LOG_WARN("NT3H", "NT3H not at 0x55 — scanning full I2C range 0x00..0x7F for recovery");
+        for (uint8_t addr = 0; addr < 128; addr++) {
+            if (!nt3hProbeAddr(addr)) continue;
+            if (!nt3hLooksLikeTagAtAddr(addr)) continue;
+            LOG_WARN("NT3H", String("NTAG candidate found at 0x") + String(addr, HEX));
+            if (nt3hRecoverToDefaultAddr(addr)) {
+                LOG_INFO("NT3H", "Address recovery successful, NT3H now at 0x55");
+                probe = 0;
+                break;
+            }
+        }
+    }
+
     if (probe != 0) {
         LOG_WARN("NT3H", String("NT3H2111 not found at I\xC2\xB2\x43 0x55 (err=") + String(probe) + ")");
+        // I2C bus scan — log every address that ACKs to help diagnose wiring/address issues
+        LOG_INFO("NT3H", "Running I2C bus scan (0x00..0x7F):");
+        String found = "";
+        for (uint8_t addr = 0; addr < 128; addr++) {
+            if (nt3hProbeAddr(addr)) {
+                char buf[8];
+                snprintf(buf, sizeof(buf), "0x%02X ", addr);
+                found += buf;
+            }
+        }
+        LOG_INFO("NT3H", found.length() > 0 ? ("Devices found: " + found) : "No I2C devices found on bus");
         return false;
     }
     LOG_INFO("NT3H", "NT3H2111 detected at I\xC2\xB2\x43 0x55");
@@ -171,13 +239,25 @@ bool nfcNT3H2111Init() {
     // Read block 0: verify Capability Container (bytes 12–15) and log raw bytes
     uint8_t blk0[NT3H_BLOCK_SIZE] = {};
     if (nt3hReadBlock(0x00, blk0)) {
-        char hexbuf[64];
+        char hexbuf[96];
+        // Show all 16 bytes: UID(0-7) | Lock(8-11) | CC(12-15)
         snprintf(hexbuf, sizeof(hexbuf),
-                 "%02X %02X %02X %02X %02X %02X %02X %02X | CC: %02X %02X %02X %02X",
+                 "%02X %02X %02X %02X %02X %02X %02X %02X | Lock: %02X %02X %02X %02X | CC: %02X %02X %02X %02X",
                  blk0[0], blk0[1], blk0[2], blk0[3],
                  blk0[4], blk0[5], blk0[6], blk0[7],
+                 blk0[8], blk0[9], blk0[10], blk0[11],
                  blk0[12], blk0[13], blk0[14], blk0[15]);
         LOG_INFO("NT3H", String("Block 0: ") + String(hexbuf));
+        // Read configuration register (block 0x38) — NC_REG byte 0, NS_REG byte 8
+        uint8_t cfg[NT3H_BLOCK_SIZE] = {};
+        if (nt3hReadBlock(0x38, cfg)) {
+            char cfgbuf[48];
+            snprintf(cfgbuf, sizeof(cfgbuf), "NC_REG=0x%02X NS_REG=0x%02X", cfg[0], cfg[8]);
+            LOG_INFO("NT3H", String("Config reg: ") + String(cfgbuf));
+            if (cfg[8] & 0x40) LOG_WARN("NT3H", "NS_REG: RF_LOCKED — RF session active, I2C writes may fail");
+        } else {
+            LOG_WARN("NT3H", "Config register (0x38) read failed");
+        }
         bool ccOk = (blk0[12] == CC_EXPECTED[0] &&
                      blk0[13] == CC_EXPECTED[1] &&
                      blk0[14] == CC_EXPECTED[2] &&
@@ -187,6 +267,9 @@ bool nfcNT3H2111Init() {
         } else {
             LOG_WARN("NT3H", "CC missing — writing E1 10 6D 00 to block 0 bytes 12-15");
             // Preserve UID/lock/OTP bytes (0-11), only patch the CC (12-15).
+            // IMPORTANT: byte 0 in block 0 is the I2C address config (I2C view).
+            // Never write back the read value there (read returns UID0=0x04), keep default 0xAA.
+            blk0[0]  = NT3H_ADDR_DEFAULT_BYTE;
             blk0[12] = CC_EXPECTED[0];  // E1 — NFC Forum magic
             blk0[13] = CC_EXPECTED[1];  // 10 — version 1.0
             blk0[14] = CC_EXPECTED[2];  // 6D — 872 bytes user memory

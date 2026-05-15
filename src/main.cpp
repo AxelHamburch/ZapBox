@@ -39,7 +39,6 @@
 // NFC modules (optional feature, gated by ENABLE_NFC build flag)
 #if ENABLE_NFC
 #include "NFCBoltCard.h"
-#include "NFCCardEmulation.h"
 #include "NFCNT3H2111.h"
 #endif
 
@@ -1298,16 +1297,8 @@ void setup()
   }
 #endif
 
-  // NFC module (optional, activated via -DENABLE_NFC=1 in platformio.ini)
-  // Must run AFTER touch.begin() because Wire.begin(GPIO17, GPIO18) must have been
-  // called first (PN532 shares the same I2C bus as the touch controller).
-#if ENABLE_NFC
-  // Both NFC modules are always initialized — each self-detects on I²C,
-  // skipped silently if the hardware is not connected.
-  Serial.println("[NFC] Initializing NFC modules (auto-detect)...");
-  nfcBoltCardInit();   // PN532 @ 0x24 — Bolt Card reader (IRQ: PIN_NFC_IRQ)
-  nfcNT3H2111Init();   // NT3H2111 @ 0x55 — Passive NFC tag for mobile phones
-#endif
+  // NFC init is deferred into the startup screen (2 s after WiFi begin) so NFC logs
+  // appear cleanly in serial without being buried by boot noise.
 
   // I/O Expander init is deferred: runs after LNbits config is loaded (requires WiFi).
   // This prevents I2C bus activity during WiFi association.
@@ -1344,7 +1335,7 @@ void setup()
   #define SETUP_PRINT(msg) do { if (!deviceState.isInState(DeviceState::CONFIG_MODE)) Serial.println(msg); } while(0)
   #define SETUP_PRINTF(...) do { if (!deviceState.isInState(DeviceState::CONFIG_MODE)) Serial.printf(__VA_ARGS__); } while(0)
 
-  // Start WiFi connection BEFORE showing startup screen (parallel execution!)
+  // Start WiFi connection immediately (parallel to startup screen)
   WiFi.mode(WIFI_STA); // Set to Station mode
   WiFi.setSleep(false); // Disable WiFi power saving for stable connection
   WiFi.setAutoReconnect(true); // Enable auto-reconnect
@@ -1360,9 +1351,20 @@ void setup()
     ssidMissingOrInvalid = true;
   }
 
-  // Show startup screen for 5 seconds
+  // Show startup screen for 5 seconds.
+  // NFC I2C init fires at iteration 20 (~3 s from boot) so its logs appear
+  // clearly separated from boot noise — no extra delay, no slower startup.
   SETUP_PRINT("[STARTUP] Showing startup screen for 5 seconds...");
+  bool nfcInitFired = false;
   for (int i = 0; i < 50; i++) { // 50 * 100ms = 5 seconds
+#if ENABLE_NFC
+    if (i == 20 && !nfcInitFired) {
+      Serial.println("[NFC] Initializing NFC modules (auto-detect)...");
+      nfcBoltCardInit();   // PN532 @ 0x24 — Bolt Card reader (IRQ: PIN_NFC_IRQ)
+      nfcNT3H2111Init();   // NT3H2111 @ 0x55 — Passive NFC tag for mobile phones
+      nfcInitFired = true;
+    }
+#endif
     vTaskDelay(pdMS_TO_TICKS(100));
     if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
       return; // Exit silently - config serial output is paced by executeConfig()

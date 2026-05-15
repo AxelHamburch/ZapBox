@@ -401,17 +401,7 @@
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
         <!-- NFC Bolt Card Section -->
-            <div class="input-wrapper">
-                <div>
-                    <label for="nfcMode">NFC mode - NFC options and support</label>
-                    <select name="nfcMode" id="nfcMode">
-                        <option value="emulation">NFC card emulation for mobile phones</option>
-                        <option value="boltcard" selected>NFC Bolt Cards support only (default)</option>
-                        <option value="off">NFC off</option>
-                    </select>
-                </div>
-            </div>
-            <p style="margin-top: 5px; color: #888;"><i><b>NFC Bolt Cards</b> work reliably and securely with all major Lightning wallets and PoS systems. This is the recommended default.<br><br><b>NFC card emulation</b> (experimental): The ZapBox emulates an NFC tag so customers can pay by tapping their phone. Currently only supported by <a href="https://phoenix.acinq.co/" target="_blank" rel="noopener noreferrer">Phoenix Wallet</a>, and even then, only with certain limitations. Other wallets may not even recognize the NFC tag. For best compatibility, use the QR code format <b>"LNURL in LUD-17"</b> instead.</i></p>
+            <h3 style="margin: 0 0 10px 0;">NFC-Module</h3>
             <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server – no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
             <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
             <div style="display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start;">
@@ -752,7 +742,7 @@
             },
             {
                 "name": "nfcMode",
-                "value": "emulation"
+                "value": "boltcard"
             },
             {
                 "name": "servoRelayMode",
@@ -1149,10 +1139,6 @@
                 if (config[22]) config[22].value = configData[22]?.value || "normal"; // channel4Ambient
                 if (config[23]) config[23].value = configData[23]?.value || "30"; // deepSleepTime
 
-                // Index 29: NFC mode
-                if (config[29]) config[29].value = configData[29]?.value || "emulation";
-                nfcMode.value = config[29]?.value || "emulation";
-
                 // Index 24-28: Servo configuration
                 if (config[24]) config[24].value = configData[24]?.value || "0";
                 if (config[25]) config[25].value = configData[25]?.value || "0";
@@ -1335,10 +1321,6 @@
             if (!config[28]) config[28] = { name: "servo2Duration", value: "0" };
             config[28].value = servo2Duration.value || "0";
 
-            // NFC mode (index 29)
-            if (!config[29]) config[29] = { name: "nfcMode", value: "emulation" };
-            config[29].value = nfcMode.value || "emulation";
-
             // Servo relay mode (index 30) - not used in headless, hardcoded default
             if (!config[30]) config[30] = { name: "servoRelayMode", value: "one-for-all" };
             config[30].value = "one-for-all";
@@ -1391,12 +1373,20 @@
             // Remove old config first, wait for ESP32 to process
             await serial.writeLine("/file-remove config.json");
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             // Write new config in chunks to prevent USB CDC RX buffer overflow.
             // ESP32-S3 native USB CDC can drop data when receiving large bursts.
             // The terminating \n is included in the last chunk (not sent separately)
             // to prevent readStringUntil('\n') timeouts on the ESP32.
             const fullCommand = "/file-append config.json " + JSON.stringify(config) + "\n";
+
+            // Show what is about to be written in the console (mirrors /file-read output)
+            const writeLogMsg = document.createElement('span');
+            writeLogMsg.style.color = '#aaaaff';
+            writeLogMsg.textContent = '/file-append config.json ' + JSON.stringify(config) + '\n';
+            consoleDebug.appendChild(writeLogMsg);
+            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+
             const chunkSize = 128;
             for (let i = 0; i < fullCommand.length; i += chunkSize) {
                 await serial.write(fullCommand.substring(i, Math.min(i + chunkSize, fullCommand.length)));
@@ -1625,10 +1615,6 @@
                     row('LNURL / Lightning Address', inputVal('thresholdLnurl'))
                 );
             }
-
-            sections += section('NFC',
-                row('NFC Mode', selText('nfcMode'))
-            );
 
             const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
                 '<title>ZapBox Config &ndash; ' + ts + '</title>' +
