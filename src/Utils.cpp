@@ -115,8 +115,10 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
       if (parallelPin13) {
         digitalWrite(13, LOW);
       }
+      #ifdef BOARD_ESP32C3_21_1
       if (c3FlexCh01Active) digitalWrite(PIN_FLEX_CH01, LOW);
       if (c3FlexCh02Active) digitalWrite(PIN_FLEX_CH02, LOW);
+      #endif
       #if !ENABLE_DISPLAY
       if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
       if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
@@ -131,8 +133,10 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     if (parallelPin13) {
       digitalWrite(13, HIGH);
     }
+    #ifdef BOARD_ESP32C3_21_1
     if (c3FlexCh01Active) digitalWrite(PIN_FLEX_CH01, HIGH);
     if (c3FlexCh02Active) digitalWrite(PIN_FLEX_CH02, HIGH);
+    #endif
     #if !ENABLE_DISPLAY
     if (relayOut1) digitalWrite(PIN_SENSOR_1, HIGH);
     if (relayOut2) digitalWrite(PIN_SENSOR_2, HIGH);
@@ -149,8 +153,10 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
         if (parallelPin13) {
           digitalWrite(13, LOW);
         }
+        #ifdef BOARD_ESP32C3_21_1
         if (c3FlexCh01Active) digitalWrite(PIN_FLEX_CH01, LOW);
         if (c3FlexCh02Active) digitalWrite(PIN_FLEX_CH02, LOW);
+        #endif
         #if !ENABLE_DISPLAY
         if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
         if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
@@ -174,8 +180,10 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
     if (parallelPin13) {
       digitalWrite(13, LOW);
     }
+    #ifdef BOARD_ESP32C3_21_1
     if (c3FlexCh01Active) digitalWrite(PIN_FLEX_CH01, LOW);
     if (c3FlexCh02Active) digitalWrite(PIN_FLEX_CH02, LOW);
+    #endif
     #if !ENABLE_DISPLAY
     if (relayOut1) digitalWrite(PIN_SENSOR_1, LOW);
     if (relayOut2) digitalWrite(PIN_SENSOR_2, LOW);
