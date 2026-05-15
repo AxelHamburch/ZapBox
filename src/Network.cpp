@@ -224,18 +224,12 @@ void nfcLnurlwReceived(const String &lnurlw)
             }
         }
 
-        // Decide immediately vs. wait:
-        // Negative HTTP code           → connection never reached server → terminal (retries exhausted)
-        // HTTP 4xx (400, 404, 422)     → client error, request invalid → terminal
-        // "LNURLW error: …"           → resolve step returned STATUS ERROR → terminal
-        // "LNURLW callback error: …"  → callback step returned STATUS ERROR → terminal
-        // "LNURLW resolve failed."    → network error on resolve → keep pending (async possible)
-        // "LNURLW callback failed."   → network error on callback → keep pending (async possible)
+        // Any non-200 response is terminal: if the server returned an error code,
+        // it will never send a WebSocket "paid" event for this tap.
+        // Negative HTTP code → connection never reached server (retries exhausted).
+        // HTTP 4xx / 5xx    → server processed the request and rejected it.
         String detailStr = String(extensionConfig.nfcErrorDetail);
-        bool isTerminal = (httpCode < 0) // Connection failure after all retries — server never saw it
-                       || (httpCode >= 400 && httpCode < 500)
-                       || detailStr.startsWith("LNURLW error:")
-                       || detailStr.startsWith("LNURLW callback error:");
+        bool isTerminal = (httpCode < 0) || (httpCode >= 400);
         if (isTerminal) {
             extensionConfig.nfcPaymentPending = false;
             extensionConfig.nfcPaymentFailed  = true;
@@ -244,10 +238,8 @@ void nfcLnurlwReceived(const String &lnurlw)
                 connErr.toCharArray(extensionConfig.nfcErrorDetail, sizeof(extensionConfig.nfcErrorDetail));
                 LOG_WARN("NFC", "Connection failed after retries – showing NO LUCK immediately");
             } else {
-                LOG_WARN("NFC", "Terminal LNURLW error – showing NO LUCK immediately");
+                LOG_WARN("NFC", String("HTTP ") + String(httpCode) + " – showing NO LUCK immediately");
             }
-        } else {
-            LOG_WARN("NFC", "HTTP error – keeping pending state, waiting for WebSocket paid event or timeout");
         }
     }
     http.end();
