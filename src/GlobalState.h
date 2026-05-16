@@ -539,6 +539,7 @@ struct NfcConfig {
   volatile bool emulationActive = false;  // True when card emulation task is running
   volatile bool boltcardActive = false;   // True when bolt card reader task is running
   volatile bool nfcSessionActive = false; // True during active APDU exchange (suppresses internet checks)
+  volatile unsigned long pn532PauseUntil = 0; // millis() deadline while PN532 polling is paused (FD phone detection)
 };
 
 extern NfcConfig nfcConfig;

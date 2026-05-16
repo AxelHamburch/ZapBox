@@ -2969,13 +2969,20 @@ void loop()
       }
     }
     if (gpio3Config.isFd) {
-      // FD pin (open-drain): LOW = no NFC field, HIGH = phone approaching
+      // NT3H2111 FD is open-drain active LOW: phone near → FD drives LOW; no phone → pull-up → HIGH
+      // Level-based: extend pause every loop iteration while FD is LOW.
+      // Edge detection for log messages only (arriving / leaving).
       static bool lastFdState = false;
-      bool fdHigh = (digitalRead(PIN_GPIO3) == HIGH);
-      if (fdHigh && !lastFdState) {
-        Serial.println("[GPIO3] FD: mobile phone detected on NFC Tag 2");
+      bool fdLow = (digitalRead(PIN_GPIO3) == LOW);
+      if (fdLow && !lastFdState) {
+        Serial.println("[GPIO3] FD: mobile phone approaching NFC Tag 2");
+      } else if (!fdLow && lastFdState) {
+        Serial.println("[GPIO3] FD: mobile phone left NFC Tag 2");
       }
-      lastFdState = fdHigh;
+      lastFdState = fdLow;
+      if (fdLow) {
+        nfcConfig.pn532PauseUntil = millis() + 8000; // extend pause while phone field is active
+      }
     }
     #endif
 

@@ -233,6 +233,34 @@ static void waitForCardRemoval()
 // Shared device state (defined in main.cpp)
 extern StateManager deviceState;
 
+// ─── PN532 RF field control ──────────────────────────────────────────────────
+
+/**
+ * Turn the PN532 RF carrier ON (on=true) or OFF (on=false).
+ *
+ * Uses the PN532 RFConfiguration command (0x32, CfgItem=0x01).
+ * After sendCommandCheckAck the PN532 puts a response in its I2C output buffer
+ * and pulls IRQ LOW. We MUST drain that response before the next command or the
+ * I2C bus gets stuck (i2cRead Error 263 cascade).
+ *
+ * RF OFF during the NT3H phone-read window eliminates the PN532 carrier that
+ * otherwise keeps the NT3H powered and interferes with the phone's read even
+ * when the software task is not actively polling.
+ */
+static void pn532SetRFField(bool on) {
+    if (!i2cTake()) return; // skip if I2C bus is busy (rare – NT3H write in progress)
+    uint8_t cmd[] = { 0x32, 0x01, on ? (uint8_t)0x01 : (uint8_t)0x00 };
+    if (s_nfc->sendCommandCheckAck(cmd, 3, 500)) {
+        // Wait for PN532 to assert IRQ LOW (response ready, typically <5 ms)
+        uint32_t deadline = millis() + 200;
+        while (digitalRead(PIN_NFC_IRQ) != LOW && millis() < deadline) delay(1);
+        // Drain response regardless — leaving it fills the PN532 output buffer
+        Wire.requestFrom((uint8_t)0x24, (uint8_t)10);
+        while (Wire.available()) Wire.read();
+    }
+    i2cGive();
+}
+
 // ─── FreeRTOS task ───────────────────────────────────────────────────────────
 
 /**
@@ -254,6 +282,25 @@ static void nfc_task_code(void *pvParams)
 
     while (s_boltcardRunning)
     {
+        // Pause polling while a phone is reading NFC Tag 2 (NT3H2111).
+        // FD pin or PN532 self-detection sets pn532PauseUntil; stopping readPassiveTargetID
+        // eliminates the active REQA/ATQA frames that collide with the phone's NFC read.
+        static bool pn532WasPaused = false;
+        if (nfcConfig.pn532PauseUntil > 0 && millis() < nfcConfig.pn532PauseUntil) {
+            if (!pn532WasPaused) {
+                pn532SetRFField(false);
+                LOG_INFO("NFC", "PN532 RF OFF – NT3H phone read window open");
+                pn532WasPaused = true;
+            }
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+        if (pn532WasPaused) {
+            pn532SetRFField(true);
+            LOG_INFO("NFC", "PN532 RF ON – NT3H phone read window closed");
+            pn532WasPaused = false;
+        }
+
         // Block until a card is detected (1 s per attempt, short timeout
         // so the task can exit quickly when nfcBoltCardStop() is called).
         bool found = s_nfc->readPassiveTargetID(
@@ -361,7 +408,12 @@ static void nfc_task_code(void *pvParams)
             i2cGive(); // release bus before HTTP call
             esp_log_level_set("i2c.master", ESP_LOG_WARN); // restore Wire logging
             if (uri.length() == 0) {
-                LOG_WARN("NFC", "No readable NDEF URI found on card");
+                // Non-NTAG424 card without NDEF URI is likely a phone — pause polling
+                // so the phone can read the NT3H2111 tag without REQA collision.
+                if (millis() >= nfcConfig.pn532PauseUntil) {
+                    LOG_INFO("NFC", "Phone detected – opening 8 s NT3H read window");
+                }
+                nfcConfig.pn532PauseUntil = millis() + 8000;
                 vTaskDelay(pdMS_TO_TICKS(500));
                 continue;
             }
