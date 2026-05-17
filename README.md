@@ -1279,6 +1279,7 @@ Electrical design and housing variants, see table.
 | e948960 | Headless Servo |  Add NFC Tag 2 module |
 | e948971 | Headless |  Add NFC Tag 2 module |
 | e949393 | esp32-c3-21-1 |  Add special Hans Wurst version |
+| e949674 | Servo | Add NFC Tag 2 module & minor redesign | 
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
