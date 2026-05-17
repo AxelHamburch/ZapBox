@@ -38,9 +38,6 @@ LightBarrierConfig lightBarrierConfig;
 // Channel 4 Ambient Light
 Channel4AmbientConfig channel4AmbientConfig;
 
-// GPIO 3 Function (sensor / FD input on T-Display-S3)
-Gpio3Config gpio3Config;
-
 // C3 Flex Channel Configuration (GPIO6/GPIO7 — ESP32-C3-21-1 only)
 #ifdef BOARD_ESP32C3_21_1
 C3FlexChannelConfig c3FlexConfig;

@@ -641,24 +641,7 @@ void readFiles()
       #endif
     }
 
-    // Read GPIO 3 function configuration (index 37)
-    {
-      const JsonObject maRoot37 = doc[37];
-      if (!maRoot37.isNull()) {
-        const char *val = maRoot37["value"];
-        if (val != nullptr) {
-          String s = String(val);
-          s.toLowerCase();
-          s.trim();
-          gpio3Config.mode            = s;
-          gpio3Config.enabled         = (s == "yes");
-          gpio3Config.monitoring      = (s == "monitor");
-          gpio3Config.levelMonitoring = (s == "level");
-          gpio3Config.isFd            = (s == "fd");
-        }
-      }
-      LOG_INFO("Config", String("GPIO 3 function: ") + gpio3Config.mode);
-    }
+    // GPIO 3 (T-Display-S3) / GPIO 34 (headless) — always FD for NT3H2111 (config[37] ignored)
 
     // Read I/O Expander channel configuration
     // Index 38 = ioExpander enable flag ("yes"/"no")
@@ -1289,12 +1272,10 @@ void setup()
   initIOExpander();
 #endif
 
-  // GPIO 3 (T-Display-S3) / GPIO 34 (headless ESP32 Dev) — sensor input or FD from NT3H2111
+  // GPIO 3 (T-Display-S3) / GPIO 34 (headless ESP32 Dev) — FD (Field Detection) for NT3H2111
 #ifdef PIN_GPIO3
-  if (gpio3Config.isActive()) {
-    pinMode(PIN_GPIO3, PIN_GPIO3_MODE);
-    LOG_INFO("Setup", String("GPIO ") + PIN_GPIO3 + " configured: mode=" + gpio3Config.mode);
-  }
+  pinMode(PIN_GPIO3, PIN_GPIO3_MODE);
+  LOG_INFO("Setup", String("GPIO ") + PIN_GPIO3 + " configured as FD (Field Detection) for NT3H2111");
 #endif
 
   // NFC init is deferred into the startup screen (2 s after WiFi begin) so NFC logs
@@ -2926,42 +2907,17 @@ void loop()
       }
     }
 
-    // ── GPIO 3 function: level / blockage / FD monitoring (T-Display-S3 only) ──
+    // ── GPIO 3 (T-Display-S3) / GPIO 34 (headless): FD from NT3H2111 ──
+    // Open-drain active LOW: phone near → FD LOW; no phone → pull-up → HIGH.
+    // Extends PN532 RF pause while the phone field is active.
     #ifdef PIN_GPIO3
-    if (gpio3Config.levelMonitoring) {
-      bool pinIsLow = (digitalRead(PIN_GPIO3) == LOW);
-      if (!pinIsLow && !gpio3Config.binEmpty) {
-        gpio3Config.binEmpty = true;
-        Serial.println("[GPIO3] Level: bin empty detected — payments blocked");
-        supplyBinEmptyScreen();
-      } else if (pinIsLow && gpio3Config.binEmpty) {
-        gpio3Config.binEmpty = false;
-        Serial.println("[GPIO3] Level: bin restocked — payments re-enabled");
-        redrawQRScreen();
-      }
-    }
-    if (gpio3Config.monitoring) {
-      bool pinIsLow = (digitalRead(PIN_GPIO3) == LOW);
-      if (pinIsLow && !gpio3Config.blocked) {
-        gpio3Config.blocked = true;
-        Serial.println("[GPIO3] Blockage detected — payments blocked");
-        productBlockedScreen();
-      } else if (!pinIsLow && gpio3Config.blocked) {
-        gpio3Config.blocked = false;
-        Serial.println("[GPIO3] Blockage cleared — payments re-enabled");
-        redrawQRScreen();
-      }
-    }
-    if (gpio3Config.isFd) {
-      // NT3H2111 FD is open-drain active LOW: phone near → FD drives LOW; no phone → pull-up → HIGH
-      // Level-based: extend pause every loop iteration while FD is LOW.
-      // Edge detection for log messages only (arriving / leaving).
+    {
       static bool lastFdState = false;
       bool fdLow = (digitalRead(PIN_GPIO3) == LOW);
       if (fdLow && !lastFdState) {
-        Serial.println("[GPIO3] FD: mobile phone approaching NFC Tag 2");
+        Serial.println("[FD] Mobile phone approaching NFC Tag 2");
       } else if (!fdLow && lastFdState) {
-        Serial.println("[GPIO3] FD: mobile phone left NFC Tag 2");
+        Serial.println("[FD] Mobile phone left NFC Tag 2");
       }
       lastFdState = fdLow;
       if (fdLow) {
@@ -2973,7 +2929,7 @@ void loop()
     // Process payments from queue
     if (paymentQueue.hasPending() && !paymentQueue.processing) {
       // Block payment activation while any sensor condition is active (GPIO + IOExpander)
-      if (lightBarrierConfig.isAnyBlocking() || ioExpanderConfig.isAnySensorBlocking() || gpio3Config.isBlocking()) {
+      if (lightBarrierConfig.isAnyBlocking() || ioExpanderConfig.isAnySensorBlocking()) {
         Serial.println("[SENSOR] Payment skipped — sensor blocking active");
         vTaskDelay(pdMS_TO_TICKS(500));
       } else {
@@ -3045,15 +3001,6 @@ inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
         Serial.printf("[SENSOR] IOExpander CH%02d (P%d) stop-sensor triggered after %lu ms - stopping action!\n", ch + 5, ch, elapsed);
         return true;
       }
-    }
-  }
-  #endif
-
-  #ifdef PIN_GPIO3
-  if (gpio3Config.enabled) {
-    if (digitalRead(PIN_GPIO3) == LOW) {
-      Serial.printf("[GPIO3] Triggered after %lu ms - stopping action!\n", elapsed);
-      return true;
     }
   }
   #endif

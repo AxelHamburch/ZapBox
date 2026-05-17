@@ -216,29 +216,6 @@ struct Channel4AmbientConfig {
 extern Channel4AmbientConfig channel4AmbientConfig;
 
 // ============================================================================
-// GPIO 3 FUNCTION (T-Display-S3 only — free expansion pin)
-// ============================================================================
-// GPIO 3 can be configured as a sensor input controlling channel 1 (GPIO 12),
-// or as FD (Field Detection) input from the NT3H2111 NFC Tag 2 chip.
-// All modes work identically to the light barrier but use GPIO 3 instead of GPIO 2.
-// "fd" mode: rising edge (phone approaches) queues a brief channel-1 action.
-// ============================================================================
-
-struct Gpio3Config {
-  String mode = "no";         // "no" / "yes" / "monitor" / "level" / "fd"
-  bool enabled = false;       // mode == "yes":   stop action on trigger
-  bool monitoring = false;    // mode == "monitor": block next payment
-  bool levelMonitoring = false; // mode == "level":  empty-bin detection
-  bool isFd = false;          // mode == "fd":    NFC field detection
-  bool blocked = false;       // runtime: product output blocked (monitor)
-  bool binEmpty = false;      // runtime: bin empty (level)
-  bool isActive() const { return enabled || monitoring || levelMonitoring || isFd; }
-  bool isBlocking() const { return blocked || binEmpty; }
-};
-
-extern Gpio3Config gpio3Config;
-
-// ============================================================================
 // C3 FLEX CHANNEL CONFIGURATION (ESP32-C3-21-1 only)
 // GPIO6 (PIN_FLEX_CH01) and GPIO7 (PIN_FLEX_CH02) can each be independently
 // configured as secondary actuator or sensor inputs.
