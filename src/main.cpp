@@ -1602,13 +1602,9 @@ void setup()
       productSelectionState.showTime = millis();
     } else {
       SETUP_PRINT("[STARTUP] Single mode (SELECTING/OFF) - showing QR screen");
-      // Show normal or special QR for single mode
+      // Show QR for single mode
       ensureQrForPin(RELAY_CHANNEL_PINS[0]);
-      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-        showSpecialModeQRScreen();
-      } else {
-        showQRScreen();
-      }
+      showQRScreen();
       multiChannelConfig.btcTickerActive = false;
       productSelectionState.showTime = 0; // No ticker timeout active
     }
@@ -1793,8 +1789,8 @@ void loop()
     
     // Print debug info every 10 seconds (skip during config mode to keep serial clean)
     if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastLoopDebugPrint > 10000) {
-      Serial.printf("[LOOP_DEBUG] Iterations: %lu, touchState.available: %d, onErrorScreen: %d\n", 
-                    loopIterations, touchState.available, deviceState.isInState(DeviceState::ERROR_RECOVERABLE));
+      Serial.printf("[LOOP_DEBUG] Iterations: %lu, touchState.available: %d, onErrorScreen: %d, errorType: %d\n",
+                    loopIterations, touchState.available, onErrorScreen, currentErrorType);
       lastLoopDebugPrint = millis();
     }
     // Check if config mode was triggered during payment wait
@@ -2161,11 +2157,7 @@ void loop()
                 Serial.println("Skip from ticker to QR (Single mode)");
                 multiChannelConfig.btcTickerActive = false;
                 ensureQrForPin(RELAY_CHANNEL_PINS[0]);
-                if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-                  showSpecialModeQRScreen();
-                } else {
-                  showQRScreen();
-                }
+                showQRScreen();
                 productSelectionState.showTime = 0;
               } else {
                 // Show ticker for 10 seconds
@@ -2182,11 +2174,7 @@ void loop()
                 Serial.println("Touch detected - switching from ticker to QR (ALWAYS mode)");
                 multiChannelConfig.btcTickerActive = false;
                 ensureQrForPin(RELAY_CHANNEL_PINS[0]);
-                if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-                  showSpecialModeQRScreen();
-                } else {
-                  showQRScreen();
-                }
+                showQRScreen();
                 productSelectionState.showTime = millis(); // Start timeout to return to ticker
               } else {
                 // Already on QR: refresh timeout so interaction keeps QR visible
@@ -2354,11 +2342,7 @@ void loop()
             multiChannelConfig.btcTickerActive = false;
             // Show normal QR screen
             ensureQrForPin(RELAY_CHANNEL_PINS[0]);
-            if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-              showSpecialModeQRScreen();
-            } else {
-              showQRScreen();
-            }
+            showQRScreen();
             productSelectionState.showTime = 0; // Reset timer
           }
         } else {
@@ -2545,7 +2529,7 @@ void loop()
             // If recovering from Internet error screen, clear error and refresh display
             if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && currentErrorType == 2) {
               Serial.println("[RECOVERY] Clearing Internet error screen...");
-              deviceState.transition(DeviceState::READY);
+              onErrorScreen = false;
               currentErrorType = 0;
               deviceState.transition(DeviceState::READY);
               
