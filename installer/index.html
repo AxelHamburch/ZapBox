@@ -498,21 +498,6 @@
             <strong>Level monitoring:</strong> The (NPN) input monitors the fill level of a magazine or container. As long as Pin 2 is pulled LOW (sensor active), everything is fine. As soon as Pin 2 is HIGH (sensor free), all payment options are blocked and the message "THE SUPPLY BIN IS EMPTY - Please restock it" is displayed. Payments are re-enabled automatically once the sensor is active again.</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Note on "Ambient lighting switch":</strong> With pre-selection enabled, channel 4 is switched depending on the display backlight. Whenever the display is on, channel 4 is activated, thus, for example, the lighting for a vending machine. If the display backlight switches off because the screensaver mode is active, channel 4 is also deactivated.</i></p>
 
-            <div class="input-wrapper">
-                <div>
-                    <label for="gpio3Function">Function GPIO pin 3</label>
-                    <select name="gpio3Function" id="gpio3Function">
-                        <option value="no" selected>No (default)</option>
-                        <option value="yes">Stop the advance (Product ejected, slide stopped)</option>
-                        <option value="monitor">Monitoring product blockage (Remove product to resume)</option>
-                        <option value="level">Level Monitoring (empty bin)</option>
-                        <option value="fd">FD (Field Detection) for NFC Tag 2 – Mobile phone detected</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN input on Pin 3 (T-Display-S3 only) — controls / monitors Channel 1 (GPIO 12)</p>
-                </div>
-            </div>
-            <p style="margin-top: 10px; color: #888;"><i><strong>Stop / Monitoring / Level Monitoring:</strong> Same behavior as "Special features for the vending machine" but using GPIO 3 instead of GPIO 2. Triggers and blocks always refer to Channel 1 (GPIO 12).<br><strong>FD (Field Detection):</strong> GPIO 3 is configured as input for the INT/FD pin of the NFC Tag 2 Click module. When a mobile phone approaches the NFC tag, the FD pin goes HIGH — the ZapBox logs the event. No relay action is triggered; this is for diagnostics and future extensions only.</i></p>
-
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
@@ -655,8 +640,8 @@
                     <img src="./assets/NFC-Tag-2.webp" alt="NFC Tag 2 / NT3H2111 wiring" style="height: 220px; width: auto; display: block;" />
                 </a>
             </div>
-            <p style="margin-top: 15px; color: #888;"><i><b>Bolt Cards &amp; NTAG 21x (PN532, I²C 0x24)</b> — Active NFC reader: the PN532 generates its own magnetic field and reads cards placed on it. Supports pre-programmed Bolt Cards for contactless Lightning payment. Also reads passive NFC tags of type NTAG 213, 215 and 216 — e.g. for LNURL-based payment tags. Works with all major Lightning wallets and PoS systems. No configuration required — the module is auto-detected on the I²C bus at startup.</i></p>
-            <p style="margin-top: 5px; color: #888;"><i><b>Mobile Phones (NFC Tag 2 / NT3H2111, I²C 0x55)</b> — Passive NFC tag: unlike the PN532, the NT3H2111 generates no field of its own. It is a true NTAG chip that delivers the LNURL autonomously as soon as the active field of an approaching mobile phone is detected. The ZapBox writes the current LNURL to the chip via I²C — the ESP32 is not involved during the tap. Compatible with Android NFC Tools and wallets that support LNURL via NFC (e.g. Phoenix). No configuration required — auto-detected at startup.</i></p>
+            <p style="margin-top: 15px; color: #888;"><i><b>Bolt Cards &amp; NTAG 21x (PN532, I²C 0x24, IRQ → GPIO 1)</b> — Active NFC reader: the PN532 generates its own magnetic field and reads cards placed on it. Supports pre-programmed Bolt Cards for contactless Lightning payment. Also reads passive NFC tags of type NTAG 213, 215 and 216 — e.g. for LNURL-based payment tags. Works with all major Lightning wallets and PoS systems. No configuration required — the module is auto-detected on the I²C bus at startup.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i><b>Mobile Phones (NFC Tag 2 / NT3H2111, I²C 0x55, FD → GPIO 3)</b> — Passive NFC tag: unlike the PN532, the NT3H2111 generates no field of its own. It is a true NTAG chip that delivers the LNURL autonomously as soon as the active field of an approaching mobile phone is detected. The ZapBox writes the current LNURL to the chip via I²C — the ESP32 is not involved during the tap. The FD (Field Detection) pin of the NT3H2111 is permanently wired to GPIO 3 and used to pause the PN532 RF field while a phone is near. Compatible with Android NFC Tools and wallets that support LNURL via NFC (e.g. Phoenix). No configuration required — auto-detected at startup.</i></p>
             <p style="margin-top: 5px; color: #888;"><i>Both modules operate independently and in parallel. If a module is not connected, it is simply skipped — normal operation is not affected.</i></p>
 
         <!-- Section Separator -->
@@ -1002,9 +987,6 @@
         const pin10Servo360Section = document.getElementById('pin10Servo360Section');
         const pin10Servo360Speed = document.getElementById('pin10Servo360Speed');
         const pin10Servo360Duration = document.getElementById('pin10Servo360Duration');
-        // GPIO 3 function config
-        const gpio3Function = document.getElementById('gpio3Function');
-        
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
         specialMode.addEventListener('change', function() {
             if (specialMode.value === 'custom') {
@@ -1168,7 +1150,7 @@
             },
             {
                 "name": "gpio3Function",
-                "value": "no"
+                "value": "fd"
             },
             // index 38 – I/O-Expander enabled flag
             {
@@ -1731,16 +1713,7 @@
                 if (config[30]) config[30].value = configData[30]?.value || "one-for-all";
                 servoRelayMode.value = config[30]?.value || "one-for-all";
 
-                // NFC mode - check both old position (29) and new position (37)
-                const nfcModeIndex = isOldServoConfig ? 29 : 37;
-                // Index 37 is now gpio3Function; legacy config may have nfcMode here — treat as "no"
-                const raw37 = config[nfcModeIndex]?.value || "no";
-                const gpio3FunctionEl = document.getElementById('gpio3Function');
-                // Only apply if it looks like a gpio3 value (not legacy nfc values)
-                const legacyNfcValues = ['boltcard','emulation','both','both-boltcard','off'];
-                if (gpio3FunctionEl) {
-                    gpio3FunctionEl.value = legacyNfcValues.includes(raw37) ? 'no' : raw37;
-                }
+                // Index 37 (gpio3Function) is always "fd" — no UI, firmware ignores value
 
                 // I/O-Expander fields (indices 38-46)
                 if (configData[38]) {
@@ -1946,9 +1919,9 @@
             if (!config[36]) config[36] = { name: "pin10Servo360Duration", value: "0" };
             config[36].value = pin10Servo360Duration.value || "0";
             
-            // NFC mode (index 37)
-            if (!config[37]) config[37] = { name: "gpio3Function", value: "no" };
-            config[37].value = gpio3Function.value || "no";
+            // GPIO 3 FD — always "fd" (fixed, no UI selection)
+            if (!config[37]) config[37] = { name: "gpio3Function", value: "fd" };
+            config[37].value = "fd";
 
             // I/O-Expander (indices 38-46)
             if (!config[38]) config[38] = { name: "ioExpander", value: "no" };
@@ -2177,10 +2150,6 @@
 
         channel4Ambient.addEventListener("change", (event) => {
             config[22].value = event.target.value;
-        });
-
-        gpio3Function.addEventListener("change", (event) => {
-            config[37].value = event.target.value;
         });
 
         // I/O-Expander event listeners
@@ -2437,9 +2406,7 @@
                 row('Deep Sleep Activation Time (min)', inputVal('deepSleepTime'))
             );
 
-            sections += section('NFC',
-                row('GPIO 3 Function', selText('gpio3Function'))
-            );
+            sections += section('NFC', '');
 
             const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
                 '<title>ZapBox Config &ndash; ' + ts + '</title>' +

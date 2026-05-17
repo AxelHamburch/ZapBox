@@ -176,21 +176,20 @@ Device String (switchStr)
 | 13 | Relay 2 / Servo 1 | Output | - | Duo/Quattro mode 2, Servo mode PWM output |
 | 10 | Relay 3 / Servo 2 | Output | - | Quattro mode 3, Servo mode PWM output |
 | 11 | Relay 4 / Ambient | Output | - | Quattro mode 4, Servo mode relay 2, or ambient lighting (synced with backlight) |
-| **Available for Expansion** |
-| 3 | – (free) | Input / Output | - | ℹ️ **Strapping Pin** (JTAG source select only — no boot-mode risk). Only free GPIO on T-Display-S3. Safe with `INPUT_PULLUP` for open-drain signals; 10 kΩ series resistor recommended for PCB designs. See note below. |
+| **Fixed-Function Expansion** |
+| 3 | FD (NT3H2111) | Input | INPUT_PULLUP | ℹ️ **Strapping Pin** — permanently configured as FD (Field Detection) input from the NT3H2111 NFC Tag 2. Open-drain active LOW: phone near → LOW, no phone → HIGH. Pauses PN532 RF while a phone field is active. See note below. |
 
-> **ℹ️ GPIO 3 — the only free GPIO on T-Display-S3, Strapping Pin with low practical risk**
-> All other GPIOs are fully allocated (display bus, relays, buttons, I2C, NFC, LED button, power control). GPIO 3 is the only physically unconnected pin.
+> **ℹ️ GPIO 3 — FD (Field Detection) for NT3H2111, Strapping Pin with low practical risk**
+> GPIO 3 is permanently configured as `INPUT_PULLUP` and used exclusively as the FD (Field Detection) input from the NT3H2111 NFC Tag 2 chip. No Web Installer configuration required.
 >
 > On the ESP32-S3, GPIO 3 is a strapping pin that controls the **JTAG signal source**:
 > - HIGH at boot (default) → JTAG routed through GPIO-Matrix (GPIO 39–42)
 > - LOW at boot → JTAG routed through the USB Serial/JTAG controller
 >
-> This has **no effect on normal firmware operation**. The device boots and runs identically either way. There is no download-mode risk and no bricking scenario from GPIO 3 being LOW.
+> This has **no effect on normal firmware operation**. The device boots and runs identically either way. There is no download-mode risk and no bricking scenario from GPIO 3 being LOW at boot via the open-drain FD signal.
 >
 > **Practical guidance:**
-> - A 10 kΩ series resistor between the external signal and GPIO 3 is sufficient protection for a clean PCB design
-> - For quick prototyping, GPIO 3 with `INPUT_PULLUP` is safe for open-drain sensors (e.g. NT3H2111 FD pin)
+> - A 10 kΩ series resistor between the NT3H2111 FD pin and GPIO 3 is sufficient protection for a clean PCB design
 > - The only real consequence of a LOW at boot is that an attached JTAG debugger may need to connect via USB instead of GPIO 39–42
 
 **I2C Bus Addresses:**
@@ -209,7 +208,7 @@ Device String (switchStr)
 | **Vending Sensors / Relay Output (Optional)** |
 | 22 | Sensor 1 / Relay Out | Input or Output | Pull-up / HIGH | Vending sensor input or relay output synced with Pin 12 (when configured, replaces CH06) |
 | 23 | Sensor 2 / Relay Out | Input or Output | Pull-up / HIGH | Vending sensor input or relay output synced with Pin 12 (when configured, replaces CH07) |
-| 34 | FD / Sensor In | Input only | — | Field Detection from NT3H2111 (NFC Tag 2) or general sensor input. GPIO 34 is input-only, no internal pull-up — use external pull-up (10 kΩ to 3.3 V) for open-drain signals. |
+| 34 | FD (NT3H2111) | Input only | — | Permanently configured as FD (Field Detection) input from the NT3H2111 NFC Tag 2. GPIO 34 is input-only (no internal pull-up) — external pull-up (10 kΩ to 3.3 V) required for the open-drain FD signal. |
 | **LEDs & Status** |
 | 21 | Status LED | Output | HIGH=ON | Status indication (RTC-capable) |
 | **I2C (Optional)** |
@@ -1027,7 +1026,7 @@ LNURL changes     ──I²C──►       NDEF updated
 - **Automatic NDEF update** — LNURL is rewritten via I²C whenever the active product or channel changes
 - **No configuration required** — auto-detected at startup via I²C scan; silently skipped if not present
 - **Coexists with PN532** — both modules run independently in parallel; no mode switching needed
-- **FD pin (optional)** — the INT/FD pin goes HIGH when a phone's NFC field is detected; connect to GPIO 3 (T-Display-S3) or GPIO 34 (headless) and configure as `fd` in the Web Installer
+- **FD pin** — the INT/FD pin is permanently wired to GPIO 3 (T-Display-S3) or GPIO 34 (headless); active LOW when a phone's NFC field is detected, pauses PN532 RF automatically — no configuration needed
 
 **Wiring**:
 ```
