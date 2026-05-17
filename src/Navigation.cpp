@@ -46,7 +46,6 @@ extern void configMode();
 extern void reportMode();
 extern void showQRScreen();
 extern void showProductQRScreen(String label, int displayPin);
-extern void showSpecialModeQRScreen();
 extern void btctickerScreen();
 extern void deactivateScreensaver();
 extern void configMode();
@@ -75,11 +74,7 @@ void navigateToNextProduct() {
         LOG_INFO("Navigation", "Single mode ALWAYS - Switching from ticker to QR");
         multiChannelConfig.btcTickerActive = false;
         ensureQrForPin(RELAY_CHANNEL_PINS[0]);
-        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-          showSpecialModeQRScreen();
-        } else {
-          showQRScreen();
-        }
+        showQRScreen();
         productSelectionState.showTime = millis(); // Start timer for auto-return to ticker
       } else {
         LOG_INFO("Navigation", "Single mode ALWAYS - Switching from QR to ticker");
@@ -93,11 +88,7 @@ void navigateToNextProduct() {
         LOG_INFO("Navigation", "Single mode SELECTING - Skipping from ticker to QR");
         multiChannelConfig.btcTickerActive = false;
         ensureQrForPin(RELAY_CHANNEL_PINS[0]);
-        if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-          showSpecialModeQRScreen();
-        } else {
-          showQRScreen();
-        }
+        showQRScreen();
         productSelectionState.showTime = 0; // Reset timer
       } else {
         // Show Bitcoin ticker for 10 seconds

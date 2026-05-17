@@ -33,7 +33,6 @@ void supplyBinEmptyScreen() {}
 void drawQRCode() {}
 void showQRScreen() {}
 void showThresholdQRScreen() {}
-void showSpecialModeQRScreen() {}
 void showProductQRScreen(String, int) {}
 void showBoltCardScreen(String, int) {}
 void showMobilePhoneScreen(String, int) {}

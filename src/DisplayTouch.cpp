@@ -902,14 +902,6 @@ void showQRScreen() {
   showProductQRScreen(label, 12);
 }
 
-void showSpecialModeQRScreen() {
-  int pinIndex = getPinIndex(12);
-  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
-                  ? productLabels.labels[pinIndex]
-                  : String("READY 4 SP ACTION");
-  showProductQRScreen(label, 12);
-}
-
 void showThresholdQRScreen() {
   DisplayLock l;
   if (!_gfx) return;

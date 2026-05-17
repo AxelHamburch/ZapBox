@@ -27,7 +27,6 @@ extern void showProductQRScreen(String label, int displayPin);
 extern void showThresholdQRScreen();
 extern void btctickerScreen();
 extern void productSelectionScreen();
-extern void showSpecialModeQRScreen();
 extern void deactivateScreensaver();
 extern void activateScreensaver(String mode);
 extern void prepareDeepSleep();
@@ -447,9 +446,9 @@ void redrawQRScreen() {
 
   // Single mode (1-channel)
   if (specialModeConfig.mode != "standard") {
-    // SPECIAL MODE: ensure LNURL for primary channel is up-to-date, then show special QR
+    // SPECIAL MODE: ensure LNURL for primary channel is up-to-date, then show QR
     ensureQrForPin(RELAY_CHANNEL_PINS[0]);
-    showSpecialModeQRScreen();
+    showQRScreen();
     multiChannelConfig.btcTickerActive = false;
     LOG_DEBUG("Display", "Special mode QR screen displayed (single mode)");
     deviceState.transition(DeviceState::READY);
@@ -500,11 +499,7 @@ void showInitialScreenAfterConnections() {
     } else {
       // SELECTING or OFF: show QR screen (BoltCard reader runs in background for both-boltcard)
       ensureQrForPin(RELAY_CHANNEL_PINS[0]);
-      if (specialModeConfig.mode != "standard" && specialModeConfig.mode != "") {
-        showSpecialModeQRScreen();
-      } else {
-        showQRScreen();
-      }
+      showQRScreen();
       multiChannelConfig.btcTickerActive = false;
       productSelectionState.showTime = 0;
     }

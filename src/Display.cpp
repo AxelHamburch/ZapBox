@@ -1310,14 +1310,6 @@ void showThresholdQRScreen()
   drawQRCode();
 }
 
-void showSpecialModeQRScreen()
-{
-  DisplayLock lock;
-  int pinIndex = getPinIndex(12);
-  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : "READY 4 SP ACTION";
-  showProductQRScreen(label, 12);
-}
-
 // Multi-Channel-Control Product QR Screen - displays label text and QR code
 // Label can contain 1-3 words separated by spaces
 void showProductQRScreen(String label, int pin)

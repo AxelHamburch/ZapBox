@@ -36,7 +36,6 @@ void supplyBinEmptyScreen();
 void drawQRCode();
 void showQRScreen();
 void showThresholdQRScreen();
-void showSpecialModeQRScreen();
 void showProductQRScreen(String label, int pin);
 void showBoltCardScreen(String label, int pin);
 void showMobilePhoneScreen(String label, int pin);
@@ -82,7 +81,6 @@ inline void supplyBinEmptyScreen() {}
 inline void drawQRCode() {}
 inline void showQRScreen() {}
 inline void showThresholdQRScreen() {}
-inline void showSpecialModeQRScreen() {}
 inline void showProductQRScreen(String, int) {}
 inline void showBoltCardScreen(String, int) {}
 inline void showMobilePhoneScreen(String, int) {}
