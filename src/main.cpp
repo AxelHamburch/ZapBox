@@ -2633,7 +2633,7 @@ void loop()
       {
         // WebSocket error - only if WiFi AND Server are OK
         // IMPORTANT: Skip if higher priority error (Internet=2 or Server=3) is active!
-        if (onErrorScreen && currentErrorType < 4)
+        if (onErrorScreen && currentErrorType > 0 && currentErrorType < 4)
         {
           // Higher priority error (WiFi/Internet/Server) - don't show WebSocket error
           Serial.println("WebSocket check skipped - higher priority error active");

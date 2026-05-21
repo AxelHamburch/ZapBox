@@ -15,6 +15,7 @@ extern String deviceId;
 extern String payloadStr;
 extern WebSocketsClient webSocket;
 extern byte currentErrorType;
+extern bool onErrorScreen;
 extern bool needsQRRedraw;
 extern ExtensionConfig extensionConfig;
 #if ENABLE_BITCOIN_DATA
@@ -357,6 +358,7 @@ void checkAndReconnectWiFi()
     networkStatus.confirmed.wifi = true;
     deviceState.transition(DeviceState::READY);
     currentErrorType = 0;
+    onErrorScreen = false;
     needsQRRedraw = true;
     activityTracking.lastActivityTime = millis();
     productSelectionState.showTime = millis();
