@@ -375,7 +375,15 @@ static void nfc_task_code(void *pvParams)
                     tickerShowing                        ||
                     lightBarrierConfig.blocked)
                 {
-                    waitForCardRemoval();
+                    // A 4-byte UID is almost certainly a phone scanning the NT3H LNURL.
+                    // Open the NT3H read window instead of waiting for removal —
+                    // Lightning payments via NT3H→WebSocket work in any device state.
+                    if (uidLength == 4) {
+                        nfcConfig.pn532PauseUntil = millis() + 8000;
+                        vTaskDelay(pdMS_TO_TICKS(500));
+                    } else {
+                        waitForCardRemoval();
+                    }
                 }
                 else
                 {
