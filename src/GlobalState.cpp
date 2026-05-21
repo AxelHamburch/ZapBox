@@ -78,3 +78,6 @@ NfcConfig nfcConfig;
 
 // Utility Constants
 const char* BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+
+// PIN Pad State
+PinPadState pinPadState;

@@ -2225,5 +2225,9 @@ void nfcTestScreen(String lnurlw)
   tft.drawString("See Serial for full LNURLW", x, y + 45, GFXFF);
 }
 
+// PIN pad not implemented for T-Display-S3 (screen too small for touch input).
+void showPinPadScreen(const PinPadState &) {}
+int  pinPadHitTest(uint16_t, uint16_t) { return -1; }
+
 #endif // ENABLE_DISPLAY
 

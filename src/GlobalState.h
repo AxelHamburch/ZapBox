@@ -548,4 +548,24 @@ extern ActivityTracking activityTracking;
 
 extern const char* BECH32_CHARSET;
 
+// ============================================================================
+// PIN PAD STATE (BoltCard PIN entry per LUD pinLimit proposal)
+// ============================================================================
+
+struct PinPadState {
+    bool     active      = false;  // PIN pad screen is currently shown
+    char     digits[5]   = {0};   // entered digits, null-terminated
+    int      numDigits   = 0;     // 0–4
+    int      attemptNum  = 0;     // failed attempts so far (shown from 1)
+    int      maxAttempts = 3;
+    long     amountSat   = 0;
+    String   sessionId;
+    String   errorMsg;
+    bool     showError   = false;
+    uint32_t errorStart  = 0;
+    bool     blocked     = false;  // card locked after maxAttempts failures
+};
+
+extern PinPadState pinPadState;
+
 #endif // GLOBAL_STATE_H
