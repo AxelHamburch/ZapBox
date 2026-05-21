@@ -239,6 +239,11 @@ bool nfcNT3H2111Init() {
     // Read block 0: verify Capability Container (bytes 12–15) and log raw bytes
     uint8_t blk0[NT3H_BLOCK_SIZE] = {};
     if (nt3hReadBlock(0x00, blk0)) {
+        // Block 0 bytes 0–6 = NT3H NFC UID (as reported by PN532 readPassiveTargetID).
+        // Store it so the BoltCard task can filter out NT3H self-detection.
+        memcpy(nfcConfig.nt3hNfcUid, blk0, 7);
+        nfcConfig.nt3hNfcUidKnown = true;
+
         char hexbuf[96];
         // Show all 16 bytes: UID(0-7) | Lock(8-11) | CC(12-15)
         snprintf(hexbuf, sizeof(hexbuf),

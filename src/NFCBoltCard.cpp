@@ -319,6 +319,16 @@ static void nfc_task_code(void *pvParams)
             continue;
         }
 
+        // Ignore the NT3H2111 tag itself — when modules are physically close the PN532
+        // RF field energises the NT3H and it responds to REQA like any NFC card.
+        // Without this filter it would trigger waitForCardRemoval() indefinitely.
+        if (uidLength == 7 && nfcConfig.nt3hNfcUidKnown &&
+            memcmp(uid, nfcConfig.nt3hNfcUid, 7) == 0)
+        {
+            vTaskDelay(pdMS_TO_TICKS(200));
+            continue;
+        }
+
         // Discard card tap when device is not ready for payments.
         // This prevents the NFC pending state from being entered during
         // initialisation, WiFi connect, any error condition, product
