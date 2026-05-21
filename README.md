@@ -83,15 +83,6 @@ Device String (switchStr)
 - **USB Output Socket**: Provides 5V for connected devices
 - **Two Physical Buttons**: For navigation and access to features
 - **Touch Display** (Touch version): Virtual touch button for Help/Report/Config modes
-- **3-Position Switch**:
-  - **Position 0**: Everything off
-  - **Position 1**: Output permanently on (bypass mode)
-  - **Position A**: Automatic mode - ESP32 active, waiting for Lightning payment
-- **PN532 NFC Reader** (Optional): For contactless NFC card/tag payment
-  - Connected via I2C (shared bus with Touch controller)
-  - Supports **Bolt Cards** (NTAG424 DNA) and **NTAG21x (213/215/216) / LNURL tags**
-  - Tap-to-pay with automatic card removal detection and payment timeout
-  - Note: The LNbits [ZapBox extension](https://github.com/AxelHamburch/zapbox_extension) is required for the NFC function.
 
 ### JC3248W535C Touch 3.5" (Large Display Version)
 
@@ -104,15 +95,6 @@ Device String (switchStr)
 - **Relay Module**: Switches the USB output
 - **USB Output Socket**: Provides 5V for connected devices
 - **Touch Interface**: Multi-touch enabled — 5 rapid taps anywhere on screen + 2-second hold to enter Config mode
-- **3-Position Switch**:
-  - **Position 0**: Everything off
-  - **Position 1**: Output permanently on (bypass mode)
-  - **Position A**: Automatic mode - ESP32 active, waiting for Lightning payment
-- **PN532 NFC Reader** (Optional): For contactless NFC card/tag payment
-  - Connected via I2C bus
-  - Supports **Bolt Cards** (NTAG424 DNA) and **NTAG21x (213/215/216) / LNURL tags**
-  - Tap-to-pay with automatic card removal detection
-  - Requires LNbits [ZapBox extension](https://github.com/AxelHamburch/zapbox_extension) for full NFC support
 - **Use Cases**: Larger payment terminals, public vending installations, kiosk-style deployments, high-visibility applications
 
 ### ESP32-C3-21-1 (Compact Headless Version)
@@ -198,6 +180,58 @@ Device String (switchStr)
 - NT3H2111 NFC Tag 2: `0x55`
 - PCF8574 I/O-Expander: `0x20`
 
+#### JC3248W535C Touch 3.5" GPIO Mapping (BOARD_JC3248W535C=1)
+
+| GPIO | Function | Type | Direction | Description |
+|------|----------|------|-----------|-------------|
+| **Display (QSPI — internal to module, not on breakout header)** |
+| 45 | LCD QSPI CS | Output | - | Display chip select |
+| 47 | LCD QSPI CLK | Output | - | Display clock |
+| 21 | LCD QSPI D0 | Output | - | Display data 0 |
+| 48 | LCD QSPI D1 | Output | - | Display data 1 |
+| 40 | LCD QSPI D2 | Output | - | Display data 2 |
+| 39 | LCD QSPI D3 | Output | - | Display data 3 |
+| 1 | LCD Backlight | Output | HIGH=ON | Display brightness (PWM capable) |
+| **Touch (AXS15231B — internal, I2C SDA=4 / SCL=8, no external pins)** |
+| (internal) | Touch Controller | I2C | - | No external GPIO required; polled via I2C |
+| **I2C Bus (external, breakout header)** |
+| 17 | I2C SCL | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
+| 18 | I2C SDA | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
+| **NFC** |
+| 16 | NFC IRQ | Input | Pull-up | PN532 interrupt (card detection, active LOW) |
+| **Flex Channels — configurable per channel (relay / servo180 / servo360 / sensor)** |
+| 5 | CH01 | Output/Input | - | Default: relay output |
+| 6 | CH02 | Output/Input | - | Configurable mode |
+| 7 | CH03 | Output/Input | - | Configurable mode |
+| 9 | CH04 | Output/Input | - | Configurable mode |
+| 14 | CH05 | Output/Input | - | Configurable mode |
+| 15 | CH06 | Output/Input | - | Configurable mode |
+| **Fixed-Function Expansion** |
+| **External LED Button (Optional — board pin labeled TX/RX)** |
+| 43 | LED Button (LED) / **TX** | Output | HIGH=ON | Board pin labeled **TX** — External illuminated button LED (3.3V) |
+| 44 | LED Button (SW) / **RX** | Input | Pull-up | Board pin labeled **RX** — External button switch (active LOW); also Light-Sleep wake-up source |
+| **Fixed-Function Expansion** |
+| 46 | FD (NT3H2111) | Input | INPUT_PULLUP | ℹ️ **Strapping Pin** — permanently configured as FD (Field Detection) input from the NT3H2111 NFC Tag 2. Open-drain active LOW: phone near → LOW, no phone → HIGH. Pauses PN532 RF while a phone field is active. See note below. |
+
+> **ℹ️ GPIO 46 — FD (Field Detection) for NT3H2111, Strapping Pin with low practical risk**
+> GPIO 46 is permanently configured as `INPUT_PULLUP` and used exclusively as the FD (Field Detection) input from the NT3H2111 NFC Tag 2 chip. No Web Installer configuration required.
+>
+> On the ESP32-S3, GPIO 46 is a strapping pin that controls **ROM serial output during boot**:
+> - HIGH at boot (default) → ROM log printed to UART
+> - LOW at boot → ROM log suppressed (boot proceeds normally — no download-mode risk, no bricking)
+>
+> This has **no effect on normal firmware operation**. The device boots and runs identically either way.
+>
+> **Practical guidance:**
+> - A 10 kΩ series resistor between the NT3H2111 FD pin and GPIO 46 is sufficient protection for a clean PCB design
+> - The only real consequence of a LOW at boot is that ROM boot messages are silenced on the serial monitor
+
+**I2C Bus Addresses:**
+- Touch AXS15231B: internal (SDA=4 / SCL=8, not on external I2C bus)
+- PN532 NFC Reader: `0x24`
+- NT3H2111 NFC Tag 2: `0x55`
+- PCF8574 I/O-Expander: `0x20`
+
 #### ESP32 Dev Module GPIO Mapping (ENABLE_DISPLAY=0 - Headless)
 
 | GPIO | Function | Type | Direction | Description |
@@ -239,12 +273,12 @@ Device String (switchStr)
 | Display | LCD (170x320) | QSPI Touch (480x320) | None (Headless) | None (Headless) |
 | Memory | 16MB Flash, 8MB PSRAM | 16MB Flash, 8MB OPI PSRAM | 4MB Flash, 512KB SRAM | 4MB Flash, 400KB SRAM |
 | Touch | CST816S/CST328 | AXS15231B (capacitive) | N/A | N/A |
-| External LED Button | Supported (GPIO 43/44) | N/A | N/A | N/A |
+| External LED Button | Supported (GPIO 43/44) | Supported (GPIO 43/44) | N/A | N/A |
 | Status Indication | Display + LED | Display + LED | LED only (GPIO 21) | LED only (GPIO 21) |
-| NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 1, 17, 18) | Yes (GPIO 4, 17, 18) | Yes (GPIO 4, 17, 18) |
+| NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 16, 17, 18) | Yes (GPIO 4, 17, 18) | Yes (GPIO 10, 20, 21) |
 | Power Consumption | ~150-250mA | ~200-350mA | ~100-150mA | ~80-120mA (single-core) |
 | Flash Memory | 16MB | 16MB | 4MB | 4MB |
-| Relay Channels | 4 (GPIO 12,13,10,11) | 4 (GPIO 12,13,10,11) | 12 extended channels | 4 base channels |
+| Relay Channels | 4 (GPIO 12,13,10,11) | 6 flex channels (GPIO 5,6,7,9,14,15) | 12 extended channels | 4 base channels |
 | Configuration | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial |
 | Typical Use Case | General retail vending | Large kiosk terminals | Embedded installations | Space-critical, low-power apps |
 
@@ -1026,7 +1060,7 @@ LNURL changes     ──I²C──►       NDEF updated
 - **Automatic NDEF update** — LNURL is rewritten via I²C whenever the active product or channel changes
 - **No configuration required** — auto-detected at startup via I²C scan; silently skipped if not present
 - **Coexists with PN532** — both modules run independently in parallel; no mode switching needed
-- **FD pin** — the INT/FD pin is permanently wired to GPIO 3 (T-Display-S3) or GPIO 34 (headless); active LOW when a phone's NFC field is detected, pauses PN532 RF automatically — no configuration needed
+- **FD pin** — the INT/FD pin is permanently wired to GPIO 3 (T-Display-S3), GPIO 34 (headless ESP32 Dev), or GPIO 46 (JC3248W535C Touch 3.5"); active LOW when a phone's NFC field is detected, pauses PN532 RF automatically — no configuration needed
 
 **Wiring**:
 ```
@@ -1037,7 +1071,8 @@ GND                →    GND
 SDA                →    GPIO 18 (shared I²C bus)
 SCL                →    GPIO 17 (shared I²C bus)
 FD / INT           →    GPIO 3  (T-Display-S3)              ← optional
-                   →    GPIO 34 (ESP32 Dev, ext. pull-up!)  ← optional
+                   →    GPIO 34 (ESP32 Dev)                 ← optional
+                   →    GPIO 46 (JC3248W535C Touch 3.5")    ← optional
 ```
 
 **Supported Wallets**:

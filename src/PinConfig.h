@@ -45,7 +45,8 @@
 
 // GPIO 3 / GPIO 34 — free expansion / sensor input / FD (Field Detection) from NT3H2111
 // T-Display-S3: GPIO 3 (only free pin; INPUT_PULLUP supported)
-// ESP32 Dev headless: GPIO 34 (input-only, no internal pull-up — external pull-up required for open-drain FD)
+// ESP32 Dev headless: GPIO 34 (input-only, no internal pull-up — pull-up must be provided externally,
+//   e.g. on-board via NFC Tag 2 Click, or as discrete 10 kΩ to 3.3 V on bare NT3H2111 designs)
 #if ENABLE_DISPLAY
   #define PIN_GPIO3 3
   #define PIN_GPIO3_MODE INPUT_PULLUP
@@ -214,11 +215,13 @@
 // GPIO 16 must be configured as INPUT_PULLUP at boot to avoid floating → spurious reads.
 #define PIN_NFC_IRQ  16
 
-// ── Special Reserve (like GPIO 3 on T-Display-S3) ────────────────
-// ⚠ GPIO 46 is a STRAPPING PIN — same warnings as GPIO 3 above apply.
-// Only use for signals guaranteed HIGH during boot (e.g. PWM output, LED).
+// ── FD (Field Detection) — NT3H2111 NFC Tag 2 ────────────────────
+// ⚠ GPIO 46 is a STRAPPING PIN — controls ROM serial output at boot.
+// LOW at boot → ROM log suppressed (boot still proceeds normally, no bricking).
+// Configured as INPUT_PULLUP: open-drain FD signal is HIGH at rest;
+// a phone's NFC field pulls it LOW briefly. Identical role to GPIO 3 on T-Display-S3.
 #define PIN_GPIO3       46
-#define PIN_GPIO3_MODE  OUTPUT   // Safe: drive HIGH after boot
+#define PIN_GPIO3_MODE  INPUT_PULLUP   // FD signal: HIGH = no field, LOW = phone detected
 
 // ── Flexible Output/Input Channels ───────────────────────────────
 // GPIOs 5, 6, 7, 9, 14, 15 — each configurable per channel:
@@ -249,7 +252,12 @@ static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
     PIN_RELAY_CH04, PIN_RELAY_CH05, PIN_RELAY_CH06
 };
 
-// No external LED button — capacitive touch screen handles wake-up.
+// ── External LED Button (same wiring as T-Display-S3) ─────────────
+// PIN_LED_BUTTON_LED = 43  (inherited from ENABLE_DISPLAY=1 block above)
+// PIN_LED_BUTTON_SW  = 44  (inherited from ENABLE_DISPLAY=1 block above)
+// GPIO 43 (board label: TX): LED output — sources 3.3 V when device is ready
+// GPIO 44 (board label: RX): Button input — INPUT_PULLUP, active LOW on press;
+//           also Light-Sleep wake-up source (same as T-Display-S3)
 
 #endif  // BOARD_JC3248W535C
 
