@@ -11,6 +11,7 @@
 #include <driver/rtc_io.h>
 #include <qrcode.h>
 #include "Display.h"
+#include "PinConfig.h"
 #include "GlobalState.h"
 #include "Log.h"
 
