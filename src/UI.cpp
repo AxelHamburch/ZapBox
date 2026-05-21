@@ -493,6 +493,7 @@ void showInitialScreenAfterConnections() {
   // Single mode
   if (multiChannelConfig.mode == "off") {
     if (multiChannelConfig.btcTickerMode == "always") {
+      ensureQrForPin(RELAY_CHANNEL_PINS[0]); // pre-generate LNURL so NT3H writes immediately
       btctickerScreen();
       multiChannelConfig.btcTickerActive = true;
       productSelectionState.showTime = millis();

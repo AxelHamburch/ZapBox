@@ -1198,9 +1198,10 @@ void supplyBinEmptyScreen()
 void showQRScreen()
 {
   DisplayLock lock;
-  int pinIndex = getPinIndex(12);
+  int activePin = (RELAY_CHANNEL_MAX > 0) ? RELAY_CHANNEL_PINS[0] : 12;
+  int pinIndex = getPinIndex(activePin);
   String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : "READY 4 ZAP ACTION";
-  showProductQRScreen(label, 12);
+  showProductQRScreen(label, activePin);
 }
 
 void drawQRCode()

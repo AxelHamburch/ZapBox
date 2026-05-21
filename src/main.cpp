@@ -641,7 +641,7 @@ void readFiles()
       #endif
     }
 
-    // GPIO 3 (T-Display-S3) / GPIO 34 (headless) — always FD for NT3H2111 (config[37] ignored)
+    // GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless) — always FD for NT3H2111 (config[37] ignored)
 
     // Read I/O Expander channel configuration
     // Index 38 = ioExpander enable flag ("yes"/"no")
@@ -1272,7 +1272,7 @@ void setup()
   initIOExpander();
 #endif
 
-  // GPIO 3 (T-Display-S3) / GPIO 34 (headless ESP32 Dev) — FD (Field Detection) for NT3H2111
+  // GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless ESP32 Dev) — FD (Field Detection) for NT3H2111
 #ifdef PIN_GPIO3
   pinMode(PIN_GPIO3, PIN_GPIO3_MODE);
   LOG_INFO("Setup", String("GPIO ") + PIN_GPIO3 + " configured as FD (Field Detection) for NT3H2111");
@@ -1578,6 +1578,7 @@ void setup()
       !deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
     if (multiChannelConfig.btcTickerMode == "always") {
       SETUP_PRINT("[STARTUP] Single mode (ALWAYS) - showing Bitcoin ticker immediately");
+      ensureQrForPin(RELAY_CHANNEL_PINS[0]); // pre-generate LNURL so NT3H writes immediately
       btctickerScreen();
       multiChannelConfig.btcTickerActive = true;
       productSelectionState.showTime = millis();
@@ -2907,7 +2908,7 @@ void loop()
       }
     }
 
-    // ── GPIO 3 (T-Display-S3) / GPIO 34 (headless): FD from NT3H2111 ──
+    // ── GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless): FD from NT3H2111 ──
     // Open-drain active LOW: phone near → FD LOW; no phone → pull-up → HIGH.
     // Extends PN532 RF pause while the phone field is active.
     #ifdef PIN_GPIO3
