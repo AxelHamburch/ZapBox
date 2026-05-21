@@ -210,6 +210,13 @@ static void waitForCardRemoval()
 
     while (absentCount < REQUIRED_ABSENT_POLLS)
     {
+        // Exit early if the FD pin (or earlier phone detection) opened an NT3H read window.
+        // The PN532 RF field during this removal poll prevents the phone from reading NT3H;
+        // the top-of-loop pn532PauseUntil check will turn RF off immediately on return.
+        if (nfcConfig.pn532PauseUntil > 0 && millis() < nfcConfig.pn532PauseUntil) {
+            return;
+        }
+
         bool found = s_nfc->readPassiveTargetID(
             PN532_MIFARE_ISO14443A, chkUid, &chkLen, 400);
 
