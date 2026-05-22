@@ -1866,6 +1866,13 @@ void loop()
               LOG_INFO("PIN", "PIN error cleared – ready for retry");
             }
           }
+        } else if (millis() - pinPadState.activatedAt > 210000) {
+          // Device-side fallback: 210s timeout (30s over server timeout of 180s).
+          // Catches the case where the server's timeout WS event is lost.
+          pinPadState.active    = false;
+          nfcPendingScreenShown = false;
+          needsQRRedraw         = true;
+          LOG_WARN("PIN", "PIN pad device-side timeout – returning to QR screen");
         }
       } else if (extensionConfig.nfcPaymentPending) {
         if (!nfcPendingScreenShown) {
@@ -3758,6 +3765,7 @@ void processPaymentEvent(String &payloadStr)
       if (event && strcmp(event, "pin_required") == 0) {
         pinPadState = PinPadState();  // reset to defaults
         pinPadState.active      = true;
+        pinPadState.activatedAt = millis();
         pinPadState.maxAttempts = pinDoc["max_attempts"] | 3;
         pinPadState.amountSat   = pinDoc["amount_sat"]   | 0L;
         pinPadState.sessionId   = pinDoc["session_id"]   | "";

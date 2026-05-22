@@ -563,6 +563,7 @@ struct PinPadState {
     String   errorMsg;
     bool     showError   = false;
     uint32_t errorStart  = 0;
+    uint32_t activatedAt = 0;     // millis() when PIN pad was shown (for device-side timeout)
     bool     blocked     = false;  // card locked after maxAttempts failures
 };
 
