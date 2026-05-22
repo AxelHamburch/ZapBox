@@ -1850,6 +1850,23 @@ void loop()
           needsQRRedraw = true;
           LOG_INFO("NFC", "NFC error detail screen dismissed – returning to QR screen");
         }
+      } else if (pinPadState.active) {
+        // PIN pad error auto-dismiss: 5s for retryable error, 10s for blocked card
+        if (pinPadState.showError) {
+          uint32_t errDur = pinPadState.blocked ? 10000 : 5000;
+          if (millis() - pinPadState.errorStart > errDur) {
+            if (pinPadState.blocked) {
+              pinPadState.active    = false;
+              nfcPendingScreenShown = false;
+              needsQRRedraw         = true;
+              LOG_INFO("PIN", "Card blocked – returning to QR screen after 10s");
+            } else {
+              pinPadState.showError = false;
+              showPinPadScreen(pinPadState);
+              LOG_INFO("PIN", "PIN error cleared – ready for retry");
+            }
+          }
+        }
       } else if (extensionConfig.nfcPaymentPending) {
         if (!nfcPendingScreenShown) {
           nfcPendingScreen();
@@ -1984,7 +2001,44 @@ void loop()
           // Skip the rest of touch processing - button handler in Task1 will handle this
           goto skip_product_touch_processing;
         }
-        
+
+        // PIN pad takes priority over all other touch processing
+        #if ENABLE_NFC
+        if (pinPadState.active) {
+          if (!pinPadState.showError && isTouched && !wasTouched) {
+            int hit = pinPadHitTest(x, y);
+            if (hit >= 0 && hit <= 9) {
+              if (pinPadState.numDigits < 4) {
+                pinPadState.digits[pinPadState.numDigits++] = '0' + hit;
+                pinPadState.digits[pinPadState.numDigits]   = '\0';
+                showPinPadScreen(pinPadState);
+                if (pinPadState.numDigits == 4) {
+                  sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
+                }
+              }
+            } else if (hit == 10) {  // backspace
+              if (pinPadState.numDigits > 0) {
+                pinPadState.digits[--pinPadState.numDigits] = '\0';
+                showPinPadScreen(pinPadState);
+              }
+            } else if (hit == 11) {  // clear all
+              memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
+              pinPadState.numDigits = 0;
+              showPinPadScreen(pinPadState);
+            } else if (hit == 12) {  // cancel
+              pinPadState.active                = false;
+              extensionConfig.nfcPaymentPending = false;
+              nfcPendingScreenShown             = false;
+              needsQRRedraw                     = true;
+              LOG_INFO("PIN", "PIN entry cancelled by user");
+            }
+          }
+          if (isTouched && !wasTouched) activityTracking.lastActivityTime = millis();
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
+        #endif // ENABLE_NFC
+
         // Log any detected gesture (except LONG_PRESS which spams continuously)
         if (gesture != GESTURE_NONE && gesture != GESTURE_LONG_PRESS) {
           Serial.printf("[TOUCH] Detected - Gesture: 0x%02X, X: %d, Y: %d", gesture, x, y);
