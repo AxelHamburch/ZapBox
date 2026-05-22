@@ -290,36 +290,34 @@ void sendPinSubmit(const String &sessionId, const String &pin)
 // Tries multiple times to account for DNS/DHCP stabilization delays
 bool checkInternetConnectivity()
 {
-  HTTPClient http;
-  http.setTimeout(3000); // 3 second timeout per attempt
-  
   LOG_INFO("Network", "Testing Internet connection...");
-  
-  // Try up to 3 times with small delays between attempts
-  // First attempt might fail if DNS isn't ready yet
-  const int maxAttempts = 3;
-  const int delayBetweenAttempts = 500; // 500ms between retries
-  
-  for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-    http.begin("http://clients3.google.com/generate_204"); // Google's connectivity check
+
+  // Multiple URLs tried in order — stops as soon as one succeeds.
+  // 1.1.1.1 is IP-based (no DNS) so it works even when DNS is slow to start.
+  static const char* const checkUrls[] = {
+    "http://1.1.1.1",                                    // Cloudflare — no DNS needed
+    "http://clients3.google.com/generate_204",           // Google captive-portal check
+    "http://connectivitycheck.gstatic.com/generate_204", // Google fallback
+  };
+  const int numUrls = sizeof(checkUrls) / sizeof(checkUrls[0]);
+
+  for (int i = 0; i < numUrls; i++) {
+    HTTPClient http;
+    http.setTimeout(3000);
+    http.begin(checkUrls[i]);
     int httpCode = http.GET();
     http.end();
-    
-    bool hasInternet = (httpCode == 204 || httpCode == 301 || httpCode == 302 || httpCode > 0);
-    
-    if (hasInternet) {
-      LOG_INFO("Network", String("Internet check: OK (HTTP ") + String(httpCode) + String(") - attempt ") + String(attempt));
+
+    if (httpCode > 0) {
+      LOG_INFO("Network", String("Internet check: OK (HTTP ") + String(httpCode)
+               + ") via " + String(checkUrls[i]));
       return true;
     }
-    
-    // If not last attempt, wait before retrying
-    if (attempt < maxAttempts) {
-      delay(delayBetweenAttempts);
-    }
+    LOG_INFO("Network", String("Internet check: ") + String(checkUrls[i])
+             + " failed (" + String(httpCode) + ")");
   }
-  
-  // All attempts failed
-  LOG_INFO("Network", String("Internet check: FAILED after ") + String(maxAttempts) + String(" attempts"));
+
+  LOG_INFO("Network", "Internet check: FAILED (all URLs tried)");
   return false;
 }
 

@@ -71,34 +71,37 @@ struct ThemeConfig {
   const char *name;
   uint16_t    foreground;
   uint16_t    background;
+  bool        invertQr;   // true = swap fg/bg in QR area so modules are dark on light
 };
 
 static const ThemeConfig themeConfigs[] = {
-  {"black-white",         TFT_BLACK,     TFT_WHITE},
-  {"black-darkcyan",      TFT_BLACK,     TFT_DARKCYAN},
-  {"darkgreen-green",     TFT_DARKGREEN, TFT_GREEN},
-  {"darkgreen-lightgrey", TFT_DARKGREEN, TFT_LIGHTGREY},
-  {"darkblue-lightgrey",  TFT_NAVY,      TFT_LIGHTGREY},
-  {"red-green",           TFT_RED,       TFT_GREEN},
-  {"black-blue",          TFT_BLACK,     TFT_BLUE},
-  {"orange-brown",        TFT_ORANGE,    TFT_BROWN},
-  {"black-yellow",        TFT_BLACK,     TFT_YELLOW},
-  {"black-btcorange",     TFT_BLACK,     COLOR_BTCORANGE},
-  {"btcorange-black",     COLOR_BTCORANGE, TFT_BLACK},
-  {"darkgrey-btcorange",  TFT_DARKGREY,  COLOR_BTCORANGE},
-  {"zapbox",              COLOR_ZAPBOX_AMBER, TFT_BLACK},
-  {"maroon-magenta",      TFT_MAROON,    TFT_MAGENTA},
-  {"black-red",           TFT_BLACK,     TFT_RED},
-  {"brown-orange",        TFT_BROWN,     TFT_ORANGE},
-  {"black-orange",        TFT_BLACK,     TFT_ORANGE},
-  {"white-darkcyan",      TFT_WHITE,     TFT_DARKCYAN},
-  {"white-navy",          TFT_WHITE,     TFT_NAVY},
-  {"navy-white",          TFT_NAVY,      TFT_WHITE},
-  {"darkcyan-cyan",       TFT_DARKCYAN,  TFT_CYAN},
-  {"black-olive",         TFT_BLACK,     TFT_OLIVE},
-  {"black-darkgrey",      TFT_BLACK,     TFT_DARKGREY},
-  {"black-lightgrey",     TFT_BLACK,     TFT_LIGHTGREY},
-  {"black-green",         TFT_BLACK,     TFT_GREEN},
+  {"black-white",            TFT_BLACK,          TFT_WHITE,       false},
+  {"black-darkcyan",         TFT_BLACK,          TFT_DARKCYAN,    false},
+  {"darkgreen-green",        TFT_DARKGREEN,      TFT_GREEN,       false},
+  {"darkgreen-lightgrey",    TFT_DARKGREEN,      TFT_LIGHTGREY,   false},
+  {"darkblue-lightgrey",     TFT_NAVY,           TFT_LIGHTGREY,   false},
+  {"red-green",              TFT_RED,            TFT_GREEN,       false},
+  {"black-blue",             TFT_BLACK,          TFT_BLUE,        false},
+  {"orange-brown",           TFT_ORANGE,         TFT_BROWN,       false},
+  {"black-yellow",           TFT_BLACK,          TFT_YELLOW,      false},
+  {"black-btcorange",        TFT_BLACK,          COLOR_BTCORANGE, false},
+  {"btcorange-black",        COLOR_BTCORANGE,    TFT_BLACK,       false}, // inv. QR: orange modules on black
+  {"btcorange-black-std",    COLOR_BTCORANGE,    TFT_BLACK,       true},  // std. QR: black modules on orange
+  {"darkgrey-btcorange",     TFT_DARKGREY,       COLOR_BTCORANGE, false},
+  {"zapbox",                 COLOR_ZAPBOX_AMBER, TFT_BLACK,       true},
+  {"maroon-magenta",         TFT_MAROON,         TFT_MAGENTA,     false},
+  {"black-red",              TFT_BLACK,          TFT_RED,         false},
+  {"brown-orange",           TFT_BROWN,          TFT_ORANGE,      false},
+  {"black-orange",           TFT_BLACK,          TFT_ORANGE,      false},
+  {"white-darkcyan",         TFT_WHITE,          TFT_DARKCYAN,    false},
+  {"white-navy",             TFT_WHITE,          TFT_NAVY,        false}, // inv. QR: white modules on navy
+  {"white-navy-std",         TFT_WHITE,          TFT_NAVY,        true},  // std. QR: navy modules on white
+  {"navy-white",             TFT_NAVY,           TFT_WHITE,       false},
+  {"darkcyan-cyan",          TFT_DARKCYAN,       TFT_CYAN,        false},
+  {"black-olive",            TFT_BLACK,          TFT_OLIVE,       false},
+  {"black-darkgrey",         TFT_BLACK,          TFT_DARKGREY,    false},
+  {"black-lightgrey",        TFT_BLACK,          TFT_LIGHTGREY,   false},
+  {"black-green",            TFT_BLACK,          TFT_GREEN,       false},
 };
 
 static void setThemeColors() {
@@ -112,6 +115,13 @@ static void setThemeColors() {
       return;
     }
   }
+}
+
+static bool themeInvertQr() {
+  for (const auto &t : themeConfigs) {
+    if (displayConfig.theme == t.name) return t.invertQr;
+  }
+  return false;
 }
 
 // External currency string set from config (defaults to "USD")
@@ -877,17 +887,11 @@ void showProductQRScreen(String label, int pin) {
   int wordCount;
   splitLabelWords(label, pin, words, wordCount);
 
-  // Invert QR screen for themes where fg is dark-on-light:
-  // QR modules must be dark on a light background to be scannable.
-  // Convention: first value = text color, second = background color;
-  // on the QR page those are flipped so the QR area becomes light.
   uint16_t qrFg = themeForeground;
   uint16_t qrBg = themeBackground;
-  if (displayConfig.theme == "btcorange-black" ||
-      displayConfig.theme == "zapbox" ||
-      displayConfig.theme == "white-navy") {
-    qrFg = themeBackground;   // dark modules
-    qrBg = themeForeground;   // light/colored background
+  if (themeInvertQr()) {
+    qrFg = themeBackground;
+    qrBg = themeForeground;
   }
 
   fillScreen(qrBg);
@@ -911,9 +915,7 @@ void showThresholdQRScreen() {
 
   uint16_t qrFg = themeForeground;
   uint16_t qrBg = themeBackground;
-  if (displayConfig.theme == "btcorange-black" ||
-      displayConfig.theme == "zapbox" ||
-      displayConfig.theme == "white-navy") {
+  if (themeInvertQr()) {
     qrFg = themeBackground;
     qrBg = themeForeground;
   }

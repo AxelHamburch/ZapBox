@@ -42,6 +42,7 @@ void fetchSwitchLabels()
 {
   if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
     Serial.println("[LABELS] Cannot fetch labels - server or deviceId not configured");
+    lastFetchAttempt = millis(); // apply backoff so this doesn't spam every loop tick
     return;
   }
 

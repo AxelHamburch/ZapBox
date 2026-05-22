@@ -134,13 +134,20 @@ void checkExternalButtonHolds() {
     return;
   }
 
-  // Single long hold (first press) >=2s → Help
+  // Single long hold (first press) >=2s → Help (disabled for JC3248W535C touch display)
   if (externalButtonState.clickCount == 0 && pressDuration >= ExternalButtonConfig::HELP_HOLD_MS) {
+#ifndef BOARD_JC3248W535C
     LOG_INFO("Button", "Long hold >=2s -> Help");
     externalButtonState.holdActionFired = true;
     externalButtonState.clickCount = 0;
     externalButtonState.sequenceStart = 0;
     showHelp();
+#else
+    externalButtonState.holdActionFired = true;
+    externalButtonState.clickCount = 0;
+    externalButtonState.sequenceStart = 0;
+    LOG_INFO("Button", "Long hold >=2s -> Help (disabled for JC3248W535C)");
+#endif
     return;
   }
 }
