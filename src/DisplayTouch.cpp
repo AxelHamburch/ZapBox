@@ -119,18 +119,18 @@ extern String currency;
 // ============================================================================
 // SHARED LAYOUT CONSTANTS (used by QR / step / NFC screens)
 // ============================================================================
-// Left half: 245×245 area (10..255, 35..280) — for QR or big icons/text
-// Right half: 200×250 colored info box (270..470, 35..285)
-#define QR_X        10
-#define QR_Y        35
-#define QR_MOD_SIZE 5     // 49 modules × 5 px = 245 px
-#define QR_AREA_CX  ((QR_X) + (49 * QR_MOD_SIZE) / 2)   // 132
-#define QR_AREA_CY  ((QR_Y) + (49 * QR_MOD_SIZE) / 2)   // 157
+// Left half:  196×196 QR area  (29..225,  62..258) — equal 29/30/29 px gaps
+// Right half: 196×196 info box (255..451, 62..258)   left | middle | right
+#define QR_X        29
+#define QR_Y        62
+#define QR_MOD_SIZE 4     // 49 modules × 4 px = 196 px
+#define QR_AREA_CX  ((QR_X) + (49 * QR_MOD_SIZE) / 2)   // 127
+#define QR_AREA_CY  ((QR_Y) + (49 * QR_MOD_SIZE) / 2)   // 160
 
-#define BOX_X       270
-#define BOX_Y       35
-#define BOX_W       200
-#define BOX_H       250
+#define BOX_X       255
+#define BOX_Y       62
+#define BOX_W       196
+#define BOX_H       196
 
 // ============================================================================
 // BITCOIN LOGO — 64×64 monochrome bitmap (from original Display.cpp)
@@ -433,9 +433,9 @@ static void renderStatusBox(const char *label) {
 void startupScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, SCR_H / 2 - 20, "ZAPBOX",   themeForeground, themeBackground, 5);
-  drawCenter(SCR_W / 2, SCR_H / 2 + 30, "Firmware", themeForeground, themeBackground, 2);
-  drawCenter(SCR_W / 2, SCR_H / 2 + 55, VERSION,    themeForeground, themeBackground, 2);
+  drawCenter(SCR_W / 2, SCR_H / 2 - 20, "ZAPBOX",                   themeForeground, themeBackground, 5);
+  drawCenter(SCR_W / 2, SCR_H / 2 + 25, "Firmware " VERSION,        themeForeground, themeBackground, 2);
+  drawCenter(SCR_W / 2, SCR_H / 2 + 50, "Powered by LNbits",        themeForeground, themeBackground, 2);
   flushDisplay();
 }
 
@@ -450,28 +450,27 @@ void initializationScreen() {
 void configModeScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, SCR_H / 2 - 30, "CONFIG",   themeForeground, themeBackground, 4);
-  drawCenter(SCR_W / 2, SCR_H / 2 + 20, "MODE",     themeForeground, themeBackground, 4);
-  drawCenter(SCR_W / 2, SCR_H / 2 + 60, "(serial)", themeForeground, themeBackground, 2);
+  drawCenter(SCR_W / 2, SCR_H / 2 - 20, "CONFIG",   themeForeground, themeBackground, 4);
+  drawCenter(SCR_W / 2, SCR_H / 2 + 30, "MODE",     themeForeground, themeBackground, 4);
   flushDisplay();
 }
 
 void errorReportScreen(uint8_t w, uint8_t i, uint8_t s, uint8_t ws) {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, 60, "REPORT", themeForeground, themeBackground, 4);
+  drawCenter(SCR_W / 2, 40, "REPORT", themeForeground, themeBackground, 4);
   char line[32];
-  snprintf(line, sizeof(line), "WiFi:%u  Net:%u",  w, i);
-  drawCenter(SCR_W / 2, SCR_H / 2 - 20, line, themeForeground, themeBackground, 2);
-  snprintf(line, sizeof(line), "Srv:%u  WS:%u",   s, ws);
-  drawCenter(SCR_W / 2, SCR_H / 2 + 10, line, themeForeground, themeBackground, 2);
+  snprintf(line, sizeof(line), "WiFi: %u",       w); drawCenter(SCR_W / 2, 130, line, themeForeground, themeBackground, 2);
+  snprintf(line, sizeof(line), "Internet: %u",   i); drawCenter(SCR_W / 2, 168, line, themeForeground, themeBackground, 2);
+  snprintf(line, sizeof(line), "Server: %u",     s); drawCenter(SCR_W / 2, 206, line, themeForeground, themeBackground, 2);
+  snprintf(line, sizeof(line), "WebSocket: %u", ws); drawCenter(SCR_W / 2, 244, line, themeForeground, themeBackground, 2);
   flushDisplay();
 }
 
 void wifiReconnectScreen()      { DisplayLock l; if (_gfx) renderStatusBox("NO WIFI"); }
-void internetReconnectScreen()  { DisplayLock l; if (_gfx) renderStatusBox("NO NET"); }
+void internetReconnectScreen()  { DisplayLock l; if (_gfx) renderStatusBox("NO INTERNET"); }
 void serverReconnectScreen()    { DisplayLock l; if (_gfx) renderStatusBox("NO SERVER"); }
-void websocketReconnectScreen() { DisplayLock l; if (_gfx) renderStatusBox("NO SOCKET"); }
+void websocketReconnectScreen() { DisplayLock l; if (_gfx) renderStatusBox("NO WEB SOCKET"); }
 void bootUpScreen()             { DisplayLock l; if (_gfx) renderStatusBox("BOOT UP"); }
 
 // ============================================================================
@@ -648,8 +647,8 @@ void nfcPendingScreen() {
   // Shift everything down by 64px (~20% of SCR_H=320) vs. the original layout.
   drawCenter(SCR_W / 2, 134, "PENDING",
              themeForeground, themeBackground, 6);
-  fillRect(NFC_BOX_X, NFC_BOX_Y + 64, NFC_BOX_W, NFC_BOX_H, themeForeground);
-  drawCenter(SCR_W / 2, NFC_BOX_LBL_Y + 64, "NFC",
+  fillRect(NFC_BOX_X, NFC_BOX_Y + 40, NFC_BOX_W, NFC_BOX_H, themeForeground);
+  drawCenter(SCR_W / 2, NFC_BOX_LBL_Y + 40, "NFC",
              themeBackground, themeForeground, 5);
   flushDisplay();
 }
@@ -658,8 +657,8 @@ void nfcNoLuckScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
   // NFC box at TOP this time (smaller)
-  fillRect(NFC_BOX_X, 50, NFC_BOX_W, NFC_BOX_H, themeForeground);
-  drawCenter(SCR_W / 2, 90, "NFC",
+  fillRect(NFC_BOX_X, 85, NFC_BOX_W, NFC_BOX_H, themeForeground);
+  drawCenter(SCR_W / 2, 130, "NFC",
              themeBackground, themeForeground, 5);
   // "NO LUCK" big below
   drawCenter(SCR_W / 2, 220, "NO LUCK",
