@@ -55,11 +55,11 @@ bool initializationActive = true; // Startup/initialization phase flag for LED c
 
 // Buttons
 OneButton leftButton(PIN_BUTTON_1, true);
-#if ENABLE_DISPLAY
+#if ENABLE_DISPLAY && !defined(BOARD_JC3248W535C)
 // PIN_BUTTON_2 = GPIO 14, which is SPI Flash IO1 on ESP32-C3-WROOM-02.
 // Declaring this globally causes OneButton's constructor to call pinMode(14, ...)
 // BEFORE setup() runs, crashing the C3 before any serial output.
-// All rightButton usages are already guarded by #if ENABLE_DISPLAY.
+// JC3248W535C is touch-only — no physical right button.
 OneButton rightButton(PIN_BUTTON_2, true);
 #endif
 
@@ -1060,8 +1060,8 @@ void Task1code(void *pvParameters)
     }
 
     leftButton.tick();
-#if ENABLE_DISPLAY
-    rightButton.tick(); // Only T-Display-S3 has a physical right (HELP) button
+#if ENABLE_DISPLAY && !defined(BOARD_JC3248W535C)
+    rightButton.tick(); // T-Display-S3 only
 #endif
 
     // Handle external LED-button (GPIO 44 input)
@@ -1289,7 +1289,7 @@ void setup()
   leftButton.setDebounceMs(50); // 50ms debounce - fast response
   leftButton.attachClick(onNextButtonClick); // Single click = Navigate products OR exit config mode
   leftButton.attachLongPressStart(configMode); // Long press = Config mode
-#if ENABLE_DISPLAY
+#if ENABLE_DISPLAY && !defined(BOARD_JC3248W535C)
   // T-Display-S3 only: physical right button on PIN_BUTTON_2 (GPIO14 on esp32dev is unconnected
   // and floats during EN reset, causing ghost presses if ticked on headless version)
   rightButton.setDebounceMs(50);
@@ -2012,32 +2012,44 @@ void loop()
         // PIN pad takes priority over all other touch processing
         #if ENABLE_NFC
         if (pinPadState.active) {
-          if (!pinPadState.showError && isTouched && !wasTouched) {
+          if (isTouched && !wasTouched) {
             int hit = pinPadHitTest(x, y);
-            if (hit >= 0 && hit <= 9) {
-              if (pinPadState.numDigits < 4) {
-                pinPadState.digits[pinPadState.numDigits++] = '0' + hit;
-                pinPadState.digits[pinPadState.numDigits]   = '\0';
-                showPinPadScreen(pinPadState);
-                if (pinPadState.numDigits == 4) {
-                  sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
-                }
-              }
-            } else if (hit == 10) {  // backspace
-              if (pinPadState.numDigits > 0) {
-                pinPadState.digits[--pinPadState.numDigits] = '\0';
-                showPinPadScreen(pinPadState);
-              }
-            } else if (hit == 11) {  // clear all
-              memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
-              pinPadState.numDigits = 0;
-              showPinPadScreen(pinPadState);
-            } else if (hit == 12) {  // cancel
+            if (hit == 12) {  // cancel — always allowed, even during error display
               pinPadState.active                = false;
               extensionConfig.nfcPaymentPending = false;
               nfcPendingScreenShown             = false;
               needsQRRedraw                     = true;
               LOG_INFO("PIN", "PIN entry cancelled by user");
+            } else if (!pinPadState.showError) {
+              // Normal input — only when no error is displayed
+              if (hit >= 0 && hit <= 9) {
+                if (pinPadState.numDigits < 4) {
+                  pinPadState.digits[pinPadState.numDigits++] = '0' + hit;
+                  pinPadState.digits[pinPadState.numDigits]   = '\0';
+                  showPinPadScreen(pinPadState);
+                  if (pinPadState.numDigits == 4) {
+                    sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
+                  }
+                }
+              } else if (hit == 10) {  // backspace
+                if (pinPadState.numDigits > 0) {
+                  pinPadState.digits[--pinPadState.numDigits] = '\0';
+                  showPinPadScreen(pinPadState);
+                }
+              } else if (hit == 11) {  // clear all
+                memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
+                pinPadState.numDigits = 0;
+                showPinPadScreen(pinPadState);
+              }
+            } else if (!pinPadState.blocked && hit >= 0 && hit <= 9) {
+              // Digit during retryable error — clear error immediately and start fresh
+              pinPadState.showError  = false;
+              memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
+              pinPadState.numDigits  = 1;
+              pinPadState.digits[0]  = '0' + hit;
+              pinPadState.digits[1]  = '\0';
+              showPinPadScreen(pinPadState);
+              LOG_INFO("PIN", "New digit during error – cleared error, starting fresh");
             }
           }
           if (isTouched && !wasTouched) activityTracking.lastActivityTime = millis();
@@ -3776,9 +3788,14 @@ void processPaymentEvent(String &payloadStr)
       }
       if (event && strcmp(event, "pin_error") == 0) {
         if (!pinPadState.active) {
-          // PIN pad was already deactivated (e.g. blocked timer expired before
-          // the server's timeout event arrived) — ignore to prevent screen freeze.
           LOG_INFO("PIN", "Ignoring pin_error – PIN pad no longer active");
+          return;
+        }
+        // Ignore stale events from a previous session (e.g. old loop timing out
+        // while a new tap already started a fresh session).
+        const char *evtSession = pinDoc["session_id"] | "";
+        if (*evtSession && pinPadState.sessionId != String(evtSession)) {
+          LOG_INFO("PIN", String("Ignoring pin_error for stale session: ") + String(evtSession));
           return;
         }
         memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
