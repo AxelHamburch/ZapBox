@@ -24,6 +24,9 @@ void checkAndReconnectWiFi();
 //   3. Send the normal "paid" WS event when settled
 #ifdef ENABLE_NFC
 void nfcLnurlwReceived(const String &lnurlw);
+// Called from main.cpp when the user has entered 4 PIN digits.
+// HTTP POSTs the PIN to the zapbox_extension so it can complete the LNURLW callback.
+void sendPinSubmit(const String &sessionId, const String &pin);
 #endif
 
 #endif // NETWORK_H

@@ -3696,6 +3696,39 @@ void processPaymentEvent(String &payloadStr)
   Serial.println("[PAYMENT] Payment detected!");
   Serial.printf("[PAYMENT] PayloadStr: %s\n", payloadStr.c_str());
 
+  // ── PIN pad WS events (arrive before normal "paid" event) ────────────────
+  if (payloadStr.startsWith("{")) {
+    JsonDocument pinDoc;
+    if (!deserializeJson(pinDoc, payloadStr)) {
+      const char *event = pinDoc["event"];
+      if (event && strcmp(event, "pin_required") == 0) {
+        pinPadState = PinPadState();  // reset to defaults
+        pinPadState.active      = true;
+        pinPadState.maxAttempts = pinDoc["max_attempts"] | 3;
+        pinPadState.amountSat   = pinDoc["amount_sat"]   | 0L;
+        pinPadState.sessionId   = pinDoc["session_id"]   | "";
+        extensionConfig.nfcPaymentPending = false;
+        LOG_INFO("PIN", String("PIN required – ") + String(pinPadState.amountSat) + " sat");
+        showPinPadScreen(pinPadState);
+        return;
+      }
+      if (event && strcmp(event, "pin_error") == 0) {
+        memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
+        pinPadState.numDigits  = 0;
+        pinPadState.attemptNum = pinDoc["attempts"]    | (pinPadState.attemptNum + 1);
+        pinPadState.errorMsg   = pinDoc["reason"]      | "Invalid PIN";
+        pinPadState.showError  = true;
+        pinPadState.errorStart = millis();
+        pinPadState.blocked    = (pinPadState.attemptNum >= pinPadState.maxAttempts);
+        LOG_INFO("PIN", String("PIN error – attempt ") + String(pinPadState.attemptNum)
+                        + "/" + String(pinPadState.maxAttempts)
+                        + (pinPadState.blocked ? " BLOCKED" : ""));
+        showPinPadScreen(pinPadState);
+        return;
+      }
+    }
+  }
+
   if (lightningConfig.thresholdKey.length() > 0) {
     Serial.println("[THRESHOLD] Processing payment in threshold mode...");
     JsonDocument doc;
