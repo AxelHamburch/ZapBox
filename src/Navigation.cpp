@@ -408,10 +408,12 @@ void handleTouchButton()
     unsigned long timeSinceLastTouch = millis() - touchState.lastTime;
     
     // For 1 click: Wait 1 second for potential second click
-    // If no second click after 1s → Start Help
+    // If no second click after 1s → Start Help (T-Display-S3 only; JC3248W535C has no Help button)
     if (touchState.clickCount == 1 && timeSinceLastTouch > 1000 && !deviceState.isInState(DeviceState::HELP_SCREEN)) {
+#ifndef BOARD_JC3248W535C
       LOG_INFO("Touch", "Timeout: 1 click, no second click -> Help");
       showHelp();
+#endif
       touchState.clickCount = 0;
     }
     
