@@ -564,7 +564,10 @@ struct PinPadState {
     bool     showError   = false;
     uint32_t errorStart  = 0;
     uint32_t activatedAt = 0;     // millis() when PIN pad was shown (for device-side timeout)
-    bool     blocked     = false;  // card locked after maxAttempts failures
+    bool     blocked          = false;  // card locked after maxAttempts failures
+    bool     submitted        = false;  // PIN submitted to server, awaiting response
+    uint32_t submittedAt      = 0;      // millis() when PIN was submitted
+    bool     pendingShown     = false;  // PENDING screen drawn after submit delay
 };
 
 extern PinPadState pinPadState;

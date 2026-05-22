@@ -93,6 +93,7 @@ static const ThemeConfig themeConfigs[] = {
   {"black-orange",        TFT_BLACK,     TFT_ORANGE},
   {"white-darkcyan",      TFT_WHITE,     TFT_DARKCYAN},
   {"white-navy",          TFT_WHITE,     TFT_NAVY},
+  {"navy-white",          TFT_NAVY,      TFT_WHITE},
   {"darkcyan-cyan",       TFT_DARKCYAN,  TFT_CYAN},
   {"black-olive",         TFT_BLACK,     TFT_OLIVE},
   {"black-darkgrey",      TFT_BLACK,     TFT_DARKGREY},
@@ -584,26 +585,26 @@ void stepThreeScreen() {
 // ============================================================================
 // ACTION TIME — "ACTION" big at top, "TIME" in inverted box, countdown sides
 // ============================================================================
-// Layout on 480×320:
-//   y= 85    "ACTION"           size 6 (centered)
-//   y=130..210  TIME box (220×80, x=130..350)
-//      y=170  "TIME" inside box, size 5
+// Layout on 480×320 (shifted 32px / 10% down vs. original):
+//   y=117    "ACTION"           size 6 (centered)
+//   y=162..242  TIME box (220×80, x=130..350)
+//      y=202  "TIME" inside box, size 5
 //   countdown:
-//      MM at (cx=60, cy=170)   size 4   (left of box)
-//      SS at (cx=420, cy=170)  size 4   (right of box)
+//      MM at (cx=60, cy=202)   size 4   (left of box)
+//      SS at (cx=420, cy=202)  size 4   (right of box)
 
 #define AT_BOX_X    130
-#define AT_BOX_Y    130
+#define AT_BOX_Y    162
 #define AT_BOX_W    220
 #define AT_BOX_H    80
-#define AT_LABEL_Y  170
+#define AT_LABEL_Y  202
 #define AT_MM_CX    60
 #define AT_SS_CX    420
 
 void actionTimeScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, 85, "ACTION", themeForeground, themeBackground, 6);
+  drawCenter(SCR_W / 2, 117, "ACTION", themeForeground, themeBackground, 6);
   fillRect(AT_BOX_X, AT_BOX_Y, AT_BOX_W, AT_BOX_H, themeForeground);
   drawCenter(SCR_W / 2, AT_LABEL_Y, "TIME",
              themeBackground, themeForeground, 5);
@@ -643,12 +644,11 @@ void updateActionTimeCountdown(int remainingSecs) {
 void nfcPendingScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  // NFC_BOX_Y and NFC_BOX_LBL_Y control the vertical position.
-  // Shift everything down by 64px (~20% of SCR_H=320) vs. the original layout.
-  drawCenter(SCR_W / 2, 134, "PENDING",
+  // Aligned with actionTimeScreen: "PENDING" at y=117, box at y=162 (same as AT_BOX_Y/AT_LABEL_Y).
+  drawCenter(SCR_W / 2, 117, "PENDING",
              themeForeground, themeBackground, 6);
-  fillRect(NFC_BOX_X, NFC_BOX_Y + 40, NFC_BOX_W, NFC_BOX_H, themeForeground);
-  drawCenter(SCR_W / 2, NFC_BOX_LBL_Y + 40, "NFC",
+  fillRect(NFC_BOX_X, NFC_BOX_Y + 32, NFC_BOX_W, NFC_BOX_H, themeForeground);
+  drawCenter(SCR_W / 2, NFC_BOX_LBL_Y + 32, "NFC",
              themeBackground, themeForeground, 5);
   flushDisplay();
 }

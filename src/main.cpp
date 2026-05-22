@@ -1866,12 +1866,19 @@ void loop()
               LOG_INFO("PIN", "PIN error cleared – ready for retry");
             }
           }
+        } else if (pinPadState.submitted && !pinPadState.pendingShown
+                   && millis() - pinPadState.submittedAt > 800) {
+          // PIN sent, no error yet after 800ms → show PENDING while waiting for payment
+          nfcPendingScreen();
+          pinPadState.pendingShown = true;
         } else if (millis() - pinPadState.activatedAt > 210000) {
           // Device-side fallback: 210s timeout (30s over server timeout of 180s).
           // Catches the case where the server's timeout WS event is lost.
-          pinPadState.active    = false;
-          nfcPendingScreenShown = false;
-          needsQRRedraw         = true;
+          pinPadState.active       = false;
+          pinPadState.submitted    = false;
+          pinPadState.pendingShown = false;
+          nfcPendingScreenShown    = false;
+          needsQRRedraw            = true;
           LOG_WARN("PIN", "PIN pad device-side timeout – returning to QR screen");
         }
       } else if (extensionConfig.nfcPaymentPending) {
@@ -2012,7 +2019,7 @@ void loop()
         // PIN pad takes priority over all other touch processing
         #if ENABLE_NFC
         if (pinPadState.active) {
-          if (isTouched && !wasTouched) {
+          if (isTouched && !wasTouched && !pinPadState.submitted) {
             int hit = pinPadHitTest(x, y);
             if (hit == 12) {  // cancel — always allowed, even during error display
               pinPadState.active                = false;
@@ -2029,6 +2036,9 @@ void loop()
                   showPinPadScreen(pinPadState);
                   if (pinPadState.numDigits == 4) {
                     sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
+                    pinPadState.submitted    = true;
+                    pinPadState.submittedAt  = millis();
+                    pinPadState.pendingShown = false;
                   }
                 }
               } else if (hit == 10) {  // backspace
@@ -3799,8 +3809,10 @@ void processPaymentEvent(String &payloadStr)
           return;
         }
         memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
-        pinPadState.numDigits  = 0;
-        pinPadState.attemptNum = pinDoc["attempts"]    | (pinPadState.attemptNum + 1);
+        pinPadState.numDigits    = 0;
+        pinPadState.submitted    = false;
+        pinPadState.pendingShown = false;
+        pinPadState.attemptNum   = pinDoc["attempts"]    | (pinPadState.attemptNum + 1);
         pinPadState.errorMsg   = pinDoc["reason"]      | "Invalid PIN";
         pinPadState.showError  = true;
         pinPadState.errorStart = millis();
