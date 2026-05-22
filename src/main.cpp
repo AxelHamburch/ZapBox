@@ -3775,6 +3775,12 @@ void processPaymentEvent(String &payloadStr)
         return;
       }
       if (event && strcmp(event, "pin_error") == 0) {
+        if (!pinPadState.active) {
+          // PIN pad was already deactivated (e.g. blocked timer expired before
+          // the server's timeout event arrived) — ignore to prevent screen freeze.
+          LOG_INFO("PIN", "Ignoring pin_error – PIN pad no longer active");
+          return;
+        }
         memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
         pinPadState.numDigits  = 0;
         pinPadState.attemptNum = pinDoc["attempts"]    | (pinPadState.attemptNum + 1);

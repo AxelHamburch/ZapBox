@@ -644,10 +644,12 @@ void updateActionTimeCountdown(int remainingSecs) {
 void nfcPendingScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, 70, "PENDING",
+  // NFC_BOX_Y and NFC_BOX_LBL_Y control the vertical position.
+  // Shift everything down by 64px (~20% of SCR_H=320) vs. the original layout.
+  drawCenter(SCR_W / 2, 134, "PENDING",
              themeForeground, themeBackground, 6);
-  fillRect(NFC_BOX_X, NFC_BOX_Y, NFC_BOX_W, NFC_BOX_H, themeForeground);
-  drawCenter(SCR_W / 2, NFC_BOX_LBL_Y, "NFC",
+  fillRect(NFC_BOX_X, NFC_BOX_Y + 64, NFC_BOX_W, NFC_BOX_H, themeForeground);
+  drawCenter(SCR_W / 2, NFC_BOX_LBL_Y + 64, "NFC",
              themeBackground, themeForeground, 5);
   flushDisplay();
 }
@@ -1137,21 +1139,37 @@ static void drawPinDot(int cx, int cy, bool filled, uint16_t fg, uint16_t bg) {
     if (!filled) drawRectBorder(cx-h, cy-h, 2*h, 2*h, 2, fg);
 }
 
-// Draw error message (up to 2 lines, size 1, white on red background).
+// Draw error message (up to 3 lines, size 2, white on red background).
 static void drawPinError(const String &msg, int rectX, int rectY, int rectW, int rectH, int cx) {
     fillRect(rectX, rectY, rectW, rectH, TFT_RED);
-    const int maxChars = rectW / 6;  // size-1 char = 6px wide
-    if ((int)msg.length() <= maxChars) {
-        drawCenter(cx, rectY + rectH / 2, msg.c_str(), TFT_WHITE, TFT_RED, 1);
-    } else {
-        // Split at last space before maxChars
-        int split = maxChars;
-        while (split > 0 && msg[split] != ' ') split--;
-        if (split == 0) split = maxChars;
-        String l1 = msg.substring(0, split);
-        String l2 = msg.substring(split + 1, split + 1 + maxChars);
-        drawCenter(cx, rectY + rectH / 2 - 8, l1.c_str(), TFT_WHITE, TFT_RED, 1);
-        drawCenter(cx, rectY + rectH / 2 + 8, l2.c_str(), TFT_WHITE, TFT_RED, 1);
+    const int sz      = 2;
+    const int charW   = 6 * sz;   // 12px per char at size 2
+    const int lineH   = 8 * sz;   // 16px per line
+    const int lineGap = 4;
+    const int maxChars = rectW / charW;
+
+    // Word-wrap into up to 3 lines
+    String lines[3];
+    int numLines = 0;
+    String rem = msg;
+    while (numLines < 3 && rem.length() > 0) {
+        if ((int)rem.length() <= maxChars) {
+            lines[numLines++] = rem;
+            rem = "";
+        } else {
+            int split = maxChars;
+            while (split > 0 && rem[split] != ' ') split--;
+            if (split == 0) split = maxChars;
+            lines[numLines++] = rem.substring(0, split);
+            rem = rem.substring(split + 1);
+        }
+    }
+
+    int totalH = numLines * lineH + (numLines - 1) * lineGap;
+    int startY = rectY + (rectH - totalH) / 2 + lineH / 2;
+    for (int i = 0; i < numLines; i++) {
+        drawCenter(cx, startY + i * (lineH + lineGap),
+                   lines[i].c_str(), TFT_WHITE, TFT_RED, sz);
     }
 }
 
@@ -1189,15 +1207,15 @@ void showPinPadScreen(const PinPadState &state) {
 
     // Error message box (replaces attempt counter area)
     if (state.showError) {
-        // Attempt counter (small, inside error box)
+        // Attempt counter size 2, above the error box
         if (state.attemptNum > 0) {
             char buf[24];
             snprintf(buf, sizeof(buf), "Attempt %d of %d",
                      state.attemptNum, state.maxAttempts);
-            drawCenter(PP_LEFT_CX, 152, buf, TFT_RED, themeBackground, 1);
+            drawCenter(PP_LEFT_CX, 143, buf, TFT_RED, themeBackground, 2);
         }
-        // Red error box with message
-        drawPinError(state.errorMsg, 4, 164, PP_LEFT_W - 8, 52, PP_LEFT_CX);
+        // Red error box: taller to fit up to 3 lines at size 2
+        drawPinError(state.errorMsg, 4, 157, PP_LEFT_W - 8, 76, PP_LEFT_CX);
     }
 
     // Cancel button
