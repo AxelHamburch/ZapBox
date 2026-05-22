@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>  // For String, uint8_t types
+#include "GlobalState.h"
 
 #ifdef ENABLE_DISPLAY
 
@@ -50,6 +51,11 @@ bool isDeepSleepActive();
 // NFC Hardware Test (ENABLE_NFC=1 + ENABLE_NFC_TEST=1)
 void nfcTestScreen(String lnurlw);
 
+// PIN pad for BoltCard PIN entry (LUD pinLimit)
+void showPinPadScreen(const PinPadState &state);
+// Returns: 0-9=digit, 10=backspace, 11=clear, 12=cancel, -1=no hit
+int  pinPadHitTest(uint16_t x, uint16_t y);
+
 #else
 
 // Headless mode - stub implementations (no display)
@@ -92,5 +98,7 @@ inline void prepareDeepSleep() {}
 inline void setupDeepSleepWakeup(String) {}
 inline bool isDeepSleepActive() { return false; }
 inline void nfcTestScreen(String) {}
+inline void showPinPadScreen(const PinPadState &) {}
+inline int  pinPadHitTest(uint16_t, uint16_t) { return -1; }
 
 #endif // ENABLE_DISPLAY

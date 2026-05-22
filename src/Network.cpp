@@ -245,6 +245,45 @@ void nfcLnurlwReceived(const String &lnurlw)
     }
     http.end();
 }
+
+// ─── PIN Submit ─────────────────────────────────────────────────────────────
+/**
+ * Called from main.cpp (Core 1) when the user has entered 4 PIN digits.
+ * POSTs pin + session_id to zapbox_extension so it can unblock the suspended
+ * LNURLW callback coroutine and append &pin=XXXX to the boltcards URL.
+ *
+ * Endpoint: POST /<apiPath>/api/v1/nfc/pin_submit?session_id=<id>&pin=<xxxx>
+ * The server responds: {"status":"OK"} on success.
+ * Errors (wrong PIN, card blocked) are relayed back via WebSocket as
+ * {"event":"pin_error", ...} and handled in processPaymentEvent() (main.cpp).
+ */
+void sendPinSubmit(const String &sessionId, const String &pin)
+{
+    LOG_INFO("PIN", "Submitting PIN to server");
+
+    HTTPClient http;
+    String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+                 + "/api/v1/nfc/pin_submit?session_id=" + sessionId
+                 + "&pin=" + pin;
+    LOG_INFO("PIN", String("PIN submit URL: ") + url);
+    http.begin(url);
+    http.setTimeout(10000);
+
+    int httpCode = http.POST("");
+    if (httpCode == 200) {
+        LOG_INFO("PIN", "PIN submitted – waiting for WS response");
+    } else {
+        String resp = http.getString();
+        LOG_ERROR("PIN", String("PIN submit HTTP ") + String(httpCode) + " – " + resp);
+        // Connection failure: show error immediately (no WS event will follow)
+        if (httpCode < 0) {
+            pinPadState.errorMsg  = "Connection failed";
+            pinPadState.showError = true;
+            pinPadState.errorStart = millis();
+        }
+    }
+    http.end();
+}
 #endif // ENABLE_NFC
 
 // HTTP-based Internet check (doesn't require WebSocket connection)

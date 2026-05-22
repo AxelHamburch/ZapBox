@@ -1086,6 +1086,164 @@ void setupDeepSleepWakeup(String mode) {
 }
 
 bool isDeepSleepActive() { return deepSleepIsActive; }
+
+// ============================================================================
+// PIN PAD SCREEN  (landscape 480×320)
+// ============================================================================
+//
+// Horizontal layout:
+//   Left panel  0..209  — "Enter PIN", 4 dots, attempt counter, Cancel button
+//   Divider     x=209   — 1px vertical line
+//   Right panel 210..479 — 3×4 numpad grid
+//
+// Touch coordinates from AXS15231B are already in landscape space (0..479, 0..319),
+// matching the canvas coordinate system used here.
+
+// ── Layout constants ─────────────────────────────────────────────────────────
+static const int PP_LEFT_W   = 210;
+static const int PP_LEFT_CX  = PP_LEFT_W / 2;   // = 105
+static const int PP_NP_X     = 210;              // numpad left edge
+static const int PP_NP_COL_W = 90;              // 3 cols × 90 = 270 px
+static const int PP_NP_ROW_H = 80;              // 4 rows × 80 = 320 px
+static const int PP_BTN_M    = 5;               // margin inside each cell
+static const int PP_BTN_W    = PP_NP_COL_W - 2 * PP_BTN_M;  // 80
+static const int PP_BTN_H    = PP_NP_ROW_H - 2 * PP_BTN_M;  // 70
+static const int PP_DOT_Y    = 115;             // y-center of dot row
+static const int PP_DOT_HALF = 9;              // half-size of dot square (18×18)
+static const int PP_DOT_GAP  = 38;             // dot center-to-center spacing
+
+// Numpad key labels (row, col)
+static const char *kPinLabels[4][3] = {
+    {"1","2","3"},
+    {"4","5","6"},
+    {"7","8","9"},
+    {"<","0","X"},
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+// Draw a rectangle border (4 filled strips).
+static void drawRectBorder(int x, int y, int w, int h, int t, uint16_t color) {
+    fillRect(x,       y,       w,       t,       color);
+    fillRect(x,       y+h-t,   w,       t,       color);
+    fillRect(x,       y+t,     t,       h-2*t,   color);
+    fillRect(x+w-t,   y+t,     t,       h-2*t,   color);
+}
+
+// Draw a single PIN dot. Filled square = digit entered; outlined square = empty.
+static void drawPinDot(int cx, int cy, bool filled, uint16_t fg, uint16_t bg) {
+    int h = PP_DOT_HALF;
+    fillRect(cx-h, cy-h, 2*h, 2*h, filled ? fg : bg);
+    if (!filled) drawRectBorder(cx-h, cy-h, 2*h, 2*h, 2, fg);
+}
+
+// Draw error message (up to 2 lines, size 1, white on red background).
+static void drawPinError(const String &msg, int rectX, int rectY, int rectW, int rectH, int cx) {
+    fillRect(rectX, rectY, rectW, rectH, TFT_RED);
+    const int maxChars = rectW / 6;  // size-1 char = 6px wide
+    if ((int)msg.length() <= maxChars) {
+        drawCenter(cx, rectY + rectH / 2, msg.c_str(), TFT_WHITE, TFT_RED, 1);
+    } else {
+        // Split at last space before maxChars
+        int split = maxChars;
+        while (split > 0 && msg[split] != ' ') split--;
+        if (split == 0) split = maxChars;
+        String l1 = msg.substring(0, split);
+        String l2 = msg.substring(split + 1, split + 1 + maxChars);
+        drawCenter(cx, rectY + rectH / 2 - 8, l1.c_str(), TFT_WHITE, TFT_RED, 1);
+        drawCenter(cx, rectY + rectH / 2 + 8, l2.c_str(), TFT_WHITE, TFT_RED, 1);
+    }
+}
+
+// ── Public API ───────────────────────────────────────────────────────────────
+
+void showPinPadScreen(const PinPadState &state) {
+    DisplayLock l;
+    if (!_gfx) return;
+
+    fillScreen(themeBackground);
+
+    // Divider between left panel and numpad
+    fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
+
+    // ── Left panel ────────────────────────────────────────────────────────
+
+    // "Enter PIN" heading
+    drawCenter(PP_LEFT_CX, 38, "Enter PIN", themeForeground, themeBackground, 3);
+
+    // 4 PIN dots centered in the left panel
+    // centers at 48, 86, 124, 162  (PP_LEFT_CX - 3*PP_DOT_GAP/2 = 105 - 57 = 48)
+    int firstDotX = PP_LEFT_CX - 3 * PP_DOT_GAP / 2;
+    for (int i = 0; i < 4; i++) {
+        drawPinDot(firstDotX + i * PP_DOT_GAP, PP_DOT_Y,
+                   i < state.numDigits, themeForeground, themeBackground);
+    }
+
+    // Attempt counter in red (shown from the second attempt onward)
+    if (state.attemptNum > 0 && !state.showError) {
+        char buf[24];
+        snprintf(buf, sizeof(buf), "Attempt %d of %d",
+                 state.attemptNum, state.maxAttempts);
+        drawCenter(PP_LEFT_CX, 162, buf, TFT_RED, themeBackground, 2);
+    }
+
+    // Error message box (replaces attempt counter area)
+    if (state.showError) {
+        // Attempt counter (small, inside error box)
+        if (state.attemptNum > 0) {
+            char buf[24];
+            snprintf(buf, sizeof(buf), "Attempt %d of %d",
+                     state.attemptNum, state.maxAttempts);
+            drawCenter(PP_LEFT_CX, 152, buf, TFT_RED, themeBackground, 1);
+        }
+        // Red error box with message
+        drawPinError(state.errorMsg, 4, 164, PP_LEFT_W - 8, 52, PP_LEFT_CX);
+    }
+
+    // Cancel button
+    drawRectBorder(20, 268, PP_LEFT_W - 40, 38, 2, themeForeground);
+    drawCenter(PP_LEFT_CX, 287, "CANCEL", themeForeground, themeBackground, 2);
+
+    // ── Numpad ────────────────────────────────────────────────────────────
+
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 3; col++) {
+            int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
+            int by = row * PP_NP_ROW_H + PP_BTN_M;
+            drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, themeForeground);
+            drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
+                       kPinLabels[row][col], themeForeground, themeBackground, 4);
+        }
+    }
+
+    flushDisplay();
+}
+
+// Returns: 0-9=digit, 10=backspace(<), 11=clear(X), 12=cancel, -1=no hit.
+int pinPadHitTest(uint16_t x, uint16_t y) {
+    if (x < (uint16_t)PP_NP_X) {
+        // Left panel — only the Cancel button is interactive
+        if (y >= 268 && y <= 306) return 12;
+        return -1;
+    }
+    // Numpad: map to (col, row)
+    int col = (x - PP_NP_X) / PP_NP_COL_W;
+    int row = y / PP_NP_ROW_H;
+    if (col > 2 || row > 3) return -1;
+    // Check within button margins
+    int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
+    int by = row * PP_NP_ROW_H + PP_BTN_M;
+    if (x < (uint16_t)bx || x > (uint16_t)(bx + PP_BTN_W)) return -1;
+    if (y < (uint16_t)by  || y > (uint16_t)(by + PP_BTN_H)) return -1;
+    static const int kMap[4][3] = {
+        {1, 2, 3},
+        {4, 5, 6},
+        {7, 8, 9},
+        {10, 0, 11},
+    };
+    return kMap[row][col];
+}
+
 void nfcTestScreen(String lnurlw) {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);

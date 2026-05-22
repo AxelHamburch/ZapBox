@@ -1850,6 +1850,23 @@ void loop()
           needsQRRedraw = true;
           LOG_INFO("NFC", "NFC error detail screen dismissed – returning to QR screen");
         }
+      } else if (pinPadState.active) {
+        // PIN pad error auto-dismiss: 5s for retryable error, 10s for blocked card
+        if (pinPadState.showError) {
+          uint32_t errDur = pinPadState.blocked ? 10000 : 5000;
+          if (millis() - pinPadState.errorStart > errDur) {
+            if (pinPadState.blocked) {
+              pinPadState.active    = false;
+              nfcPendingScreenShown = false;
+              needsQRRedraw         = true;
+              LOG_INFO("PIN", "Card blocked – returning to QR screen after 10s");
+            } else {
+              pinPadState.showError = false;
+              showPinPadScreen(pinPadState);
+              LOG_INFO("PIN", "PIN error cleared – ready for retry");
+            }
+          }
+        }
       } else if (extensionConfig.nfcPaymentPending) {
         if (!nfcPendingScreenShown) {
           nfcPendingScreen();
@@ -1984,7 +2001,44 @@ void loop()
           // Skip the rest of touch processing - button handler in Task1 will handle this
           goto skip_product_touch_processing;
         }
-        
+
+        // PIN pad takes priority over all other touch processing
+        #if ENABLE_NFC
+        if (pinPadState.active) {
+          if (!pinPadState.showError && isTouched && !wasTouched) {
+            int hit = pinPadHitTest(x, y);
+            if (hit >= 0 && hit <= 9) {
+              if (pinPadState.numDigits < 4) {
+                pinPadState.digits[pinPadState.numDigits++] = '0' + hit;
+                pinPadState.digits[pinPadState.numDigits]   = '\0';
+                showPinPadScreen(pinPadState);
+                if (pinPadState.numDigits == 4) {
+                  sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
+                }
+              }
+            } else if (hit == 10) {  // backspace
+              if (pinPadState.numDigits > 0) {
+                pinPadState.digits[--pinPadState.numDigits] = '\0';
+                showPinPadScreen(pinPadState);
+              }
+            } else if (hit == 11) {  // clear all
+              memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
+              pinPadState.numDigits = 0;
+              showPinPadScreen(pinPadState);
+            } else if (hit == 12) {  // cancel
+              pinPadState.active                = false;
+              extensionConfig.nfcPaymentPending = false;
+              nfcPendingScreenShown             = false;
+              needsQRRedraw                     = true;
+              LOG_INFO("PIN", "PIN entry cancelled by user");
+            }
+          }
+          if (isTouched && !wasTouched) activityTracking.lastActivityTime = millis();
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
+        #endif // ENABLE_NFC
+
         // Log any detected gesture (except LONG_PRESS which spams continuously)
         if (gesture != GESTURE_NONE && gesture != GESTURE_LONG_PRESS) {
           Serial.printf("[TOUCH] Detected - Gesture: 0x%02X, X: %d, Y: %d", gesture, x, y);
@@ -3695,6 +3749,39 @@ void processPaymentEvent(String &payloadStr)
 {
   Serial.println("[PAYMENT] Payment detected!");
   Serial.printf("[PAYMENT] PayloadStr: %s\n", payloadStr.c_str());
+
+  // ── PIN pad WS events (arrive before normal "paid" event) ────────────────
+  if (payloadStr.startsWith("{")) {
+    JsonDocument pinDoc;
+    if (!deserializeJson(pinDoc, payloadStr)) {
+      const char *event = pinDoc["event"];
+      if (event && strcmp(event, "pin_required") == 0) {
+        pinPadState = PinPadState();  // reset to defaults
+        pinPadState.active      = true;
+        pinPadState.maxAttempts = pinDoc["max_attempts"] | 3;
+        pinPadState.amountSat   = pinDoc["amount_sat"]   | 0L;
+        pinPadState.sessionId   = pinDoc["session_id"]   | "";
+        extensionConfig.nfcPaymentPending = false;
+        LOG_INFO("PIN", String("PIN required – ") + String(pinPadState.amountSat) + " sat");
+        showPinPadScreen(pinPadState);
+        return;
+      }
+      if (event && strcmp(event, "pin_error") == 0) {
+        memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
+        pinPadState.numDigits  = 0;
+        pinPadState.attemptNum = pinDoc["attempts"]    | (pinPadState.attemptNum + 1);
+        pinPadState.errorMsg   = pinDoc["reason"]      | "Invalid PIN";
+        pinPadState.showError  = true;
+        pinPadState.errorStart = millis();
+        pinPadState.blocked    = (pinPadState.attemptNum >= pinPadState.maxAttempts);
+        LOG_INFO("PIN", String("PIN error – attempt ") + String(pinPadState.attemptNum)
+                        + "/" + String(pinPadState.maxAttempts)
+                        + (pinPadState.blocked ? " BLOCKED" : ""));
+        showPinPadScreen(pinPadState);
+        return;
+      }
+    }
+  }
 
   if (lightningConfig.thresholdKey.length() > 0) {
     Serial.println("[THRESHOLD] Processing payment in threshold mode...");
