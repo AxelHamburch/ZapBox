@@ -197,7 +197,8 @@
                     <label for="theme">Display color options</label>
                     <select name="theme" id="theme">
                         <option value="btcorange-black">BTC ORANGE &amp; BLACK (inv. QR-Code)</option>
-                        <option value="black-btcorange">BTC ORANGE &amp; BLACK</option>
+                        <option value="btcorange-black-std">BTC ORANGE &amp; BLACK</option>
+                        <option value="black-btcorange">BLACK &amp; BTC ORANGE</option>
                         <option value="zapbox">GOLD &amp; BLACK (inv. QR-Code)</option>
                         <option value="black-white" selected>BLACK &amp; WHITE (default)</option>
                         <option value="black-lightgrey">BLACK &amp; LIGHT GREY (for dark environments)</option>
@@ -205,7 +206,8 @@
                         <option value="darkgreen-lightgrey">DARKGREEN &amp; LIGHTGREY (scan-friendly)</option>
                         <option value="darkblue-lightgrey">DARKBLUE &amp; LIGHTGREY (scan-friendly)</option>
                         <option value="white-navy">WHITE &amp; NAVY (inv. QR-Code)</option>
-                        <option value="navy-white">WHITE &amp; NAVY</option>
+                        <option value="white-navy-std">WHITE &amp; NAVY</option>
+                        <option value="navy-white">NAVY &amp; WHITE</option>
                         <option value="black-blue">BLACK &amp; BLUE</option>
                         <option value="black-darkcyan">BLACK &amp; DARKCYAN</option>
                         <option value="black-green">BLACK &amp; GREEN</option>
@@ -979,6 +981,7 @@
                     const btn = document.getElementById('read-config-button');
                     btn.disabled = false;
                     btn.textContent = '📖 Read Config';
+                    document.getElementById('soft-reset-button').disabled = false;
                 }, 3000);
             } catch (e) {
                 console.log('JSON parse failed:', e, jsonString);
@@ -988,6 +991,7 @@
                 consoleDebug.appendChild(errorMsg);
                 consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 serialBuffer = '';
+                document.getElementById('soft-reset-button').disabled = false;
             }
         }
 
@@ -1016,6 +1020,8 @@
             if (btn.disabled) return;
             btn.disabled = true;
             btn.textContent = '⏳ Reading...';
+            const softResetBtn = document.getElementById('soft-reset-button');
+            softResetBtn.disabled = true;
             serialBuffer = '';
             await serial.writeLine('/file-read config.json');
             // Auto-retry once after 2s (USB CDC can drop the first chunk)
@@ -1028,6 +1034,7 @@
             setTimeout(() => {
                 btn.disabled = false;
                 btn.textContent = '📖 Read Config';
+                softResetBtn.disabled = false;
             }, 7000);
         }
 
