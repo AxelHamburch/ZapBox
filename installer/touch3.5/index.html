@@ -247,92 +247,94 @@
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
-            <!-- Multi-Channel Mode Section -->
-            <p style="margin-top: 10px;"><strong>Multi-Channel Mode — GPIO Channel Functions</strong></p>
-
+            <!-- ZapBox Mode / Channel Section -->
             <div class="input-wrapper" style="margin-bottom: 16px;">
                 <div>
                     <label for="multiControl">ZapBox Mode</label>
                     <select name="multiControl" id="multiControl">
-                        <option value="off" selected>Single channel — CH01 only (default)</option>
-                        <option value="duo">Multi-channel — cycle through all configured channels</option>
+                        <option value="off" selected>Single channel — CH01 / GPIO 5 (default)</option>
+                        <option value="duo">Multi-channel — CH01 – CH06</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In multi-channel mode, each touch cycles to the next configured channel. Channels without a LNbits switch entry are skipped automatically.</p>
                 </div>
             </div>
 
-            <p style="margin-top: 10px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent channels</strong>. Each channel maps to a GPIO that can be configured as relay output, servo, sensor input, or ambient light control. Each channel is triggered independently via its own QR code and amount in the LNbits extension.</i></p>
-            <p style="margin-top: 6px; color: #888;"><i><strong>Note:</strong> <strong>Special Mode</strong> (blink/pulse/strobe) applies to <strong>CH01 (GPIO 5) only</strong>. Additional channels always switch in standard on/off mode.</i></p>
+            <!-- CH01 always visible -->
+            <div style="max-width: calc(50% - 10px);">
+                <label for="gpio5Mode">CH01 — GPIO 5 <span style="font-weight:normal; color:#888; font-size:12px;">(Special Mode channel)</span></label>
+                <select name="gpio5Mode" id="gpio5Mode">
+                    <option value="relay" selected>Relay (default)</option>
+                    <option value="servo180">Servo 180°</option>
+                    <option value="servo360">Servo 360° (continuous)</option>
+                </select>
+            </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin-top: 16px;">
-                <div>
-                    <label for="gpio5Mode">CH01 — GPIO 5 <span style="font-weight:normal; color:#888; font-size:12px;">(Special Mode channel)</span></label>
-                    <select name="gpio5Mode" id="gpio5Mode">
-                        <option value="relay" selected>Relay (default)</option>
-                        <option value="servo180">Servo 180°</option>
-                        <option value="servo360">Servo 360° (continuous)</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="gpio6Mode">CH02 — GPIO 6</label>
-                    <select name="gpio6Mode" id="gpio6Mode">
-                        <option value="off" selected>Off (default)</option>
-                        <option value="relay">Relay</option>
-                        <option value="servo180">Servo 180°</option>
-                        <option value="servo360">Servo 360° (continuous)</option>
-                    </select>
-                </div>
-                <div style="margin-top: 10px;">
-                    <label for="gpio7Mode">CH03 — GPIO 7</label>
-                    <select name="gpio7Mode" id="gpio7Mode">
-                        <option value="off" selected>Off (default)</option>
-                        <option value="relay">Relay</option>
-                        <option value="servo180">Servo 180°</option>
-                        <option value="servo360">Servo 360° (continuous)</option>
-                        <option value="sensor-stop">Sensor — Stop the advance</option>
-                        <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                        <option value="sensor-level">Sensor — Level monitoring</option>
-                        <option value="ambient-light">Ambient Light (synced with display)</option>
-                    </select>
-                </div>
-                <div style="margin-top: 10px;">
-                    <label for="gpio14Mode">CH04 — GPIO 14</label>
-                    <select name="gpio14Mode" id="gpio14Mode">
-                        <option value="off" selected>Off (default)</option>
-                        <option value="relay">Relay</option>
-                        <option value="servo180">Servo 180°</option>
-                        <option value="servo360">Servo 360° (continuous)</option>
-                        <option value="sensor-stop">Sensor — Stop the advance</option>
-                        <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                        <option value="sensor-level">Sensor — Level monitoring</option>
-                        <option value="ambient-light">Ambient Light (synced with display)</option>
-                    </select>
-                </div>
-                <div style="margin-top: 10px;">
-                    <label for="gpio15Mode">CH05 — GPIO 15</label>
-                    <select name="gpio15Mode" id="gpio15Mode">
-                        <option value="off" selected>Off (default)</option>
-                        <option value="relay">Relay</option>
-                        <option value="servo180">Servo 180°</option>
-                        <option value="servo360">Servo 360° (continuous)</option>
-                        <option value="sensor-stop">Sensor — Stop the advance</option>
-                        <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                        <option value="sensor-level">Sensor — Level monitoring</option>
-                        <option value="ambient-light">Ambient Light (synced with display)</option>
-                    </select>
-                </div>
-                <div style="margin-top: 10px;">
-                    <label for="gpio16Mode">CH06 — GPIO 16</label>
-                    <select name="gpio16Mode" id="gpio16Mode">
-                        <option value="off" selected>Off (default)</option>
-                        <option value="relay">Relay</option>
-                        <option value="servo180">Servo 180°</option>
-                        <option value="servo360">Servo 360° (continuous)</option>
-                        <option value="sensor-stop">Sensor — Stop the advance</option>
-                        <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                        <option value="sensor-level">Sensor — Level monitoring</option>
-                        <option value="ambient-light">Ambient Light (synced with display)</option>
-                    </select>
+            <!-- CH02–CH06 + multi-channel description: hidden in single mode -->
+            <div id="multiChannelFields" style="display: none;">
+                <p style="margin-top: 14px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent channels</strong>. Each channel is triggered independently via its own QR code and amount in the LNbits extension. Channels without a LNbits switch entry are skipped automatically.</i></p>
+                <p style="margin-top: 6px; color: #888;"><i><strong>Note:</strong> <strong>Special Mode</strong> (blink/pulse/strobe) applies to <strong>CH01 (GPIO 5) only</strong>. Additional channels always switch in standard on/off mode.</i></p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin-top: 16px;">
+                    <div>
+                        <label for="gpio6Mode">CH02 — GPIO 6</label>
+                        <select name="gpio6Mode" id="gpio6Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay</option>
+                            <option value="servo180">Servo 180°</option>
+                            <option value="servo360">Servo 360° (continuous)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="gpio7Mode">CH03 — GPIO 7</label>
+                        <select name="gpio7Mode" id="gpio7Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay</option>
+                            <option value="servo180">Servo 180°</option>
+                            <option value="servo360">Servo 360° (continuous)</option>
+                            <option value="sensor-stop">Sensor — Stop the advance</option>
+                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor — Level monitoring</option>
+                            <option value="ambient-light">Ambient Light (synced with display)</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label for="gpio14Mode">CH04 — GPIO 14</label>
+                        <select name="gpio14Mode" id="gpio14Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay</option>
+                            <option value="servo180">Servo 180°</option>
+                            <option value="servo360">Servo 360° (continuous)</option>
+                            <option value="sensor-stop">Sensor — Stop the advance</option>
+                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor — Level monitoring</option>
+                            <option value="ambient-light">Ambient Light (synced with display)</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label for="gpio15Mode">CH05 — GPIO 15</label>
+                        <select name="gpio15Mode" id="gpio15Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay</option>
+                            <option value="servo180">Servo 180°</option>
+                            <option value="servo360">Servo 360° (continuous)</option>
+                            <option value="sensor-stop">Sensor — Stop the advance</option>
+                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor — Level monitoring</option>
+                            <option value="ambient-light">Ambient Light (synced with display)</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label for="gpio16Mode">CH06 — GPIO 16</label>
+                        <select name="gpio16Mode" id="gpio16Mode">
+                            <option value="off" selected>Off (default)</option>
+                            <option value="relay">Relay</option>
+                            <option value="servo180">Servo 180°</option>
+                            <option value="servo360">Servo 360° (continuous)</option>
+                            <option value="sensor-stop">Sensor — Stop the advance</option>
+                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor — Level monitoring</option>
+                            <option value="ambient-light">Ambient Light (synced with display)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -1015,6 +1017,9 @@
                     }
                 }
 
+                updateMultiControlState();
+                updateIOExpanderFieldState();
+
                 serialBuffer = '';
                 const successMsg = document.createElement('span');
                 successMsg.style.color = '#00ff00';
@@ -1243,6 +1248,24 @@
         })();
 
         updateIOExpanderFieldState();
+
+        function updateMultiControlState() {
+            const multi = document.getElementById('multiControl');
+            const fields = document.getElementById('multiChannelFields');
+            if (!multi || !fields) return;
+            fields.style.display = (multi.value !== 'off') ? 'block' : 'none';
+        }
+
+        const multiControlEl = document.getElementById('multiControl');
+        if (multiControlEl) {
+            multiControlEl.addEventListener('change', () => {
+                const cfg = config.find(c => c.name === 'multiControl');
+                if (cfg) cfg.value = multiControlEl.value;
+                updateMultiControlState();
+            });
+        }
+
+        updateMultiControlState();
 
         function printLogs() {
             const installerTitle = 'ZAPBOX\u26A1 WEB INSTALLER (Touch 3.5")';
