@@ -43,3 +43,5 @@ bool isScreensaverActive() { return false; }
 void prepareDeepSleep() {}
 void setupDeepSleepWakeup(String) {}
 bool isDeepSleepActive() { return false; }
+void showPinPadScreen(const PinPadState &) {}
+int  pinPadHitTest(uint16_t, uint16_t) { return -1; }
