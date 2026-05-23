@@ -250,17 +250,17 @@
                 <div>
                     <label for="theme">Display color options</label>
                     <select name="theme" id="theme">
-                        <option value="btcorange-black">BTC ORANGE & BLACK (inv. QR-Code)</option>
-                        <option value="btcorange-black-std">BTC ORANGE & BLACK</option>
+                        <option value="btcorange-black">BTC ORANGE & BLACK — text: orange / QR: orange</option>
+                        <option value="btcorange-black-std">BTC ORANGE & BLACK — text: orange / QR: black</option>
                         <option value="black-btcorange">BLACK & BTC ORANGE</option>
-                        <option value="zapbox">GOLD & BLACK (inv. QR-Code)</option>
+                        <option value="zapbox">GOLD & BLACK — text: gold / QR: black</option>
                         <option value="black-white" selected>BLACK & WHITE (default)</option>
                         <option value="black-lightgrey">BLACK & LIGHT GREY (for dark environments)</option>
                         <option value="black-darkgrey">BLACK & DARK GREY (for very dark environments)</option>
                         <option value="darkgreen-lightgrey">DARKGREEN & LIGHTGREY (scan-friendly)</option>
                         <option value="darkblue-lightgrey">DARKBLUE & LIGHTGREY (scan-friendly)</option>
-                        <option value="white-navy">WHITE & NAVY (inv. QR-Code)</option>
-                        <option value="white-navy-std">WHITE & NAVY</option>
+                        <option value="white-navy">WHITE & NAVY — text: white / QR: white</option>
+                        <option value="white-navy-std">WHITE & NAVY — text: white / QR: navy</option>
                         <option value="navy-white">NAVY & WHITE</option>
                         <option value="black-blue">BLACK & BLUE</option>
                         <option value="black-darkcyan">BLACK & DARKCYAN</option>
@@ -657,9 +657,10 @@
                     <label for="ioExpander">I/O-Expander (PCF8574)</label>
                     <select name="ioExpander" id="ioExpander">
                         <option value="no" selected>No (default)</option>
-                        <option value="yes">Yes - CH05–CH12</option>
+                        <option value="yes">Yes — CH200–CH207 (virtual pins 200–207)</option>
+                        <option value="yes2" disabled style="color: #aaa;">Yes — CH200–CH207 &amp; CH210–CH217 (prepared, not yet implemented)</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I2C (SDA=GPIO18, SCL=GPIO17) – address 0x20 (A0/A1/A2 all to GND)</p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I²C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V) — dual expander option is firmware-side in preparation</p>
                 </div>
                 <div style="flex: 1; max-width: 260px; margin-top: 2px; text-align: right;">
                     <a href="./assets/IO-Expander-PCF8574.webp" target="_blank" rel="noopener noreferrer">
@@ -669,121 +670,59 @@
                 </div>
             </div>
 
-            <!-- I/O-Expander channel configuration (visible only when "Yes" is selected) -->
-            <div id="ioExpanderChannels" style="display: none; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
-                <p style="margin: 0 0 10px 0; color: #ccc; font-weight: bold;">I/O-Expander Channel Configuration (CH05–CH12)</p>
-                <p style="margin: 0 0 15px 0; color: #888; font-size: 11px;"><i>
-                    Connect the PCF8574 to the I2C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V).<br>
-                    Set address pins: A0=GND, A1=GND, A2=GND → I2C address <strong>0x20</strong>.<br>
-                    Relay outputs: PCF8574 pin goes HIGH when channel is triggered.<br>
-                    Sensor inputs: NPN type, active LOW (pulls pin to GND when active).
+            <!-- I/O-Expander info panel (visible when expander is enabled) -->
+            <div id="ioExpanderChannels" style="display: none; margin-top: 15px; padding: 16px; background: rgba(0,0,0,0.05); border: 1px solid #bbb; border-radius: 6px; color: #666; font-size: 13px;">
+                <p style="margin: 0 0 12px 0; font-weight: bold; color: #444;">I/O-Expander — How it works</p>
+                <p style="margin: 0 0 8px 0;"><i>
+                    Each PCF8574 provides 8 open-collector I/O ports. All ports are configured as <strong>relay outputs (active LOW)</strong> — the relay fires when the port is pulled LOW.
+                    Channels are activated directly by the switch assignments in your <strong>LNbits extension</strong>: if a switch entry for virtual pin 200–207 (or 210–217) is present in LNbits, the corresponding PCF8574 port will be triggered on payment — no further configuration needed here.
                 </i></p>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px;">
-
-                    <!-- CH05 -->
-                    <div>
-                        <label for="ch05Mode">CH05 (PCF8574 P0)</label>
-                        <select name="ch05Mode" id="ch05Mode">
-                            <option value="off" selected>Off (default)</option>
-                            <option value="relay">Relay function (low-level trigger)</option>
-                            <option value="sensor-stop">Sensor - Stop the advance</option>
-                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor - Level monitoring</option>
-                        </select>
+                <div id="ioExpanderInfoSingle" style="display: none; margin-top: 10px;">
+                    <strong>PCF8574 #1</strong> — I²C address <code>0x20</code> (A0/A1/A2 all to GND)
+                    <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH200</strong></td><td>P0</td><td style="padding-left:12px; color:#aaa;">virtual pin 200</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH201</strong></td><td>P1</td><td style="padding-left:12px; color:#aaa;">virtual pin 201</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH202</strong></td><td>P2</td><td style="padding-left:12px; color:#aaa;">virtual pin 202</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH203</strong></td><td>P3</td><td style="padding-left:12px; color:#aaa;">virtual pin 203</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH204</strong></td><td>P4</td><td style="padding-left:12px; color:#aaa;">virtual pin 204</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH205</strong></td><td>P5</td><td style="padding-left:12px; color:#aaa;">virtual pin 205</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH206</strong></td><td>P6</td><td style="padding-left:12px; color:#aaa;">virtual pin 206</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH207</strong></td><td>P7</td><td style="padding-left:12px; color:#aaa;">virtual pin 207</td></tr>
+                    </table>
+                </div>
+                <div id="ioExpanderInfoDual" style="display: none; margin-top: 10px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px;">
+                        <div>
+                            <strong>PCF8574 #1</strong> — I²C address <code>0x20</code><br>
+                            <span style="font-size: 11px; color: #888;">A0/A1/A2 all to GND</span>
+                            <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH200</strong></td><td>P0</td><td style="padding-left:10px; color:#aaa;">pin 200</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH201</strong></td><td>P1</td><td style="padding-left:10px; color:#aaa;">pin 201</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH202</strong></td><td>P2</td><td style="padding-left:10px; color:#aaa;">pin 202</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH203</strong></td><td>P3</td><td style="padding-left:10px; color:#aaa;">pin 203</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH204</strong></td><td>P4</td><td style="padding-left:10px; color:#aaa;">pin 204</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH205</strong></td><td>P5</td><td style="padding-left:10px; color:#aaa;">pin 205</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH206</strong></td><td>P6</td><td style="padding-left:10px; color:#aaa;">pin 206</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH207</strong></td><td>P7</td><td style="padding-left:10px; color:#aaa;">pin 207</td></tr>
+                            </table>
+                        </div>
+                        <div>
+                            <strong>PCF8574 #2</strong> — I²C address <code>0x21</code><br>
+                            <span style="font-size: 11px; color: #888;">A0 to VCC, A1/A2 to GND</span>
+                            <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH210</strong></td><td>P0</td><td style="padding-left:10px; color:#aaa;">pin 210</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH211</strong></td><td>P1</td><td style="padding-left:10px; color:#aaa;">pin 211</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH212</strong></td><td>P2</td><td style="padding-left:10px; color:#aaa;">pin 212</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH213</strong></td><td>P3</td><td style="padding-left:10px; color:#aaa;">pin 213</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH214</strong></td><td>P4</td><td style="padding-left:10px; color:#aaa;">pin 214</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH215</strong></td><td>P5</td><td style="padding-left:10px; color:#aaa;">pin 215</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH216</strong></td><td>P6</td><td style="padding-left:10px; color:#aaa;">pin 216</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH217</strong></td><td>P7</td><td style="padding-left:10px; color:#aaa;">pin 217</td></tr>
+                            </table>
+                        </div>
                     </div>
-
-                    <!-- CH06 -->
-                    <div>
-                        <label for="ch06Mode">CH06 (PCF8574 P1)</label>
-                        <select name="ch06Mode" id="ch06Mode">
-                            <option value="off" selected>Off (default)</option>
-                            <option value="relay">Relay function (low-level trigger)</option>
-                            <option value="sensor-stop">Sensor - Stop the advance</option>
-                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor - Level monitoring</option>
-                        </select>
-                    </div>
-
-                    <!-- CH07 -->
-                    <div style="margin-top: 10px;">
-                        <label for="ch07Mode">CH07 (PCF8574 P2)</label>
-                        <select name="ch07Mode" id="ch07Mode">
-                            <option value="off" selected>Off (default)</option>
-                            <option value="relay">Relay function (low-level trigger)</option>
-                            <option value="sensor-stop">Sensor - Stop the advance</option>
-                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor - Level monitoring</option>
-                        </select>
-                    </div>
-
-                    <!-- CH08 -->
-                    <div style="margin-top: 10px;">
-                        <label for="ch08Mode">CH08 (PCF8574 P3)</label>
-                        <select name="ch08Mode" id="ch08Mode">
-                            <option value="off" selected>Off (default)</option>
-                            <option value="relay">Relay function (low-level trigger)</option>
-                            <option value="sensor-stop">Sensor - Stop the advance</option>
-                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor - Level monitoring</option>
-                        </select>
-                    </div>
-
-                    <!-- CH09 -->
-                    <div style="margin-top: 10px;">
-                        <label for="ch09Mode">CH09 (PCF8574 P4)</label>
-                        <select name="ch09Mode" id="ch09Mode">
-                            <option value="off" selected>Off (default)</option>
-                            <option value="relay">Relay function (low-level trigger)</option>
-                            <option value="sensor-stop">Sensor - Stop the advance</option>
-                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor - Level monitoring</option>
-                        </select>
-                    </div>
-
-                    <!-- CH10 -->
-                    <div style="margin-top: 10px;">
-                        <label for="ch10Mode">CH10 (PCF8574 P5)</label>
-                        <select name="ch10Mode" id="ch10Mode">
-                            <option value="off" selected>Off (default)</option>
-                            <option value="relay">Relay function (low-level trigger)</option>
-                            <option value="sensor-stop">Sensor - Stop the advance</option>
-                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor - Level monitoring</option>
-                        </select>
-                    </div>
-
-                    <!-- CH11 -->
-                    <div style="margin-top: 10px;">
-                        <label for="ch11Mode">CH11 (PCF8574 P6)</label>
-                        <select name="ch11Mode" id="ch11Mode">
-                            <option value="off" selected>Off (default)</option>
-                            <option value="relay">Relay function (low-level trigger)</option>
-                            <option value="sensor-stop">Sensor - Stop the advance</option>
-                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor - Level monitoring</option>
-                        </select>
-                    </div>
-
-                    <!-- CH12 -->
-                    <div style="margin-top: 10px;">
-                        <label for="ch12Mode">CH12 (PCF8574 P7)</label>
-                        <select name="ch12Mode" id="ch12Mode">
-                            <option value="off" selected>Off (default)</option>
-                            <option value="relay">Relay function (low-level trigger)</option>
-                            <option value="sensor-stop">Sensor - Stop the advance</option>
-                            <option value="sensor-monitor">Sensor - Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor - Level monitoring</option>
-                        </select>
-                    </div>
-
-                </div><!-- end grid -->
-
-                <p style="margin: 15px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
-                    Sensor modes behave identically to the built-in "Special features for the vending machine" options.
-                    <strong>Relay function (low-level trigger):</strong> PCF8574 pin goes LOW when the channel is triggered — use low-level trigger relay modules (IN pulled to GND = relay ON). High-level trigger modules are not compatible with PCF8574.
-                    <strong>Servo 180°/360°</strong> is not available on PCF8574 channels (no PWM output).
-                </p>
+                </div>
+                <p style="margin: 12px 0 0 0; font-size: 11px; color: #888;"><i>Relay outputs: active LOW (LOW = relay on, HIGH = relay off). Connect PCF8574 ports P0–P7 directly to the IN1–IN8 inputs of a low-level trigger relay board. All ports start HIGH (all relays off) on boot.</i></p>
             </div>
 
         </div>
@@ -1161,15 +1100,15 @@
                 "name": "ioExpander",
                 "value": "no"
             },
-            // indices 39-46 – CH05-CH12 modes
-            { "name": "ch05Mode", "value": "off" },
-            { "name": "ch06Mode", "value": "off" },
-            { "name": "ch07Mode", "value": "off" },
-            { "name": "ch08Mode", "value": "off" },
-            { "name": "ch09Mode", "value": "off" },
-            { "name": "ch10Mode", "value": "off" },
-            { "name": "ch11Mode", "value": "off" },
-            { "name": "ch12Mode", "value": "off" }
+            // indices 39-46 – IO-Expander PCF8574 channel modes (virtual pins 200–207, relay-only)
+            { "name": "ch200Mode", "value": "relay" },
+            { "name": "ch201Mode", "value": "relay" },
+            { "name": "ch202Mode", "value": "relay" },
+            { "name": "ch203Mode", "value": "relay" },
+            { "name": "ch204Mode", "value": "relay" },
+            { "name": "ch205Mode", "value": "relay" },
+            { "name": "ch206Mode", "value": "relay" },
+            { "name": "ch207Mode", "value": "relay" }
         ]
 
         // Setup Web Serial using serial.js
@@ -1725,13 +1664,10 @@
                     config[38].value = configData[38]?.value || "no";
                     document.getElementById("ioExpander").value = config[38].value;
                 }
-                const ioChIds2 = ["ch05Mode","ch06Mode","ch07Mode","ch08Mode","ch09Mode","ch10Mode","ch11Mode","ch12Mode"];
+                const ioChIds2 = ["ch200Mode","ch201Mode","ch202Mode","ch203Mode","ch204Mode","ch205Mode","ch206Mode","ch207Mode"];
                 for (let i = 0; i < 8; i++) {
-                    if (configData[39 + i]) {
-                        if (!config[39 + i]) config[39 + i] = { name: ioChIds2[i], value: "off" };
-                        config[39 + i].value = configData[39 + i]?.value || "off";
-                        document.getElementById(ioChIds2[i]).value = config[39 + i].value;
-                    }
+                    if (!config[39 + i]) config[39 + i] = { name: ioChIds2[i], value: "relay" };
+                    config[39 + i].value = "relay"; // PCF8574 channels are relay-only
                 }
                 updateIOExpanderFieldState();
 
@@ -1935,10 +1871,10 @@
             // I/O-Expander (indices 38-46)
             if (!config[38]) config[38] = { name: "ioExpander", value: "no" };
             config[38].value = document.getElementById("ioExpander").value || "no";
-            const ioChIds = ["ch05Mode","ch06Mode","ch07Mode","ch08Mode","ch09Mode","ch10Mode","ch11Mode","ch12Mode"];
+            const ioChIds = ["ch200Mode","ch201Mode","ch202Mode","ch203Mode","ch204Mode","ch205Mode","ch206Mode","ch207Mode"];
             for (let i = 0; i < 8; i++) {
-                if (!config[39 + i]) config[39 + i] = { name: ioChIds[i], value: "off" };
-                config[39 + i].value = document.getElementById(ioChIds[i]).value || "off";
+                if (!config[39 + i]) config[39 + i] = { name: ioChIds[i], value: "relay" };
+                config[39 + i].value = "relay"; // PCF8574 channels are relay-only
             }
 
             // Validate required fields
@@ -2168,19 +2104,14 @@
             updateIOExpanderFieldState();
         });
 
-        (function() {
-            const ioChIds = ["ch05Mode","ch06Mode","ch07Mode","ch08Mode","ch09Mode","ch10Mode","ch11Mode","ch12Mode"];
-            ioChIds.forEach((id, i) => {
-                document.getElementById(id).addEventListener("change", (event) => {
-                    if (!config[39 + i]) config[39 + i] = { name: id, value: "off" };
-                    config[39 + i].value = event.target.value;
-                });
-            });
-        })();
-
         function updateIOExpanderFieldState() {
-            const enabled = document.getElementById("ioExpander").value === "yes";
-            document.getElementById("ioExpanderChannels").style.display = enabled ? "block" : "none";
+            const val = (document.getElementById('ioExpander') || { value: 'no' }).value;
+            const channels = document.getElementById('ioExpanderChannels');
+            const infoSingle = document.getElementById('ioExpanderInfoSingle');
+            const infoDual = document.getElementById('ioExpanderInfoDual');
+            if (channels) channels.style.display = (val !== 'no') ? 'block' : 'none';
+            if (infoSingle) infoSingle.style.display = (val === 'yes') ? 'block' : 'none';
+            if (infoDual) infoDual.style.display = (val === 'yes2') ? 'block' : 'none';
         }
 
         // Set initial visibility of I/O-Expander section
