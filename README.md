@@ -184,34 +184,34 @@ Device String (switchStr)
 
 | GPIO | Function | Type | Direction | Description |
 |------|----------|------|-----------|-------------|
-| **Display (QSPI — internal to module, not on breakout header)** |
+| **Display (QSPI)** |
 | 45 | LCD QSPI CS | Output | - | Display chip select |
 | 47 | LCD QSPI CLK | Output | - | Display clock |
 | 21 | LCD QSPI D0 | Output | - | Display data 0 |
 | 48 | LCD QSPI D1 | Output | - | Display data 1 |
 | 40 | LCD QSPI D2 | Output | - | Display data 2 |
 | 39 | LCD QSPI D3 | Output | - | Display data 3 |
-| 1 | LCD Backlight | Output | HIGH=ON | Display brightness (PWM capable) |
-| **Touch (AXS15231B — internal, I2C SDA=4 / SCL=8, no external pins)** |
-| (internal) | Touch Controller | I2C | - | No external GPIO required; polled via I2C |
-| **I2C Bus (external, breakout header)** |
+| 1 | LCD Backlight (PWM) | Output | HIGH=ON | Display brightness — managed by firmware (GPIO 21 is QSPI data, not backlight) |
+| **Touch (AXS15231B)** |
+| 4 | I2C SDA | I2C | - | No external GPIO required; polled via I2C |
+| 8 | I2C SCL | I2C | - | No external GPIO required; polled via I2C |
+| **NFC-Modul / PN532** |
+| 9 | NFC IRQ | Input | Pull-up | PN532 interrupt (card detection, active LOW) |
+| **I2C Bus (external)** |
 | 17 | I2C SCL | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
 | 18 | I2C SDA | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
-| **NFC** |
-| 16 | NFC IRQ | Input | Pull-up | PN532 interrupt (card detection, active LOW) |
-| **Flex Channels — configurable per channel (relay / servo180 / servo360 / sensor)** |
-| 5 | CH01 | Output/Input | - | Default: relay output |
-| 6 | CH02 | Output/Input | - | Configurable mode |
-| 7 | CH03 | Output/Input | - | Configurable mode |
-| 9 | CH04 | Output/Input | - | Configurable mode |
-| 14 | CH05 | Output/Input | - | Configurable mode |
-| 15 | CH06 | Output/Input | - | Configurable mode |
-| **Fixed-Function Expansion** |
-| **External LED Button (Optional — board pin labeled TX/RX)** |
+| **Flex Channels** |
+| 5 | CH01 | Output/Input | - | Default: relay output — Special Mode applies to CH01 only |
+| 6 | CH02 | Output/Input | - | Off (default), Relay, Servo 180°/360° |
+| 7 | CH03 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
+| 14 | CH04 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
+| 15 | CH05 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
+| 16 | CH06 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
+| **LED Button** |
 | 43 | LED Button (LED) / **TX** | Output | HIGH=ON | Board pin labeled **TX** — External illuminated button LED (3.3V) |
 | 44 | LED Button (SW) / **RX** | Input | Pull-up | Board pin labeled **RX** — External button switch (active LOW); also Light-Sleep wake-up source |
-| **Fixed-Function Expansion** |
-| 46 | FD (NT3H2111) | Input | INPUT_PULLUP | ℹ️ **Strapping Pin** — permanently configured as FD (Field Detection) input from the NT3H2111 NFC Tag 2. Open-drain active LOW: phone near → LOW, no phone → HIGH. Pauses PN532 RF while a phone field is active. See note below. |
+| **NFC Tag 2 (FD)** |
+| 46 | FD — NT3H2111 NFC Tag 2 | Input | INPUT_PULLUP | ℹ️ **Strapping Pin** — permanently assigned as FD (Field Detection) for the NT3H2111 NFC Tag 2 module. Open-drain active LOW: smartphone NFC field detected → LOW, no field → HIGH. Pauses PN532 RF automatically. See note below. |
 
 > **ℹ️ GPIO 46 — FD (Field Detection) for NT3H2111, Strapping Pin with low practical risk**
 > GPIO 46 is permanently configured as `INPUT_PULLUP` and used exclusively as the FD (Field Detection) input from the NT3H2111 NFC Tag 2 chip. No Web Installer configuration required.
@@ -275,10 +275,10 @@ Device String (switchStr)
 | Touch | CST816S/CST328 | AXS15231B (capacitive) | N/A | N/A |
 | External LED Button | Supported (GPIO 43/44) | Supported (GPIO 43/44) | N/A | N/A |
 | Status Indication | Display + LED | Display + LED | LED only (GPIO 21) | LED only (GPIO 21) |
-| NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 16, 17, 18) | Yes (GPIO 4, 17, 18) | Yes (GPIO 10, 20, 21) |
+| NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 9, 17, 18) | Yes (GPIO 4, 17, 18) | Yes (GPIO 10, 20, 21) |
 | Power Consumption | ~150-250mA | ~200-350mA | ~100-150mA | ~80-120mA (single-core) |
 | Flash Memory | 16MB | 16MB | 4MB | 4MB |
-| Relay Channels | 4 (GPIO 12,13,10,11) | 6 flex channels (GPIO 5,6,7,9,14,15) | 12 extended channels | 4 base channels |
+| Relay Channels | 4 (GPIO 12,13,10,11) | 6 flex channels (GPIO 5,6,7,14,15,16) | 12 extended channels | 4 base channels |
 | Configuration | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial |
 | Typical Use Case | General retail vending | Large kiosk terminals | Embedded installations | Space-critical, low-power apps |
 
@@ -882,7 +882,7 @@ Set BTC-Ticker mode and currency in Web Installer:
 **Use Cases**: Bitcoin payment terminals, price information displays, educational demonstrations
 
 #### Special Modes
-Control relay switching patterns beyond simple on/off:
+Control relay switching patterns beyond simple on/off. **Applies to CH01 only** (GPIO 5 on JC3248W535C / Pin 12 on T-Display-S3). Additional channels always use standard on/off mode.
 - **Standard**: Simple on/off (default)
 - **Blink**: 1 Hz, 1:1 duty cycle
 - **Pulse**: 2 Hz, 1:4 duty cycle (short pulses)
@@ -1061,6 +1061,7 @@ LNURL changes     ──I²C──►       NDEF updated
 - **No configuration required** — auto-detected at startup via I²C scan; silently skipped if not present
 - **Coexists with PN532** — both modules run independently in parallel; no mode switching needed
 - **FD pin** — the INT/FD pin is permanently wired to GPIO 3 (T-Display-S3), GPIO 34 (headless ESP32 Dev), or GPIO 46 (JC3248W535C Touch 3.5"); active LOW when a phone's NFC field is detected, pauses PN532 RF automatically — no configuration needed
+- **NFC IRQ (PN532)** — connected to GPIO 1 (T-Display-S3), GPIO 4 (ESP32 Dev), or GPIO 9 (JC3248W535C Touch 3.5")
 
 **Wiring**:
 ```
