@@ -643,48 +643,27 @@ void readFiles()
 
     // GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless) — always FD for NT3H2111 (config[37] ignored)
 
-    // Read I/O Expander channel configuration
-    // Index 38 = ioExpander enable flag ("yes"/"no")
-    // Indices 39-46 = CH05-CH12 channel modes ("off","relay","sensor-stop","sensor-monitor","sensor-level")
+    // Read I/O Expander configuration
+    // Index 38 = ioExpander enable flag ("no" | "yes" | "yes2")
+    // Indices 39-46 = legacy channel-mode placeholders (ignored; PCF8574 channels are relay-only,
+    //   activated directly by LNbits virtual-pin assignments 200-207)
     #if ENABLE_DISPLAY
     {
-      // Check enable flag at index 38
       bool expanderEnabled = false;
       const JsonObject enableObj = doc[38];
       if (!enableObj.isNull()) {
         const char* val = enableObj["value"];
         if (val != nullptr) {
           String s = String(val); s.toLowerCase(); s.trim();
-          expanderEnabled = (s == "yes" || s == "true" || s == "1");
+          expanderEnabled = (s == "yes" || s == "yes2" || s == "true" || s == "1");
         }
       }
       ioExpanderConfig.enabled = expanderEnabled;
-
-      // Channel modes at indices 39-46
-      bool anyConfigured = false;
+      // Mark all 8 channels as relay (activation driven by LNbits, not local config)
       for (int ch = 0; ch < 8; ch++) {
-        const JsonObject chObj = doc[39 + ch];
-        String m = "off";
-        if (!chObj.isNull()) {
-          const char* val = chObj["value"];
-          if (val != nullptr) { m = String(val); m.toLowerCase(); m.trim(); }
-        }
-        // Normalize legacy values
-        if (m == "yes" || m == "true" || m == "1") m = "relay";
-        // Collapse sensor sub-types to "sensor" for firmware logic
-        if (m == "sensor-stop" || m == "sensor-monitor" || m == "sensor-level") {
-          ioExpanderConfig.channels[ch].sensorSubMode = m; // store for future use
-          m = "sensor";
-        } else {
-          ioExpanderConfig.channels[ch].sensorSubMode = "";
-        }
-        ioExpanderConfig.channels[ch].mode = m;
-        if (m == "relay" || m == "sensor") anyConfigured = true;
+        ioExpanderConfig.channels[ch].mode = expanderEnabled ? "relay" : "off";
       }
-      // If the user explicitly enabled the expander, mark it; auto-detect in initIOExpander() covers missing config
-      if (expanderEnabled) ioExpanderConfig.enabled = true;
-      LOG_INFO("Config", String("I/O Expander (PCF8574): ") + (expanderEnabled ? "ENABLED" : "disabled") + (anyConfigured ? " (" + String(anyConfigured) + " channels)" : ""));
-      // initIOExpander() is called later in setup(), after touch.begin() initialises Wire
+      LOG_INFO("Config", String("I/O Expander (PCF8574): ") + (expanderEnabled ? "ENABLED (pins 200-207 → relay)" : "disabled"));
     }
     #endif
 
@@ -2944,52 +2923,6 @@ void loop()
     }
     #endif
 
-    // ── IOExpander sensor polling: PCF8574 P0–P7 in "sensor" mode ─────────────
-    // sensor-stop   : active-LOW → stops action mid-flight (no pre-payment block)
-    // sensor-monitor: active-LOW → blocks payments + shows "PRODUCT IN EJECTOR"
-    // sensor-level  : INVERTED  → LOW=OK, HIGH=bin empty → blocks payments + "SUPPLY BIN EMPTY"
-    if (ioExpanderConfig.enabled) {
-      for (int ch = 0; ch < 8; ch++) {
-        if (ioExpanderConfig.channels[ch].mode != "sensor") continue;
-        const String& sub = ioExpanderConfig.channels[ch].sensorSubMode;
-        bool pinLow = readExpanderSensor(ch); // true when pin is LOW
-
-        if (sub == "sensor-level") {
-          // Level monitoring: pin HIGH = bin empty
-          bool isEmpty = !pinLow;
-          if (isEmpty && !ioExpanderConfig.binEmpty[ch]) {
-            ioExpanderConfig.binEmpty[ch] = true;
-            Serial.printf("[SENSOR] CH%02d (P%d) bin EMPTY — payments blocked\n", ch + 5, ch);
-            supplyBinEmptyScreen();
-          } else if (!isEmpty && ioExpanderConfig.binEmpty[ch]) {
-            ioExpanderConfig.binEmpty[ch] = false;
-            Serial.printf("[SENSOR] CH%02d (P%d) bin restocked — payments re-enabled\n", ch + 5, ch);
-            showQRScreen();
-          }
-        } else {
-          // sensor-stop and sensor-monitor: active-LOW
-          bool wasActive = ioExpanderConfig.sensorActive[ch];
-          if (pinLow && !wasActive) {
-            ioExpanderConfig.sensorActive[ch] = true;
-            if (sub == "sensor-monitor") {
-              Serial.printf("[SENSOR] CH%02d (P%d) product blocked — payments blocked\n", ch + 5, ch);
-              productBlockedScreen();
-            } else {
-              // sensor-stop: only blocks during action, not before
-              Serial.printf("[SENSOR] CH%02d (P%d) stop-sensor triggered\n", ch + 5, ch);
-            }
-          } else if (!pinLow && wasActive) {
-            ioExpanderConfig.sensorActive[ch] = false;
-            if (sub == "sensor-monitor") {
-              Serial.printf("[SENSOR] CH%02d (P%d) product cleared — payments re-enabled\n", ch + 5, ch);
-              showQRScreen();
-            } else {
-              Serial.printf("[SENSOR] CH%02d (P%d) stop-sensor released\n", ch + 5, ch);
-            }
-          }
-        }
-      }
-    }
 
     // ── GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless): FD from NT3H2111 ──
     // Open-drain active LOW: phone near → FD LOW; no phone → pull-up → HIGH.
@@ -3012,8 +2945,8 @@ void loop()
 
     // Process payments from queue
     if (paymentQueue.hasPending() && !paymentQueue.processing) {
-      // Block payment activation while any sensor condition is active (GPIO + IOExpander)
-      if (lightBarrierConfig.isAnyBlocking() || ioExpanderConfig.isAnySensorBlocking()) {
+      // Block payment activation while any sensor condition is active
+      if (lightBarrierConfig.isAnyBlocking()) {
         Serial.println("[SENSOR] Payment skipped — sensor blocking active");
         vTaskDelay(pdMS_TO_TICKS(500));
       } else {
@@ -3073,21 +3006,6 @@ inline bool shouldStopForLightBarrier(unsigned long actionStartTime) {
   }
   #endif
 
-  // IOExpander sensor-stop channels: read PCF8574 directly here.
-  // The main-loop polling (which updates sensorActive[]) is NOT running during a relay action,
-  // so we must not rely on the cached sensorActive[] state — read hardware directly instead.
-  #if ENABLE_DISPLAY
-  if (ioExpanderConfig.enabled) {
-    for (int ch = 0; ch < 8; ch++) {
-      if (ioExpanderConfig.channels[ch].mode != "sensor") continue;
-      if (ioExpanderConfig.channels[ch].sensorSubMode != "sensor-stop") continue;
-      if (readExpanderSensor(ch)) { // direct PCF8574 read
-        Serial.printf("[SENSOR] IOExpander CH%02d (P%d) stop-sensor triggered after %lu ms - stopping action!\n", ch + 5, ch, elapsed);
-        return true;
-      }
-    }
-  }
-  #endif
 
   #ifdef BOARD_ESP32C3_21_1
   if (c3FlexConfig.gpio6SensorStop && digitalRead(PIN_FLEX_CH01) == LOW) {

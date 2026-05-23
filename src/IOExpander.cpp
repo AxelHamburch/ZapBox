@@ -10,18 +10,15 @@
 static PCF8574 pcf(0x20);
 static bool pcfInitialized = false;
 
-// Current output state bitmask (1 = HIGH for outputs / input-mode for sensors)
+// Output state bitmask: 1=HIGH (relay off), 0=LOW (relay on, active-LOW)
 static uint8_t outputState = 0x00;
 
 void initIOExpander() {
     if (!ioExpanderConfig.enabled) return;
 
-    // Relay channels: PCF8574 is open-drain.
-    // Active (relay ON)  = pin LOW  ÔåÆ chip sinks up to 25 mA
-    // Inactive (relay OFF) = pin HIGH ÔåÆ open-drain, weak pull-up (~100 ┬ÁA only)
-    // Sensor channels must be HIGH (input mode on PCF8574 open-drain bus).
-    // ÔåÆ initialise ALL pins HIGH; relay channels pulled LOW when activated.
-    outputState = 0xFF; // all HIGH on startup
+    // PCF8574 is open-drain: LOW = relay on (chip sinks current), HIGH = relay off (weak pull-up).
+    // Initialise all pins HIGH so all relays start off.
+    outputState = 0xFF;
 
     i2cTake();
     bool found = pcf.begin();
@@ -34,13 +31,7 @@ void initIOExpander() {
         return;
     }
     pcfInitialized = true;
-    LOG_INFO("IOExpander", "PCF8574 initialized at 0x20 (all pins HIGH, relay=active-LOW)");
-
-    for (int i = 0; i < 8; i++) {
-        if (ioExpanderConfig.channels[i].mode != "off") {
-            LOG_INFO("IOExpander", String("CH") + String(i + 5, DEC) + ": " + ioExpanderConfig.channels[i].mode);
-        }
-    }
+    LOG_INFO("IOExpander", "PCF8574 initialized at 0x20 — 8 relay channels ready (virtual pins 200-207)");
 }
 
 void activateExpanderChannel(int ch) {
@@ -63,19 +54,10 @@ void deactivateExpanderChannel(int ch) {
     LOG_INFO("IOExpander", String("CH") + String(ch + 5) + " (P" + String(ch) + ") deactivated");
 }
 
-bool readExpanderSensor(int ch) {
-    if (!pcfInitialized || ch < 0 || ch > 7) return false;
-    // PCF8574 open-drain: pin reads LOW when NPN sensor pulls it to GND
-    i2cTake();
-    uint8_t val = pcf.read8();
-    i2cGive();
-    return (val & (1 << ch)) == 0;
-}
 
 #else
-// Headless variant: PCF8574 support is T-Display-S3 only ÔÇö stub out all functions
+// Headless variant: PCF8574 support not available — stub out all functions
 void initIOExpander() {}
 void activateExpanderChannel(int) {}
 void deactivateExpanderChannel(int) {}
-bool readExpanderSensor(int) { return false; }
 #endif

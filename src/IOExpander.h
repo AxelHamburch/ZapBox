@@ -1,45 +1,24 @@
 ﻿#pragma once
 
 /**
- * IOExpander.h ÔÇö PCF8574 I2C GPIO expander abstraction
+ * IOExpander.h — PCF8574 I2C GPIO expander (relay channels only)
  *
- * Adds CH05ÔÇôCH12 to T-Display-S3 via a PCF8574 at I2C address 0x20.
- * The PCF8574 shares the existing I2C bus (SDA=GPIO18, SCL=GPIO17) with
- * the touch controller and the PN532 NFC reader.
+ * Adds 8 relay output channels via a PCF8574 at I2C address 0x20.
+ * Shares the existing I2C bus (SDA=GPIO18, SCL=GPIO17) with PN532 NFC and touch.
  *
- * Address 0x20 is safe: PN532 uses 0x24, touch CST816S uses 0x15.
+ * Virtual pin mapping (LNbits → PCF8574):
+ *   200 → P0,  201 → P1,  202 → P2,  203 → P3
+ *   204 → P4,  205 → P5,  206 → P6,  207 → P7
+ *
+ * Relay logic: active LOW (LOW = relay on, HIGH = relay off).
  * Wire.begin() must have been called before initIOExpander().
- *
- * Channel mapping:
- *   CH05 ÔåÆ PCF8574 P0
- *   CH06 ÔåÆ PCF8574 P1
- *   ...
- *   CH12 ÔåÆ PCF8574 P7
  */
 
-/**
- * Initialize the PCF8574.
- * Must be called after touch.begin() (which calls Wire.begin()).
- * Sets all output pins LOW, configures sensor pins as inputs (HIGH).
- * Does nothing if ioExpanderConfig.enabled is false.
- */
+// Initialize PCF8574 — call after Wire.begin(). Does nothing if expander is disabled.
 void initIOExpander();
 
-/**
- * Activate a relay channel on the PCF8574.
- * @param ch  Channel index 0ÔÇô7 (CH05=0 ÔÇª CH12=7)
- */
+// Activate relay channel ch (0–7 = virtual pins 200–207). Pulls PCF8574 Px LOW.
 void activateExpanderChannel(int ch);
 
-/**
- * Deactivate a relay channel on the PCF8574.
- * @param ch  Channel index 0ÔÇô7 (CH05=0 ÔÇª CH12=7)
- */
+// Deactivate relay channel ch (0–7). Returns PCF8574 Px HIGH.
 void deactivateExpanderChannel(int ch);
-
-/**
- * Read a sensor pin from the PCF8574.
- * Returns true when the sensor pulls the pin LOW (active LOW / NPN input).
- * @param ch  Channel index 0ÔÇô7 (CH05=0 ÔÇª CH12=7)
- */
-bool readExpanderSensor(int ch);

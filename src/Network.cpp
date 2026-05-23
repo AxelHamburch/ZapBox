@@ -130,8 +130,8 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     LOG_INFO("NFC", "LNURLW received from Bolt Card – sending WS event");
 
-    // Block NFC payments when any sensor condition is active (GPIO sensors + IOExpander sensors)
-    if (lightBarrierConfig.isAnyBlocking() || ioExpanderConfig.isAnySensorBlocking()) {
+    // Block NFC payments when any sensor condition is active
+    if (lightBarrierConfig.isAnyBlocking()) {
         LOG_WARN("NFC", "NFC tap blocked — sensor blocking active");
         return;
     }

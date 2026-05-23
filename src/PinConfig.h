@@ -209,11 +209,9 @@
 #define PIN_TOUCH_RES  -1
 
 // ── NFC Reader (PN532) — optional, on external I2C bus ───────────
-// GPIO 16 is free on JC3248W535C (not used by display, touch, or any other peripheral).
-// Note: PIN_TOUCH_INT defaults to 16 globally but is not read on this board —
-// handleTouchButton() uses I2C polling (touch.isPressed()) instead of digitalRead().
-// GPIO 16 must be configured as INPUT_PULLUP at boot to avoid floating → spurious reads.
-#define PIN_NFC_IRQ  16
+// GPIO 9 is free on JC3248W535C (not used by display, touch, or any other peripheral).
+// Must be configured as INPUT_PULLUP at boot to avoid floating → spurious reads.
+#define PIN_NFC_IRQ  9
 
 // ── FD (Field Detection) — NT3H2111 NFC Tag 2 ────────────────────
 // ⚠ GPIO 46 is a STRAPPING PIN — controls ROM serial output at boot.
@@ -224,27 +222,27 @@
 #define PIN_GPIO3_MODE  INPUT_PULLUP   // FD signal: HIGH = no field, LOW = phone detected
 
 // ── Flexible Output/Input Channels ───────────────────────────────
-// GPIOs 5, 6, 7, 9, 14, 15 — each configurable per channel:
+// GPIOs 5, 6, 7, 14, 15, 16 — each configurable per channel:
 //   relay | servo180 | servo360 | ambient-light |
 //   sensor-stop | sensor-blockage | sensor-level
 //
 // Default pin assignment (overridable via Serial config / NVS):
-//   CH01 → GPIO  5
+//   CH01 → GPIO  5   (relay default; Special Mode applies to CH01 only)
 //   CH02 → GPIO  6
 //   CH03 → GPIO  7
-//   CH04 → GPIO  9
-//   CH05 → GPIO 14
-//   CH06 → GPIO 15
+//   CH04 → GPIO 14
+//   CH05 → GPIO 15
+//   CH06 → GPIO 16
 //
 // All 6 GPIOs are RTC-capable → deep-sleep wake-up supported.
-// GPIO 16 is reserved for NFC IRQ — not a flex channel.
+// GPIO 9 is reserved for NFC IRQ — not a flex channel.
 // ─────────────────────────────────────────────────────────────────
 #define PIN_RELAY_CH01  5
 #define PIN_RELAY_CH02  6
 #define PIN_RELAY_CH03  7
-#define PIN_RELAY_CH04  9
-#define PIN_RELAY_CH05  14
-#define PIN_RELAY_CH06  15
+#define PIN_RELAY_CH04  14
+#define PIN_RELAY_CH05  15
+#define PIN_RELAY_CH06  16
 
 #define RELAY_CHANNEL_MAX 6
 static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
