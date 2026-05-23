@@ -1285,7 +1285,8 @@ Electrical design and housing variants, see table.
 | b946400 | Compact | Add mounting plate, 90° NFC and option Ext. |
 | b948772 | Headless Servo | Add NFC Tag 2 module |
 | b948929 | Headless | Add NFC Tag 2 module |
-| b949639 | Servo | Add NFC Tag 2 module |
+| b949639 | Servo | Add NFC Tag 2 module | 
+| b950530 | Compact | Add NFC Tag 2 module | 
 
 -> Find all versions here: [./assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
