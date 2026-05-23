@@ -192,21 +192,24 @@ bool nfcNT3H2111Init() {
     Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL, 400000);
 #endif
 
-    // Probe chip with up to 6 attempts (150 ms apart).
+    // Probe chip with up to 3 attempts (150 ms apart).
+    // Set a short Wire timeout so a missing device never blocks more than 50 ms.
     // Brief settle so the PN532 FreeRTOS task (just created) can claim its
     // first I2C slot before we start probing — avoids a race on the shared bus.
+    Wire.setTimeOut(50);
     delay(300);
     uint8_t probe = 0xFF;
-    for (int attempt = 1; attempt <= 6; attempt++) {
+    for (int attempt = 1; attempt <= 3; attempt++) {
         probe = nt3hProbeAddr(NT3H_ADDR) ? 0 : 2;
         if (probe == 0) break;
-        LOG_INFO("NT3H", String("Probe attempt ") + String(attempt) + "/6 failed (err=" + String(probe) + ") — retrying...");
+        LOG_INFO("NT3H", String("Probe attempt ") + String(attempt) + "/3 failed — retrying...");
         delay(150);
     }
 
     // If not at default address, scan all addresses and try to recover to 0x55.
+    // Each probe is capped at 50 ms by Wire.setTimeOut above (max ~6 s total).
     if (probe != 0) {
-        LOG_WARN("NT3H", "NT3H not at 0x55 — scanning full I2C range 0x00..0x7F for recovery");
+        LOG_WARN("NT3H", "NT3H not at 0x55 — scanning I2C range for address recovery");
         for (uint8_t addr = 0; addr < 128; addr++) {
             if (!nt3hProbeAddr(addr)) continue;
             if (!nt3hLooksLikeTagAtAddr(addr)) continue;
@@ -220,18 +223,7 @@ bool nfcNT3H2111Init() {
     }
 
     if (probe != 0) {
-        LOG_WARN("NT3H", String("NT3H2111 not found at I\xC2\xB2\x43 0x55 (err=") + String(probe) + ")");
-        // I2C bus scan — log every address that ACKs to help diagnose wiring/address issues
-        LOG_INFO("NT3H", "Running I2C bus scan (0x00..0x7F):");
-        String found = "";
-        for (uint8_t addr = 0; addr < 128; addr++) {
-            if (nt3hProbeAddr(addr)) {
-                char buf[8];
-                snprintf(buf, sizeof(buf), "0x%02X ", addr);
-                found += buf;
-            }
-        }
-        LOG_INFO("NT3H", found.length() > 0 ? ("Devices found: " + found) : "No I2C devices found on bus");
+        LOG_WARN("NT3H", "NT3H2111 not found — NFC tag feature disabled, continuing boot");
         return false;
     }
     LOG_INFO("NT3H", "NT3H2111 detected at I\xC2\xB2\x43 0x55");

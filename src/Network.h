@@ -12,6 +12,7 @@ bool checkInternetConnectivity();
 bool checkServerReachability();
 
 // WiFi monitoring and recovery
+void initWiFiEventHandler();
 void checkWiFiStatus();
 void checkAndReconnectWiFi();
 

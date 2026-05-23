@@ -339,6 +339,23 @@ bool checkServerReachability()
   return serverReachable;
 }
 
+// Set by WiFi event handler when AUTH_FAIL is received — stops reconnect loop.
+static bool wifiAuthFailed = false;
+
+void initWiFiEventHandler() {
+  WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+    if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+      uint8_t reason = info.wifi_sta_disconnected.reason;
+      // Reason 202 = AUTH_FAIL (wrong password), 201 = AUTH_EXPIRE, 15 = 4WAY_HANDSHAKE_TIMEOUT
+      if (reason == 202 || reason == 201 || reason == 15) {
+        WiFi.setAutoReconnect(false);
+        wifiAuthFailed = true;
+        LOG_ERROR("Network", String("WiFi auth failed (reason ") + String(reason) + ") — wrong password? Stopping retries.");
+      }
+    }
+  });
+}
+
 // WiFi State Monitoring - Updates DeviceState based on WiFi connectivity
 void checkWiFiStatus() {
   WiFiState newWiFiState;
@@ -360,23 +377,25 @@ void checkWiFiStatus() {
 
 void checkAndReconnectWiFi()
 {
-  // Simplified version - just show error screen, don't block
   if (WiFi.status() != WL_CONNECTED && !deviceState.isInState(DeviceState::CONFIG_MODE))
   {
-    LOG_WARN("Network", "WiFi connection lost");
-    if (networkStatus.errors.wifi < 99) networkStatus.errors.wifi++;
-    LOG_ERROR("Network", String("WiFi error count: ") + String(networkStatus.errors.wifi));
-    
     if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
-      // Only show error screen if not already showing one
       deviceState.transition(DeviceState::ERROR_RECOVERABLE);
-      currentErrorType = 1; // WiFi error (highest priority)
+      currentErrorType = 1;
       wifiReconnectScreen();
     }
-    
+
+    // Auth failed (wrong password) — show NO WIFI, do not retry
+    if (wifiAuthFailed) {
+      LOG_WARN("Network", "WiFi auth failed — not retrying (check password in config)");
+      return;
+    }
+
+    LOG_WARN("Network", "WiFi connection lost");
+    if (networkStatus.errors.wifi < 99) networkStatus.errors.wifi++;
+
     // Start WiFi reconnect but don't block waiting for it
     if (!networkStatus.confirmed.wifi) {
-      // First time - configure WiFi
       WiFi.disconnect();
       delay(50);
       WiFi.mode(WIFI_STA);
@@ -386,7 +405,6 @@ void checkAndReconnectWiFi()
       WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
       LOG_INFO("Network", "WiFi reconnection started (non-blocking)");
     }
-    // If WiFi was confirmed before, auto-reconnect will handle it
   }
   else if (WiFi.status() == WL_CONNECTED && networkStatus.errors.wifi > 0 && deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && currentErrorType == 1)
   {

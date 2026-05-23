@@ -1296,6 +1296,7 @@ void setup()
   #define SETUP_PRINTF(...) do { if (!deviceState.isInState(DeviceState::CONFIG_MODE)) Serial.printf(__VA_ARGS__); } while(0)
 
   // Start WiFi connection immediately (parallel to startup screen)
+  initWiFiEventHandler(); // Register event handler before WiFi.begin() so AUTH_FAIL is caught
   WiFi.mode(WIFI_STA); // Set to Station mode
   WiFi.setSleep(false); // Disable WiFi power saving for stable connection
   WiFi.setAutoReconnect(true); // Enable auto-reconnect
