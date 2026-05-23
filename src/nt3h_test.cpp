@@ -172,6 +172,7 @@ void setup() {
     pinMode(SCL_PIN, INPUT_PULLUP);
     delay(10);
     Wire.begin(SDA_PIN, SCL_PIN, 100000UL);   // 100 kHz standard mode
+    Wire.setTimeOut(50);  // 50 ms per address — keeps full scan under 7 s
     delay(200);
 
     // ---- 1. Bus scan ----------------------------------------
