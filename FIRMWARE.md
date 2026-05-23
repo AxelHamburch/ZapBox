@@ -194,7 +194,7 @@ C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e esp32dev
 
 **Touch 3.5" version (JC3248W535C):**
 ```powershell
-C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e jc3248w535c
+C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e Touch3_5
 ```
 
 **ESP32-C3-21-1 version:**
@@ -222,9 +222,9 @@ Copy-Item -Path ".pio\build\esp32dev\firmware.bin" -Destination "installer\firmw
 
 **Touch 3.5" version (jc3248w535c) → v936746t/:**
 ```powershell
-Copy-Item -Path ".pio\build\jc3248w535c\bootloader.bin" -Destination "installer\firmware\v936746t\bootloader.bin"
-Copy-Item -Path ".pio\build\jc3248w535c\partitions.bin" -Destination "installer\firmware\v936746t\partitions.bin"
-Copy-Item -Path ".pio\build\jc3248w535c\firmware.bin" -Destination "installer\firmware\v936746t\firmware.bin"
+Copy-Item -Path ".pio\build\Touch3_5\bootloader.bin" -Destination "installer\firmware\v936746t\bootloader.bin"
+Copy-Item -Path ".pio\build\Touch3_5\partitions.bin" -Destination "installer\firmware\v936746t\partitions.bin"
+Copy-Item -Path ".pio\build\Touch3_5\firmware.bin" -Destination "installer\firmware\v936746t\firmware.bin"
 ```
 
 **ESP32-C3-21-1 version (esp32-c3-21-1) → v936746c/:**
@@ -335,7 +335,7 @@ After `pio run`:
 └── firmware.bin
 
 # Touch 3.5" version (jc3248w535c):
-.pio/build/jc3248w535c/
+.pio/build/Touch3_5/
 ├── bootloader.bin
 ├── partitions.bin
 └── firmware.bin
