@@ -1345,7 +1345,7 @@ For the archive and development, see [here](https://github.com/AxelHamburch/ZapB
 See the complete wiring diagram:
 
 - [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
-- [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact-Ext.png)
+- [E-Layout-ZapBox-Compact-Ext.png](assets/electric/E-Layout-ZapBox-Compact-Ext.png)
 - [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
 - [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
 - [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
