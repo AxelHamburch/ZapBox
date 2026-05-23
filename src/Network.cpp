@@ -339,8 +339,10 @@ bool checkServerReachability()
   return serverReachable;
 }
 
-// Set by WiFi event handler when AUTH_FAIL is received — stops reconnect loop.
-static bool wifiAuthFailed = false;
+// After AUTH_FAIL: pause retries for 60 s, then try once more.
+static bool     wifiAuthFailed      = false;
+static unsigned long wifiAuthRetryAt = 0;   // millis() when next retry is allowed
+static const unsigned long WIFI_AUTH_RETRY_MS = 60000; // 60 s between retries
 
 void initWiFiEventHandler() {
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
@@ -348,9 +350,10 @@ void initWiFiEventHandler() {
       uint8_t reason = info.wifi_sta_disconnected.reason;
       // Reason 202 = AUTH_FAIL (wrong password), 201 = AUTH_EXPIRE, 15 = 4WAY_HANDSHAKE_TIMEOUT
       if (reason == 202 || reason == 201 || reason == 15) {
-        WiFi.setAutoReconnect(false);
+        WiFi.setAutoReconnect(false); // stop continuous storm of retries
         wifiAuthFailed = true;
-        LOG_ERROR("Network", String("WiFi auth failed (reason ") + String(reason) + ") — wrong password? Stopping retries.");
+        wifiAuthRetryAt = millis() + WIFI_AUTH_RETRY_MS;
+        LOG_ERROR("Network", String("WiFi auth failed (reason ") + String(reason) + ") — retrying in 60 s");
       }
     }
   });
@@ -385,9 +388,16 @@ void checkAndReconnectWiFi()
       wifiReconnectScreen();
     }
 
-    // Auth failed (wrong password) — show NO WIFI, do not retry
+    // After AUTH_FAIL: wait 60 s, then try once more (network password may have changed)
     if (wifiAuthFailed) {
-      LOG_WARN("Network", "WiFi auth failed — not retrying (check password in config)");
+      if (millis() < wifiAuthRetryAt) {
+        return; // still in cool-down, stay on NO WIFI screen
+      }
+      // Cool-down expired — attempt one reconnect
+      wifiAuthFailed = false;
+      WiFi.setAutoReconnect(true);
+      WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
+      LOG_INFO("Network", "WiFi auth retry after 60 s cool-down");
       return;
     }
 
