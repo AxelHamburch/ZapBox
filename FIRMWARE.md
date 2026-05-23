@@ -23,6 +23,12 @@ This becomes your version number: `vBLOCKHEIGHT` (e.g., v936746)
 - **Release Approach:** Versions can be released individually (e.g., touch3.5 only) or as a group
 - **Binary files:** Copied WITHOUT any suffix (just `bootloader.bin`, `partitions.bin`, `firmware.bin`)
 
+### ⚠️ ESP32-C3-21-1: Only release when explicitly requested!
+
+**Do NOT automatically include the ESP32-C3-21-1 (`vBLOCKHEIGHTc`) in every release.**
+The C3 variant is only built and released when the user explicitly asks for it (e.g., "also release the C3 firmware").
+In a standard 3-variant release (Standard + Headless + Touch 3.5"), skip all C3 steps entirely.
+
 ## Automated Release Steps
 
 ### 1. Update Version in platformio.ini
@@ -182,6 +188,9 @@ Remove `(Latest)` from the previous top C3 version.
 
 ### 5. Compile Firmware (for the variants you are releasing)
 
+**⚠️ MANDATORY: You MUST compile the firmware AND copy the binaries (step 6) before committing!**
+**A release folder with only `manifest.json` but no `.bin` files is INCOMPLETE and broken.**
+
 **Standard version (T-Display-S3):**
 ```powershell
 C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e lilygo-t-display-s3
@@ -197,7 +206,7 @@ C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e esp32dev
 C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e Touch3_5
 ```
 
-**ESP32-C3-21-1 version:**
+**ESP32-C3-21-1 version (only when explicitly requested by user!):**
 ```powershell
 C:\Users\Datenrettung\.platformio\penv\Scripts\platformio.exe run -e esp32-c3-21-1
 ```
@@ -296,27 +305,33 @@ Tell user:
 
 - [ ] **STEP 0:** Get Bitcoin block height (ALWAYS DO THIS FIRST!)
 - [ ] Update platformio.ini with new version
-- [ ] Create the required firmware directories (`vBLOCKHEIGHT`, `vBLOCKHEIGHTh`, or `vBLOCKHEIGHTt` as needed)
+- [ ] Create the required firmware directories (`vBLOCKHEIGHT`, `vBLOCKHEIGHTh`, `vBLOCKHEIGHTt` — **skip C3 unless user requests it**)
 - [ ] Create the required manifest.json files for the selected variants
-- [ ] Update the matching web installer page:
-  - `installer/index.html` for standard/headless
+- [ ] Update the matching web installer pages:
+  - `installer/index.html` for Standard (T-Display-S3)
+  - `installer/headless/index.html` for Headless
   - `installer/touch3.5/index.html` for Touch 3.5"
-- [ ] Compile only the requested firmware variants
-- [ ] Copy binary files WITHOUT suffix
+  - `installer/c3/index.html` for C3 (only if C3 is being released)
+- [ ] **Compile firmware for each variant** (pio run -e ...) — **DO NOT SKIP!**
+- [ ] **Copy all 3 binary files** (bootloader.bin, partitions.bin, firmware.bin) into each firmware folder — **DO NOT SKIP!**
+- [ ] Verify each firmware folder contains 4 files: `manifest.json` + 3 `.bin` files
 - [ ] Generate release description from git log (in English)
 - [ ] Git commit (DO NOT push yet)
 - [ ] Inform user with English release notes
 
 ## Common Mistakes to Avoid
 
-1. ❌ **DON'T** add "-headless" suffix to binary filenames
-2. ❌ **DON'T** forget the 'h' suffix in the headless directory name (v936746h)
-3. ❌ **DON'T** forget the 't' suffix in the Touch 3.5" directory name (v936746t)
-4. ❌ **DON'T** forget the 'c' suffix in the ESP32-C3-21-1 directory name (v936746c)
-5. ❌ **DON'T** use same chipFamily for all variants (ESP32-S3 vs ESP32 vs ESP32-C3)
-6. ❌ **DON'T** use same bootloader offset for headless and ESP32-S3/C3 variants (4096 vs 0)
-7. ❌ **DON'T** update the wrong installer page (`installer/index.html` vs `installer/touch3.5/index.html` vs `installer/c3/index.html`)
-8. ❌ **DON'T** look at HEADLESS_DEPLOYMENT.md (it's outdated/deleted)
+1. ❌ **DON'T** skip compiling the firmware — the folder MUST contain `bootloader.bin`, `partitions.bin`, `firmware.bin` in addition to `manifest.json`
+2. ❌ **DON'T** forget to copy the `.bin` files after compiling (step 6) — creating the manifest alone is not enough
+3. ❌ **DON'T** release the ESP32-C3-21-1 variant unless the user explicitly asks for it
+4. ❌ **DON'T** add "-headless" suffix to binary filenames
+5. ❌ **DON'T** forget the 'h' suffix in the headless directory name (v936746h)
+6. ❌ **DON'T** forget the 't' suffix in the Touch 3.5" directory name (v936746t)
+7. ❌ **DON'T** forget the 'c' suffix in the ESP32-C3-21-1 directory name (v936746c)
+8. ❌ **DON'T** use same chipFamily for all variants (ESP32-S3 vs ESP32 vs ESP32-C3)
+9. ❌ **DON'T** use same bootloader offset for headless and ESP32-S3/C3 variants (4096 vs 0)
+10. ❌ **DON'T** update the wrong installer page — Headless has its own page at `installer/headless/index.html` (NOT inside `installer/index.html`)
+11. ❌ **DON'T** look at HEADLESS_DEPLOYMENT.md (it's outdated/deleted)
 
 ## Binary File Locations
 
