@@ -136,9 +136,11 @@ void navigateToNextProduct() {
   // Determine navigation behavior: compute max products, skip unconfigured channels,
   // and handle wrap / BTC-ticker transition.
   {
-    int maxProducts = 2; // default for duo
+    // Use RELAY_CHANNEL_MAX as ceiling so all boards (incl. JC3248W535C with 6 channels)
+    // are handled correctly without hardcoding counts per mode.
+    // Exception: quattro + ambient light sensor caps at 3 (CH04 used for sensor).
+    int maxProducts = RELAY_CHANNEL_MAX;
     if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
-    else if (multiChannelConfig.mode == "quattro") maxProducts = 4;
     else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.activeChannelCount();
 
     // For non-servo modes with labels already loaded: skip products whose GPIO
@@ -147,14 +149,8 @@ void navigateToNextProduct() {
     if (multiChannelConfig.mode != "servo" && labelsLoadedSuccessfully) {
       // Advance past every unconfigured product
       while (multiChannelConfig.currentProduct <= maxProducts) {
-        int pin;
-        switch (multiChannelConfig.currentProduct) {
-          case 1: pin = 12; break;
-          case 2: pin = 13; break;
-          case 3: pin = 10; break;
-          case 4: pin = 11; break;
-          default: pin = 12; break;
-        }
+        int idx0 = multiChannelConfig.currentProduct - 1; // 0-based RELAY_CHANNEL_PINS index
+        int pin = (idx0 >= 0 && idx0 < RELAY_CHANNEL_MAX) ? RELAY_CHANNEL_PINS[idx0] : RELAY_CHANNEL_PINS[0];
         int idx = getPinIndex(pin);
         if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
           break; // This product has a switch – show it
@@ -178,14 +174,8 @@ void navigateToNextProduct() {
           // Ticker disabled: wrap to first configured product
           multiChannelConfig.currentProduct = 1;
           while (multiChannelConfig.currentProduct <= maxProducts) {
-            int pin;
-            switch (multiChannelConfig.currentProduct) {
-              case 1: pin = 12; break;
-              case 2: pin = 13; break;
-              case 3: pin = 10; break;
-              case 4: pin = 11; break;
-              default: pin = 12; break;
-            }
+            int idx0 = multiChannelConfig.currentProduct - 1;
+            int pin = (idx0 >= 0 && idx0 < RELAY_CHANNEL_MAX) ? RELAY_CHANNEL_PINS[idx0] : RELAY_CHANNEL_PINS[0];
             int idx = getPinIndex(pin);
             if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
               break;
@@ -236,20 +226,17 @@ void navigateToNextProduct() {
     int pin = 0;
     
     // Map product number to pin
-    // Servo mode: dynamic mapping based on active channels (relay1→12, servo1→13, servo2→10, relay2→11)
-    // Standard:   Product 1 → Pin 12, Product 2 → Pin 13, Product 3 → Pin 10, Product 4 → Pin 11
+    // Servo mode: dynamic mapping via servoConfig.productToPin()
+    // All other modes: use RELAY_CHANNEL_PINS[productNum-1] — board-agnostic, no hardcoded GPIO numbers
     if (multiChannelConfig.mode == "servo") {
       pin = servoConfig.productToPin(productNum);
     } else {
-      switch(productNum) {
-        case 1: pin = 12; break;
-        case 2: pin = 13; break;
-        case 3: pin = 10; break;
-        case 4: pin = 11; break;
-        default:
-          LOG_WARN("Navigation", String("Invalid product number ") + String(productNum) + String(", defaulting to Pin 12"));
-          pin = 12;
-          break;
+      int idx0 = productNum - 1;
+      if (idx0 >= 0 && idx0 < RELAY_CHANNEL_MAX) {
+        pin = RELAY_CHANNEL_PINS[idx0];
+      } else {
+        LOG_WARN("Navigation", String("Invalid product number ") + String(productNum) + String(", defaulting to CH01"));
+        pin = RELAY_CHANNEL_PINS[0];
       }
     }
     

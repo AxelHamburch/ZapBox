@@ -249,6 +249,18 @@
 
             <!-- Multi-Channel Mode Section -->
             <p style="margin-top: 10px;"><strong>Multi-Channel Mode — GPIO Channel Functions</strong></p>
+
+            <div class="input-wrapper" style="margin-bottom: 16px;">
+                <div>
+                    <label for="multiControl">ZapBox Mode</label>
+                    <select name="multiControl" id="multiControl">
+                        <option value="off" selected>Single channel — CH01 only (default)</option>
+                        <option value="duo">Multi-channel — cycle through all configured channels</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In multi-channel mode, each touch cycles to the next configured channel. Channels without a LNbits switch entry are skipped automatically.</p>
+                </div>
+            </div>
+
             <p style="margin-top: 10px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent channels</strong>. Each channel maps to a GPIO that can be configured as relay output, servo, sensor input, or ambient light control. Each channel is triggered independently via its own QR code and amount in the LNbits extension.</i></p>
             <p style="margin-top: 6px; color: #888;"><i><strong>Note:</strong> <strong>Special Mode</strong> (blink/pulse/strobe) applies to <strong>CH01 (GPIO 5) only</strong>. Additional channels always switch in standard on/off mode.</i></p>
 
@@ -1178,6 +1190,7 @@
                 "screensaver":     screensaver.value,
                 "deepSleep":       deepSleep.value,
                 "activationTime":  (document.getElementById('activationTime') || {value: "5"}).value,
+                "multiControl":    (document.getElementById('multiControl') || {value: "off"}).value,
                 "deepSleepTime":   deepSleepTime.value,
                 "btcTicker":       (document.getElementById('btcTicker') || {value: "selecting"}).value,
                 "currency":        (document.getElementById('currency') || {value: "USD"}).value,
