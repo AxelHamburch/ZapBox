@@ -206,22 +206,6 @@ bool nfcNT3H2111Init() {
         delay(150);
     }
 
-    // If not at default address, scan all addresses and try to recover to 0x55.
-    // Each probe is capped at 50 ms by Wire.setTimeOut above (max ~6 s total).
-    if (probe != 0) {
-        LOG_WARN("NT3H", "NT3H not at 0x55 — scanning I2C range for address recovery");
-        for (uint8_t addr = 0; addr < 128; addr++) {
-            if (!nt3hProbeAddr(addr)) continue;
-            if (!nt3hLooksLikeTagAtAddr(addr)) continue;
-            LOG_WARN("NT3H", String("NTAG candidate found at 0x") + String(addr, HEX));
-            if (nt3hRecoverToDefaultAddr(addr)) {
-                LOG_INFO("NT3H", "Address recovery successful, NT3H now at 0x55");
-                probe = 0;
-                break;
-            }
-        }
-    }
-
     if (probe != 0) {
         LOG_WARN("NT3H", "NT3H2111 not found — NFC tag feature disabled, continuing boot");
         return false;

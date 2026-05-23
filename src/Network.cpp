@@ -342,7 +342,7 @@ bool checkServerReachability()
 // After AUTH_FAIL: pause retries for 60 s, then try once more.
 static bool     wifiAuthFailed      = false;
 static unsigned long wifiAuthRetryAt = 0;   // millis() when next retry is allowed
-static const unsigned long WIFI_AUTH_RETRY_MS = 60000; // 60 s between retries
+static const unsigned long WIFI_AUTH_RETRY_MS = 5000; // 5 s between retries
 
 void initWiFiEventHandler() {
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
@@ -353,7 +353,7 @@ void initWiFiEventHandler() {
         WiFi.setAutoReconnect(false); // stop continuous storm of retries
         wifiAuthFailed = true;
         wifiAuthRetryAt = millis() + WIFI_AUTH_RETRY_MS;
-        LOG_ERROR("Network", String("WiFi auth failed (reason ") + String(reason) + ") — retrying in 60 s");
+        LOG_ERROR("Network", String("WiFi auth failed (reason ") + String(reason) + ") — retrying in 5 s");
       }
     }
   });
@@ -397,7 +397,7 @@ void checkAndReconnectWiFi()
       wifiAuthFailed = false;
       WiFi.setAutoReconnect(true);
       WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
-      LOG_INFO("Network", "WiFi auth retry after 60 s cool-down");
+      LOG_INFO("Network", "WiFi auth retry after 5 s cool-down");
       return;
     }
 

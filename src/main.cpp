@@ -2139,11 +2139,12 @@ void loop()
               Serial.println("CENTER (ignored)");
             }
           }
-          // Also accept quick touch without gesture (GESTURE_NONE)
-          // BUT only on NEW touch to prevent continuous triggering
-          else if (gesture == GESTURE_NONE && isTouched && !wasTouched) {
+          // Also accept quick touch without gesture (GESTURE_NONE rising edge)
+          // or AXS15231B 0xFF "new-touch" marker (fired on every touch DOWN on JC3248W535C).
+          // 500 ms timeout in the action block prevents rapid re-triggering.
+          else if ((gesture == GESTURE_NONE && isTouched && !wasTouched) || gesture == 0xFF) {
             Serial.printf("[TOUCH] QUICK TOUCH at X=%d, Y=%d - ", x, y);
-            
+
             if (y < 160) {
               Serial.println("LEFT SIDE");
               actionName = "QUICK TOUCH LEFT";
@@ -2186,8 +2187,12 @@ void loop()
                 Serial.println("Skip from ticker to product");
                 multiChannelConfig.btcTickerActive = false;
                 navigateToNextProduct();
+              } else if (multiChannelConfig.currentProduct == -1) {
+                // On product-selection screen: go to first product (same as LED button)
+                Serial.println("Select screen -> navigate to first product");
+                navigateToNextProduct();
               } else {
-                // Show ticker for 10 seconds
+                // On a product QR screen: show ticker on demand
                 Serial.println("Show Bitcoin ticker for 10 seconds");
                 btctickerScreen();
                 multiChannelConfig.btcTickerActive = true;
@@ -2269,9 +2274,10 @@ void loop()
               actionName = "SINGLE CLICK";
             }
           }
-          // Also accept quick touch without gesture (GESTURE_NONE)
-          // React on touch RELEASE (falling edge) for cleaner detection without flicker
-          else if (gesture == GESTURE_NONE && !isTouched && wasTouched) {
+          // Also accept quick touch: GESTURE_NONE rising edge OR AXS15231B 0xFF new-touch marker.
+          // AXS15231B fires 0xFF on every touch DOWN regardless of wasTouched state;
+          // the 500 ms timeout in the navigate block prevents rapid re-triggering.
+          else if ((gesture == GESTURE_NONE && isTouched && !wasTouched) || gesture == 0xFF) {
             if (y < 160 || y > 160) { // Left or right side
               navigate = true;
               actionName = "QUICK TOUCH";
