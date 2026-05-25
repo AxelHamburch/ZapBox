@@ -1192,20 +1192,27 @@ void setup()
     Serial.println("[AMBIENT LIGHT] GPIO 11 initialized (synced with display backlight)");
   }
 
-  // Touch 3.5 ambient-light pins (JC3248W535C): sync CH02–CH06 with display backlight
+  // Touch 3.5 flex channel init (JC3248W535C): CH02–CH06 (GPIO 6,7,14,15,16)
   #ifdef BOARD_JC3248W535C
   {
-    const int ambientPins[]    = {6, 7, 14, 15, 16};
-    const bool ambientEnabled[] = {
-      t35AmbientConfig.gpio6Ambient,  t35AmbientConfig.gpio7Ambient,
-      t35AmbientConfig.gpio14Ambient, t35AmbientConfig.gpio15Ambient,
-      t35AmbientConfig.gpio16Ambient
+    struct { int gpio; bool ambient; bool actor; bool sensor; } flexPins[] = {
+      { 6,  t35AmbientConfig.gpio6Ambient,  t35AmbientConfig.gpio6Actor,  false },
+      { 7,  t35AmbientConfig.gpio7Ambient,  t35AmbientConfig.gpio7Actor,  false },
+      { 14, t35AmbientConfig.gpio14Ambient, t35AmbientConfig.gpio14Actor, false },
+      { 15, t35AmbientConfig.gpio15Ambient, t35AmbientConfig.gpio15Actor, false },
+      { 16, t35AmbientConfig.gpio16Ambient, t35AmbientConfig.gpio16Actor, false },
     };
-    for (int i = 0; i < 5; i++) {
-      if (ambientEnabled[i]) {
-        pinMode(ambientPins[i], OUTPUT);
-        digitalWrite(ambientPins[i], HIGH); // Display is on at startup
-        Serial.printf("[AMBIENT LIGHT] GPIO %d initialized (synced with display backlight)\n", ambientPins[i]);
+    for (auto& p : flexPins) {
+      if (p.ambient) {
+        pinMode(p.gpio, OUTPUT);
+        digitalWrite(p.gpio, HIGH); // Display is on at startup
+        Serial.printf("[AMBIENT LIGHT] GPIO %d initialized (synced with display backlight)\n", p.gpio);
+      } else if (p.actor) {
+        pinMode(p.gpio, OUTPUT);
+        digitalWrite(p.gpio, LOW);
+        Serial.printf("[FLEX] GPIO %d initialized as OUTPUT LOW (relay/servo)\n", p.gpio);
+      } else {
+        Serial.printf("[FLEX] GPIO %d: off/sensor — skipped\n", p.gpio);
       }
     }
   }
