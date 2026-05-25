@@ -383,9 +383,9 @@ inline int getPinIndex(int pin) {
     case 5:  return 0;  // CH01
     case 6:  return 1;  // CH02
     case 7:  return 2;  // CH03
-    case 9:  return 3;  // CH04
-    case 14: return 4;  // CH05
-    case 15: return 5;  // CH06
+    case 14: return 3;  // CH04
+    case 15: return 4;  // CH05
+    case 16: return 5;  // CH06
 #endif
     case 12: return 0;
     case 13: return 1;

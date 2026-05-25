@@ -20,6 +20,10 @@ extern SpecialModeConfig specialModeConfig;
 extern ProductLabels productLabels;
 extern bool needsQRRedraw;
 extern NetworkStatus networkStatus;
+extern int maxProducts;
+#ifdef BOARD_JC3248W535C
+extern T35AmbientConfig t35AmbientConfig;
+#endif
 
 // External function declarations from main.cpp
 extern void showQRScreen();
@@ -511,7 +515,9 @@ void showInitialScreenAfterConnections() {
   // Multi-Channel-Control (duo/quattro/servo)
   // In servo mode with only 1 active product: skip product selection, show product 1 directly
   bool servoSingleProduct = (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1);
-  if (servoSingleProduct && multiChannelConfig.btcTickerMode != "always") {
+  // Touch 3.5 OFA or single payment channel: also show product 1 directly without selection
+  bool t35SingleProduct = (maxProducts == 1 && multiChannelConfig.mode != "off");
+  if ((servoSingleProduct || t35SingleProduct) && multiChannelConfig.btcTickerMode != "always") {
     multiChannelConfig.currentProduct = 1;
     int firstPin = servoConfig.productToPin(1);
     int pinIndex = getPinIndex(firstPin);

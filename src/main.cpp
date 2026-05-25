@@ -3447,6 +3447,20 @@ static void oneForAllActivationTask(void* pvParams) {
     }
   }
 #endif
+#ifdef BOARD_JC3248W535C
+  else {
+    // Touch 3.5 relay channel (GPIO 6/7/14/15/16): HIGH for fallbackDuration, then LOW
+    digitalWrite(pin, HIGH);
+    Serial.printf("[OFA-T35] GPIO%d set HIGH\n", pin);
+    unsigned long t0 = millis();
+    while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    if (g_ofaStop) Serial.printf("[OFA-T35] GPIO%d stopped early\n", pin);
+    digitalWrite(pin, LOW);
+    Serial.printf("[OFA-T35] GPIO%d set LOW\n", pin);
+  }
+#endif
 
   vTaskDelete(nullptr);
 }
@@ -3667,17 +3681,27 @@ static void processNormalPayment(int pin, int duration)
         }
       }
       #endif
-      // JC3248W535C One-for-All: CH01 payment fires all relay/servo channels simultaneously
+      // JC3248W535C One-for-All: launch each secondary actor channel as an independent task
+      // so each channel runs for its own LNbits-configured duration (fallback: CH01 duration).
       #ifdef BOARD_JC3248W535C
       if (t35AmbientConfig.oneForAll && pin == PIN_RELAY_CH01) {
-        const int ofa[] = {6, 7, 14, 15, 16};
+        const int ofaPins[] = {6, 7, 14, 15, 16};
         const bool act[] = {t35AmbientConfig.gpio6Actor, t35AmbientConfig.gpio7Actor,
                             t35AmbientConfig.gpio14Actor, t35AmbientConfig.gpio15Actor,
                             t35AmbientConfig.gpio16Actor};
+        g_ofaStop = false;
         for (int i = 0; i < 5; i++) {
           if (act[i]) {
-            digitalWrite(ofa[i], HIGH);
-            Serial.printf("[OFA] GPIO%d set HIGH\n", ofa[i]);
+            int pidx = getPinIndex(ofaPins[i]);
+            int chDur = (pidx >= 0 && productLabels.durations[pidx] > 0)
+                        ? productLabels.durations[pidx] : duration;
+            OFATaskParams* p = (OFATaskParams*)malloc(sizeof(OFATaskParams));
+            if (p) {
+              p->pin = ofaPins[i]; p->fallbackDuration = chDur;
+              xTaskCreate(oneForAllActivationTask, "ofa_t35", 2048, p, 2, nullptr);
+              Serial.printf("[OFA-T35] GPIO%d task launched (dur=%d ms%s)\n", ofaPins[i], chDur,
+                            (pidx >= 0 && productLabels.durations[pidx] > 0) ? " [own]" : " [fallback]");
+            }
           }
         }
       }
@@ -3767,21 +3791,7 @@ static void processNormalPayment(int pin, int duration)
         }
       }
       #endif
-      // JC3248W535C One-for-All: deactivate all actor channels
-      #ifdef BOARD_JC3248W535C
-      if (t35AmbientConfig.oneForAll && pin == PIN_RELAY_CH01) {
-        const int ofa[] = {6, 7, 14, 15, 16};
-        const bool act[] = {t35AmbientConfig.gpio6Actor, t35AmbientConfig.gpio7Actor,
-                            t35AmbientConfig.gpio14Actor, t35AmbientConfig.gpio15Actor,
-                            t35AmbientConfig.gpio16Actor};
-        for (int i = 0; i < 5; i++) {
-          if (act[i]) {
-            digitalWrite(ofa[i], LOW);
-            Serial.printf("[OFA] GPIO%d set LOW\n", ofa[i]);
-          }
-        }
-      }
-      #endif
+      // JC3248W535C OFA: secondary tasks handle their own LOW — nothing to do here.
     }
 
     if (multiChannelConfig.mode == "off" && pin == 12) {
