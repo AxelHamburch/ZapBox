@@ -319,17 +319,33 @@ bool checkInternetConnectivity()
              + " failed (" + String(httpCode) + ")");
   }
 
-  // Final fallback: TCP connection to the LNbits server on port 443.
-  // If the server is reachable, we have sufficient internet access.
+  // TCP fallbacks — no DNS needed, no HTTP needed. Works on routers that
+  // block HTTP to external IPs. Port 53 (DNS) is almost never firewalled.
+  struct { const char* ip; uint16_t port; const char* label; } tcpFallbacks[] = {
+    { "8.8.8.8",  53, "Google DNS 8.8.8.8:53"     },
+    { "8.8.4.4",  53, "Google DNS 8.8.4.4:53"     },
+    { "1.1.1.1",  53, "Cloudflare DNS 1.1.1.1:53" },
+  };
+  for (auto& t : tcpFallbacks) {
+    WiFiClient c;
+    bool ok = c.connect(t.ip, t.port, 2000);
+    if (ok) c.stop();
+    if (ok) {
+      LOG_INFO("Network", String("Internet check: OK (TCP) via ") + t.label);
+      return true;
+    }
+  }
+
+  // Last resort: TCP connection to the LNbits server itself.
   if (lnbitsServer.length() > 0) {
     WiFiClient client;
     bool ok = client.connect(lnbitsServer.c_str(), 443, 3000);
     if (ok) client.stop();
     if (ok) {
-      LOG_INFO("Network", String("Internet check: OK (LNbits server TCP) via ") + lnbitsServer + ":443");
+      LOG_INFO("Network", String("Internet check: OK (LNbits TCP) via ") + lnbitsServer + ":443");
       return true;
     }
-    LOG_INFO("Network", String("Internet check: LNbits TCP fallback also failed — ") + lnbitsServer + ":443");
+    LOG_INFO("Network", String("Internet check: LNbits TCP also failed — ") + lnbitsServer + ":443");
   }
 
   LOG_INFO("Network", "Internet check: FAILED (all URLs tried)");
