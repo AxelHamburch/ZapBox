@@ -1618,7 +1618,11 @@ void setup()
     #ifdef BOARD_JC3248W535C
     maxProducts = t35AmbientConfig.oneForAll ? 1 : t35AmbientConfig.paymentChannelCount;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Touch 3.5 Multi-channel — " + String(maxProducts)
-                + " product(s)" + (t35AmbientConfig.oneForAll ? " (One for All)" : ""));
+                + " product(s)" + (t35AmbientConfig.oneForAll ? " (One for All — CH01 triggers all)" : ""));
+    Serial.println("[OFA-DEBUG] oneForAll=" + String(t35AmbientConfig.oneForAll ? "YES" : "NO")
+                   + " paymentCh=" + String(t35AmbientConfig.paymentChannelCount)
+                   + " gpio6Actor=" + String(t35AmbientConfig.gpio6Actor ? "Y" : "N")
+                   + " — If OFA=NO but expected YES: re-enter config mode and set Activation Options to 'One for All'");
     #else
     maxProducts = 2;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Duo mode - 2 products available");

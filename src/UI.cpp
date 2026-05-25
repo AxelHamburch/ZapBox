@@ -513,11 +513,27 @@ void showInitialScreenAfterConnections() {
   }
 
   // Multi-Channel-Control (duo/quattro/servo)
+
+#ifdef BOARD_JC3248W535C
+  // Touch 3.5 OFA or single payment channel: show CH01 (PIN_RELAY_CH01) directly, no product selection
+  if (maxProducts == 1 && multiChannelConfig.mode != "off" && multiChannelConfig.btcTickerMode != "always") {
+    multiChannelConfig.currentProduct = 1;
+    int firstPin = PIN_RELAY_CH01; // GPIO5 — always CH01 for T35 single-product / OFA
+    int pinIndex = getPinIndex(firstPin);
+    String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                   ? productLabels.labels[pinIndex] : String("Pin ") + String(firstPin);
+    ensureQrForPin(firstPin);
+    showProductQRScreen(label, firstPin);
+    multiChannelConfig.btcTickerActive = false;
+    deviceState.transition(DeviceState::READY);
+    productSelectionState.showTime = millis();
+    return;
+  }
+#endif
+
   // In servo mode with only 1 active product: skip product selection, show product 1 directly
   bool servoSingleProduct = (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1);
-  // Touch 3.5 OFA or single payment channel: also show product 1 directly without selection
-  bool t35SingleProduct = (maxProducts == 1 && multiChannelConfig.mode != "off");
-  if ((servoSingleProduct || t35SingleProduct) && multiChannelConfig.btcTickerMode != "always") {
+  if (servoSingleProduct && multiChannelConfig.btcTickerMode != "always") {
     multiChannelConfig.currentProduct = 1;
     int firstPin = servoConfig.productToPin(1);
     int pinIndex = getPinIndex(firstPin);
