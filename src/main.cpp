@@ -2522,8 +2522,8 @@ void loop()
                   deviceState.transition(DeviceState::READY);
                 }
                 #ifdef BOARD_JC3248W535C
-                else if (maxProducts == 1) {
-                  // T35 OFA or single-channel: go straight to CH01 QR
+                else if (t35AmbientConfig.oneForAll) {
+                  // T35 OFA: go straight to CH01 QR
                   multiChannelConfig.currentProduct = 1;
                   int firstPin = PIN_RELAY_CH01;
                   int pinIndex = getPinIndex(firstPin);

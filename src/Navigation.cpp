@@ -35,6 +35,9 @@ extern DisplayConfig displayConfig;
 extern unsigned long configModeStartTime;
 extern bool labelsLoadedSuccessfully;
 extern int maxProducts;
+#ifdef BOARD_JC3248W535C
+extern T35AmbientConfig t35AmbientConfig;
+#endif
 
 // External constants
 extern unsigned long TOUCH_DOUBLE_CLICK_MS;
@@ -144,6 +147,9 @@ void navigateToNextProduct() {
     if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) navMaxProducts = 3;
     else if (multiChannelConfig.mode == "servo") navMaxProducts = servoConfig.activeChannelCount();
     if (maxProducts > 0 && maxProducts < navMaxProducts) navMaxProducts = maxProducts;
+    #ifdef BOARD_JC3248W535C
+    if (t35AmbientConfig.oneForAll) navMaxProducts = 1;
+    #endif
 
     // For non-servo modes with labels already loaded: skip products whose GPIO
     // has no LNbits switch configured (duration == 0 AND label empty).

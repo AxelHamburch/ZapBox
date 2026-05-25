@@ -386,7 +386,7 @@ void redrawQRScreen() {
     }
     // T35 OFA / single-channel: if no product selected yet, auto-set to CH01
     #ifdef BOARD_JC3248W535C
-    if (maxProducts == 1 && multiChannelConfig.currentProduct == -1) {
+    if (t35AmbientConfig.oneForAll && multiChannelConfig.currentProduct == -1) {
       multiChannelConfig.currentProduct = 1;
     }
     #endif
@@ -521,10 +521,14 @@ void showInitialScreenAfterConnections() {
   // Multi-Channel-Control (duo/quattro/servo)
 
 #ifdef BOARD_JC3248W535C
-  // Touch 3.5 OFA or single payment channel: show CH01 (PIN_RELAY_CH01) directly, no product selection
-  if (maxProducts == 1 && multiChannelConfig.mode != "off" && multiChannelConfig.btcTickerMode != "always") {
+  Serial.printf("[T35-INIT-DEBUG] oneForAll=%d maxProducts=%d mode=%s ticker=%s\n",
+      (int)t35AmbientConfig.oneForAll, maxProducts,
+      multiChannelConfig.mode.c_str(), multiChannelConfig.btcTickerMode.c_str());
+  // OFA active: always show CH01 QR directly, skip product selection entirely
+  if (t35AmbientConfig.oneForAll && multiChannelConfig.mode != "off") {
+    Serial.println("[T35-INIT-DEBUG] OFA path taken — showing CH01 QR");
     multiChannelConfig.currentProduct = 1;
-    int firstPin = PIN_RELAY_CH01; // GPIO5 — always CH01 for T35 single-product / OFA
+    int firstPin = PIN_RELAY_CH01;
     int pinIndex = getPinIndex(firstPin);
     String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
                    ? productLabels.labels[pinIndex] : String("Pin ") + String(firstPin);
