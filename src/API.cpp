@@ -4,6 +4,7 @@
 #include "Log.h"
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 
 // External references to main.cpp
 extern StateManager deviceState;
@@ -24,6 +25,21 @@ const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
 // Retry backoff for failed label fetches
 static unsigned long lastFetchAttempt = 0;
 static const unsigned long RETRY_BACKOFF = 30000; // 30 seconds between retries
+static bool apiPathLoaded = false; // NVS path loaded only once per boot
+
+// Load persisted apiPath from NVS (called first time fetchSwitchLabels runs)
+static void loadApiPathIfNeeded() {
+  if (apiPathLoaded) return;
+  apiPathLoaded = true;
+  Preferences prefs;
+  prefs.begin("zapbox", true); // read-only
+  String saved = prefs.getString("apiPath", "");
+  prefs.end();
+  if (saved.length() > 0 && (saved == "zapbox" || saved == "bitcoinswitch")) {
+    extensionConfig.apiPath = saved;
+    Serial.println("[LABELS] Loaded saved extension path from NVS: " + saved);
+  }
+}
 
 #if ENABLE_BITCOIN_DATA
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes
@@ -40,6 +56,7 @@ extern void updateBtctickerValues(); // Partial update function
  */
 void fetchSwitchLabels()
 {
+  loadApiPathIfNeeded();
   if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
     Serial.println("[LABELS] Cannot fetch labels - server or deviceId not configured");
     lastFetchAttempt = millis(); // apply backoff so this doesn't spam every loop tick
@@ -59,18 +76,19 @@ void fetchSwitchLabels()
   lastFetchAttempt = millis();
 
   HTTPClient http;
-  // Try primary extension path first (default: bitcoinswitch).
-  // On 404, auto-detect by trying the other extension path (zapbox).
+  // Try primary extension path. On 404 or connection error, try the other extension.
+  // Detected path is persisted in NVS so restarts go directly to the right path.
   String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath + "/api/v1/public/" + deviceId;
   Serial.println("[LABELS] Fetching switch configurations from: " + url);
   http.begin(url);
-  http.setTimeout(5000);
+  http.setTimeout(4000);
   int httpCode = http.GET();
 
-  // Auto-detect extension path: if primary returns 404, try the other extension
-  if (httpCode == 404) {
+  // Auto-detect extension path: try fallback on 404 or any connection error
+  bool shouldTryFallback = (httpCode == 404) || (httpCode <= 0);
+  if (shouldTryFallback) {
     String fallbackPath = (extensionConfig.apiPath == "bitcoinswitch") ? "zapbox" : "bitcoinswitch";
-    Serial.println("[LABELS] " + extensionConfig.apiPath + " returned 404 - trying fallback: " + fallbackPath);
+    Serial.println("[LABELS] " + extensionConfig.apiPath + (httpCode == 404 ? " returned 404" : " connection error") + " - trying fallback: " + fallbackPath);
     http.end();
     url = "https://" + lnbitsServer + "/" + fallbackPath + "/api/v1/public/" + deviceId;
     Serial.println("[LABELS] Fetching switch configurations from: " + url);
@@ -78,9 +96,13 @@ void fetchSwitchLabels()
     http.setTimeout(5000);
     httpCode = http.GET();
     if (httpCode == 200) {
-      // Fallback succeeded - remember this path for all future requests (including Payment.cpp)
       extensionConfig.apiPath = fallbackPath;
       Serial.println("[LABELS] Auto-detected extension: /" + fallbackPath + "/api/v1/ (saved for payments)");
+      // Persist so next boot uses the correct path directly
+      Preferences prefs;
+      prefs.begin("zapbox", false);
+      prefs.putString("apiPath", fallbackPath);
+      prefs.end();
     }
   }
 
