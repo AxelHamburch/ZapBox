@@ -265,20 +265,6 @@
                 <p style="color: #888; margin: 0;"><i>CH01 is wired to <strong>GPIO pin 5</strong> and operates as a relay output (on / off). <br> In LNbits, declare <strong>pin 5</strong> for this channel.</i></p>
             </div>
 
-            <!-- Activation Options — visible in multi-channel mode -->
-            <div id="activationOptionsDiv" style="display: none; margin-top: 16px;">
-                <div class="input-wrapper" style="margin-bottom: 0;">
-                    <div>
-                        <label for="t35ActivationMode">Activation Options</label>
-                        <select name="t35ActivationMode" id="t35ActivationMode">
-                            <option value="off" selected>Off (default) — each channel triggered separately</option>
-                            <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 5)</option>
-                        </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
-                    </div>
-                </div>
-            </div>
-
             <!-- CH01–CH06 + multi-channel description: hidden in single mode -->
             <div id="multiChannelFields" style="display: none;">
                 <p style="margin-top: 14px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent channels</strong>. Each channel is triggered independently via its own QR code and amount in the LNbits extension. Channels set to <strong>ambient-light</strong>, <strong>sensor</strong>, or <strong>off</strong> are not counted as payment channels. Channels without a LNbits switch entry are skipped automatically.</i></p>
@@ -363,6 +349,20 @@
                     GPIO 9 — NFC IRQ (PN532 interrupt line, active LOW)<br>
                     GPIO 46 — FD (Field Detection) for NT3H2111 NFC Tag 2; INPUT_PULLUP, active LOW when smartphone NFC field detected; also strapping pin (LOW at boot suppresses ROM log — no bricking risk)
                 </i></p>
+
+                <!-- Activation Options -->
+                <div id="activationOptionsDiv" style="margin-top: 16px;">
+                    <div class="input-wrapper" style="margin-bottom: 0;">
+                        <div>
+                            <label for="t35ActivationMode">Activation Options</label>
+                            <select name="t35ActivationMode" id="t35ActivationMode">
+                                <option value="off" selected>Off (default) — each channel triggered separately</option>
+                                <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 5)</option>
+                            </select>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         <!-- Section Separator -->
@@ -1276,11 +1276,9 @@
             const multi = document.getElementById('multiControl');
             const fields = document.getElementById('multiChannelFields');
             const singleInfo = document.getElementById('singleChannelInfo');
-            const activationDiv = document.getElementById('activationOptionsDiv');
             const isMulti = multi && multi.value !== 'off';
             if (fields) fields.style.display = isMulti ? 'block' : 'none';
             if (singleInfo) singleInfo.style.display = isMulti ? 'none' : 'block';
-            if (activationDiv) activationDiv.style.display = isMulti ? 'block' : 'none';
         }
 
         const multiControlEl = document.getElementById('multiControl');
