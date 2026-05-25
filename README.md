@@ -1319,6 +1319,7 @@ Electrical design and housing variants, see table.
 | e949393 | esp32-c3-21-1 |  Add special Hans Wurst version |
 | e949674 | Servo | Add NFC Tag 2 module & minor redesign | 
 | e950677 | Compact | Add NFC Tag 2 module | 
+| e950939 | Touch3.5 | ESP32-S Touch3.5 (JC3248W535C) - Prototyp | 
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
@@ -1350,6 +1351,7 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
 - [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
 - [E-Layout-ZapBox-Servo.png](assets/electric/E-Layout-ZapBox-Servo.png)
+- [E-Layout-ZapBox-esp32-c3-21-1.png](assets/electric/E-Layout-ZapBox-Touch3.5.png)
 - [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
 - [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
 - [E-Layout-ZapBox-esp32-c3-21-1.png](assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png)
