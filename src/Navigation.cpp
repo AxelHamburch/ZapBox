@@ -34,6 +34,7 @@ extern TouchCST816S touch;
 extern DisplayConfig displayConfig;
 extern unsigned long configModeStartTime;
 extern bool labelsLoadedSuccessfully;
+extern int maxProducts;
 
 // External constants
 extern unsigned long TOUCH_DOUBLE_CLICK_MS;
@@ -139,16 +140,17 @@ void navigateToNextProduct() {
     // Use RELAY_CHANNEL_MAX as ceiling so all boards (incl. JC3248W535C with 6 channels)
     // are handled correctly without hardcoding counts per mode.
     // Exception: quattro + ambient light sensor caps at 3 (CH04 used for sensor).
-    int maxProducts = RELAY_CHANNEL_MAX;
-    if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) maxProducts = 3;
-    else if (multiChannelConfig.mode == "servo") maxProducts = servoConfig.activeChannelCount();
+    int navMaxProducts = RELAY_CHANNEL_MAX;
+    if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) navMaxProducts = 3;
+    else if (multiChannelConfig.mode == "servo") navMaxProducts = servoConfig.activeChannelCount();
+    if (maxProducts > 0 && maxProducts < navMaxProducts) navMaxProducts = maxProducts;
 
     // For non-servo modes with labels already loaded: skip products whose GPIO
     // has no LNbits switch configured (duration == 0 AND label empty).
     // This prevents showing QR/mobile-phone screens for unconfigured channels.
     if (multiChannelConfig.mode != "servo" && labelsLoadedSuccessfully) {
       // Advance past every unconfigured product
-      while (multiChannelConfig.currentProduct <= maxProducts) {
+      while (multiChannelConfig.currentProduct <= navMaxProducts) {
         int idx0 = multiChannelConfig.currentProduct - 1; // 0-based RELAY_CHANNEL_PINS index
         int pin = (idx0 >= 0 && idx0 < RELAY_CHANNEL_MAX) ? RELAY_CHANNEL_PINS[idx0] : RELAY_CHANNEL_PINS[0];
         int idx = getPinIndex(pin);
@@ -160,7 +162,7 @@ void navigateToNextProduct() {
       }
 
       // All products in range are unconfigured (or we wrapped past the last one)
-      if (multiChannelConfig.currentProduct > maxProducts) {
+      if (multiChannelConfig.currentProduct > navMaxProducts) {
         if (multiChannelConfig.btcTickerMode != "off") {
           // Return to BTC ticker (applies to both "always" and "selecting" modes)
           multiChannelConfig.currentProduct = 0;
@@ -173,7 +175,7 @@ void navigateToNextProduct() {
         } else {
           // Ticker disabled: wrap to first configured product
           multiChannelConfig.currentProduct = 1;
-          while (multiChannelConfig.currentProduct <= maxProducts) {
+          while (multiChannelConfig.currentProduct <= navMaxProducts) {
             int idx0 = multiChannelConfig.currentProduct - 1;
             int pin = (idx0 >= 0 && idx0 < RELAY_CHANNEL_MAX) ? RELAY_CHANNEL_PINS[idx0] : RELAY_CHANNEL_PINS[0];
             int idx = getPinIndex(pin);
@@ -182,7 +184,7 @@ void navigateToNextProduct() {
             }
             multiChannelConfig.currentProduct++;
           }
-          if (multiChannelConfig.currentProduct > maxProducts) {
+          if (multiChannelConfig.currentProduct > navMaxProducts) {
             multiChannelConfig.currentProduct = 1; // Safety fallback: nothing configured
           }
         }
@@ -190,7 +192,7 @@ void navigateToNextProduct() {
     } else {
       // Servo mode or labels not yet loaded: use original simple wrap logic
       if (multiChannelConfig.btcTickerMode == "selecting") {
-        if (multiChannelConfig.currentProduct > maxProducts) {
+        if (multiChannelConfig.currentProduct > navMaxProducts) {
           multiChannelConfig.currentProduct = 0; // Reset for next navigation
           btctickerScreen();
           multiChannelConfig.btcTickerActive = true;
@@ -200,7 +202,7 @@ void navigateToNextProduct() {
           return;
         }
       } else {
-        if (multiChannelConfig.currentProduct > maxProducts) {
+        if (multiChannelConfig.currentProduct > navMaxProducts) {
           multiChannelConfig.currentProduct = 1; // Loop back to first product
         }
       }

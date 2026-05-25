@@ -384,6 +384,12 @@ void redrawQRScreen() {
         multiChannelConfig.currentProduct = 1;
       }
     }
+    // T35 OFA / single-channel: if no product selected yet, auto-set to CH01
+    #ifdef BOARD_JC3248W535C
+    if (maxProducts == 1 && multiChannelConfig.currentProduct == -1) {
+      multiChannelConfig.currentProduct = 1;
+    }
+    #endif
     // Behavior depends on btcTickerMode and currentProduct
     if (multiChannelConfig.currentProduct == -1) {
       // Special value: product selection screen

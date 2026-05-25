@@ -2520,7 +2520,21 @@ void loop()
                   ensureQrForPin(firstPin);
                   showProductQRScreen(label, firstPin);
                   deviceState.transition(DeviceState::READY);
-                } else {
+                }
+                #ifdef BOARD_JC3248W535C
+                else if (maxProducts == 1) {
+                  // T35 OFA or single-channel: go straight to CH01 QR
+                  multiChannelConfig.currentProduct = 1;
+                  int firstPin = PIN_RELAY_CH01;
+                  int pinIndex = getPinIndex(firstPin);
+                  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                      ? productLabels.labels[pinIndex] : String("Pin ") + String(firstPin);
+                  ensureQrForPin(firstPin);
+                  showProductQRScreen(label, firstPin);
+                  deviceState.transition(DeviceState::READY);
+                }
+                #endif
+                else {
                   multiChannelConfig.currentProduct = -1;
                   deviceState.transition(DeviceState::PRODUCT_SELECTION);
                   productSelectionScreen();
