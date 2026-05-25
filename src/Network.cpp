@@ -319,6 +319,19 @@ bool checkInternetConnectivity()
              + " failed (" + String(httpCode) + ")");
   }
 
+  // Final fallback: TCP connection to the LNbits server on port 443.
+  // If the server is reachable, we have sufficient internet access.
+  if (lnbitsServer.length() > 0) {
+    WiFiClient client;
+    bool ok = client.connect(lnbitsServer.c_str(), 443, 3000);
+    if (ok) client.stop();
+    if (ok) {
+      LOG_INFO("Network", String("Internet check: OK (LNbits server TCP) via ") + lnbitsServer + ":443");
+      return true;
+    }
+    LOG_INFO("Network", String("Internet check: LNbits TCP fallback also failed — ") + lnbitsServer + ":443");
+  }
+
   LOG_INFO("Network", "Internet check: FAILED (all URLs tried)");
   return false;
 }
