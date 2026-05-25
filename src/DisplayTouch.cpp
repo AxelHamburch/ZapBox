@@ -993,6 +993,21 @@ static String screensaverMode     = "off";
 static bool   deepSleepIsActive   = false;
 static String deepSleepMode       = "off";
 
+static void syncAmbientPins(bool on) {
+  const int pins[]    = {6, 7, 14, 15, 16};
+  const bool active[] = {
+    t35AmbientConfig.gpio6Ambient,  t35AmbientConfig.gpio7Ambient,
+    t35AmbientConfig.gpio14Ambient, t35AmbientConfig.gpio15Ambient,
+    t35AmbientConfig.gpio16Ambient
+  };
+  for (int i = 0; i < 5; i++) {
+    if (active[i]) {
+      digitalWrite(pins[i], on ? HIGH : LOW);
+      Serial.printf("[AMBIENT LIGHT] GPIO %d turned %s (display sync)\n", pins[i], on ? "ON" : "OFF");
+    }
+  }
+}
+
 void activateScreensaver(String mode) {
   DisplayLock l;
   Serial.println("[SCREENSAVER] Activating mode: " + mode);
@@ -1005,6 +1020,7 @@ void activateScreensaver(String mode) {
   } else if (mode == "backlight") {
     pinMode(PIN_LCD_BL, OUTPUT);
     digitalWrite(PIN_LCD_BL, LOW);
+    if (t35AmbientConfig.anyEnabled()) syncAmbientPins(false);
   }
 }
 
@@ -1016,6 +1032,7 @@ void deactivateScreensaver() {
   if (screensaverMode == "backlight") {
     pinMode(PIN_LCD_BL, OUTPUT);
     digitalWrite(PIN_LCD_BL, HIGH);
+    if (t35AmbientConfig.anyEnabled()) syncAmbientPins(true);
   }
   screensaverIsActive = false;
   screensaverMode = "off";
@@ -1032,6 +1049,7 @@ void prepareDeepSleep() {
   flushDisplay();
   pinMode(PIN_LCD_BL, OUTPUT);
   digitalWrite(PIN_LCD_BL, LOW);
+  if (t35AmbientConfig.anyEnabled()) syncAmbientPins(false);
   delay(200);
 }
 

@@ -43,6 +43,11 @@ Channel4AmbientConfig channel4AmbientConfig;
 C3FlexChannelConfig c3FlexConfig;
 #endif
 
+// Touch 3.5 Ambient Light Configuration (JC3248W535C only)
+#ifdef BOARD_JC3248W535C
+T35AmbientConfig t35AmbientConfig;
+#endif
+
 // Servo Motor Configuration
 ServoConfig servoConfig;
 

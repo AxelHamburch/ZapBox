@@ -72,7 +72,8 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version-touch35" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-				<option value="../firmware/v950715t/manifest.json">v950715t (Latest - PIN Pad for BoltCard &amp; Touch 3.5&quot; improvements 🔐🖥️)</option>
+				<option value="../firmware/v950949t/manifest.json">v950949t (Latest - Ambient Light CH02, OFA, faster boot ⚡🖥️)</option>
+				<option value="../firmware/v950715t/manifest.json">v950715t (PIN Pad for BoltCard &amp; Touch 3.5&quot; improvements 🔐🖥️)</option>
 				<option value="../firmware/v949844t/manifest.json">v949844t (GPIO FD Fix &amp; WebSocket Self-Repair 🔌🔄)</option>
 				<option value="../firmware/v949509t/manifest.json">v949509t (NFC Tag Bug 🐛🔫 Shooter)</option>
 				<option value="../firmware/v949107t/manifest.json">v949107t (Dummy 😈 version - test it or leave it)</option>
@@ -80,7 +81,7 @@
                 <option value="../firmware/v1000000t/manifest.json">v1000000t - 🖥️ Touch 3.5" initial release</option>
             </select>
 
-			<esp-web-install-button id="flash-button-touch35" manifest="../firmware/v950715t/manifest.json">
+			<esp-web-install-button id="flash-button-touch35" manifest="../firmware/v950949t/manifest.json">
                 <button slot="activate">🔥 Flash Touch 3.5"</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -264,9 +265,23 @@
                 <p style="color: #888; margin: 0;"><i>CH01 is wired to <strong>GPIO pin 5</strong> and operates as a relay output (on / off). <br> In LNbits, declare <strong>pin 5</strong> for this channel.</i></p>
             </div>
 
+            <!-- Activation Options — visible in multi-channel mode -->
+            <div id="activationOptionsDiv" style="display: none; margin-top: 16px;">
+                <div class="input-wrapper" style="margin-bottom: 0;">
+                    <div>
+                        <label for="t35ActivationMode">Activation Options</label>
+                        <select name="t35ActivationMode" id="t35ActivationMode">
+                            <option value="off" selected>Off (default) — each channel triggered separately</option>
+                            <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 5)</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- CH01–CH06 + multi-channel description: hidden in single mode -->
             <div id="multiChannelFields" style="display: none;">
-                <p style="margin-top: 14px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent channels</strong>. Each channel is triggered independently via its own QR code and amount in the LNbits extension. Channels without a LNbits switch entry are skipped automatically.</i></p>
+                <p style="margin-top: 14px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent channels</strong>. Each channel is triggered independently via its own QR code and amount in the LNbits extension. Channels set to <strong>ambient-light</strong>, <strong>sensor</strong>, or <strong>off</strong> are not counted as payment channels. Channels without a LNbits switch entry are skipped automatically.</i></p>
                 <p style="margin-top: 6px; color: #888;"><i><strong>Note:</strong> <strong>Special Mode</strong> (blink/pulse/strobe) applies to <strong>CH01 (GPIO 5) only</strong>. Additional channels always switch in standard on/off mode.</i></p>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin-top: 16px;">
@@ -285,6 +300,7 @@
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
+                            <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
                     </div>
                     <div style="margin-top: 10px;">
@@ -798,12 +814,14 @@
             { "name": "ch206Mode", "value": "relay" },
             { "name": "ch207Mode", "value": "relay" },
             // indices 47-52 – GPIO flex channel function modes (JC3248W535C direct GPIOs)
-            { "name": "gpio5Mode",  "value": "relay" },
-            { "name": "gpio6Mode",  "value": "off" },
-            { "name": "gpio7Mode",  "value": "off" },
-            { "name": "gpio14Mode", "value": "off" },
-            { "name": "gpio15Mode", "value": "off" },
-            { "name": "gpio16Mode", "value": "off" }
+            { "name": "gpio5Mode",          "value": "relay" },
+            { "name": "gpio6Mode",          "value": "off" },
+            { "name": "gpio7Mode",          "value": "off" },
+            { "name": "gpio14Mode",         "value": "off" },
+            { "name": "gpio15Mode",         "value": "off" },
+            { "name": "gpio16Mode",         "value": "off" },
+            // index 53 – Touch 3.5 activation mode
+            { "name": "t35ActivationMode",  "value": "off" }
         ];
 
         // Setup Web Serial using serial.js
@@ -1204,12 +1222,13 @@
                 "btcTicker":       (document.getElementById('btcTicker') || {value: "selecting"}).value,
                 "currency":        (document.getElementById('currency') || {value: "USD"}).value,
                 "ioExpander":      (document.getElementById('ioExpander') || {value: "no"}).value,
-                "gpio5Mode":       (document.getElementById('gpio5Mode')  || {value: "relay"}).value,
-                "gpio6Mode":       (document.getElementById('gpio6Mode')  || {value: "off"}).value,
-                "gpio7Mode":       (document.getElementById('gpio7Mode')  || {value: "off"}).value,
-                "gpio14Mode":      (document.getElementById('gpio14Mode') || {value: "off"}).value,
-                "gpio15Mode":      (document.getElementById('gpio15Mode') || {value: "off"}).value,
-                "gpio16Mode":      (document.getElementById('gpio16Mode') || {value: "off"}).value
+                "gpio5Mode":          (document.getElementById('gpio5Mode')          || {value: "relay"}).value,
+                "gpio6Mode":          (document.getElementById('gpio6Mode')          || {value: "off"}).value,
+                "gpio7Mode":          (document.getElementById('gpio7Mode')          || {value: "off"}).value,
+                "gpio14Mode":         (document.getElementById('gpio14Mode')         || {value: "off"}).value,
+                "gpio15Mode":         (document.getElementById('gpio15Mode')         || {value: "off"}).value,
+                "gpio16Mode":         (document.getElementById('gpio16Mode')         || {value: "off"}).value,
+                "t35ActivationMode":  (document.getElementById('t35ActivationMode')  || {value: "off"}).value
             };
             for (const entry of config) {
                 if (map.hasOwnProperty(entry.name)) {
@@ -1257,9 +1276,11 @@
             const multi = document.getElementById('multiControl');
             const fields = document.getElementById('multiChannelFields');
             const singleInfo = document.getElementById('singleChannelInfo');
+            const activationDiv = document.getElementById('activationOptionsDiv');
             const isMulti = multi && multi.value !== 'off';
             if (fields) fields.style.display = isMulti ? 'block' : 'none';
             if (singleInfo) singleInfo.style.display = isMulti ? 'none' : 'block';
+            if (activationDiv) activationDiv.style.display = isMulti ? 'block' : 'none';
         }
 
         const multiControlEl = document.getElementById('multiControl');

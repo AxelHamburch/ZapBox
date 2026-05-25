@@ -274,6 +274,45 @@ extern C3FlexChannelConfig c3FlexConfig;
 #endif  // BOARD_ESP32C3_21_1
 
 // ============================================================================
+// TOUCH 3.5 FLEX CHANNEL CONFIGURATION (JC3248W535C only)
+// CH02–CH06 (GPIO 6, 7, 14, 15, 16) can each be independently configured:
+//   relay / servo180 / servo360  → payment actor (relay HIGH on payment)
+//   ambient-light               → mirrors display backlight state
+//   sensor-stop / -monitor / -level → sensor input (INPUT_PULLUP)
+//   off                         → not used
+// ============================================================================
+#ifdef BOARD_JC3248W535C
+struct T35AmbientConfig {
+  // Ambient-light flags (backlight sync)
+  bool gpio6Ambient  = false;  // CH02
+  bool gpio7Ambient  = false;  // CH03
+  bool gpio14Ambient = false;  // CH04
+  bool gpio15Ambient = false;  // CH05
+  bool gpio16Ambient = false;  // CH06
+  bool anyEnabled() const {
+    return gpio6Ambient || gpio7Ambient || gpio14Ambient || gpio15Ambient || gpio16Ambient;
+  }
+
+  // Relay/servo actor flags (used for OFA: fire together with CH01)
+  bool gpio6Actor  = false;
+  bool gpio7Actor  = false;
+  bool gpio14Actor = false;
+  bool gpio15Actor = false;
+  bool gpio16Actor = false;
+  bool anyActor() const {
+    return gpio6Actor || gpio7Actor || gpio14Actor || gpio15Actor || gpio16Actor;
+  }
+
+  // Activation mode
+  bool oneForAll = false;      // true: CH01 payment fires all actor channels simultaneously
+
+  // Derived: total number of independent payment channels (CH01 + relay/servo CH02-CH06)
+  int paymentChannelCount = 1;
+};
+extern T35AmbientConfig t35AmbientConfig;
+#endif  // BOARD_JC3248W535C
+
+// ============================================================================
 // EXTENSION / API PATH CONFIGURATION
 // ============================================================================
 

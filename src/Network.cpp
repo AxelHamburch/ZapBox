@@ -293,17 +293,19 @@ bool checkInternetConnectivity()
   LOG_INFO("Network", "Testing Internet connection...");
 
   // Multiple URLs tried in order — stops as soon as one succeeds.
-  // 1.1.1.1 is IP-based (no DNS) so it works even when DNS is slow to start.
+  // Google's generate_204 is first: it responds reliably and quickly.
+  // 1.1.1.1 is IP-based (no DNS) but can read-timeout on some networks.
   static const char* const checkUrls[] = {
-    "http://1.1.1.1",                                    // Cloudflare — no DNS needed
-    "http://clients3.google.com/generate_204",           // Google captive-portal check
+    "http://clients3.google.com/generate_204",           // Google captive-portal check (fastest)
     "http://connectivitycheck.gstatic.com/generate_204", // Google fallback
+    "http://1.1.1.1",                                    // Cloudflare — no DNS needed
   };
   const int numUrls = sizeof(checkUrls) / sizeof(checkUrls[0]);
 
   for (int i = 0; i < numUrls; i++) {
     HTTPClient http;
-    http.setTimeout(3000);
+    http.setConnectTimeout(2000); // 2 s TCP connect timeout
+    http.setTimeout(2000);        // 2 s read timeout
     http.begin(checkUrls[i]);
     int httpCode = http.GET();
     http.end();
@@ -339,10 +341,10 @@ bool checkServerReachability()
   return serverReachable;
 }
 
-// After AUTH_FAIL: pause retries for 60 s, then try once more.
+// After AUTH_FAIL: pause briefly, then try once more.
 static bool     wifiAuthFailed      = false;
 static unsigned long wifiAuthRetryAt = 0;   // millis() when next retry is allowed
-static const unsigned long WIFI_AUTH_RETRY_MS = 5000; // 5 s between retries
+static const unsigned long WIFI_AUTH_RETRY_MS = 1000; // 1 s between retries
 
 void initWiFiEventHandler() {
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
@@ -353,7 +355,7 @@ void initWiFiEventHandler() {
         WiFi.setAutoReconnect(false); // stop continuous storm of retries
         wifiAuthFailed = true;
         wifiAuthRetryAt = millis() + WIFI_AUTH_RETRY_MS;
-        LOG_ERROR("Network", String("WiFi auth failed (reason ") + String(reason) + ") — retrying in 5 s");
+        LOG_ERROR("Network", String("WiFi auth failed (reason ") + String(reason) + ") — retrying in 1 s");
       }
     }
   });
@@ -388,7 +390,7 @@ void checkAndReconnectWiFi()
       wifiReconnectScreen();
     }
 
-    // After AUTH_FAIL: wait 60 s, then try once more (network password may have changed)
+    // After AUTH_FAIL: wait 1 s, then try once more (transient auth issues are common)
     if (wifiAuthFailed) {
       if (millis() < wifiAuthRetryAt) {
         return; // still in cool-down, stay on NO WIFI screen
@@ -397,7 +399,7 @@ void checkAndReconnectWiFi()
       wifiAuthFailed = false;
       WiFi.setAutoReconnect(true);
       WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
-      LOG_INFO("Network", "WiFi auth retry after 5 s cool-down");
+      LOG_INFO("Network", "WiFi auth retry after 1 s cool-down");
       return;
     }
 
@@ -429,12 +431,8 @@ void checkAndReconnectWiFi()
     productSelectionState.showTime = millis();
     
 #if ENABLE_BITCOIN_DATA
-    // Force BTC data refresh after WiFi recovery
-    if (multiChannelConfig.btcTickerMode != "off") {
-      LOG_INFO("Network", "Forcing BTC data refresh after WiFi recovery");
-      bitcoinData.lastUpdate = 0; // Force immediate update
-      fetchBitcoinData(); // Fetch data now
-    }
+    // Mark BTC data stale so the periodic updater fetches it without blocking here.
+    bitcoinData.lastUpdate = 0;
 #endif
   }
 }

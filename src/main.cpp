@@ -667,6 +667,65 @@ void readFiles()
     }
     #endif
 
+    // Read Touch 3.5 flex channel config (indices 47-53, JC3248W535C only)
+    // 47=gpio5Mode(CH01) 48=gpio6Mode(CH02) 49=gpio7Mode(CH03) 50=gpio14Mode(CH04)
+    // 51=gpio15Mode(CH05) 52=gpio16Mode(CH06) 53=t35ActivationMode
+    #ifdef BOARD_JC3248W535C
+    {
+      auto readGpioMode = [&](int idx) -> String {
+        const JsonObject obj = doc[idx];
+        if (obj.isNull()) return "off";
+        const char* v = obj["value"];
+        return v ? String(v) : "off";
+      };
+      auto isActor = [](const String& m) {
+        return m == "relay" || m == "servo180" || m == "servo360";
+      };
+
+      String m6  = readGpioMode(48);
+      String m7  = readGpioMode(49);
+      String m14 = readGpioMode(50);
+      String m15 = readGpioMode(51);
+      String m16 = readGpioMode(52);
+      String act = readGpioMode(53); // t35ActivationMode: "off" | "one-for-all"
+
+      t35AmbientConfig.gpio6Ambient  = (m6  == "ambient-light");
+      t35AmbientConfig.gpio7Ambient  = (m7  == "ambient-light");
+      t35AmbientConfig.gpio14Ambient = (m14 == "ambient-light");
+      t35AmbientConfig.gpio15Ambient = (m15 == "ambient-light");
+      t35AmbientConfig.gpio16Ambient = (m16 == "ambient-light");
+
+      t35AmbientConfig.gpio6Actor  = isActor(m6);
+      t35AmbientConfig.gpio7Actor  = isActor(m7);
+      t35AmbientConfig.gpio14Actor = isActor(m14);
+      t35AmbientConfig.gpio15Actor = isActor(m15);
+      t35AmbientConfig.gpio16Actor = isActor(m16);
+
+      t35AmbientConfig.oneForAll = (act == "one-for-all");
+
+      // Count actual payment channels: CH01 always, plus each relay/servo channel
+      int extra = (t35AmbientConfig.gpio6Actor  ? 1 : 0)
+                + (t35AmbientConfig.gpio7Actor  ? 1 : 0)
+                + (t35AmbientConfig.gpio14Actor ? 1 : 0)
+                + (t35AmbientConfig.gpio15Actor ? 1 : 0)
+                + (t35AmbientConfig.gpio16Actor ? 1 : 0);
+      t35AmbientConfig.paymentChannelCount = 1 + extra;
+
+      // If no CH02-CH06 channel is a relay/servo, treat device as single-channel
+      // even when multiControl="duo" was selected in the installer (e.g. to
+      // configure ambient-light on CH02 without adding a second payment channel).
+      if (extra == 0 && multiChannelConfig.mode == "duo") {
+        multiChannelConfig.mode = "off";
+        LOG_INFO("Config", "T35: No extra payment channels — overriding multi-channel to single");
+      }
+
+      LOG_INFO("Config", String("T35 GPIO modes — 6:") + m6 + " 7:" + m7
+               + " 14:" + m14 + " 15:" + m15 + " 16:" + m16
+               + " | OFA:" + (t35AmbientConfig.oneForAll ? "yes" : "no")
+               + " | paymentCh:" + t35AmbientConfig.paymentChannelCount);
+    }
+    #endif
+
     // Apply predefined mode settings
     if (specialModeConfig.mode == "blink") {
       specialModeConfig.frequency = 1.0;
@@ -1133,6 +1192,25 @@ void setup()
     Serial.println("[AMBIENT LIGHT] GPIO 11 initialized (synced with display backlight)");
   }
 
+  // Touch 3.5 ambient-light pins (JC3248W535C): sync CH02–CH06 with display backlight
+  #ifdef BOARD_JC3248W535C
+  {
+    const int ambientPins[]    = {6, 7, 14, 15, 16};
+    const bool ambientEnabled[] = {
+      t35AmbientConfig.gpio6Ambient,  t35AmbientConfig.gpio7Ambient,
+      t35AmbientConfig.gpio14Ambient, t35AmbientConfig.gpio15Ambient,
+      t35AmbientConfig.gpio16Ambient
+    };
+    for (int i = 0; i < 5; i++) {
+      if (ambientEnabled[i]) {
+        pinMode(ambientPins[i], OUTPUT);
+        digitalWrite(ambientPins[i], HIGH); // Display is on at startup
+        Serial.printf("[AMBIENT LIGHT] GPIO %d initialized (synced with display backlight)\n", ambientPins[i]);
+      }
+    }
+  }
+  #endif
+
   // Servo motor initialization (Servo multi-channel mode or headless servo mode)
   if (multiChannelConfig.mode == "servo" || multiChannelConfig.mode == "servo180" || multiChannelConfig.mode == "servo360") {
     initServos();
@@ -1179,6 +1257,17 @@ void setup()
       Serial.println("[RELAY] Skipping GPIO 12 (used as servo)");
       continue;
     }
+    // Skip ambient-light pins on Touch 3.5 (JC3248W535C) — initialized separately below
+    #ifdef BOARD_JC3248W535C
+    if ((p == 6  && t35AmbientConfig.gpio6Ambient)  ||
+        (p == 7  && t35AmbientConfig.gpio7Ambient)  ||
+        (p == 14 && t35AmbientConfig.gpio14Ambient) ||
+        (p == 15 && t35AmbientConfig.gpio15Ambient) ||
+        (p == 16 && t35AmbientConfig.gpio16Ambient)) {
+      Serial.printf("[RELAY] Skipping GPIO %d (ambient-light mode)\n", p);
+      continue;
+    }
+    #endif
     // Skip GPIO 22/23 when configured as sensor input or relay output (already initialized above)
     if ((lightBarrierConfig.isActive() || lightBarrierConfig.relayOutput) && p == PIN_SENSOR_1) {
       Serial.printf("[RELAY] Skipping GPIO %d (configured as sensor/relay-output)\n", p);
@@ -1518,8 +1607,15 @@ void setup()
     maxProducts = 4;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Quattro mode - 4 products available");
   } else if (multiChannelConfig.mode == "duo") {
+    // Touch 3.5: use the exact count of relay/servo channels instead of hardcoded 2
+    #ifdef BOARD_JC3248W535C
+    maxProducts = t35AmbientConfig.oneForAll ? 1 : t35AmbientConfig.paymentChannelCount;
+    SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Touch 3.5 Multi-channel — " + String(maxProducts)
+                + " product(s)" + (t35AmbientConfig.oneForAll ? " (One for All)" : ""));
+    #else
     maxProducts = 2;
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Duo mode - 2 products available");
+    #endif
   } else if (multiChannelConfig.mode == "servo") {
     maxProducts = servoConfig.activeChannelCount();
     SETUP_PRINT("[MULTI-CHANNEL-CONTROL] Servo mode - " + String(maxProducts) + " channel(s) available");
@@ -1532,16 +1628,11 @@ void setup()
   multiChannelConfig.currentProduct = 0; // Start at selection screen
 
 #if ENABLE_BITCOIN_DATA
-  // Fetch initial Bitcoin data after setup is complete.
-  // Guard against the race condition where the button task fires configMode()
-  // on Core 0 and tears down WiFi while the HTTPS call runs on Core 1.
-  if (!deviceState.isInState(DeviceState::CONFIG_MODE)) {
-    SETUP_PRINT("[BTC] Fetching initial Bitcoin data...");
-    fetchBitcoinData();
-    SETUP_PRINT("[BTC] Initial fetch complete");
-  } else {
-    SETUP_PRINT("[BTC] Skipping initial fetch - CONFIG_MODE active");
-  }
+  // BTC data is fetched lazily by updateBitcoinTicker() / the periodic updater
+  // in loop(). Fetching synchronously in setup() blocked for 20+ s on SSL
+  // timeouts and prevented touch from responding on the product selection screen.
+  bitcoinData.lastUpdate = 0; // force immediate refresh on first loop() iteration
+  SETUP_PRINT("[BTC] Initial BTC fetch deferred to loop() — setup() unblocked");
 #else
   SETUP_PRINT("[BTC] Bitcoin data fetching disabled (headless mode)");
 #endif
@@ -2483,7 +2574,24 @@ void loop()
     updateReadyLed();
 
 #if ENABLE_BITCOIN_DATA
-    // Update Bitcoin ticker (checks interval internally, non-blocking)
+    // First-time BTC fetch: launched once as a FreeRTOS task so loop() keeps running.
+    // This replaces the old synchronous fetch in setup() / fetchSwitchLabels() that
+    // blocked touch processing for up to 25 s during SSL timeouts.
+    static bool btcFirstFetchLaunched = false;
+    if (!btcFirstFetchLaunched && networkStatus.confirmed.websocket &&
+        !deviceState.isInState(DeviceState::CONFIG_MODE)) {
+      btcFirstFetchLaunched = true;
+      xTaskCreatePinnedToCore(
+        [](void*) {
+          vTaskDelay(pdMS_TO_TICKS(500)); // brief pause so QR screen draws first
+          fetchBitcoinData();
+          vTaskDelete(nullptr);
+        },
+        "btc_init", 8192, nullptr, 1, nullptr, 1 /* Core 1 */
+      );
+      Serial.println("[BTC] Initial fetch task launched (async, Core 1)");
+    }
+    // Periodic ticker update (runs only when ticker screen is active)
     updateBitcoinTicker();
 #endif
     
@@ -2758,10 +2866,9 @@ void loop()
           consecutiveWebSocketFailures = 0;
           networkStatus.waitingForPong = false;
           
-          // Fetch switch labels after successful reconnection
-          Serial.println("[RECOVERY] Fetching switch labels after WebSocket reconnection...");
-          fetchSwitchLabels();
-          
+          // Labels are fetched automatically by WStype_CONNECTED in webSocketEvent()
+          // when the WebSocket connects — no second fetch needed here.
+
           // Redraw QR screen to replace any leftover error screen
           Serial.println("[RECOVERY] WebSocket recovery complete - redrawing QR screen");
           redrawQRScreen();
@@ -3553,6 +3660,21 @@ static void processNormalPayment(int pin, int duration)
         }
       }
       #endif
+      // JC3248W535C One-for-All: CH01 payment fires all relay/servo channels simultaneously
+      #ifdef BOARD_JC3248W535C
+      if (t35AmbientConfig.oneForAll && pin == PIN_RELAY_CH01) {
+        const int ofa[] = {6, 7, 14, 15, 16};
+        const bool act[] = {t35AmbientConfig.gpio6Actor, t35AmbientConfig.gpio7Actor,
+                            t35AmbientConfig.gpio14Actor, t35AmbientConfig.gpio15Actor,
+                            t35AmbientConfig.gpio16Actor};
+        for (int i = 0; i < 5; i++) {
+          if (act[i]) {
+            digitalWrite(ofa[i], HIGH);
+            Serial.printf("[OFA] GPIO%d set HIGH\n", ofa[i]);
+          }
+        }
+      }
+      #endif
     }
 
     if (multiChannelConfig.mode == "off" && pin == 12) {
@@ -3635,6 +3757,21 @@ static void processNormalPayment(int pin, int duration)
         if (c3FlexConfig.gpio7Relay) {
           digitalWrite(PIN_FLEX_CH02, LOW);
           Serial.printf("[RELAY] GPIO%d (flex CH02 relay) set LOW\n", PIN_FLEX_CH02);
+        }
+      }
+      #endif
+      // JC3248W535C One-for-All: deactivate all actor channels
+      #ifdef BOARD_JC3248W535C
+      if (t35AmbientConfig.oneForAll && pin == PIN_RELAY_CH01) {
+        const int ofa[] = {6, 7, 14, 15, 16};
+        const bool act[] = {t35AmbientConfig.gpio6Actor, t35AmbientConfig.gpio7Actor,
+                            t35AmbientConfig.gpio14Actor, t35AmbientConfig.gpio15Actor,
+                            t35AmbientConfig.gpio16Actor};
+        for (int i = 0; i < 5; i++) {
+          if (act[i]) {
+            digitalWrite(ofa[i], LOW);
+            Serial.printf("[OFA] GPIO%d set LOW\n", ofa[i]);
+          }
         }
       }
       #endif

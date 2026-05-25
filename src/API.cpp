@@ -141,12 +141,11 @@ void fetchSwitchLabels()
       networkStatus.confirmed.websocket = true;
       
 #if ENABLE_BITCOIN_DATA
-      // Always fetch Bitcoin data with the correct currency (not just when ticker is active)
-      // This ensures data is ready when ticker is activated
-      Serial.println("[LABELS] Currency received - fetching Bitcoin data with correct currency");
-      fetchBitcoinData();
-      
-      // If ticker is currently active, redraw screen to show new currency
+      // Mark BTC data as stale so the periodic updater in loop() refreshes it
+      // without blocking here. Calling fetchBitcoinData() inline caused setup()
+      // to stall for 20+ s on SSL timeouts, preventing touch from responding.
+      bitcoinData.lastUpdate = 0;
+      Serial.println("[LABELS] BTC update scheduled (will fetch at next ticker cycle)");
       if (multiChannelConfig.btcTickerActive) {
         Serial.println("[LABELS] Ticker active - refreshing display");
         btctickerScreen();
