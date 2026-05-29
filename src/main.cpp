@@ -3864,6 +3864,7 @@ static void processNormalPayment(int pin, int duration)
   nfcNoLuckScreenShown   = false;
   nfcErrorDetailShown    = false;
   nfcNotSupportedShown   = false;
+  pinPadState            = PinPadState();  // reset PIN pad so touch nav works again
   #endif
 
   // Restore correct product QR (handles single, multi-channel, servo)
