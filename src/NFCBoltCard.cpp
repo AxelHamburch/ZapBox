@@ -22,6 +22,7 @@
 
 #include <Wire.h>
 #include <Adafruit_PN532_NTAG424.h>
+#include <HTTPClient.h>
 #include <vector>
 
 // ─── Bech32 / LNURL helpers ──────────────────────────────────────────────────
@@ -456,6 +457,57 @@ static void nfc_task_code(void *pvParams)
                 LOG_WARN("NFC", String("NDEF URI is not a valid LNURL (decoded: ") + url.substring(0, 40) + ")");
                 vTaskDelay(pdMS_TO_TICKS(500));
                 continue;
+            }
+
+            // Verify the LNURL is a withdrawRequest before contacting the server.
+            // Fetching the URL here lets us show a clear error (e.g. "LNURL-pay on
+            // card, expected withdraw") instead of a cryptic 502 from the server.
+            {
+                HTTPClient probe;
+                probe.begin(url);
+                probe.setTimeout(8000);
+                int probeCode = probe.GET();
+                String probeBody = probe.getString();
+                probe.end();
+
+                if (probeCode <= 0) {
+                    LOG_WARN("NFC", String("LNURL prefetch failed (HTTP ") + probeCode + ") – aborting");
+                    String msg = "LNURL nicht erreichbar";
+                    msg.toCharArray(extensionConfig.nfcErrorDetail, sizeof(extensionConfig.nfcErrorDetail));
+                    extensionConfig.nfcPaymentPending = false;
+                    extensionConfig.nfcPaymentFailed  = true;
+                    waitForCardRemoval();
+                    continue;
+                }
+
+                // Extract "tag" field from JSON response (simple string search, no full parser needed)
+                String tag = "";
+                int tagIdx = probeBody.indexOf("\"tag\":");
+                if (tagIdx >= 0) {
+                    int valStart = probeBody.indexOf("\"", tagIdx + 6);
+                    if (valStart >= 0) {
+                        int valEnd = probeBody.indexOf("\"", valStart + 1);
+                        if (valEnd > valStart)
+                            tag = probeBody.substring(valStart + 1, valEnd);
+                    }
+                }
+                LOG_INFO("NFC", String("LNURL tag: \"") + tag + "\"");
+
+                if (tag != "withdrawRequest") {
+                    String msg;
+                    if (tag == "payRequest")
+                        msg = "Pay-Link auf Karte – kein Withdraw!";
+                    else if (tag.length() > 0)
+                        msg = String("Unbekannter LNURL-Typ: ") + tag;
+                    else
+                        msg = "Kein LNURL-Tag in Antwort";
+                    LOG_WARN("NFC", msg);
+                    msg.toCharArray(extensionConfig.nfcErrorDetail, sizeof(extensionConfig.nfcErrorDetail));
+                    extensionConfig.nfcPaymentPending = false;
+                    extensionConfig.nfcPaymentFailed  = true;
+                    waitForCardRemoval();
+                    continue;
+                }
             }
 
             // Convert https:// to lnurlw:// so the server handler can process it
