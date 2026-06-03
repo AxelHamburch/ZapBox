@@ -428,12 +428,11 @@ void redrawQRScreen() {
       if (multiChannelConfig.mode == "servo") {
         displayPin = servoConfig.productToPin(multiChannelConfig.currentProduct);
       } else {
-        switch (multiChannelConfig.currentProduct) {
-          case 1: displayPin = 12; break;
-          case 2: displayPin = 13; break;
-          case 3: displayPin = 10; break;
-          case 4: displayPin = 11; break;
-          default: displayPin = 12; break;
+        int idx0 = multiChannelConfig.currentProduct - 1;
+        if (idx0 >= 0 && idx0 < RELAY_CHANNEL_MAX) {
+          displayPin = RELAY_CHANNEL_PINS[idx0];
+        } else {
+          displayPin = RELAY_CHANNEL_PINS[0];
         }
       }
 
