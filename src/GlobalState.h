@@ -439,6 +439,7 @@ struct NetworkStatus {
 
   unsigned long lastPingTime = 0;
   unsigned long lastPongTime = 0;
+  unsigned long lastServerPingTime = 0; // set when server sends WStype_PING to us
   bool waitingForPong = false;
 };
 

@@ -62,6 +62,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       break;
     case WStype_PING:
       LOG_INFO("WebSocket", "Ping received from server");
+      networkStatus.lastServerPingTime = millis();
       break;
     case WStype_PONG:
       LOG_INFO("WebSocket", "Pong received - connection alive");

@@ -2648,6 +2648,16 @@ void loop()
       } else if (nfcConfig.nfcSessionActive) {
         // Defer: NFC is exchanging APDUs — HTTP activity on Core 0 disrupts I2C timing
         Serial.println("[INTERNET] Deferred - NFC session active");
+      } else if (webSocket.isConnected() &&
+                 networkStatus.lastServerPingTime > 0 &&
+                 millis() - networkStatus.lastServerPingTime < 45000) {
+        // WebSocket is alive and server pinged us within the last 45 s — internet is clearly
+        // working. Skip the HTTP connectivity check to avoid opening competing TCP connections
+        // that can overwhelm the router's connection-tracking table (especially on Fritzbox).
+        Serial.println("[INTERNET] Skipping check - WebSocket active (last server ping: "
+                       + String((millis() - networkStatus.lastServerPingTime) / 1000) + "s ago)");
+        lastInternetCheck = millis();
+        networkStatus.confirmed.internet = true;
       } else if (WiFi.status() == WL_CONNECTED) {
         bool hasInternet = checkInternetConnectivity();
         if (!hasInternet) {
