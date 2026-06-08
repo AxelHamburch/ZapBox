@@ -2084,10 +2084,18 @@ void loop()
         bool isTouched = false;
 #endif
 
-        // FIRST: Check if touch is in button area
-        // Touch coordinates are hardware-based (0-170 x 0-320), don't rotate with display!
-        // Physical button is ALWAYS at Y > 305, regardless of display rotation
-        bool inButtonArea = (y > 305);
+        // Physical button area — same hardware edge regardless of display orientation.
+        // h: lY > 305 | hi: lY < 14 | v: lX < 14 | vi: lX > 305
+        bool inButtonArea;
+        if (displayConfig.orientation == "hi") {
+          inButtonArea = (y < 14);
+        } else if (displayConfig.orientation == "v") {
+          inButtonArea = (x < 14);
+        } else if (displayConfig.orientation == "vi") {
+          inButtonArea = (x > 305);
+        } else { // h
+          inButtonArea = (y > 305);
+        }
         
         if (inButtonArea) {
           // Update activity timer only on new touch (rising edge) so phantom/idle I2C reads

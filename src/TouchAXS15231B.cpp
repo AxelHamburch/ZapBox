@@ -1,4 +1,5 @@
 #include "TouchAXS15231B.h"
+#include "GlobalState.h"
 
 // I²C address (7-bit) of the AXS15231B touch controller
 #define AXS_ADDR 0x3B
@@ -112,18 +113,34 @@ bool TouchAXS15231B::readTouchData() {
   }
   _points = numPts;
 
-  // Native portrait coords from the sensor
+  // Native portrait coords from the sensor (tx: 0..PANEL_W-1, ty: 0..PANEL_H-1)
   uint16_t tx = ((buf[2] & 0x0F) << 8) | buf[3];
   uint16_t ty = ((buf[4] & 0x0F) << 8) | buf[5];
 
   if (tx >= PANEL_W) tx = PANEL_W - 1;
   if (ty >= PANEL_H) ty = PANEL_H - 1;
 
-  // Rotate 90° CCW to match DisplayTouch.cpp's putPixel mapping:
-  //   landscape lx = native ty
-  //   landscape ly = (PANEL_W - 1) - native tx
-  _x = ty;
-  _y = (PANEL_W - 1) - tx;
+  // Convert to logical canvas coordinates matching DisplayTouch.cpp's putPixel mapping.
+  // Physical panel: 320 wide × 480 tall (portrait native).
+  //   h  (default): 90° CCW  → lx = ty,       ly = 319 - tx
+  //   hi           : 90° CW  → lx = 479 - ty,  ly = tx
+  //   v            : direct  → lx = tx,         ly = ty
+  //   vi           : 180°    → lx = 319 - tx,   ly = 479 - ty
+  const String &ori = displayConfig.orientation;
+  if (ori == "hi") {
+    _x = 479 - ty;
+    _y = tx;
+  } else if (ori == "v") {
+    _x = tx;
+    _y = ty;
+  } else if (ori == "vi") {
+    _x = 319 - tx;
+    _y = 479 - ty;
+  } else {
+    // h (default): 90° CCW
+    _x = ty;
+    _y = 319 - tx;
+  }
   return true;
 }
 

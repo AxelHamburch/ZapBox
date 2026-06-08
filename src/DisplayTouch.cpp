@@ -20,15 +20,19 @@
 // ============================================================================
 
 #define PIN_LCD_BL  LCD_BL_PIN
-// We expose a LANDSCAPE 480×320 canvas to the rest of the code (matches the
-// T-Display-S3 layout convention used in the original ZapBox screens). The
-// physical panel is 320×480 portrait — software rotation in putPixel maps
-// our landscape coordinates to portrait pixels (90° CCW so the user holds
-// the device with its native top edge on the LEFT).
-#define SCR_W       480
-#define SCR_H       320
+// Physical panel: 320×480 portrait (PANEL_W × PANEL_H).
+// The logical canvas (SCR_W × SCR_H) is set at runtime based on orientation:
+//   h / hi  → landscape 480×320  (SCR_W=PANEL_H, SCR_H=PANEL_W)
+//   v / vi  → portrait  320×480  (SCR_W=PANEL_W, SCR_H=PANEL_H)
+// putPixel() maps logical canvas coords to the physical portrait buffer.
 #define PANEL_W     320
 #define PANEL_H     480
+static int SCR_W = 480;   // updated in initDisplay()
+static int SCR_H = 320;   // updated in initDisplay()
+
+// 0=h (90° CCW), 1=hi (90° CW), 2=v (direct), 3=vi (180°)
+static int s_oriMode = 0;
+static inline bool isPortrait() { return s_oriMode >= 2; }
 
 // ============================================================================
 // COLORS — TFT_eSPI compatibility macros (RGB565)
@@ -144,6 +148,31 @@ extern String currency;
 #define BOX_H       196
 
 // ============================================================================
+// PORTRAIT LAYOUT CONSTANTS  (v / vi — canvas 320×480)
+// ============================================================================
+// QR: 49 modules × 4 px = 196 px, centered → x = (320-196)/2 = 62
+// QR+box content is 408 px tall → top margin (480-408)/2 = 36
+#define QR_V_X        62
+#define QR_V_Y        36
+#define QR_V_MOD       4
+// Label box below QR  (36+196+12 = 244)
+#define BOX_V_X       20
+#define BOX_V_Y      244
+#define BOX_V_W      280
+#define BOX_V_H      200
+// Action-time box — centered: ACTION(40px) + gap + box(80px) = ~160px total → top@160
+#define AT_V_BOX_X    60
+#define AT_V_BOX_Y   240
+#define AT_V_BOX_W   200
+#define AT_V_BOX_H    80
+#define AT_V_LABEL_Y 280
+#define AT_V_MM_CX    28
+#define AT_V_SS_CX   292
+// NFC box (portrait — 200 px wide, centered in 320)
+#define NFC_V_BOX_X   60
+#define NFC_V_BOX_W  200
+
+// ============================================================================
 // BITCOIN LOGO — 64×64 monochrome bitmap (from original Display.cpp)
 // ============================================================================
 static const uint8_t bitcoin_logo[] PROGMEM = {
@@ -241,31 +270,38 @@ static const uint8_t font5x7[][5] PROGMEM = {
 // BACKBUFFER DRAWING — all primitives write to PSRAM, single flush() pushes
 // ============================================================================
 
-// 90° CCW rotation: landscape (lx, ly) → portrait (PANEL_W-1-ly, lx)
-// Caller passes landscape coords (0..SCR_W-1, 0..SCR_H-1).
-// Buffer is laid out as portrait (PANEL_W cols × PANEL_H rows).
+// Maps logical canvas (lx, ly) → physical portrait buffer (px, py).
+//   h  (0): 90° CCW  — px = PANEL_W-1-ly,  py = lx
+//   hi (1): 90° CW   — px = ly,             py = PANEL_H-1-lx
+//   v  (2): direct   — px = lx,             py = ly
+//   vi (3): 180°     — px = PANEL_W-1-lx,   py = PANEL_H-1-ly
 static inline void putPixel(int lx, int ly, uint16_t color) {
   if ((unsigned)lx >= (unsigned)SCR_W || (unsigned)ly >= (unsigned)SCR_H) return;
-  int px = PANEL_W - 1 - ly;
-  int py = lx;
+  int px, py;
+  switch (s_oriMode) {
+    case 1:  px = ly;             py = PANEL_H - 1 - lx;  break; // hi
+    case 2:  px = lx;             py = ly;                 break; // v
+    case 3:  px = PANEL_W-1-lx;   py = PANEL_H - 1 - ly;  break; // vi
+    default: px = PANEL_W-1-ly;   py = lx;                 break; // h
+  }
   s_backbuf[py * PANEL_W + px] = color;
 }
 
 static void fillRect(int lx, int ly, int lw, int lh, uint16_t color) {
   if (!s_backbuf) return;
-  // Clip in landscape space
   if (lx < 0) { lw += lx; lx = 0; }
   if (ly < 0) { lh += ly; ly = 0; }
   if (lx + lw > SCR_W) lw = SCR_W - lx;
   if (ly + lh > SCR_H) lh = SCR_H - ly;
   if (lw <= 0 || lh <= 0) return;
 
-  // Rotate rect to portrait: 90° CCW maps width↔height and shifts origin
-  int px = PANEL_W - ly - lh;
-  int py = lx;
-  int pw = lh;     // landscape height → portrait width
-  int ph = lw;     // landscape width  → portrait height
-
+  int px, py, pw, ph;
+  switch (s_oriMode) {
+    case 1:  px = ly;               py = PANEL_H - lx - lw;  pw = lh; ph = lw; break; // hi
+    case 2:  px = lx;               py = ly;                 pw = lw; ph = lh; break; // v
+    case 3:  px = PANEL_W - lx - lw; py = PANEL_H - ly - lh; pw = lw; ph = lh; break; // vi
+    default: px = PANEL_W - ly - lh; py = lx;                pw = lh; ph = lw; break; // h
+  }
   for (int row = 0; row < ph; row++) {
     uint16_t *p = &s_backbuf[(py + row) * PANEL_W + px];
     for (int col = 0; col < pw; col++) p[col] = color;
@@ -390,6 +426,12 @@ void initDisplay() {
 
   pinMode(PIN_LCD_BL, OUTPUT);
   digitalWrite(PIN_LCD_BL, LOW);
+
+  // Resolve orientation mode and canvas dimensions from config
+  if      (displayConfig.orientation == "hi") { s_oriMode = 1; SCR_W = PANEL_H; SCR_H = PANEL_W; }
+  else if (displayConfig.orientation == "v")  { s_oriMode = 2; SCR_W = PANEL_W; SCR_H = PANEL_H; }
+  else if (displayConfig.orientation == "vi") { s_oriMode = 3; SCR_W = PANEL_W; SCR_H = PANEL_H; }
+  else                                        { s_oriMode = 0; SCR_W = PANEL_H; SCR_H = PANEL_W; } // h
 
   // 1. PSRAM-backed framebuffer (laid out as the panel sees it: portrait)
   size_t bb_bytes = (size_t)PANEL_W * PANEL_H * sizeof(uint16_t);
@@ -521,40 +563,82 @@ static String calcSatsPerCurrency() {
   return String(sats);
 }
 
+// Portrait BTC ticker layout (320×480) — T-Display-S3 style:
+//   Logo 64×64 (header icon), then 3× (small label + big value)
+//   Positions chosen so content centre ≈ y=240.
+//
+//   y= 98  Bitcoin logo 64×64 (scale 1, x=128)
+//   y=185  label  "USD/BTC"      size 2
+//   y=220  value  price          size 4   ← updated by updateBtctickerValues
+//   y=258  label  "SAT/USD"      size 2
+//   y=293  value  sats           size 4   ← updated
+//   y=331  label  "Block"        size 2
+//   y=366  value  block height   size 4   ← updated
+static const int BTC_V_VAL1_Y = 220;
+static const int BTC_V_VAL2_Y = 293;
+static const int BTC_V_VAL3_Y = 366;
+static const int BTC_V_VAL_H  =  32;  // height of size-4 text (8×4)
+
+static void btcDrawValues_portrait() {
+  int cx = PANEL_W / 2;
+  drawCenter(cx, BTC_V_VAL1_Y, bitcoinData.price.c_str(),
+             themeForeground, themeBackground, 4);
+  drawCenter(cx, BTC_V_VAL2_Y, calcSatsPerCurrency().c_str(),
+             themeForeground, themeBackground, 4);
+  drawCenter(cx, BTC_V_VAL3_Y, bitcoinData.blockHigh.c_str(),
+             themeForeground, themeBackground, 4);
+}
+
 static void btcDrawTextLines() {
+  if (isPortrait()) {
+    btcDrawValues_portrait();
+    return;
+  }
+  // Landscape: combined label+value on one line, size 2
   String s;
   s = currency + "/BTC: " + bitcoinData.price;
-  drawCenter(BTC_TXT_CX, BTC_LINE1_Y, s.c_str(),
-             themeForeground, themeBackground, 2);
+  drawCenter(BTC_TXT_CX, BTC_LINE1_Y, s.c_str(), themeForeground, themeBackground, 2);
   s = "SAT/" + currency + ": " + calcSatsPerCurrency();
-  drawCenter(BTC_TXT_CX, BTC_LINE2_Y, s.c_str(),
-             themeForeground, themeBackground, 2);
+  drawCenter(BTC_TXT_CX, BTC_LINE2_Y, s.c_str(), themeForeground, themeBackground, 2);
   s = "Block: " + bitcoinData.blockHigh;
-  drawCenter(BTC_TXT_CX, BTC_LINE3_Y, s.c_str(),
-             themeForeground, themeBackground, 2);
+  drawCenter(BTC_TXT_CX, BTC_LINE3_Y, s.c_str(), themeForeground, themeBackground, 2);
 }
 
 void btctickerScreen() {
   DisplayLock l;
   if (!_gfx) return;
-
   fillScreen(themeBackground);
-  // Bitcoin logo on the left, vertically centered (logo is 128×128 after 2x scale)
-  drawMonoBitmapScaled(20, (SCR_H - 128) / 2, bitcoin_logo, 64, 64,
-                       themeForeground, 2);
-  btcDrawTextLines();
+  if (isPortrait()) {
+    // Small header logo (64×64, scale 1) + 3 label/value pairs
+    drawMonoBitmapScaled((PANEL_W - 64) / 2, 98, bitcoin_logo, 64, 64, themeForeground, 1);
+    int cx = PANEL_W / 2;
+    drawCenter(cx, 185, (currency + "/BTC").c_str(),   themeForeground, themeBackground, 2);
+    drawCenter(cx, 258, ("SAT/" + currency).c_str(),   themeForeground, themeBackground, 2);
+    drawCenter(cx, 331, "Block",                        themeForeground, themeBackground, 2);
+    btcDrawValues_portrait();
+  } else {
+    // Landscape: large logo left, 3 combined lines right
+    drawMonoBitmapScaled(20, (SCR_H - 128) / 2, bitcoin_logo, 64, 64, themeForeground, 2);
+    btcDrawTextLines();
+  }
   flushDisplay();
 }
 
 void updateBtctickerValues() {
   DisplayLock l;
   if (!_gfx) return;
-
-  // Wipe just the three text rows (right side), leave logo intact
-  fillRect(BTC_TXT_X, BTC_LINE1_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
-  fillRect(BTC_TXT_X, BTC_LINE2_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
-  fillRect(BTC_TXT_X, BTC_LINE3_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
-  btcDrawTextLines();
+  if (isPortrait()) {
+    // Wipe only the 3 value rows (labels are static)
+    fillRect(0, BTC_V_VAL1_Y - BTC_V_VAL_H / 2, PANEL_W, BTC_V_VAL_H, themeBackground);
+    fillRect(0, BTC_V_VAL2_Y - BTC_V_VAL_H / 2, PANEL_W, BTC_V_VAL_H, themeBackground);
+    fillRect(0, BTC_V_VAL3_Y - BTC_V_VAL_H / 2, PANEL_W, BTC_V_VAL_H, themeBackground);
+    btcDrawValues_portrait();
+  } else {
+    fillRect(BTC_TXT_X, BTC_LINE1_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
+    fillRect(BTC_TXT_X, BTC_LINE2_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
+    fillRect(BTC_TXT_X, BTC_LINE3_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
+    btcDrawTextLines();
+  }
   flushDisplay();
 }
 // ============================================================================
@@ -565,15 +649,23 @@ void updateBtctickerValues() {
 static void renderStepScreen(const char *big, uint8_t bigSize,
                               const char *l1, const char *l2, const char *l3) {
   fillScreen(themeBackground);
-  // Big number/text on the left (center of the QR area for visual consistency)
-  drawCenter(QR_AREA_CX, QR_AREA_CY, big,
-             themeForeground, themeBackground, bigSize);
-  // Filled label box on the right with three lines
-  fillRect(BOX_X, BOX_Y, BOX_W, BOX_H, themeForeground);
-  int cx = BOX_X + BOX_W / 2;
-  drawCenter(cx, BOX_Y + BOX_H / 4,     l1, themeBackground, themeForeground, 4);
-  drawCenter(cx, BOX_Y + BOX_H / 2,     l2, themeBackground, themeForeground, 4);
-  drawCenter(cx, BOX_Y + 3 * BOX_H / 4, l3, themeBackground, themeForeground, 4);
+  if (isPortrait()) {
+    // Big text + box: content ~376px → shift down ~15px so visual weight is balanced
+    drawCenter(SCR_W / 2, 120, big, themeForeground, themeBackground, bigSize);
+    const int bx = 20, by = 230, bw = 280, bh = 210;
+    fillRect(bx, by, bw, bh, themeForeground);
+    int cx = bx + bw / 2;
+    drawCenter(cx, by + bh / 4,     l1, themeBackground, themeForeground, 4);
+    drawCenter(cx, by + bh / 2,     l2, themeBackground, themeForeground, 4);
+    drawCenter(cx, by + 3 * bh / 4, l3, themeBackground, themeForeground, 4);
+  } else {
+    drawCenter(QR_AREA_CX, QR_AREA_CY, big, themeForeground, themeBackground, bigSize);
+    fillRect(BOX_X, BOX_Y, BOX_W, BOX_H, themeForeground);
+    int cx = BOX_X + BOX_W / 2;
+    drawCenter(cx, BOX_Y + BOX_H / 4,     l1, themeBackground, themeForeground, 4);
+    drawCenter(cx, BOX_Y + BOX_H / 2,     l2, themeBackground, themeForeground, 4);
+    drawCenter(cx, BOX_Y + 3 * BOX_H / 4, l3, themeBackground, themeForeground, 4);
+  }
   flushDisplay();
 }
 
@@ -614,10 +706,16 @@ void stepThreeScreen() {
 void actionTimeScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, 117, "ACTION", themeForeground, themeBackground, 6);
-  fillRect(AT_BOX_X, AT_BOX_Y, AT_BOX_W, AT_BOX_H, themeForeground);
-  drawCenter(SCR_W / 2, AT_LABEL_Y, "TIME",
-             themeBackground, themeForeground, 5);
+  if (isPortrait()) {
+    // ACTION + gap + TIME-box centered in 480px: ACTION at y=180
+    drawCenter(SCR_W / 2, 180, "ACTION", themeForeground, themeBackground, 5);
+    fillRect(AT_V_BOX_X, AT_V_BOX_Y, AT_V_BOX_W, AT_V_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, AT_V_LABEL_Y, "TIME", themeBackground, themeForeground, 4);
+  } else {
+    drawCenter(SCR_W / 2, 117, "ACTION", themeForeground, themeBackground, 6);
+    fillRect(AT_BOX_X, AT_BOX_Y, AT_BOX_W, AT_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, AT_LABEL_Y, "TIME", themeBackground, themeForeground, 5);
+  }
   flushDisplay();
 }
 
@@ -629,14 +727,19 @@ void updateActionTimeCountdown(int remainingSecs) {
   if (mins > 99) mins = 99;
 
   char buf[8];
-  // Wipe just the two countdown bands (avoid touching the TIME box)
-  fillRect(AT_MM_CX - 40, AT_LABEL_Y - 22, 80, 44, themeBackground);
-  fillRect(AT_SS_CX - 40, AT_LABEL_Y - 22, 80, 44, themeBackground);
+  int mmCX, ssCX, labelY, bandW;
+  if (isPortrait()) {
+    mmCX = AT_V_MM_CX; ssCX = AT_V_SS_CX; labelY = AT_V_LABEL_Y; bandW = 56;
+  } else {
+    mmCX = AT_MM_CX;   ssCX = AT_SS_CX;   labelY = AT_LABEL_Y;   bandW = 80;
+  }
+  fillRect(mmCX - bandW / 2, labelY - 22, bandW, 44, themeBackground);
+  fillRect(ssCX - bandW / 2, labelY - 22, bandW, 44, themeBackground);
 
   snprintf(buf, sizeof(buf), "%02d", mins);
-  drawCenter(AT_MM_CX, AT_LABEL_Y, buf, themeForeground, themeBackground, 4);
+  drawCenter(mmCX, labelY, buf, themeForeground, themeBackground, 4);
   snprintf(buf, sizeof(buf), "%02d", secs);
-  drawCenter(AT_SS_CX, AT_LABEL_Y, buf, themeForeground, themeBackground, 4);
+  drawCenter(ssCX, labelY, buf, themeForeground, themeBackground, 4);
   flushDisplay();
 }
 // ============================================================================
@@ -654,38 +757,48 @@ void updateActionTimeCountdown(int remainingSecs) {
 void nfcPendingScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  // Aligned with actionTimeScreen: "PENDING" at y=117, box at y=162 (same as AT_BOX_Y/AT_LABEL_Y).
-  drawCenter(SCR_W / 2, 117, "PENDING",
-             themeForeground, themeBackground, 6);
-  fillRect(NFC_BOX_X, NFC_BOX_Y + 32, NFC_BOX_W, NFC_BOX_H, themeForeground);
-  drawCenter(SCR_W / 2, NFC_BOX_LBL_Y + 32, "NFC",
-             themeBackground, themeForeground, 5);
+  if (isPortrait()) {
+    // Content ≈165px → centered: top at ~157
+    drawCenter(SCR_W / 2, 177, "PENDING", themeForeground, themeBackground, 5);
+    fillRect(NFC_V_BOX_X, 242, NFC_V_BOX_W, 80, themeForeground);
+    drawCenter(SCR_W / 2, 282, "NFC", themeBackground, themeForeground, 5);
+  } else {
+    drawCenter(SCR_W / 2, 117, "PENDING", themeForeground, themeBackground, 6);
+    fillRect(NFC_BOX_X, NFC_BOX_Y + 32, NFC_BOX_W, NFC_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, NFC_BOX_LBL_Y + 32, "NFC", themeBackground, themeForeground, 5);
+  }
   flushDisplay();
 }
 
 void nfcNoLuckScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  // NFC box at TOP this time (smaller)
-  fillRect(NFC_BOX_X, 85, NFC_BOX_W, NFC_BOX_H, themeForeground);
-  drawCenter(SCR_W / 2, 130, "NFC",
-             themeBackground, themeForeground, 5);
-  // "NO LUCK" big below
-  drawCenter(SCR_W / 2, 220, "NO LUCK",
-             themeForeground, themeBackground, 6);
+  if (isPortrait()) {
+    fillRect(NFC_V_BOX_X, 85, NFC_V_BOX_W, 80, themeForeground);
+    drawCenter(SCR_W / 2, 125, "NFC", themeBackground, themeForeground, 5);
+    drawCenter(SCR_W / 2, 255, "NO LUCK", themeForeground, themeBackground, 5);
+  } else {
+    fillRect(NFC_BOX_X, 85, NFC_BOX_W, NFC_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, 130, "NFC", themeBackground, themeForeground, 5);
+    drawCenter(SCR_W / 2, 220, "NO LUCK", themeForeground, themeBackground, 6);
+  }
   flushDisplay();
 }
 
 void nfcNotSupportedScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  fillRect(NFC_BOX_X, 50, NFC_BOX_W, NFC_BOX_H, themeForeground);
-  drawCenter(SCR_W / 2, 90, "NFC",
-             themeBackground, themeForeground, 5);
-  drawCenter(SCR_W / 2, 200, "not supported",
-             themeForeground, themeBackground, 3);
-  drawCenter(SCR_W / 2, 255, "use zapbox extension",
-             themeForeground, themeBackground, 2);
+  if (isPortrait()) {
+    fillRect(NFC_V_BOX_X, 50, NFC_V_BOX_W, 80, themeForeground);
+    drawCenter(SCR_W / 2, 90,  "NFC",                  themeBackground, themeForeground, 5);
+    drawCenter(SCR_W / 2, 205, "not supported",         themeForeground, themeBackground, 3);
+    drawCenter(SCR_W / 2, 260, "use zapbox extension",  themeForeground, themeBackground, 2);
+  } else {
+    fillRect(NFC_BOX_X, 50, NFC_BOX_W, NFC_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, 90,  "NFC",                  themeBackground, themeForeground, 5);
+    drawCenter(SCR_W / 2, 200, "not supported",         themeForeground, themeBackground, 3);
+    drawCenter(SCR_W / 2, 255, "use zapbox extension",  themeForeground, themeBackground, 2);
+  }
   flushDisplay();
 }
 
@@ -844,32 +957,32 @@ static void drawQRAt(const char *text, int lx, int ly, int mod_size,
   }
 }
 
-// Filled label box on the right side, text in box-bg color, centered
-static void drawLabelBox(const String words[], int wordCount,
-                          uint16_t box_color, uint16_t text_color) {
-  fillRect(BOX_X, BOX_Y, BOX_W, BOX_H, box_color);
-  int cx = BOX_X + BOX_W / 2;
+// Filled label box at arbitrary position — shared by landscape and portrait paths.
+static void drawLabelBoxAt(int bx, int by, int bw, int bh,
+                            const String words[], int wordCount,
+                            uint16_t box_color, uint16_t text_color) {
+  fillRect(bx, by, bw, bh, box_color);
+  int cx = bx + bw / 2;
   if (wordCount <= 1) {
     int sz = (words[0].length() >= 7) ? 2 : 4;
-    drawCenter(cx, BOX_Y + BOX_H / 2, words[0].c_str(),
-               text_color, box_color, sz);
+    drawCenter(cx, by + bh / 2, words[0].c_str(), text_color, box_color, sz);
   } else if (wordCount == 2) {
     int sz1 = (words[0].length() >= 7) ? 2 : 3;
     int sz2 = (words[1].length() >= 7) ? 2 : 3;
-    drawCenter(cx, BOX_Y + BOX_H / 3,     words[0].c_str(),
-               text_color, box_color, sz1);
-    drawCenter(cx, BOX_Y + 2 * BOX_H / 3, words[1].c_str(),
-               text_color, box_color, sz2);
+    drawCenter(cx, by + bh / 3,     words[0].c_str(), text_color, box_color, sz1);
+    drawCenter(cx, by + 2 * bh / 3, words[1].c_str(), text_color, box_color, sz2);
   } else {
     int sz1 = (words[0].length() >= 7) ? 2 : 3;
     int sz2 = (words[1].length() >= 7) ? 2 : 3;
-    drawCenter(cx, BOX_Y + BOX_H / 4,     words[0].c_str(),
-               text_color, box_color, sz1);
-    drawCenter(cx, BOX_Y + BOX_H / 2,     words[1].c_str(),
-               text_color, box_color, sz2);
-    drawCenter(cx, BOX_Y + 3 * BOX_H / 4, words[2].c_str(),
-               text_color, box_color, 2);
+    drawCenter(cx, by + bh / 4,     words[0].c_str(), text_color, box_color, sz1);
+    drawCenter(cx, by + bh / 2,     words[1].c_str(), text_color, box_color, sz2);
+    drawCenter(cx, by + 3 * bh / 4, words[2].c_str(), text_color, box_color, 2);
   }
+}
+
+static void drawLabelBox(const String words[], int wordCount,
+                          uint16_t box_color, uint16_t text_color) {
+  drawLabelBoxAt(BOX_X, BOX_Y, BOX_W, BOX_H, words, wordCount, box_color, text_color);
 }
 
 void drawQRCode() {
@@ -889,14 +1002,16 @@ void showProductQRScreen(String label, int pin) {
 
   uint16_t qrFg = themeForeground;
   uint16_t qrBg = themeBackground;
-  if (themeInvertQr()) {
-    qrFg = themeBackground;
-    qrBg = themeForeground;
-  }
+  if (themeInvertQr()) { qrFg = themeBackground; qrBg = themeForeground; }
 
   fillScreen(qrBg);
-  drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
-  drawLabelBox(words, wordCount, qrFg, qrBg);
+  if (isPortrait()) {
+    drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+    drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H, words, wordCount, qrFg, qrBg);
+  } else {
+    drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+    drawLabelBox(words, wordCount, qrFg, qrBg);
+  }
   flushDisplay();
 }
 
@@ -915,15 +1030,18 @@ void showThresholdQRScreen() {
 
   uint16_t qrFg = themeForeground;
   uint16_t qrBg = themeBackground;
-  if (themeInvertQr()) {
-    qrFg = themeBackground;
-    qrBg = themeForeground;
-  }
+  if (themeInvertQr()) { qrFg = themeBackground; qrBg = themeForeground; }
 
   fillScreen(qrBg);
-  drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
-  String words[3] = {"READY", "4 TH", "ACTION"};
-  drawLabelBox(words, 3, qrFg, qrBg);
+  if (isPortrait()) {
+    drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+    String words[3] = {"READY", "4 TH", "ACTION"};
+    drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H, words, 3, qrFg, qrBg);
+  } else {
+    drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+    String words[3] = {"READY", "4 TH", "ACTION"};
+    drawLabelBox(words, 3, qrFg, qrBg);
+  }
   flushDisplay();
 }
 
@@ -936,14 +1054,17 @@ void showBoltCardScreen(String label, int pin) {
   splitLabelWords(label, pin, words, wordCount);
 
   fillScreen(themeBackground);
-  // Left: BOLT / CARD / Tap NFC where the QR would be
-  drawCenter(QR_AREA_CX, QR_AREA_CY - 60, "BOLT",
-             themeForeground, themeBackground, 5);
-  drawCenter(QR_AREA_CX, QR_AREA_CY,      "CARD",
-             themeForeground, themeBackground, 5);
-  drawCenter(QR_AREA_CX, QR_AREA_CY + 70, "Tap NFC",
-             themeForeground, themeBackground, 2);
-  drawLabelBox(words, wordCount, themeForeground, themeBackground);
+  if (isPortrait()) {
+    drawCenter(SCR_W / 2, 80,  "BOLT",    themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 140, "CARD",    themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 200, "Tap NFC", themeForeground, themeBackground, 2);
+    drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H, words, wordCount, themeForeground, themeBackground);
+  } else {
+    drawCenter(QR_AREA_CX, QR_AREA_CY - 60, "BOLT",    themeForeground, themeBackground, 5);
+    drawCenter(QR_AREA_CX, QR_AREA_CY,      "CARD",    themeForeground, themeBackground, 5);
+    drawCenter(QR_AREA_CX, QR_AREA_CY + 70, "Tap NFC", themeForeground, themeBackground, 2);
+    drawLabelBox(words, wordCount, themeForeground, themeBackground);
+  }
   flushDisplay();
 }
 
@@ -956,25 +1077,33 @@ void showMobilePhoneScreen(String label, int pin) {
   splitLabelWords(label, pin, words, wordCount);
 
   fillScreen(themeBackground);
-  drawCenter(QR_AREA_CX, QR_AREA_CY - 60, "MOBILE",
-             themeForeground, themeBackground, 4);
-  drawCenter(QR_AREA_CX, QR_AREA_CY,      "PHONE",
-             themeForeground, themeBackground, 4);
-  drawCenter(QR_AREA_CX, QR_AREA_CY + 70, "Tap NFC",
-             themeForeground, themeBackground, 2);
-  drawLabelBox(words, wordCount, themeForeground, themeBackground);
+  if (isPortrait()) {
+    drawCenter(SCR_W / 2, 80,  "MOBILE",  themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 140, "PHONE",   themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 200, "Tap NFC", themeForeground, themeBackground, 2);
+    drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H, words, wordCount, themeForeground, themeBackground);
+  } else {
+    drawCenter(QR_AREA_CX, QR_AREA_CY - 60, "MOBILE",  themeForeground, themeBackground, 4);
+    drawCenter(QR_AREA_CX, QR_AREA_CY,      "PHONE",   themeForeground, themeBackground, 4);
+    drawCenter(QR_AREA_CX, QR_AREA_CY + 70, "Tap NFC", themeForeground, themeBackground, 2);
+    drawLabelBox(words, wordCount, themeForeground, themeBackground);
+  }
   flushDisplay();
 }
 
 void productSelectionScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, 90,  "SELECT",
-             themeForeground, themeBackground, 5);
-  drawCenter(SCR_W / 2, 155, "PRODUCT",
-             themeForeground, themeBackground, 5);
-  drawCenter(SCR_W / 2, 240, "<-NEXT->",
-             themeForeground, themeBackground, 4);
+  if (isPortrait()) {
+    // Shift down so 3 items are centered in 480px (content ≈186px → top at ~147)
+    drawCenter(SCR_W / 2, 167, "SELECT",   themeForeground, themeBackground, 5);
+    drawCenter(SCR_W / 2, 232, "PRODUCT",  themeForeground, themeBackground, 5);
+    drawCenter(SCR_W / 2, 317, "<-NEXT->", themeForeground, themeBackground, 4);
+  } else {
+    drawCenter(SCR_W / 2, 90,  "SELECT",   themeForeground, themeBackground, 5);
+    drawCenter(SCR_W / 2, 155, "PRODUCT",  themeForeground, themeBackground, 5);
+    drawCenter(SCR_W / 2, 240, "<-NEXT->", themeForeground, themeBackground, 4);
+  }
   flushDisplay();
 }
 // ============================================================================
@@ -1120,7 +1249,7 @@ bool isDeepSleepActive() { return deepSleepIsActive; }
 // Touch coordinates from AXS15231B are already in landscape space (0..479, 0..319),
 // matching the canvas coordinate system used here.
 
-// ── Layout constants ─────────────────────────────────────────────────────────
+// ── Layout constants — landscape 480×320 ─────────────────────────────────────
 static const int PP_LEFT_W   = 210;
 static const int PP_LEFT_CX  = PP_LEFT_W / 2;   // = 105
 static const int PP_NP_X     = 210;              // numpad left edge
@@ -1132,6 +1261,18 @@ static const int PP_BTN_H    = PP_NP_ROW_H - 2 * PP_BTN_M;  // 70
 static const int PP_DOT_Y    = 115;             // y-center of dot row
 static const int PP_DOT_HALF = 9;              // half-size of dot square (18×18)
 static const int PP_DOT_GAP  = 38;             // dot center-to-center spacing
+
+// ── Layout constants — portrait 320×480 ──────────────────────────────────────
+static const int PP_V_TOP_H      = 205;  // top panel ends here; numpad below
+static const int PP_V_COL_W      = 106;  // 3 × 106 = 318 ≈ 320
+static const int PP_V_ROW_H      = 68;   // 4 × 68 = 272; starts at 205, ends at 477
+static const int PP_V_BTN_M      = 4;
+static const int PP_V_BTN_W      = PP_V_COL_W - 2 * PP_V_BTN_M;  // 98
+static const int PP_V_BTN_H      = PP_V_ROW_H - 2 * PP_V_BTN_M;  // 60
+static const int PP_V_DOT_Y      = 80;   // y-center of dot row
+static const int PP_V_DOT_GAP    = 44;   // center-to-center spacing
+static const int PP_V_CANCEL_Y   = 163;  // cancel button top y
+static const int PP_V_CANCEL_H   = 35;   // cancel button height
 
 // Numpad key labels (row, col)
 static const char *kPinLabels[4][3] = {
@@ -1197,59 +1338,102 @@ static void drawPinError(const String &msg, int rectX, int rectY, int rectW, int
 void showPinPadScreen(const PinPadState &state) {
     DisplayLock l;
     if (!_gfx) return;
-
     fillScreen(themeBackground);
 
-    // Divider between left panel and numpad
-    fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
+    if (isPortrait()) {
+        // ── Portrait: top info panel (0..PP_V_TOP_H) + numpad below ─────────
 
-    // ── Left panel ────────────────────────────────────────────────────────
+        // Horizontal divider
+        fillRect(0, PP_V_TOP_H - 1, PANEL_W, 1, themeForeground);
 
-    // "Enter PIN" heading
-    drawCenter(PP_LEFT_CX, 38, "Enter PIN", themeForeground, themeBackground, 3);
+        // "Enter PIN"
+        drawCenter(PANEL_W / 2, 28, "Enter PIN", themeForeground, themeBackground, 3);
 
-    // 4 PIN dots centered in the left panel
-    // centers at 48, 86, 124, 162  (PP_LEFT_CX - 3*PP_DOT_GAP/2 = 105 - 57 = 48)
-    int firstDotX = PP_LEFT_CX - 3 * PP_DOT_GAP / 2;
-    for (int i = 0; i < 4; i++) {
-        drawPinDot(firstDotX + i * PP_DOT_GAP, PP_DOT_Y,
-                   i < state.numDigits, themeForeground, themeBackground);
-    }
+        // 4 PIN dots centered in top panel
+        int firstDotX = PANEL_W / 2 - 3 * PP_V_DOT_GAP / 2;
+        for (int i = 0; i < 4; i++) {
+            drawPinDot(firstDotX + i * PP_V_DOT_GAP, PP_V_DOT_Y,
+                       i < state.numDigits, themeForeground, themeBackground);
+        }
 
-    // Attempt counter in red (shown from the second attempt onward)
-    if (state.attemptNum > 0 && !state.showError) {
-        char buf[24];
-        snprintf(buf, sizeof(buf), "Attempt %d of %d",
-                 state.attemptNum, state.maxAttempts);
-        drawCenter(PP_LEFT_CX, 162, buf, TFT_RED, themeBackground, 2);
-    }
-
-    // Error message box (replaces attempt counter area)
-    if (state.showError) {
-        // Attempt counter size 2, above the error box
-        if (state.attemptNum > 0) {
+        // Attempt counter / error
+        if (state.attemptNum > 0 && !state.showError) {
             char buf[24];
             snprintf(buf, sizeof(buf), "Attempt %d of %d",
                      state.attemptNum, state.maxAttempts);
-            drawCenter(PP_LEFT_CX, 143, buf, TFT_RED, themeBackground, 2);
+            drawCenter(PANEL_W / 2, 120, buf, TFT_RED, themeBackground, 2);
         }
-        // Red error box: taller to fit up to 3 lines at size 2
-        drawPinError(state.errorMsg, 4, 157, PP_LEFT_W - 8, 76, PP_LEFT_CX);
-    }
+        if (state.showError) {
+            if (state.attemptNum > 0) {
+                char buf[24];
+                snprintf(buf, sizeof(buf), "Attempt %d of %d",
+                         state.attemptNum, state.maxAttempts);
+                drawCenter(PANEL_W / 2, 108, buf, TFT_RED, themeBackground, 2);
+            }
+            drawPinError(state.errorMsg, 4, 120, PANEL_W - 8, 40, PANEL_W / 2);
+        }
 
-    // Cancel button
-    drawRectBorder(20, 268, PP_LEFT_W - 40, 38, 2, themeForeground);
-    drawCenter(PP_LEFT_CX, 287, "CANCEL", themeForeground, themeBackground, 2);
+        // Cancel button
+        drawRectBorder(20, PP_V_CANCEL_Y, PANEL_W - 40, PP_V_CANCEL_H, 2, themeForeground);
+        drawCenter(PANEL_W / 2, PP_V_CANCEL_Y + PP_V_CANCEL_H / 2,
+                   "CANCEL", themeForeground, themeBackground, 2);
 
-    // ── Numpad ────────────────────────────────────────────────────────────
+        // ── Numpad ───────────────────────────────────────────────────────────
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 3; col++) {
+                int bx = col * PP_V_COL_W + PP_V_BTN_M;
+                int by = PP_V_TOP_H + row * PP_V_ROW_H + PP_V_BTN_M;
+                drawRectBorder(bx, by, PP_V_BTN_W, PP_V_BTN_H, 2, themeForeground);
+                drawCenter(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2,
+                           kPinLabels[row][col], themeForeground, themeBackground, 4);
+            }
+        }
 
-    for (int row = 0; row < 4; row++) {
-        for (int col = 0; col < 3; col++) {
-            int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
-            int by = row * PP_NP_ROW_H + PP_BTN_M;
-            drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, themeForeground);
-            drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
-                       kPinLabels[row][col], themeForeground, themeBackground, 4);
+    } else {
+        // ── Landscape: left info panel (0..PP_NP_X) + numpad right ──────────
+
+        // Vertical divider
+        fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
+
+        // "Enter PIN"
+        drawCenter(PP_LEFT_CX, 38, "Enter PIN", themeForeground, themeBackground, 3);
+
+        // 4 PIN dots
+        int firstDotX = PP_LEFT_CX - 3 * PP_DOT_GAP / 2;
+        for (int i = 0; i < 4; i++) {
+            drawPinDot(firstDotX + i * PP_DOT_GAP, PP_DOT_Y,
+                       i < state.numDigits, themeForeground, themeBackground);
+        }
+
+        if (state.attemptNum > 0 && !state.showError) {
+            char buf[24];
+            snprintf(buf, sizeof(buf), "Attempt %d of %d",
+                     state.attemptNum, state.maxAttempts);
+            drawCenter(PP_LEFT_CX, 162, buf, TFT_RED, themeBackground, 2);
+        }
+        if (state.showError) {
+            if (state.attemptNum > 0) {
+                char buf[24];
+                snprintf(buf, sizeof(buf), "Attempt %d of %d",
+                         state.attemptNum, state.maxAttempts);
+                drawCenter(PP_LEFT_CX, 143, buf, TFT_RED, themeBackground, 2);
+            }
+            drawPinError(state.errorMsg, 4, 157, PP_LEFT_W - 8, 76, PP_LEFT_CX);
+        }
+
+        // Cancel button
+        drawRectBorder(20, 268, PP_LEFT_W - 40, 38, 2, themeForeground);
+        drawCenter(PP_LEFT_CX, 287, "CANCEL", themeForeground, themeBackground, 2);
+
+        // ── Numpad ───────────────────────────────────────────────────────────
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 3; col++) {
+                int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
+                int by = row * PP_NP_ROW_H + PP_BTN_M;
+                drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, themeForeground);
+                drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
+                           kPinLabels[row][col], themeForeground, themeBackground, 4);
+            }
         }
     }
 
@@ -1258,26 +1442,38 @@ void showPinPadScreen(const PinPadState &state) {
 
 // Returns: 0-9=digit, 10=backspace(<), 11=clear(X), 12=cancel, -1=no hit.
 int pinPadHitTest(uint16_t x, uint16_t y) {
+    static const int kMap[4][3] = {{1,2,3},{4,5,6},{7,8,9},{10,0,11}};
+
+    if (isPortrait()) {
+        // Top info panel
+        if (y < (uint16_t)PP_V_TOP_H) {
+            if (y >= (uint16_t)PP_V_CANCEL_Y &&
+                y <= (uint16_t)(PP_V_CANCEL_Y + PP_V_CANCEL_H)) return 12;
+            return -1;
+        }
+        // Numpad
+        int col = x / PP_V_COL_W;
+        int row = (y - PP_V_TOP_H) / PP_V_ROW_H;
+        if (col > 2 || row > 3) return -1;
+        int bx = col * PP_V_COL_W + PP_V_BTN_M;
+        int by = PP_V_TOP_H + row * PP_V_ROW_H + PP_V_BTN_M;
+        if (x < (uint16_t)bx || x > (uint16_t)(bx + PP_V_BTN_W)) return -1;
+        if (y < (uint16_t)by  || y > (uint16_t)(by + PP_V_BTN_H)) return -1;
+        return kMap[row][col];
+    }
+
+    // Landscape
     if (x < (uint16_t)PP_NP_X) {
-        // Left panel — only the Cancel button is interactive
         if (y >= 268 && y <= 306) return 12;
         return -1;
     }
-    // Numpad: map to (col, row)
     int col = (x - PP_NP_X) / PP_NP_COL_W;
     int row = y / PP_NP_ROW_H;
     if (col > 2 || row > 3) return -1;
-    // Check within button margins
     int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
     int by = row * PP_NP_ROW_H + PP_BTN_M;
     if (x < (uint16_t)bx || x > (uint16_t)(bx + PP_BTN_W)) return -1;
     if (y < (uint16_t)by  || y > (uint16_t)(by + PP_BTN_H)) return -1;
-    static const int kMap[4][3] = {
-        {1, 2, 3},
-        {4, 5, 6},
-        {7, 8, 9},
-        {10, 0, 11},
-    };
     return kMap[row][col];
 }
 

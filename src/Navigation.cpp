@@ -361,10 +361,14 @@ void handleTouchButton()
         uint16_t mainTouchY = touch.getY();
         bool isMainAreaTouch = false;
         
-        // Touch area detection based on displayConfig.orientation
-        if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
-          isMainAreaTouch = (mainTouchY <= 305);
-        } else {
+        // Touch area detection: "main area" = not the physical button edge
+        if (displayConfig.orientation == "hi") {
+          isMainAreaTouch = (mainTouchY >= 14);
+        } else if (displayConfig.orientation == "v") {
+          isMainAreaTouch = (mainTouchX >= 14);
+        } else if (displayConfig.orientation == "vi") {
+          isMainAreaTouch = (mainTouchX <= 305);
+        } else { // h
           isMainAreaTouch = (mainTouchX <= 145);
         }
         
@@ -448,12 +452,21 @@ void handleTouchButton()
     uint16_t touchX = touch.getX();
     uint16_t touchY = touch.getY();
     
-    // Define touch button area based on HARDWARE position
-    // Touch coordinates are hardware-based (0-170 x 0-320), don't rotate with display!
-    // Physical button is ALWAYS at the same hardware location: high Y values (Y > 305)
-    // - Vertical (rotation=0): Button at BOTTOM of display → Y > 305
-    // - Horizontal (rotation=1): Button at RIGHT of display → STILL Y > 305 (not X!)
-    bool inButtonArea = (touchY > 305);
+    // Physical button area — same hardware edge regardless of display orientation.
+    // h : landscape normal    → button at landscape bottom → lY > 305
+    // hi: landscape inverted  → button at landscape top    → lY < 14
+    // v : portrait            → button at portrait left    → lX < 14
+    // vi: portrait inverted   → button at portrait right   → lX > 305
+    bool inButtonArea;
+    if (displayConfig.orientation == "hi") {
+      inButtonArea = (touchY < 14);
+    } else if (displayConfig.orientation == "v") {
+      inButtonArea = (touchX < 14);
+    } else if (displayConfig.orientation == "vi") {
+      inButtonArea = (touchX > 305);
+    } else { // h
+      inButtonArea = (touchY > 305);
+    }
     
     // FIRST: Wake from powerConfig.screensaver if active (regardless of touch location)
     if (deviceState.isInState(DeviceState::SCREENSAVER)) {
