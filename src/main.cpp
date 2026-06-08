@@ -1446,7 +1446,6 @@ void setup()
   const int MAX_INIT_TIME = 200; // 200 * 100ms = 20 seconds (5s startup + 20s init = 25s total)
   bool allConnectionsReady = false;
   bool wifiStarted = true;
-  bool internetChecked = false;
   bool serverChecked = false;
   bool websocketStarted = false;
   unsigned long wifiConnectTime = 0; // Track when WiFi first connected
@@ -1466,28 +1465,19 @@ void setup()
       SETUP_PRINT("[STARTUP] WiFi connected!");
     }
     
-    // Step 2: Check Internet (once WiFi is connected, DNS is configured, and not yet checked)
-    // Wait 2+ seconds after WiFi connect to allow DNS/DHCP/gateway to stabilize
-    if (networkStatus.confirmed.wifi && !internetChecked && (millis() - wifiConnectTime > 2000)) {
-      SETUP_PRINT("[STARTUP] Checking Internet...");
-      bool hasInternet = checkInternetConnectivity();
-      internetChecked = true;
-      if (hasInternet) {
-        networkStatus.confirmed.internet = true;
-        SETUP_PRINT("[STARTUP] Internet OK!");
-      } else {
-        SETUP_PRINT("[STARTUP] No Internet connection");
-        if (networkStatus.errors.internet < 99) networkStatus.errors.internet++;
-      }
-    }
-    
-    // Step 3: Check Server (once Internet is confirmed and not yet checked)
-    if (networkStatus.confirmed.internet && !serverChecked) {
+    // Step 2+3: Combined Internet + Server check.
+    // A successful TCP connect to lnbitsServer:443 proves both internet access
+    // and server reachability in one shot — avoids opening 3-6 extra TCP
+    // connections (HTTP internet-check fallbacks) that overwhelm the connection-
+    // tracking table on routers like Fritzbox 7510 and cause SSL timeouts.
+    // Wait 2 s after WiFi connect to allow DNS/DHCP/gateway to stabilize.
+    if (networkStatus.confirmed.wifi && !serverChecked && (millis() - wifiConnectTime > 2000)) {
       SETUP_PRINT("[STARTUP] Checking Server...");
       bool serverReachable = checkServerReachability();
       serverChecked = true;
       if (serverReachable) {
-        networkStatus.confirmed.server = true;
+        networkStatus.confirmed.internet = true; // server reachable → internet works
+        networkStatus.confirmed.server   = true;
         SETUP_PRINT("[STARTUP] Server OK!");
       } else {
         SETUP_PRINT("[STARTUP] Server not reachable");
