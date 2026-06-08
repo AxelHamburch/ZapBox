@@ -1279,7 +1279,7 @@ static const char *kPinLabels[4][3] = {
     {"1","2","3"},
     {"4","5","6"},
     {"7","8","9"},
-    {"<","0","X"},
+    {"X","0","<"},
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -1442,7 +1442,7 @@ void showPinPadScreen(const PinPadState &state) {
 
 // Returns: 0-9=digit, 10=backspace(<), 11=clear(X), 12=cancel, -1=no hit.
 int pinPadHitTest(uint16_t x, uint16_t y) {
-    static const int kMap[4][3] = {{1,2,3},{4,5,6},{7,8,9},{10,0,11}};
+    static const int kMap[4][3] = {{1,2,3},{4,5,6},{7,8,9},{11,0,10}};
 
     if (isPortrait()) {
         // Top info panel
