@@ -440,6 +440,7 @@ struct NetworkStatus {
   unsigned long lastPingTime = 0;
   unsigned long lastPongTime = 0;
   unsigned long lastServerPingTime = 0; // set when server sends WStype_PING to us
+  unsigned long wsConnectedTime    = 0; // set when WebSocket TCP connection is established
   bool waitingForPong = false;
 };
 

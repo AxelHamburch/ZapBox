@@ -1475,6 +1475,7 @@ void setup()
       SETUP_PRINT("[STARTUP] Checking Server...");
       bool serverReachable = checkServerReachability();
       serverChecked = true;
+      lastInternetCheck = millis(); // delay first periodic check by 30s — avoids competing with initial BTC fetch
       if (serverReachable) {
         networkStatus.confirmed.internet = true; // server reachable → internet works
         networkStatus.confirmed.server   = true;
@@ -2639,13 +2640,15 @@ void loop()
         // Defer: NFC is exchanging APDUs — HTTP activity on Core 0 disrupts I2C timing
         Serial.println("[INTERNET] Deferred - NFC session active");
       } else if (webSocket.isConnected() &&
-                 networkStatus.lastServerPingTime > 0 &&
-                 millis() - networkStatus.lastServerPingTime < 45000) {
-        // WebSocket is alive and server pinged us within the last 45 s — internet is clearly
-        // working. Skip the HTTP connectivity check to avoid opening competing TCP connections
-        // that can overwhelm the router's connection-tracking table (especially on Fritzbox).
-        Serial.println("[INTERNET] Skipping check - WebSocket active (last server ping: "
-                       + String((millis() - networkStatus.lastServerPingTime) / 1000) + "s ago)");
+                 ((networkStatus.lastServerPingTime > 0 && millis() - networkStatus.lastServerPingTime < 45000) ||
+                  (networkStatus.wsConnectedTime    > 0 && millis() - networkStatus.wsConnectedTime    < 60000))) {
+        // WebSocket alive: skip HTTP check if server pinged us within 45s OR if WS just connected
+        // (first ping arrives ~20s after connect, so the 60s window covers the gap).
+        // This avoids competing TCP connections that overwhelm Fritzbox connection-tracking.
+        String reason = (networkStatus.lastServerPingTime > 0 && millis() - networkStatus.lastServerPingTime < 45000)
+                        ? "last server ping: " + String((millis() - networkStatus.lastServerPingTime) / 1000) + "s ago"
+                        : "WS just connected (" + String((millis() - networkStatus.wsConnectedTime) / 1000) + "s ago)";
+        Serial.println("[INTERNET] Skipping check - WebSocket active (" + reason + ")");
         lastInternetCheck = millis();
         networkStatus.confirmed.internet = true;
       } else if (WiFi.status() == WL_CONNECTED) {
