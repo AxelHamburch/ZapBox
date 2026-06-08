@@ -353,22 +353,37 @@ bool checkInternetConnectivity()
   return false;
 }
 
-// TCP-based Server reachability check (test if LNbits server port is open)
+// TCP-based Server reachability check (test if LNbits server port is open).
+// Retries up to 3 times with a 2 s pause — a single transient DNS failure
+// (common on Fritzbox at startup) must not cause a 20-second startup delay.
 bool checkServerReachability()
 {
-  WiFiClient client;
   LOG_INFO("Network", String("Testing server: ") + lnbitsServer + String(":443..."));
-  
-  bool serverReachable = client.connect(lnbitsServer.c_str(), 443, 2000); // 2 second timeout
-  
-  if (serverReachable) {
-    LOG_INFO("Network", "Server reachable (port 443 open)");
-    client.stop();
-  } else {
-    LOG_WARN("Network", "Server NOT reachable (port 443 closed/timeout)");
+
+  const int   maxAttempts  = 3;
+  const int   retryDelayMs = 2000;
+
+  for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+    WiFiClient client;
+    bool ok = client.connect(lnbitsServer.c_str(), 443, 2000);
+    if (ok) {
+      client.stop();
+      if (attempt > 1) {
+        LOG_INFO("Network", String("Server reachable on attempt ") + String(attempt));
+      } else {
+        LOG_INFO("Network", "Server reachable (port 443 open)");
+      }
+      return true;
+    }
+    if (attempt < maxAttempts) {
+      LOG_WARN("Network", String("Server check attempt ") + String(attempt)
+               + "/" + String(maxAttempts) + " failed — retrying in 2 s...");
+      delay(retryDelayMs);
+    }
   }
-  
-  return serverReachable;
+
+  LOG_WARN("Network", "Server NOT reachable (port 443 closed/timeout)");
+  return false;
 }
 
 // After AUTH_FAIL: pause briefly, then try once more.
