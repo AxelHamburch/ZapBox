@@ -2677,35 +2677,35 @@ void loop()
               Serial.println("[RECOVERY] Internet restored - fetching Bitcoin data for ticker...");
               HTTPClient http;
 
-              // Fetch BTC price using configured currency
-              String currencyLower = currency;
-              currencyLower.toLowerCase();
-              String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
-              http.begin(apiUrl);
-              http.setTimeout(5000);
-              int httpCode = http.GET();
-              if (httpCode == 200) {
-                String payload = http.getString();
+              // Fetch BTC price from mempool.space (same server as block height)
+              String currencyUpper = currency;
+              currencyUpper.toUpperCase();
+              http.begin("https://mempool.space/api/v1/prices");
+              http.setTimeout(8000);
+              if (http.GET() == 200) {
                 JsonDocument doc;
-                DeserializationError error = deserializeJson(doc, payload);
-                if (!error && doc["bitcoin"].is<JsonObject>()) {
-                  float price = doc["bitcoin"][currencyLower];
-                  bitcoinData.price = String((int)price);
-                  Serial.println("[BTC] Recovery price updated: " + bitcoinData.price + " " + currency);
+                if (!deserializeJson(doc, http.getString())) {
+                  long price = doc[currencyUpper] | 0L;
+                  if (price > 0) {
+                    bitcoinData.price = String(price);
+                    Serial.println("[BTC] Recovery price updated: " + bitcoinData.price + " " + currency);
+                  }
                 }
               }
               http.end();
-              
+
               delay(100);
-              
+
               // Fetch block height
               http.begin("https://mempool.space/api/blocks/tip/height");
-              http.setTimeout(5000);
-              httpCode = http.GET();
-              if (httpCode == 200) {
-                bitcoinData.blockHigh = http.getString();
-                bitcoinData.blockHigh.trim();
-                Serial.println("[BTC] Recovery block height updated: " + bitcoinData.blockHigh);
+              http.setTimeout(8000);
+              if (http.GET() == 200) {
+                String val = http.getString();
+                val.trim();
+                if (val.length() > 0) {
+                  bitcoinData.blockHigh = val;
+                  Serial.println("[BTC] Recovery block height updated: " + bitcoinData.blockHigh);
+                }
               }
               http.end();
               

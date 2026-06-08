@@ -225,21 +225,26 @@ void fetchBitcoinData()
   lastFetchAttempt = millis();
   
   HTTPClient http;
-  String currencyLower = currency;
-  currencyLower.toLowerCase();
-  
-  // Fetch BTC price from CoinGecko — keep last known value on failure
+  // mempool.space /api/v1/prices supports: USD, EUR, GBP, CAD, CHF, AUD, JPY
+  // Using uppercase currency codes as returned by the API.
+  String currencyUpper = currency;
+  currencyUpper.toUpperCase();
+
+  // Fetch BTC price from mempool.space — same server as block height fetch
   bool priceOk = false;
-  String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
-  http.begin(apiUrl);
-  http.setTimeout(5000);
+  http.begin("https://mempool.space/api/v1/prices");
+  http.setTimeout(8000);
 
   if (http.GET() == 200) {
     JsonDocument doc;
-    if (!deserializeJson(doc, http.getString()) && doc["bitcoin"].is<JsonObject>()) {
-      float price = doc["bitcoin"][currencyLower];
-      bitcoinData.price = String((int)price);
-      priceOk = true;
+    if (!deserializeJson(doc, http.getString())) {
+      long price = doc[currencyUpper] | 0L;
+      if (price > 0) {
+        bitcoinData.price = String(price);
+        priceOk = true;
+      } else {
+        Serial.println("[BTC] Currency '" + currencyUpper + "' not in mempool.space prices — keeping last value");
+      }
     }
   }
   http.end();
@@ -253,10 +258,10 @@ void fetchBitcoinData()
     return;
   }
 
-  // Fetch block height from Mempool — keep last known value on failure
+  // Fetch block height from mempool.space — keep last known value on failure
   bool blockOk = false;
   http.begin("https://mempool.space/api/blocks/tip/height");
-  http.setTimeout(5000);
+  http.setTimeout(8000);
 
   if (http.GET() == 200) {
     String val = http.getString();
