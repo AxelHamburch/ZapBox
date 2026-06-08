@@ -272,7 +272,27 @@ void fetchBitcoinData()
     }
   }
   http.end();
-  
+
+  // If price failed but block succeeded: retry price once. The block fetch just established
+  // a connection to mempool.space so the router's connection-tracking entry is now warm —
+  // the retry usually succeeds immediately where the first cold attempt was dropped.
+  if (!priceOk && blockOk && !deviceState.isInState(DeviceState::CONFIG_MODE)) {
+    delay(300);
+    Serial.println("[BTC] Price failed, block OK — retrying price (connection now warm)...");
+    http.begin("https://mempool.space/api/v1/prices");
+    http.setTimeout(8000);
+    if (http.GET() == 200) {
+      JsonDocument doc2;
+      if (!deserializeJson(doc2, http.getString())) {
+        long price = doc2[currencyUpper] | 0L;
+        if (price > 0) { bitcoinData.price = String(price); priceOk = true; }
+      }
+    }
+    http.end();
+    if (priceOk) Serial.println("[BTC] Price retry succeeded: " + bitcoinData.price);
+    else         Serial.println("[BTC] Price retry also failed — keeping last value: " + bitcoinData.price);
+  }
+
   Serial.println("[BTC] Source: mempool.space");
   if (!priceOk)  Serial.println("[BTC] Price fetch failed — keeping last value: " + bitcoinData.price);
   if (!blockOk)  Serial.println("[BTC] Block fetch failed — keeping last value: " + bitcoinData.blockHigh);
