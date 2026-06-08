@@ -228,21 +228,22 @@ void fetchBitcoinData()
   String currencyLower = currency;
   currencyLower.toLowerCase();
   
-  // Fetch BTC price from CoinGecko
-  bitcoinData.price = "Error";
+  // Fetch BTC price from CoinGecko — keep last known value on failure
+  bool priceOk = false;
   String apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=" + currencyLower;
   http.begin(apiUrl);
   http.setTimeout(5000);
-  
+
   if (http.GET() == 200) {
     JsonDocument doc;
     if (!deserializeJson(doc, http.getString()) && doc["bitcoin"].is<JsonObject>()) {
       float price = doc["bitcoin"][currencyLower];
       bitcoinData.price = String((int)price);
+      priceOk = true;
     }
   }
   http.end();
-  
+
   delay(200); // SSL cleanup delay
 
   // Second guard: config mode might have been triggered while the first
@@ -251,23 +252,29 @@ void fetchBitcoinData()
     Serial.println("[BTC] Aborting mid-fetch - CONFIG_MODE active");
     return;
   }
-  
-  // Fetch block height from Mempool
-  bitcoinData.blockHigh = "Error";
+
+  // Fetch block height from Mempool — keep last known value on failure
+  bool blockOk = false;
   http.begin("https://mempool.space/api/blocks/tip/height");
   http.setTimeout(5000);
-  
+
   if (http.GET() == 200) {
-    bitcoinData.blockHigh = http.getString();
-    bitcoinData.blockHigh.trim();
+    String val = http.getString();
+    val.trim();
+    if (val.length() > 0) {
+      bitcoinData.blockHigh = val;
+      blockOk = true;
+    }
   }
   http.end();
   
+  if (!priceOk)  Serial.println("[BTC] Price fetch failed — keeping last value: " + bitcoinData.price);
+  if (!blockOk)  Serial.println("[BTC] Block fetch failed — keeping last value: " + bitcoinData.blockHigh);
   Serial.println("[BTC] Price: " + bitcoinData.price + " " + currency);
   Serial.println("[BTC] Block height: " + bitcoinData.blockHigh);
-  
-  // Check if any data failed to load
-  btcDataHasError = (bitcoinData.price == "Error" || bitcoinData.blockHigh == "Error");
+
+  // Retry sooner if either request failed; stale display values are preserved
+  btcDataHasError = (!priceOk || !blockOk);
   if (btcDataHasError) {
     Serial.println("[BTC] ERROR detected - will retry in 1 minute instead of 5 minutes");
   }
