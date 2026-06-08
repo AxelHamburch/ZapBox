@@ -269,7 +269,8 @@ void sendPinSubmit(const String &sessionId, const String &pin)
                  + "&pin=" + pin;
     LOG_INFO("PIN", String("PIN submit URL: ") + url);
     http.begin(url);
-    http.setTimeout(10000);
+    http.setConnectTimeout(5000);
+    http.setTimeout(7000);
 
     int httpCode = http.POST("");
     if (httpCode == 200) {

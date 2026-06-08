@@ -1941,7 +1941,9 @@ void loop()
               productSelectionState.showTime  = millis();
               LOG_INFO("PIN", "Card blocked – returning to QR screen after 10s");
             } else {
-              pinPadState.showError = false;
+              pinPadState.showError    = false;
+              pinPadState.submitted    = false;
+              pinPadState.pendingShown = false;
               showPinPadScreen(pinPadState);
               LOG_INFO("PIN", "PIN error cleared – ready for retry");
             }
