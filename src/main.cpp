@@ -1447,6 +1447,7 @@ void setup()
   bool allConnectionsReady = false;
   bool wifiStarted = true;
   bool serverChecked = false;
+  unsigned long serverCheckDoneTime = 0; // when server check finished
   bool websocketStarted = false;
   unsigned long wifiConnectTime = 0; // Track when WiFi first connected
   
@@ -1475,6 +1476,7 @@ void setup()
       SETUP_PRINT("[STARTUP] Checking Server...");
       bool serverReachable = checkServerReachability();
       serverChecked = true;
+      serverCheckDoneTime = millis();
       lastInternetCheck = millis(); // delay first periodic check by 30s — avoids competing with initial BTC fetch
       if (serverReachable) {
         networkStatus.confirmed.internet = true; // server reachable → internet works
@@ -1487,7 +1489,11 @@ void setup()
     }
     
     // Step 4: Start WebSocket (once Server is confirmed and not yet started)
-    if (networkStatus.confirmed.server && !websocketStarted) {
+    // Wait 3 s after the TCP server-probe so the Fritzbox connection-tracking table
+    // can release the port-443 entry before the WebSocket opens a new SSL connection.
+    // Without this gap the first WS SSL handshake is typically dropped by the router,
+    // adding ~26 s of unnecessary retransmit backoff.
+    if (networkStatus.confirmed.server && !websocketStarted && serverCheckDoneTime > 0 && (millis() - serverCheckDoneTime > 3000)) {
       SETUP_PRINT("[STARTUP] Starting WebSocket connection...");
       if (lightningConfig.thresholdKey.length() > 0) {
         webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + lightningConfig.thresholdKey);
