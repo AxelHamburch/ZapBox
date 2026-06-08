@@ -273,6 +273,7 @@ void fetchBitcoinData()
   }
   http.end();
   
+  Serial.println("[BTC] Source: mempool.space");
   if (!priceOk)  Serial.println("[BTC] Price fetch failed — keeping last value: " + bitcoinData.price);
   if (!blockOk)  Serial.println("[BTC] Block fetch failed — keeping last value: " + bitcoinData.blockHigh);
   Serial.println("[BTC] Price: " + bitcoinData.price + " " + currency);
