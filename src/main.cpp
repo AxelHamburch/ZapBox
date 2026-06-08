@@ -1935,9 +1935,10 @@ void loop()
           uint32_t errDur = pinPadState.blocked ? 10000 : 5000;
           if (millis() - pinPadState.errorStart > errDur) {
             if (pinPadState.blocked) {
-              pinPadState.active    = false;
-              nfcPendingScreenShown = false;
-              needsQRRedraw         = true;
+              pinPadState.active              = false;
+              nfcPendingScreenShown           = false;
+              needsQRRedraw                   = true;
+              productSelectionState.showTime  = millis();
               LOG_INFO("PIN", "Card blocked – returning to QR screen after 10s");
             } else {
               pinPadState.showError = false;
@@ -1953,11 +1954,12 @@ void loop()
         } else if (millis() - pinPadState.activatedAt > 210000) {
           // Device-side fallback: 210s timeout (30s over server timeout of 180s).
           // Catches the case where the server's timeout WS event is lost.
-          pinPadState.active       = false;
-          pinPadState.submitted    = false;
-          pinPadState.pendingShown = false;
-          nfcPendingScreenShown    = false;
-          needsQRRedraw            = true;
+          pinPadState.active             = false;
+          pinPadState.submitted          = false;
+          pinPadState.pendingShown       = false;
+          nfcPendingScreenShown          = false;
+          needsQRRedraw                  = true;
+          productSelectionState.showTime = millis();
           LOG_WARN("PIN", "PIN pad device-side timeout – returning to QR screen");
         }
       } else if (extensionConfig.nfcPaymentPending) {
@@ -2113,6 +2115,7 @@ void loop()
               extensionConfig.nfcPaymentPending = false;
               nfcPendingScreenShown             = false;
               needsQRRedraw                     = true;
+              productSelectionState.showTime    = millis();
               LOG_INFO("PIN", "PIN entry cancelled by user");
             } else if (!pinPadState.showError) {
               // Normal input — only when no error is displayed
@@ -2451,7 +2454,7 @@ void loop()
       if (multiChannelConfig.btcTickerMode == "always") {
         if (multiChannelConfig.mode != "off") {
           // ALWAYS mode Duo/Quattro: Show ticker after PRODUCT_SELECTION_DELAY on products
-          if (!multiChannelConfig.btcTickerActive && productSelectionState.showTime > 0 && 
+          if (!pinPadState.active && !multiChannelConfig.btcTickerActive && productSelectionState.showTime > 0 &&
               (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
             Serial.println("[SCREEN] Showing Bitcoin ticker screen after timeout (ALWAYS mode - Duo/Quattro)");
             btctickerScreen();
@@ -2461,7 +2464,7 @@ void loop()
           }
         } else {
           // ALWAYS mode Single: Return to ticker after PRODUCT_TIMEOUT on QR
-          if (!multiChannelConfig.btcTickerActive && productSelectionState.showTime > 0 && 
+          if (!pinPadState.active && !multiChannelConfig.btcTickerActive && productSelectionState.showTime > 0 &&
               (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
             Serial.println("[SCREEN] Returning to ticker after timeout (ALWAYS mode - Single)");
             btctickerScreen();
@@ -2472,6 +2475,7 @@ void loop()
       } else if (multiChannelConfig.btcTickerMode == "off" && multiChannelConfig.mode != "off") {
         // OFF mode with Duo/Quattro: Return to Product No.1 after timeout
         if (productSelectionState.showTime > 0 &&
+            !pinPadState.active &&
             !extensionConfig.nfcPaymentPending &&
             (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
           if (multiChannelConfig.currentProduct > 0) {
@@ -2547,6 +2551,7 @@ void loop()
               }
               productSelectionState.showTime = 0; // Reset timer
             } else if (multiChannelConfig.currentProduct > 0 && !deviceState.isInState(DeviceState::PRODUCT_SELECTION) &&
+                      !pinPadState.active &&
                       !extensionConfig.nfcPaymentPending &&
                       (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
               // Product showing: Return to Product No.1 after PRODUCT_SELECTION_DELAY
