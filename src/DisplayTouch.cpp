@@ -1308,12 +1308,16 @@ static void drawPinError(const String &msg, int rectX, int rectY, int rectW, int
     const int lineGap = 4;
     const int maxChars = rectW / charW;
 
-    // Word-wrap into up to 3 lines
+    // Split on explicit newlines, then word-wrap each segment (up to 3 lines total)
     String lines[3];
     int numLines = 0;
     String rem = msg;
     while (numLines < 3 && rem.length() > 0) {
-        if ((int)rem.length() <= maxChars) {
+        int nl = rem.indexOf('\n');
+        if (nl >= 0) {
+            lines[numLines++] = rem.substring(0, nl);
+            rem = rem.substring(nl + 1);
+        } else if ((int)rem.length() <= maxChars) {
             lines[numLines++] = rem;
             rem = "";
         } else {
@@ -1364,13 +1368,15 @@ void showPinPadScreen(const PinPadState &state) {
             drawCenter(PANEL_W / 2, 120, buf, TFT_RED, themeBackground, 2);
         }
         if (state.showError) {
-            if (state.attemptNum > 0) {
+            bool isTimeout = state.errorMsg.indexOf("timed out") >= 0;
+            if (state.attemptNum > 0 && !isTimeout) {
                 char buf[24];
                 snprintf(buf, sizeof(buf), "Attempt %d of %d",
                          state.attemptNum, state.maxAttempts);
                 drawCenter(PANEL_W / 2, 108, buf, TFT_RED, themeBackground, 2);
             }
-            drawPinError(state.errorMsg, 4, 120, PANEL_W - 8, 40, PANEL_W / 2);
+            String displayMsg = isTimeout ? "PIN entry\ntimed out." : state.errorMsg;
+            drawPinError(displayMsg, 4, 120, PANEL_W - 8, 40, PANEL_W / 2);
         }
 
         // Cancel button
@@ -1412,13 +1418,15 @@ void showPinPadScreen(const PinPadState &state) {
             drawCenter(PP_LEFT_CX, 162, buf, TFT_RED, themeBackground, 2);
         }
         if (state.showError) {
-            if (state.attemptNum > 0) {
+            bool isTimeout = state.errorMsg.indexOf("timed out") >= 0;
+            if (state.attemptNum > 0 && !isTimeout) {
                 char buf[24];
                 snprintf(buf, sizeof(buf), "Attempt %d of %d",
                          state.attemptNum, state.maxAttempts);
                 drawCenter(PP_LEFT_CX, 143, buf, TFT_RED, themeBackground, 2);
             }
-            drawPinError(state.errorMsg, 4, 157, PP_LEFT_W - 8, 76, PP_LEFT_CX);
+            String displayMsg = isTimeout ? "PIN entry\ntimed out." : state.errorMsg;
+            drawPinError(displayMsg, 4, 157, PP_LEFT_W - 8, 76, PP_LEFT_CX);
         }
 
         // Cancel button
