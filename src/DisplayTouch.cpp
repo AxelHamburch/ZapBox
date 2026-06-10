@@ -976,6 +976,8 @@ static void drawQRAt(const char *text, int lx, int ly, int mod_size,
     version = 11;
   } else {
     // Too long for version 11 — clear the area instead of crashing
+    Serial.printf("[QR] Content too long for QR v11: %u chars (max %u) — area left empty\n",
+                  (unsigned)len, (unsigned)v11Cap);
     fillRect(lx, ly, areaPx, areaPx, bg);
     return;
   }
@@ -1717,15 +1719,22 @@ void showMiniPosQRScreen() {
     uint16_t qrBg = themeBackground;
     if (themeInvertQr()) { qrFg = themeBackground; qrBg = themeForeground; }
 
+    // BOLT11 is bech32 (case-insensitive). Uppercase the QR content so the
+    // encoder can use alphanumeric mode: QR version 11 then holds 468 chars
+    // instead of 321 — needed for invoices with route hints. The NFC tag
+    // keeps the original lowercase URI (written elsewhere).
+    String qrText = String(lightningConfig.lightning);
+    qrText.toUpperCase();
+
     fillScreen(qrBg);
     if (isPortrait()) {
-        drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+        drawQRAt(qrText.c_str(), QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
         drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
         int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     } else {
-        drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+        drawQRAt(qrText.c_str(), QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
         drawLabelBox(words, wordCount, qrFg, qrBg);
         int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);

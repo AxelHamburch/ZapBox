@@ -40,7 +40,7 @@ extern DisplayConfig displayConfig;
 // ============================================================================
 
 struct LightningConfig {
-  char lightning[400] = "";     // Main Lightning URL/QR code (BOLT11 invoices in Mini-PoS mode can exceed 300 chars)
+  char lightning[640] = "";     // Main Lightning URL/QR code (BOLT11 invoices with route hints can exceed 400 chars)
   String thresholdKey = "";     // Optional threshold mode key
   String thresholdAmount = "";  // Threshold amount in sats
   String thresholdPin = "";     // GPIO pin for threshold

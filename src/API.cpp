@@ -433,6 +433,7 @@ bool requestMiniPosInvoice(const String &amountStr)
     return false;
   }
 
+  LOG_INFO("MiniPoS", String("BOLT11 length: ") + String(strlen(bolt11)) + " chars");
   miniPosState.paymentHash = String(hash);
   miniPosState.amountLine = amountStr + " " + miniPosConfig.currency;
   miniPosState.invoicePending = true;

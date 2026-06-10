@@ -23,7 +23,7 @@ static const uint8_t CC_EXPECTED[4] = {0xE1, 0x10, 0x6D, 0x00};
 // ─── Module state ────────────────────────────────────────────────────────────
 
 static bool initialized    = false;
-static char lastWritten[400] = "";  // last URL written to chip (matches lightningConfig.lightning)
+static char lastWritten[640] = "";  // last URL written to chip (matches lightningConfig.lightning)
 
 // ─── I²C helpers ─────────────────────────────────────────────────────────────
 
@@ -118,13 +118,15 @@ static bool nt3hWriteNdef(const char* uri) {
     // Short record: D1 01 [len1] 55 — Long record: C1 01 [len4] 55
     size_t recordLen  = (shortRec ? 4 : 7) + payloadLen;
 
-    if (uriLen > 380) {
-        LOG_WARN("NT3H", "URI too long (>380 chars) — skipping NDEF write");
+    // NT3H2111 user memory is 872 B; NDEF overhead is 12 B max.
+    // 600 chars covers BOLT11 invoices with route hints.
+    if (uriLen > 600) {
+        LOG_WARN("NT3H", "URI too long (>600 chars) — skipping NDEF write");
         return false;
     }
 
-    // Flat buffer: max 3 (TLV hdr) + 7 + 1 + 380 + 1 = 392 bytes
-    uint8_t buf[400] = {};
+    // Flat buffer: max 3 (TLV hdr) + 7 + 1 + 600 + 1 = 612 bytes
+    uint8_t buf[620] = {};
     size_t  pos = 0;
 
     // NDEF Message TLV header
@@ -317,7 +319,10 @@ void nfcNT3H2111UpdateIfChanged() {
     if (strncmp(current, lastWritten, sizeof(lastWritten) - 1) == 0) return;
 
     LOG_INFO("NT3H", "LNURL changed — updating NDEF");
-    if (nt3hWriteNdef(current)) {
+    // Also remember an over-long string: retrying identical content every
+    // loop iteration cannot succeed and would spam the log. Transient I2C
+    // failures (e.g. RF field active) keep retrying as before.
+    if (nt3hWriteNdef(current) || strlen(current) > 600) {
         strncpy(lastWritten, current, sizeof(lastWritten) - 1);
         lastWritten[sizeof(lastWritten) - 1] = '\0';
     }
