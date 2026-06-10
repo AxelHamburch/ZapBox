@@ -45,6 +45,12 @@
 #define FORMAT_ON_FAIL true
 #define PARAM_FILE "/config.json"
 
+// loop() is a very large function and the Mini-PoS flow renders QR version 11
+// (BOLT11 invoices) from inside the touch handler — the QRCode library uses
+// sizeable stack VLAs for that. The default 8 KB loopTask stack overflows
+// (observed: stack canary panic right after invoice creation), so raise it.
+SET_LOOP_TASK_STACK_SIZE(16 * 1024);
+
 TaskHandle_t Task1;
 
 String qrFormat = "bech32"; // "bech32" or "lud17"

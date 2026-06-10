@@ -1318,9 +1318,7 @@
             const singleInfo = document.getElementById('singleChannelInfo');
             const miniPos = document.getElementById('miniPosFields');
             const mode = multi ? multi.value : 'off';
-            // Mini-PoS shows its own config plus the channel fields, so the
-            // Activation Options (One for All) apply to Mini-PoS as well.
-            if (fields) fields.style.display = (mode === 'duo' || mode === 'minipos') ? 'block' : 'none';
+            if (fields) fields.style.display = (mode === 'duo') ? 'block' : 'none';
             if (singleInfo) singleInfo.style.display = (mode === 'off') ? 'block' : 'none';
             if (miniPos) miniPos.style.display = (mode === 'minipos') ? 'block' : 'none';
         }

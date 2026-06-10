@@ -945,7 +945,13 @@ static void drawQRAt(const char *text, int lx, int ly, int mod_size,
                      uint16_t fg, uint16_t bg) {
   if (!text || !*text) return;
   QRCode qr;
-  uint8_t qrBuf[qrcode_getBufferSize(11)];
+  // static: 466 B would otherwise sit on the caller's stack — all callers
+  // hold DisplayLock, so access is serialized.
+  // Size = qrcode_getBufferSize(11) = ((4*11+17)^2 + 7) / 8, as a constant
+  // because the library function is not constexpr.
+  constexpr int kQrMaxVersion = 11;
+  constexpr int kQrSide = 4 * kQrMaxVersion + 17;
+  static uint8_t qrBuf[(kQrSide * kQrSide + 7) / 8];
   int areaPx = 49 * mod_size;
   if (qrcode_initText(&qr, qrBuf, 8, 0, text) < 0) {
     if (qrcode_initText(&qr, qrBuf, 11, 0, text) < 0) {
