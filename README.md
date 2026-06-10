@@ -732,6 +732,49 @@ Configuration is done via the [Web Installer](installer/index.html) with browser
 
 ### Advanced Features
 
+#### Mini-PoS Mode (Touch 3.5" only)
+**Available on JC3248W535C Touch 3.5" — requires the [zapbox_extension](https://github.com/AxelHamburch/zapbox_extension) v2.3.0+ on the LNbits server**
+
+Turns the ZapBox into a small point-of-sale terminal: instead of a fixed QR code, the customer-facing display shows an **amount entry screen**. The operator types an amount, presses **INVOICE**, and the ZapBox requests a Lightning invoice from the LNbits server and shows it as a QR code. After payment, **CH01 (GPIO 5)** switches — like in single-channel mode.
+
+**Payment flow:**
+1. Enter the amount on the touch numpad (e.g. `5` → automatically normalized to `5.00 EUR`)
+2. Press **INVOICE** — the ZapBox requests a BOLT11 invoice via the zapbox_extension
+3. The invoice is shown as QR code; lines 1+2 of the label come from the LNbits pin-5 switch entry, line 3 shows the amount
+4. The customer pays by:
+   - **scanning the QR code** with any Lightning wallet
+   - **tapping their phone** on the NFC Tag 2 (NT3H2111) — the tag carries the invoice
+   - **tapping a Bolt Card** on the PN532 reader — the card pays the pending invoice (PIN protection supported)
+5. On settlement the server pushes the trigger over WebSocket: CH01 (GPIO 5) switches with the duration configured for pin 5 in LNbits (fallback: 3000 ms), the display shows **PAID** for 3 seconds, then returns to the empty entry screen
+
+**Entry screen:**
+- Numpad with decimal point (the `.` key is disabled when *Decimal separator: NO* is configured)
+- Amounts up to 7 characters (`xxxx.xx` or `xxxxxxx`)
+- **INVOICE** — request the invoice for the entered amount
+- **LAST PAY** — recalls the amount of the last settled payment; it is shown orange/locked for 5 seconds, then stays in the field and can be confirmed or edited
+- **CANCEL** button (bottom-right on the QR screen) — aborts the pending invoice; a touch anywhere else does nothing
+- Unpaid invoices expire after `INVOICE_TIMEOUT` (default 3 minutes, build flag) and the device returns to the entry screen
+
+**BTC ticker as screensaver:**
+With *BTC-Ticker Mode: ON - always*, the ticker acts as a screensaver: a single touch on the ticker opens the amount entry screen; after `PRODUCT_TIMEOUT` (default 30 s) of inactivity on the entry screen the device returns to the ticker. With ticker mode *OFF* or *when selecting*, the entry screen is shown permanently.
+
+**NFC Tag idle content:**
+While no invoice is pending, the NFC Tag 2 carries `https://zapbox.space` — a curious phone tap on the idle device opens the project website. As soon as an invoice is created, the tag carries the invoice; after payment/cancel/timeout it returns to the URL.
+
+**Activation Options (One for All):**
+The *Activation Options* dropdown is also available in Mini-PoS mode. With **One for All**, a paid invoice additionally triggers the channels CH02–CH06 that are configured as relay/servo (configure the channel functions in Multi-channel mode first — the values are kept when switching back to Mini-PoS).
+
+**Configuration (Web Installer → ZapBox Mode → Mini-PoS):**
+| Field | Description |
+|-------|-------------|
+| Currency (ISO Code) for Payments | e.g. `EUR`, `USD`, `GBP` — or `Sat` for satoshi (default: `EUR`) |
+| Decimal separator | `YES` = two decimal places (e.g. `0.50 EUR`), `NO` = whole numbers (e.g. `1000 Sat`) |
+| Wallet Invoice Key | the LNbits wallet "Invoice/read key" (32 characters) of the wallet that receives the payments |
+
+The *Device settings string* must be configured as usual — it identifies the LNbits server and the ZapBox device entry (used for label fetch, WebSocket push and Bolt Card payments).
+
+**Use Cases**: Market stalls, flea markets, tip boxes, club bars, small shops — anywhere a fixed-price switch is not enough and a full PoS is too much.
+
 #### Multi-Channel-Control Mode (Touch Variant)
 **Available on T-Display-S3 Touch variant only**
 

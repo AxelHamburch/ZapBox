@@ -129,6 +129,9 @@ const unsigned long GRACE_PERIOD_MS = 1000;  // 1 second grace period after wake
 static const uint32_t MINIPOS_LASTPAY_LOCK_MS = 5000;  // orange readonly phase
 static const uint32_t MINIPOS_INFO_MS         = 2000;  // transient info messages
 
+// Mini-PoS helpers (defined before loop(), used from setup() as well)
+static void miniPosIdleNfcTag();
+
 const unsigned long PRODUCT_SELECTION_DELAY = PRODUCT_TIMEOUT; // Time to return to product selection
 const unsigned long BTC_TICKER_TIMEOUT_DELAY = BTCTICKER_TIMEOUT; // Time to hide ticker in selecting mode
 
@@ -778,13 +781,18 @@ void readFiles()
           miniPosConfig.invoiceKey.trim();
         }
       }
-      // Mini-PoS owns the screen: ticker and threshold mode are disabled.
-      multiChannelConfig.btcTickerMode = "off";
+      // Mini-PoS owns the screen. Threshold mode is disabled; the BTC ticker
+      // is only supported in "always" mode where it acts as a screensaver
+      // (touch → amount entry, idle PRODUCT_TIMEOUT → back to ticker).
+      if (multiChannelConfig.btcTickerMode != "always") {
+        multiChannelConfig.btcTickerMode = "off";
+      }
       lightningConfig.thresholdKey = "";
       LOG_INFO("Config", "=== MINI-POS CONFIGURATION ===");
       LOG_INFO("Config", "Currency: " + miniPosConfig.currency);
       LOG_INFO("Config", String("Decimal separator: ") + (miniPosConfig.decimal ? "YES (2 places)" : "NO"));
       LOG_INFO("Config", String("Invoice key: ") + (miniPosConfig.invoiceKey.length() > 0 ? "set (" + String(miniPosConfig.invoiceKey.length()) + " chars)" : "MISSING!"));
+      LOG_INFO("Config", String("BTC-Ticker screensaver: ") + (multiChannelConfig.btcTickerMode == "always" ? "ON (always)" : "off"));
       LOG_INFO("Config", "==============================");
     }
 
@@ -1718,11 +1726,20 @@ void setup()
       multiChannelConfig.mode == "off" &&
       !deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
     if (miniPosConfig.enabled) {
-      SETUP_PRINT("[STARTUP] Mini-PoS mode - showing amount entry screen");
-      // No LNURL pre-generation: the QR/NFC content is the invoice, created on demand
-      miniPosState.inputActive = true;
-      showMiniPosInputScreen();
-      multiChannelConfig.btcTickerActive = false;
+      // QR/NFC content is the invoice, created on demand; idle tag carries the
+      // project URL. With ticker "always" the ticker acts as screensaver.
+      miniPosIdleNfcTag();
+      if (multiChannelConfig.btcTickerMode == "always") {
+        SETUP_PRINT("[STARTUP] Mini-PoS mode (ticker ALWAYS) - showing BTC ticker");
+        btctickerScreen();
+        multiChannelConfig.btcTickerActive = true;
+      } else {
+        SETUP_PRINT("[STARTUP] Mini-PoS mode - showing amount entry screen");
+        miniPosState.inputActive = true;
+        miniPosState.lastInputActivity = millis();
+        showMiniPosInputScreen();
+        multiChannelConfig.btcTickerActive = false;
+      }
       productSelectionState.showTime = 0;
     } else if (multiChannelConfig.btcTickerMode == "always") {
       SETUP_PRINT("[STARTUP] Single mode (ALWAYS) - showing Bitcoin ticker immediately");
@@ -1753,13 +1770,13 @@ void processPaymentEvent(String &payloadStr);
 // MINI-POS HELPERS (Touch 3.5 — amount entry → invoice → QR/NFC payment)
 // ============================================================================
 
-// Empty the QR/NFC buffer and clear the NT3H tag so a phone tap reads nothing
-// while no invoice is pending.
-static void miniPosClearNfcTag() {
-  lightningConfig.lightning[0] = '\0';
-  #if ENABLE_NFC
-  nfcNT3H2111Clear();
-  #endif
+// While no invoice is pending, the NT3H tag carries the project URL
+// (MINIPOS_IDLE_TAG_URL) instead of an empty NDEF — a phone tap on the idle
+// device opens the website. nfcNT3H2111UpdateIfChanged() performs the write.
+static void miniPosIdleNfcTag() {
+  strncpy(lightningConfig.lightning, MINIPOS_IDLE_TAG_URL,
+          sizeof(lightningConfig.lightning) - 1);
+  lightningConfig.lightning[sizeof(lightningConfig.lightning) - 1] = '\0';
 }
 
 // Reset all Mini-PoS state and show the (empty) amount entry screen.
@@ -1767,7 +1784,8 @@ static void miniPosShowInput() {
   miniPosState.resetInvoice();
   miniPosState.resetInput();
   miniPosState.inputActive = true;
-  miniPosClearNfcTag();
+  miniPosState.lastInputActivity = millis();
+  miniPosIdleNfcTag();
   showMiniPosInputScreen();
 }
 
@@ -2142,6 +2160,18 @@ void loop()
           miniPosState.infoUntil = 0;
           showMiniPosInputScreen();
         }
+        // Ticker screensaver ("always" mode): entry screen idle for
+        // PRODUCT_TIMEOUT → back to the BTC ticker, entered digits discarded
+        if (multiChannelConfig.btcTickerMode == "always" &&
+            !multiChannelConfig.btcTickerActive &&
+            miniPosState.lastInputActivity > 0 &&
+            mpNow - miniPosState.lastInputActivity >= PRODUCT_SELECTION_DELAY) {
+          LOG_INFO("MiniPoS", "Entry screen idle - showing BTC ticker");
+          miniPosState.inputActive = false;
+          miniPosState.resetInput();
+          btctickerScreen();
+          multiChannelConfig.btcTickerActive = true;
+        }
       }
     }
 
@@ -2296,10 +2326,27 @@ void loop()
         }
         #endif // ENABLE_NFC
 
+        // ── Mini-PoS BTC ticker (screensaver in "always" mode) ──────────
+        // One touch anywhere on the ticker returns to the amount entry screen.
+        if (miniPosConfig.enabled && multiChannelConfig.btcTickerActive) {
+          if (isTouched && !wasTouched) {
+            activityTracking.lastActivityTime = millis();
+            LOG_INFO("MiniPoS", "Ticker touched - showing amount entry screen");
+            multiChannelConfig.btcTickerActive = false;
+            miniPosState.resetInput();
+            miniPosState.inputActive = true;
+            miniPosState.lastInputActivity = millis();
+            showMiniPosInputScreen();
+          }
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
+
         // ── Mini-PoS amount entry screen ─────────────────────────────────
         if (miniPosConfig.enabled && miniPosState.inputActive) {
           if (isTouched && !wasTouched) {
             activityTracking.lastActivityTime = millis();
+            miniPosState.lastInputActivity = millis();
             int hit = miniPosHitTest(x, y);
             // During the orange "Last Pay" lock all keys are ignored
             if (hit >= 0 && !miniPosState.amountLocked) {
@@ -2384,6 +2431,14 @@ void loop()
               miniPosShowInput();
             }
           }
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
+
+        // ── Mini-PoS catch-all: transient screens (PAID, errors) ─────────
+        // Generic navigation paths must never run in Mini-PoS mode.
+        if (miniPosConfig.enabled) {
+          if (isTouched && !wasTouched) activityTracking.lastActivityTime = millis();
           wasTouched = isTouched;
           goto skip_product_touch_processing;
         }
@@ -2694,7 +2749,9 @@ void loop()
           }
         } else {
           // ALWAYS mode Single: Return to ticker after PRODUCT_TIMEOUT on QR
-          if (!pinPadState.active && !multiChannelConfig.btcTickerActive && productSelectionState.showTime > 0 &&
+          // (Mini-PoS has its own idle timer keyed to the amount entry screen)
+          if (!miniPosConfig.enabled &&
+              !pinPadState.active && !multiChannelConfig.btcTickerActive && productSelectionState.showTime > 0 &&
               (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
             Serial.println("[SCREEN] Returning to ticker after timeout (ALWAYS mode - Single)");
             btctickerScreen();
@@ -4124,13 +4181,14 @@ static void processNormalPayment(int pin, int duration)
   pinPadState            = PinPadState();  // reset PIN pad so touch nav works again
   #endif
 
-  // Mini-PoS: payment settled — reset state and clear the NFC tag so the
-  // following redraw shows an empty amount entry screen.
+  // Mini-PoS: payment settled — reset state and put the idle URL on the NFC
+  // tag so the following redraw shows an empty amount entry screen.
   if (miniPosConfig.enabled) {
     miniPosState.resetInvoice();
     miniPosState.resetInput();
     miniPosState.inputActive = true;
-    miniPosClearNfcTag();
+    miniPosState.lastInputActivity = millis();
+    miniPosIdleNfcTag();
   }
 
   // Restore correct product QR (handles single, multi-channel, servo)

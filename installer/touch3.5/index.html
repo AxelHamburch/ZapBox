@@ -383,17 +383,19 @@
                     GPIO 46 — FD (Field Detection) for NT3H2111 NFC Tag 2; INPUT_PULLUP, active LOW when smartphone NFC field detected; also strapping pin (LOW at boot suppresses ROM log — no bricking risk)
                 </i></p>
 
-                <!-- Activation Options -->
-                <div id="activationOptionsDiv" style="margin-top: 16px;">
-                    <div class="input-wrapper" style="margin-bottom: 0;">
-                        <div>
-                            <label for="t35ActivationMode">Activation Options</label>
-                            <select name="t35ActivationMode" id="t35ActivationMode">
-                                <option value="off" selected>Off (default) — each channel triggered separately</option>
-                                <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 5)</option>
-                            </select>
-                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
-                        </div>
+            </div>
+
+            <!-- Activation Options — shown for Multi-channel AND Mini-PoS -->
+            <div id="activationOptionsDiv" style="display: none; margin-top: 16px;">
+                <div class="input-wrapper" style="margin-bottom: 0;">
+                    <div>
+                        <label for="t35ActivationMode">Activation Options</label>
+                        <select name="t35ActivationMode" id="t35ActivationMode">
+                            <option value="off" selected>Off (default) — each channel triggered separately</option>
+                            <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 5)</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
+                        <p id="activationOptionsMiniPosHint" style="display: none; margin: 4px 0 0 0; font-size: 11px; color: #888; font-style: italic;"><strong>Mini-PoS:</strong> With One for All, a paid invoice also triggers the channels CH02–CH06 that are configured as relay/servo (configure them in Multi-channel mode first — the values are kept when switching back to Mini-PoS).</p>
                     </div>
                 </div>
             </div>
@@ -1318,9 +1320,14 @@
             const singleInfo = document.getElementById('singleChannelInfo');
             const miniPos = document.getElementById('miniPosFields');
             const mode = multi ? multi.value : 'off';
+            const activation = document.getElementById('activationOptionsDiv');
+            const activationHint = document.getElementById('activationOptionsMiniPosHint');
             if (fields) fields.style.display = (mode === 'duo') ? 'block' : 'none';
             if (singleInfo) singleInfo.style.display = (mode === 'off') ? 'block' : 'none';
             if (miniPos) miniPos.style.display = (mode === 'minipos') ? 'block' : 'none';
+            // Activation Options (One for All) apply to Multi-channel and Mini-PoS
+            if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos') ? 'block' : 'none';
+            if (activationHint) activationHint.style.display = (mode === 'minipos') ? 'block' : 'none';
         }
 
         const multiControlEl = document.getElementById('multiControl');

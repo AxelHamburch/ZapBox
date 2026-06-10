@@ -600,12 +600,18 @@ struct MiniPosConfig {
   String invoiceKey = "";      // LNbits wallet Invoice/Read key (32 chars)
 };
 
+// NDEF content for the NT3H tag while no Mini-PoS invoice is pending —
+// a phone tap on the idle device opens the project website.
+constexpr const char MINIPOS_IDLE_TAG_URL[] = "https://zapbox.space";
+
 extern MiniPosConfig miniPosConfig;
 
 struct MiniPosState {
   bool   inputActive = false;        // amount entry screen is shown
   char   amount[9] = {0};            // entered amount, max 7 chars + null
   int    numChars = 0;
+  uint32_t lastInputActivity = 0;    // millis() of last touch on the entry screen
+                                     // (ticker-screensaver timeout, "always" mode)
   bool   amountLocked = false;       // true while "Last Pay" amount shown in orange
   uint32_t lockUntil = 0;            // millis() when the orange lock expires
   String infoMsg;                    // transient message ("No history", errors)
