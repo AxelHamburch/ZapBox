@@ -937,13 +937,49 @@ static void splitLabelWords(const String &src, int pin,
   }
 }
 
+// True when the text only uses the QR alphanumeric charset
+// (digits, UPPERCASE letters, space $ % * + - . / :).
+static bool qrTextIsAlphanumeric(const char *s) {
+  for (; *s; s++) {
+    char c = *s;
+    if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')) continue;
+    if (c == ' ' || c == '$' || c == '%' || c == '*' || c == '+' ||
+        c == '-' || c == '.' || c == '/' || c == ':') continue;
+    return false;
+  }
+  return true;
+}
+
 // Render a QR code (text data) into the backbuffer. Uses qrcode library version 8
 // (49×49 modules) which fits typical Lightning URLs. Longer payloads (e.g.
-// BOLT11 invoices in Mini-PoS mode) fall back to version 11 (61×61 modules),
-// rendered with a smaller module size centered in the same pixel area.
+// BOLT11 invoices in Mini-PoS mode) use version 11 (61×61 modules), rendered
+// with a smaller module size centered in the same pixel area.
+//
+// IMPORTANT: the QRCode library does NOT bounds-check its internal buffers.
+// Feeding more text than a version can hold overflows stack VLAs inside
+// qrcode_initText (observed: stack canary panic / watchdog reset). The version
+// MUST therefore be chosen by content length BEFORE calling the library.
 static void drawQRAt(const char *text, int lx, int ly, int mod_size,
                      uint16_t fg, uint16_t bg) {
   if (!text || !*text) return;
+  int areaPx = 49 * mod_size;
+
+  // ECC_LOW capacities: v8 = 224 alphanumeric / 152 byte mode,
+  //                     v11 = 468 alphanumeric / 321 byte mode.
+  size_t len = strlen(text);
+  size_t v8Cap  = qrTextIsAlphanumeric(text) ? 224 : 152;
+  size_t v11Cap = qrTextIsAlphanumeric(text) ? 468 : 321;
+  int version;
+  if (len <= v8Cap) {
+    version = 8;
+  } else if (len <= v11Cap) {
+    version = 11;
+  } else {
+    // Too long for version 11 — clear the area instead of crashing
+    fillRect(lx, ly, areaPx, areaPx, bg);
+    return;
+  }
+
   QRCode qr;
   // static: 466 B would otherwise sit on the caller's stack — all callers
   // hold DisplayLock, so access is serialized.
@@ -952,19 +988,18 @@ static void drawQRAt(const char *text, int lx, int ly, int mod_size,
   constexpr int kQrMaxVersion = 11;
   constexpr int kQrSide = 4 * kQrMaxVersion + 17;
   static uint8_t qrBuf[(kQrSide * kQrSide + 7) / 8];
-  int areaPx = 49 * mod_size;
-  if (qrcode_initText(&qr, qrBuf, 8, 0, text) < 0) {
-    if (qrcode_initText(&qr, qrBuf, 11, 0, text) < 0) {
-      // Fallback: just fill the area with bg so we don't show stale pixels
-      fillRect(lx, ly, areaPx, areaPx, bg);
-      return;
-    }
-    int mod11 = areaPx / qr.size;          // e.g. 196/61 = 3
-    if (mod11 < 1) mod11 = 1;
-    int offset = (areaPx - qr.size * mod11) / 2;
+  if (qrcode_initText(&qr, qrBuf, version, 0, text) < 0) {
+    // Fallback: just fill the area with bg so we don't show stale pixels
+    fillRect(lx, ly, areaPx, areaPx, bg);
+    return;
+  }
+  if (qr.size * mod_size > areaPx) {
+    int mod = areaPx / qr.size;            // e.g. 196/61 = 3
+    if (mod < 1) mod = 1;
+    int offset = (areaPx - qr.size * mod) / 2;
     fillRect(lx, ly, areaPx, areaPx, bg);  // clear unused border pixels
     lx += offset; ly += offset;
-    mod_size = mod11;
+    mod_size = mod;
   }
   for (int yy = 0; yy < qr.size; yy++) {
     for (int xx = 0; xx < qr.size; xx++) {
