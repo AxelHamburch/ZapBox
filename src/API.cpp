@@ -3,6 +3,7 @@
 #include "DeviceState.h"
 #include "Log.h"
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
 
@@ -227,6 +228,9 @@ void fetchBitcoinData()
   static volatile unsigned long fetchStartedAt = 0;
   if (fetchInProgress && (millis() - fetchStartedAt) < 90000) {
     Serial.println("[BTC] Skipping fetch - previous fetch still in progress");
+    // Arm the caller backoff too — otherwise updateBitcoinTicker() retries
+    // (and logs) on every single loop iteration while the fetch hangs.
+    lastFetchAttempt = millis();
     return;
   }
   fetchInProgress = true;
@@ -238,16 +242,20 @@ void fetchBitcoinData()
   lastFetchAttempt = millis();
 
   HTTPClient http;
+  // Own TLS client so the SSL handshake timeout can be bounded: the default
+  // is 120 s, and consumer routers have been observed to silently drop the
+  // handshake — the fetch then hangs for the better part of a minute.
+  WiFiClientSecure secureClient;
+  secureClient.setInsecure();          // same trust model as http.begin(url)
+  secureClient.setHandshakeTimeout(10); // seconds
   // mempool.space /api/v1/prices supports: USD, EUR, GBP, CAD, CHF, AUD, JPY
   // Using uppercase currency codes as returned by the API.
   String currencyUpper = currency;
   currencyUpper.toUpperCase();
 
   // Fetch BTC price from mempool.space — same server as block height fetch
-  // Explicit connect timeout: without it a dropped SSL handshake can hang
-  // the request for minutes (observed on consumer routers).
   bool priceOk = false;
-  http.begin("https://mempool.space/api/v1/prices");
+  http.begin(secureClient, "https://mempool.space/api/v1/prices");
   http.setConnectTimeout(5000);
   http.setTimeout(8000);
 
@@ -277,7 +285,7 @@ void fetchBitcoinData()
 
   // Fetch block height from mempool.space — keep last known value on failure
   bool blockOk = false;
-  http.begin("https://mempool.space/api/blocks/tip/height");
+  http.begin(secureClient, "https://mempool.space/api/blocks/tip/height");
   http.setConnectTimeout(5000);
   http.setTimeout(8000);
 
@@ -297,7 +305,7 @@ void fetchBitcoinData()
   if (!priceOk && blockOk && !deviceState.isInState(DeviceState::CONFIG_MODE)) {
     delay(300);
     Serial.println("[BTC] Price failed, block OK — retrying price (connection now warm)...");
-    http.begin("https://mempool.space/api/v1/prices");
+    http.begin(secureClient, "https://mempool.space/api/v1/prices");
     http.setConnectTimeout(5000);
     http.setTimeout(8000);
     if (http.GET() == 200) {
@@ -355,11 +363,14 @@ void updateBitcoinTicker()
     }
     
     Serial.println("[BTC] Update interval reached, fetching new data...");
+    unsigned long lastUpdateBefore = bitcoinData.lastUpdate;
     fetchBitcoinData();
 
-    // Refresh the display ONLY if we're STILL on the ticker screen
-    // Use partial update to reduce flicker (only updates values, not full redraw)
-    if (multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
+    // Refresh the display ONLY if the fetch actually completed (it may have
+    // been skipped while another fetch is in progress) AND we're STILL on the
+    // ticker screen. Partial update to reduce flicker.
+    if (bitcoinData.lastUpdate != lastUpdateBefore &&
+        multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
       updateBtctickerValues(); // Partial update instead of btctickerScreen()
       Serial.println("[BTC] Values updated (partial refresh - reduced flicker)");
     }
