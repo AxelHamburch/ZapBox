@@ -2907,6 +2907,16 @@ void loop()
         [](void*) {
           vTaskDelay(pdMS_TO_TICKS(500)); // brief pause so QR screen draws first
           fetchBitcoinData();
+          // First data just arrived — draw it if the ticker is on screen.
+          // Without this the periodic updater waits a full update interval
+          // (5 min) before the "Loading..." placeholders are replaced.
+          if (multiChannelConfig.btcTickerActive &&
+              !deviceState.isInState(DeviceState::SCREENSAVER) &&
+              !deviceState.isInState(DeviceState::DEEP_SLEEP) &&
+              !deviceState.isInState(DeviceState::CONFIG_MODE)) {
+            updateBtctickerValues();
+            Serial.println("[BTC] Initial data drawn to active ticker");
+          }
           vTaskDelete(nullptr);
         },
         "btc_init", 8192, nullptr, 1, nullptr, 1 /* Core 1 */
