@@ -370,3 +370,122 @@ void updateSwitchLabels()
     fetchSwitchLabels();
   }
 }
+
+// ============================================================================
+// MINI-POS API (Touch 3.5 — amount entry → invoice via zapbox_extension)
+// ============================================================================
+
+extern void updateLightningQR(const String& lnurlStr);
+
+/**
+ * POST /<apiPath>/api/v1/pos/invoice
+ * Header: X-Api-Key: <wallet invoice key>
+ * Body:   {"amount": 5.00, "currency": "EUR", "device_id": "<22-char-id>"}
+ * Response: {"payment_hash": "...", "payment_request": "lnbc..."}
+ */
+bool requestMiniPosInvoice(const String &amountStr)
+{
+  if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
+    miniPosState.infoMsg = "No server configured";
+    return false;
+  }
+  if (miniPosConfig.invoiceKey.length() == 0) {
+    miniPosState.infoMsg = "No invoice key";
+    return false;
+  }
+
+  HTTPClient http;
+  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+               + "/api/v1/pos/invoice";
+  LOG_INFO("MiniPoS", "Requesting invoice: " + amountStr + " " + miniPosConfig.currency);
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-Api-Key", miniPosConfig.invoiceKey);
+  http.setConnectTimeout(5000);
+  http.setTimeout(10000);
+
+  String body = String("{\"amount\":") + amountStr
+              + ",\"currency\":\"" + miniPosConfig.currency + "\""
+              + ",\"device_id\":\"" + deviceId + "\"}";
+  int httpCode = http.POST(body);
+  if (httpCode != 200) {
+    String resp = http.getString();
+    http.end();
+    LOG_ERROR("MiniPoS", String("Invoice HTTP ") + String(httpCode) + " - " + resp);
+    miniPosState.infoMsg = (httpCode < 0) ? String("Connection failed")
+                                          : "Server error " + String(httpCode);
+    return false;
+  }
+
+  String resp = http.getString();
+  http.end();
+  JsonDocument doc;
+  if (deserializeJson(doc, resp)) {
+    LOG_ERROR("MiniPoS", "Invoice response JSON parse error");
+    miniPosState.infoMsg = "Bad response";
+    return false;
+  }
+  const char *hash = doc["payment_hash"];
+  const char *bolt11 = doc["payment_request"];
+  if (!hash || !bolt11 || strlen(bolt11) == 0) {
+    LOG_ERROR("MiniPoS", "Invoice response missing fields");
+    miniPosState.infoMsg = "Bad response";
+    return false;
+  }
+
+  miniPosState.paymentHash = String(hash);
+  miniPosState.amountLine = amountStr + " " + miniPosConfig.currency;
+  miniPosState.invoicePending = true;
+  miniPosState.invoiceCreatedAt = millis();
+  // BOLT11 into the QR/NFC buffer ("lightning:" prefix added automatically)
+  updateLightningQR(String(bolt11));
+  LOG_INFO("MiniPoS", "Invoice created: " + miniPosState.paymentHash);
+  return true;
+}
+
+/**
+ * GET /<apiPath>/api/v1/pos/invoice/last?device_id=<id>
+ * Header: X-Api-Key: <wallet invoice key>
+ * Response: {"amount": 23.5, "currency": "EUR"} or {"amount": null}
+ */
+bool fetchMiniPosLastPay(String &amountOut)
+{
+  amountOut = "";
+  if (lnbitsServer.length() == 0 || deviceId.length() == 0 ||
+      miniPosConfig.invoiceKey.length() == 0) {
+    return false;
+  }
+
+  HTTPClient http;
+  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+               + "/api/v1/pos/invoice/last?device_id=" + deviceId;
+  http.begin(url);
+  http.addHeader("X-Api-Key", miniPosConfig.invoiceKey);
+  http.setConnectTimeout(5000);
+  http.setTimeout(7000);
+
+  int httpCode = http.GET();
+  if (httpCode != 200) {
+    http.end();
+    LOG_WARN("MiniPoS", String("Last-pay HTTP ") + String(httpCode));
+    return false;
+  }
+  String resp = http.getString();
+  http.end();
+  JsonDocument doc;
+  if (deserializeJson(doc, resp)) return false;
+  if (doc["amount"].isNull()) return false;
+
+  float amount = doc["amount"];
+  if (miniPosConfig.decimal) {
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.2f", amount);
+    amountOut = String(buf);
+  } else {
+    amountOut = String((long)amount);
+  }
+  // Keep within the 7-char entry limit
+  if (amountOut.length() > 7) amountOut = amountOut.substring(0, 7);
+  LOG_INFO("MiniPoS", "Last paid amount: " + amountOut);
+  return true;
+}

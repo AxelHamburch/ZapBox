@@ -23,7 +23,7 @@ static const uint8_t CC_EXPECTED[4] = {0xE1, 0x10, 0x6D, 0x00};
 // ─── Module state ────────────────────────────────────────────────────────────
 
 static bool initialized    = false;
-static char lastWritten[300] = "";  // last URL written to chip
+static char lastWritten[400] = "";  // last URL written to chip (matches lightningConfig.lightning)
 
 // ─── I²C helpers ─────────────────────────────────────────────────────────────
 
@@ -114,15 +114,17 @@ static bool nt3hRecoverToDefaultAddr(uint8_t fromAddr) {
 static bool nt3hWriteNdef(const char* uri) {
     size_t uriLen     = strlen(uri);
     size_t payloadLen = 1 + uriLen;        // identifier code byte + URI
-    size_t recordLen  = 4 + payloadLen;    // D1 + 01 + [payloadLen] + 55 + payload
+    bool   shortRec   = (payloadLen <= 255);
+    // Short record: D1 01 [len1] 55 — Long record: C1 01 [len4] 55
+    size_t recordLen  = (shortRec ? 4 : 7) + payloadLen;
 
-    if (uriLen > 285) {
-        LOG_WARN("NT3H", "URI too long (>285 chars) — skipping NDEF write");
+    if (uriLen > 380) {
+        LOG_WARN("NT3H", "URI too long (>380 chars) — skipping NDEF write");
         return false;
     }
 
-    // Flat buffer: max 1 + 1 + (4 + 1 + 285) + 1 = 293 bytes
-    uint8_t buf[310] = {};
+    // Flat buffer: max 3 (TLV hdr) + 7 + 1 + 380 + 1 = 392 bytes
+    uint8_t buf[400] = {};
     size_t  pos = 0;
 
     // NDEF Message TLV header
@@ -135,10 +137,20 @@ static bool nt3hWriteNdef(const char* uri) {
         buf[pos++] = (uint8_t)(recordLen & 0xFF);
     }
 
-    // NDEF URI Record
-    buf[pos++] = 0xD1;               // MB=1 ME=1 SR=1 IL=0 TNF=001 (Well Known)
-    buf[pos++] = 0x01;               // Type Length = 1
-    buf[pos++] = (uint8_t)payloadLen;
+    // NDEF URI Record (short record when payload ≤255 B, else long record
+    // with 4-byte payload length — needed for BOLT11 invoices in Mini-PoS)
+    if (shortRec) {
+        buf[pos++] = 0xD1;           // MB=1 ME=1 SR=1 IL=0 TNF=001 (Well Known)
+        buf[pos++] = 0x01;           // Type Length = 1
+        buf[pos++] = (uint8_t)payloadLen;
+    } else {
+        buf[pos++] = 0xC1;           // MB=1 ME=1 SR=0 IL=0 TNF=001
+        buf[pos++] = 0x01;           // Type Length = 1
+        buf[pos++] = (uint8_t)(payloadLen >> 24);
+        buf[pos++] = (uint8_t)(payloadLen >> 16);
+        buf[pos++] = (uint8_t)(payloadLen >> 8);
+        buf[pos++] = (uint8_t)(payloadLen & 0xFF);
+    }
     buf[pos++] = 0x55;               // Record Type = 'U' (URI)
     buf[pos++] = 0x00;               // URI Identifier Code: no abbreviation
     memcpy(buf + pos, uri, uriLen);
@@ -308,6 +320,24 @@ void nfcNT3H2111UpdateIfChanged() {
     if (nt3hWriteNdef(current)) {
         strncpy(lastWritten, current, sizeof(lastWritten) - 1);
         lastWritten[sizeof(lastWritten) - 1] = '\0';
+    }
+}
+
+void nfcNT3H2111Clear() {
+    if (!initialized) return;
+    if (lastWritten[0] == '\0') return;  // already empty
+
+    // Empty NDEF message TLV (03 00) + terminator (FE): a phone reading the
+    // tag sees no record — used by Mini-PoS when no invoice is pending.
+    uint8_t blk[NT3H_BLOCK_SIZE] = {};
+    blk[0] = 0x03;
+    blk[1] = 0x00;
+    blk[2] = 0xFE;
+    if (nt3hWriteBlock(NT3H_USER_START, blk)) {
+        lastWritten[0] = '\0';
+        LOG_INFO("NT3H", "NDEF cleared (no invoice pending)");
+    } else {
+        LOG_WARN("NT3H", "NDEF clear failed (I2C write error)");
     }
 }
 

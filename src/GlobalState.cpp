@@ -86,3 +86,7 @@ const char* BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 
 // PIN Pad State
 PinPadState pinPadState;
+
+// Mini-PoS Mode (Touch 3.5)
+MiniPosConfig miniPosConfig;
+MiniPosState miniPosState;

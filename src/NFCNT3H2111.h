@@ -51,4 +51,10 @@ void nfcNT3H2111Stop();
  */
 void nfcNT3H2111UpdateIfChanged();
 
+/**
+ * @brief Write an empty NDEF message to the tag so phones read no record.
+ *        Used by Mini-PoS mode whenever no invoice is pending.
+ */
+void nfcNT3H2111Clear();
+
 #endif // ENABLE_NFC

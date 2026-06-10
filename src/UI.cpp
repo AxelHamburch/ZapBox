@@ -368,6 +368,20 @@ void redrawQRScreen() {
 
   LOG_DEBUG("Display", "Redrawing QR screen...");
 
+  // Mini-PoS mode: amount entry screen, or invoice QR while one is pending
+  if (miniPosConfig.enabled) {
+    if (miniPosState.invoicePending) {
+      showMiniPosQRScreen();
+      LOG_DEBUG("Display", "Mini-PoS invoice QR screen displayed");
+    } else {
+      miniPosState.inputActive = true;
+      showMiniPosInputScreen();
+      LOG_DEBUG("Display", "Mini-PoS amount entry screen displayed");
+    }
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
   // Threshold mode
   if (lightningConfig.thresholdKey.length() > 0) {
     showThresholdQRScreen();
@@ -492,6 +506,16 @@ void redrawQRScreen() {
  * Handles threshold mode, multi-channel (duo/quattro) and single mode including special mode.
  */
 void showInitialScreenAfterConnections() {
+  // Mini-PoS mode: start on the amount entry screen
+  if (miniPosConfig.enabled) {
+    miniPosState.resetInput();
+    miniPosState.resetInvoice();
+    miniPosState.inputActive = true;
+    showMiniPosInputScreen();
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
   // Threshold mode has priority
   if (lightningConfig.thresholdKey.length() > 0) {
     showThresholdQRScreen();
