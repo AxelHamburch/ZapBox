@@ -219,11 +219,24 @@ void fetchBitcoinData()
     return;
   }
 
+  // Concurrency guard: the initial fetch runs as an async task while the
+  // periodic updater in loop() may also call this function. Two parallel TLS
+  // sessions waste ~100 KB heap. If a fetch appears stuck (router drops the
+  // SSL handshake without RST), allow a new attempt after 90 s anyway.
+  static volatile bool fetchInProgress = false;
+  static volatile unsigned long fetchStartedAt = 0;
+  if (fetchInProgress && (millis() - fetchStartedAt) < 90000) {
+    Serial.println("[BTC] Skipping fetch - previous fetch still in progress");
+    return;
+  }
+  fetchInProgress = true;
+  fetchStartedAt = millis();
+
   Serial.println("[BTC] Fetching Bitcoin data...");
-  
+
   // Update last fetch attempt time for backoff
   lastFetchAttempt = millis();
-  
+
   HTTPClient http;
   // mempool.space /api/v1/prices supports: USD, EUR, GBP, CAD, CHF, AUD, JPY
   // Using uppercase currency codes as returned by the API.
@@ -231,8 +244,11 @@ void fetchBitcoinData()
   currencyUpper.toUpperCase();
 
   // Fetch BTC price from mempool.space — same server as block height fetch
+  // Explicit connect timeout: without it a dropped SSL handshake can hang
+  // the request for minutes (observed on consumer routers).
   bool priceOk = false;
   http.begin("https://mempool.space/api/v1/prices");
+  http.setConnectTimeout(5000);
   http.setTimeout(8000);
 
   if (http.GET() == 200) {
@@ -255,12 +271,14 @@ void fetchBitcoinData()
   // HTTP call was running. Don't start a new SSL connection if WiFi is gone.
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
     Serial.println("[BTC] Aborting mid-fetch - CONFIG_MODE active");
+    fetchInProgress = false;
     return;
   }
 
   // Fetch block height from mempool.space — keep last known value on failure
   bool blockOk = false;
   http.begin("https://mempool.space/api/blocks/tip/height");
+  http.setConnectTimeout(5000);
   http.setTimeout(8000);
 
   if (http.GET() == 200) {
@@ -280,6 +298,7 @@ void fetchBitcoinData()
     delay(300);
     Serial.println("[BTC] Price failed, block OK — retrying price (connection now warm)...");
     http.begin("https://mempool.space/api/v1/prices");
+    http.setConnectTimeout(5000);
     http.setTimeout(8000);
     if (http.GET() == 200) {
       JsonDocument doc2;
@@ -304,8 +323,9 @@ void fetchBitcoinData()
   if (btcDataHasError) {
     Serial.println("[BTC] ERROR detected - will retry in 1 minute instead of 5 minutes");
   }
-  
+
   bitcoinData.lastUpdate = millis();
+  fetchInProgress = false;
 }
 
 /**
@@ -320,8 +340,12 @@ void updateBitcoinTicker()
 
   unsigned long currentTime = millis();
 
-  // Use shorter interval if last fetch had errors, otherwise use normal interval
-  unsigned long updateInterval = btcDataHasError ? BTC_ERROR_RETRY_INTERVAL : BTC_UPDATE_INTERVAL;
+  // Use the short interval if the last fetch had errors OR no data has ever
+  // been loaded (e.g. the initial async fetch hung on a dropped SSL
+  // handshake) — otherwise the "Loading..." placeholders would sit on the
+  // ticker for the full 5-minute interval.
+  bool noDataYet = (bitcoinData.price == "Loading...");
+  unsigned long updateInterval = (btcDataHasError || noDataYet) ? BTC_ERROR_RETRY_INTERVAL : BTC_UPDATE_INTERVAL;
 
   // Check if it's time for an update and enforce backoff for failed attempts
   if (currentTime - bitcoinData.lastUpdate >= updateInterval) {
