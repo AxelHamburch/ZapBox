@@ -937,17 +937,71 @@ static void splitLabelWords(const String &src, int pin,
   }
 }
 
+// True when the text only uses the QR alphanumeric charset
+// (digits, UPPERCASE letters, space $ % * + - . / :).
+static bool qrTextIsAlphanumeric(const char *s) {
+  for (; *s; s++) {
+    char c = *s;
+    if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')) continue;
+    if (c == ' ' || c == '$' || c == '%' || c == '*' || c == '+' ||
+        c == '-' || c == '.' || c == '/' || c == ':') continue;
+    return false;
+  }
+  return true;
+}
+
 // Render a QR code (text data) into the backbuffer. Uses qrcode library version 8
-// (49×49 modules) which fits typical Lightning URLs.
+// (49×49 modules) which fits typical Lightning URLs. Longer payloads (e.g.
+// BOLT11 invoices in Mini-PoS mode) use version 11 (61×61 modules), rendered
+// with a smaller module size centered in the same pixel area.
+//
+// IMPORTANT: the QRCode library does NOT bounds-check its internal buffers.
+// Feeding more text than a version can hold overflows stack VLAs inside
+// qrcode_initText (observed: stack canary panic / watchdog reset). The version
+// MUST therefore be chosen by content length BEFORE calling the library.
 static void drawQRAt(const char *text, int lx, int ly, int mod_size,
                      uint16_t fg, uint16_t bg) {
   if (!text || !*text) return;
-  QRCode qr;
-  uint8_t qrBuf[qrcode_getBufferSize(8)];
-  if (qrcode_initText(&qr, qrBuf, 8, 0, text) < 0) {
-    // Fallback: just fill the area with bg so we don't show stale pixels
-    fillRect(lx, ly, qr.size * mod_size, qr.size * mod_size, bg);
+  int areaPx = 49 * mod_size;
+
+  // ECC_LOW capacities: v8 = 224 alphanumeric / 152 byte mode,
+  //                     v11 = 468 alphanumeric / 321 byte mode.
+  size_t len = strlen(text);
+  size_t v8Cap  = qrTextIsAlphanumeric(text) ? 224 : 152;
+  size_t v11Cap = qrTextIsAlphanumeric(text) ? 468 : 321;
+  int version;
+  if (len <= v8Cap) {
+    version = 8;
+  } else if (len <= v11Cap) {
+    version = 11;
+  } else {
+    // Too long for version 11 — clear the area instead of crashing
+    Serial.printf("[QR] Content too long for QR v11: %u chars (max %u) — area left empty\n",
+                  (unsigned)len, (unsigned)v11Cap);
+    fillRect(lx, ly, areaPx, areaPx, bg);
     return;
+  }
+
+  QRCode qr;
+  // static: 466 B would otherwise sit on the caller's stack — all callers
+  // hold DisplayLock, so access is serialized.
+  // Size = qrcode_getBufferSize(11) = ((4*11+17)^2 + 7) / 8, as a constant
+  // because the library function is not constexpr.
+  constexpr int kQrMaxVersion = 11;
+  constexpr int kQrSide = 4 * kQrMaxVersion + 17;
+  static uint8_t qrBuf[(kQrSide * kQrSide + 7) / 8];
+  if (qrcode_initText(&qr, qrBuf, version, 0, text) < 0) {
+    // Fallback: just fill the area with bg so we don't show stale pixels
+    fillRect(lx, ly, areaPx, areaPx, bg);
+    return;
+  }
+  if (qr.size * mod_size > areaPx) {
+    int mod = areaPx / qr.size;            // e.g. 196/61 = 3
+    if (mod < 1) mod = 1;
+    int offset = (areaPx - qr.size * mod) / 2;
+    fillRect(lx, ly, areaPx, areaPx, bg);  // clear unused border pixels
+    lx += offset; ly += offset;
+    mod_size = mod;
   }
   for (int yy = 0; yy < qr.size; yy++) {
     for (int xx = 0; xx < qr.size; xx++) {
@@ -1299,34 +1353,49 @@ static void drawPinDot(int cx, int cy, bool filled, uint16_t fg, uint16_t bg) {
     if (!filled) drawRectBorder(cx-h, cy-h, 2*h, 2*h, 2, fg);
 }
 
-// Draw error message (up to 3 lines, size 2, white on red background).
+// Draw error message (word-wrapped, size 2, white on red background).
+// Number of lines is derived from the rect height so the box is fully used.
 static void drawPinError(const String &msg, int rectX, int rectY, int rectW, int rectH, int cx) {
     fillRect(rectX, rectY, rectW, rectH, TFT_RED);
     const int sz      = 2;
     const int charW   = 6 * sz;   // 12px per char at size 2
     const int lineH   = 8 * sz;   // 16px per line
-    const int lineGap = 4;
+    const int lineGap = 2;
     const int maxChars = rectW / charW;
+    const int kMaxLines = 6;
+    int maxLines = (rectH + lineGap) / (lineH + lineGap);
+    if (maxLines < 1) maxLines = 1;
+    if (maxLines > kMaxLines) maxLines = kMaxLines;
 
-    // Split on explicit newlines, then word-wrap each segment (up to 3 lines total)
-    String lines[3];
+    // Split on explicit newlines, then word-wrap each segment
+    String lines[kMaxLines];
     int numLines = 0;
     String rem = msg;
-    while (numLines < 3 && rem.length() > 0) {
+    while (numLines < maxLines && rem.length() > 0) {
         int nl = rem.indexOf('\n');
-        if (nl >= 0) {
+        if (nl >= 0 && nl <= maxChars) {
             lines[numLines++] = rem.substring(0, nl);
             rem = rem.substring(nl + 1);
-        } else if ((int)rem.length() <= maxChars) {
+        } else if (nl < 0 && (int)rem.length() <= maxChars) {
             lines[numLines++] = rem;
             rem = "";
         } else {
             int split = maxChars;
             while (split > 0 && rem[split] != ' ') split--;
-            if (split == 0) split = maxChars;
-            lines[numLines++] = rem.substring(0, split);
-            rem = rem.substring(split + 1);
+            if (split == 0) {
+                lines[numLines++] = rem.substring(0, maxChars);
+                rem = rem.substring(maxChars);
+            } else {
+                lines[numLines++] = rem.substring(0, split);
+                rem = rem.substring(split + 1);
+            }
         }
+    }
+    // Message longer than the box — mark the last line as truncated
+    if (rem.length() > 0 && numLines > 0) {
+        String &last = lines[numLines - 1];
+        if ((int)last.length() > maxChars - 3) last = last.substring(0, maxChars - 3);
+        last += "...";
     }
 
     int totalH = numLines * lineH + (numLines - 1) * lineGap;
@@ -1376,13 +1445,18 @@ void showPinPadScreen(const PinPadState &state) {
                 drawCenter(PANEL_W / 2, 108, buf, TFT_RED, themeBackground, 2);
             }
             String displayMsg = isTimeout ? "PIN entry\ntimed out." : state.errorMsg;
-            drawPinError(displayMsg, 4, 120, PANEL_W - 8, 40, PANEL_W / 2);
+            // Error box extends over the Cancel button area (4 lines).
+            // The button is not drawn while the error shows — it reappears on
+            // the auto-dismiss redraw, and its touch zone keeps working.
+            drawPinError(displayMsg, 4, 120, PANEL_W - 8, PP_V_TOP_H - 124, PANEL_W / 2);
         }
 
-        // Cancel button
-        drawRectBorder(20, PP_V_CANCEL_Y, PANEL_W - 40, PP_V_CANCEL_H, 2, themeForeground);
-        drawCenter(PANEL_W / 2, PP_V_CANCEL_Y + PP_V_CANCEL_H / 2,
-                   "CANCEL", themeForeground, themeBackground, 2);
+        // Cancel button (hidden while the error message uses its space)
+        if (!state.showError) {
+            drawRectBorder(20, PP_V_CANCEL_Y, PANEL_W - 40, PP_V_CANCEL_H, 2, themeForeground);
+            drawCenter(PANEL_W / 2, PP_V_CANCEL_Y + PP_V_CANCEL_H / 2,
+                       "CANCEL", themeForeground, themeBackground, 2);
+        }
 
         // ── Numpad ───────────────────────────────────────────────────────────
         for (int row = 0; row < 4; row++) {
@@ -1426,7 +1500,7 @@ void showPinPadScreen(const PinPadState &state) {
                 drawCenter(PP_LEFT_CX, 143, buf, TFT_RED, themeBackground, 2);
             }
             String displayMsg = isTimeout ? "PIN entry\ntimed out." : state.errorMsg;
-            drawPinError(displayMsg, 4, 157, PP_LEFT_W - 8, 76, PP_LEFT_CX);
+            drawPinError(displayMsg, 4, 155, PP_LEFT_W - 8, 108, PP_LEFT_CX);
         }
 
         // Cancel button
@@ -1483,6 +1557,236 @@ int pinPadHitTest(uint16_t x, uint16_t y) {
     if (x < (uint16_t)bx || x > (uint16_t)(bx + PP_BTN_W)) return -1;
     if (y < (uint16_t)by  || y > (uint16_t)(by + PP_BTN_H)) return -1;
     return kMap[row][col];
+}
+
+// ============================================================================
+// MINI-POS SCREENS  (amount entry → invoice QR → paid)
+// ============================================================================
+//
+// The amount entry screen reuses the PIN pad geometry: info panel + 3×4 numpad.
+// Numpad bottom row is  < 0 .  (backspace, zero, decimal point).
+// The info panel holds "Amount in", the currency, the amount display box and
+// the INVOICE / LAST PAY buttons (same look as the PIN pad CANCEL button).
+
+// Numpad key labels for Mini-PoS (row, col)
+static const char *kMpLabels[4][3] = {
+    {"1","2","3"},
+    {"4","5","6"},
+    {"7","8","9"},
+    {"<","0","."},
+};
+// Hit codes for Mini-PoS numpad: 10=backspace, 13=decimal point
+static const int kMpMap[4][3] = {{1,2,3},{4,5,6},{7,8,9},{10,0,13}};
+
+// Landscape button geometry (left panel, like PIN pad CANCEL)
+static const int MP_INVOICE_Y = 215;   // y 215..253
+static const int MP_LASTPAY_Y = 268;   // y 268..306 (same as PIN pad CANCEL)
+static const int MP_BTN_H     = 38;
+// Portrait button geometry (two buttons side by side in the top panel)
+static const int MP_V_BTN_Y   = 158;   // y 158..198
+static const int MP_V_BTN_H   = 40;
+
+// Cancel button on the Mini-PoS QR screen (bottom-right corner)
+static const int MP_QRC_W = 90, MP_QRC_H = 34;
+
+static void drawMiniPosAmountBox(int bx, int by, int bw, int bh) {
+    drawRectBorder(bx, by, bw, bh, 2, themeForeground);
+    uint16_t txtColor = miniPosState.amountLocked ? TFT_ORANGE : themeForeground;
+    const char *txt = (miniPosState.numChars > 0) ? miniPosState.amount : "";
+    if (*txt) {
+        drawCenter(bx + bw / 2, by + bh / 2, txt, txtColor, themeBackground, 3);
+    } else {
+        String hint = miniPosConfig.decimal ? "0.00" : "0";
+        drawCenter(bx + bw / 2, by + bh / 2, hint.c_str(), TFT_DARKGREY, themeBackground, 3);
+    }
+}
+
+void showMiniPosInputScreen() {
+    DisplayLock l;
+    if (!_gfx) return;
+    fillScreen(themeBackground);
+
+    bool showInfo = miniPosState.infoMsg.length() > 0;
+
+    if (isPortrait()) {
+        // ── Portrait: top panel + numpad below (PIN pad geometry) ───────────
+        fillRect(0, PP_V_TOP_H - 1, PANEL_W, 1, themeForeground);
+
+        String header = "Amount in " + miniPosConfig.currency;
+        drawCenter(PANEL_W / 2, 22, header.c_str(), themeForeground, themeBackground, 2);
+
+        drawMiniPosAmountBox(40, 45, PANEL_W - 80, 52);
+
+        if (showInfo) {
+            drawPinError(miniPosState.infoMsg, 4, 108, PANEL_W - 8, 40, PANEL_W / 2);
+        }
+
+        // INVOICE (left) and LAST PAY (right) side by side
+        drawRectBorder(10,  MP_V_BTN_Y, 142, MP_V_BTN_H, 2, themeForeground);
+        drawCenter(10 + 71, MP_V_BTN_Y + MP_V_BTN_H / 2, "INVOICE", themeForeground, themeBackground, 2);
+        drawRectBorder(168, MP_V_BTN_Y, 142, MP_V_BTN_H, 2, themeForeground);
+        drawCenter(168 + 71, MP_V_BTN_Y + MP_V_BTN_H / 2, "LAST PAY", themeForeground, themeBackground, 2);
+
+        // Numpad
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 3; col++) {
+                int bx = col * PP_V_COL_W + PP_V_BTN_M;
+                int by = PP_V_TOP_H + row * PP_V_ROW_H + PP_V_BTN_M;
+                bool isDot = (row == 3 && col == 2);
+                uint16_t keyColor = (isDot && !miniPosConfig.decimal) ? TFT_DARKGREY : themeForeground;
+                drawRectBorder(bx, by, PP_V_BTN_W, PP_V_BTN_H, 2, keyColor);
+                drawCenter(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2,
+                           kMpLabels[row][col], keyColor, themeBackground, 4);
+            }
+        }
+    } else {
+        // ── Landscape: left panel + numpad right (PIN pad geometry) ─────────
+        fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
+
+        drawCenter(PP_LEFT_CX, 28, "Amount in", themeForeground, themeBackground, 3);
+        drawCenter(PP_LEFT_CX, 64, miniPosConfig.currency.c_str(), themeForeground, themeBackground, 3);
+
+        drawMiniPosAmountBox(10, 95, PP_LEFT_W - 20, 46);
+
+        if (showInfo) {
+            drawPinError(miniPosState.infoMsg, 4, 155, PP_LEFT_W - 8, 48, PP_LEFT_CX);
+        }
+
+        drawRectBorder(20, MP_INVOICE_Y, PP_LEFT_W - 40, MP_BTN_H, 2, themeForeground);
+        drawCenter(PP_LEFT_CX, MP_INVOICE_Y + MP_BTN_H / 2, "INVOICE", themeForeground, themeBackground, 2);
+        drawRectBorder(20, MP_LASTPAY_Y, PP_LEFT_W - 40, MP_BTN_H, 2, themeForeground);
+        drawCenter(PP_LEFT_CX, MP_LASTPAY_Y + MP_BTN_H / 2, "LAST PAY", themeForeground, themeBackground, 2);
+
+        // Numpad
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 3; col++) {
+                int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
+                int by = row * PP_NP_ROW_H + PP_BTN_M;
+                bool isDot = (row == 3 && col == 2);
+                uint16_t keyColor = (isDot && !miniPosConfig.decimal) ? TFT_DARKGREY : themeForeground;
+                drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, keyColor);
+                drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
+                           kMpLabels[row][col], keyColor, themeBackground, 4);
+            }
+        }
+    }
+
+    flushDisplay();
+}
+
+// Returns: 0-9=digit, 10=backspace, 13=decimal point, 14=Invoice, 15=Last Pay,
+// -1=no hit. The decimal key reports -1 when the decimal separator is disabled.
+int miniPosHitTest(uint16_t x, uint16_t y) {
+    if (isPortrait()) {
+        if (y < (uint16_t)PP_V_TOP_H) {
+            if (y >= (uint16_t)MP_V_BTN_Y && y <= (uint16_t)(MP_V_BTN_Y + MP_V_BTN_H)) {
+                if (x >= 10 && x <= 152)  return 14;  // INVOICE
+                if (x >= 168 && x <= 310) return 15;  // LAST PAY
+            }
+            return -1;
+        }
+        int col = x / PP_V_COL_W;
+        int row = (y - PP_V_TOP_H) / PP_V_ROW_H;
+        if (col > 2 || row > 3) return -1;
+        int bx = col * PP_V_COL_W + PP_V_BTN_M;
+        int by = PP_V_TOP_H + row * PP_V_ROW_H + PP_V_BTN_M;
+        if (x < (uint16_t)bx || x > (uint16_t)(bx + PP_V_BTN_W)) return -1;
+        if (y < (uint16_t)by || y > (uint16_t)(by + PP_V_BTN_H)) return -1;
+        int hit = kMpMap[row][col];
+        if (hit == 13 && !miniPosConfig.decimal) return -1;
+        return hit;
+    }
+
+    // Landscape
+    if (x < (uint16_t)PP_NP_X) {
+        if (y >= (uint16_t)MP_INVOICE_Y && y <= (uint16_t)(MP_INVOICE_Y + MP_BTN_H)) return 14;
+        if (y >= (uint16_t)MP_LASTPAY_Y && y <= (uint16_t)(MP_LASTPAY_Y + MP_BTN_H)) return 15;
+        return -1;
+    }
+    int col = (x - PP_NP_X) / PP_NP_COL_W;
+    int row = y / PP_NP_ROW_H;
+    if (col > 2 || row > 3) return -1;
+    int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
+    int by = row * PP_NP_ROW_H + PP_BTN_M;
+    if (x < (uint16_t)bx || x > (uint16_t)(bx + PP_BTN_W)) return -1;
+    if (y < (uint16_t)by || y > (uint16_t)(by + PP_BTN_H)) return -1;
+    int hit = kMpMap[row][col];
+    if (hit == 13 && !miniPosConfig.decimal) return -1;
+    return hit;
+}
+
+// QR screen with invoice: lines 1+2 from the LNbits pin-5 label, line 3 shows
+// the invoice amount (e.g. "23.50 EUR"). Small CANCEL button bottom-right —
+// only a touch on this button returns to the amount entry screen.
+void showMiniPosQRScreen() {
+    DisplayLock l;
+    if (!_gfx) return;
+
+    int activePin = (RELAY_CHANNEL_MAX > 0) ? RELAY_CHANNEL_PINS[0] : 5;
+    int pinIndex = getPinIndex(activePin);
+    String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
+                    ? productLabels.labels[pinIndex]
+                    : String("Mini-PoS");
+    label = sanitizeLabel(label);
+    String words[3];
+    int wordCount;
+    splitLabelWords(label, activePin, words, wordCount);
+    // Third line always shows the invoice amount
+    words[2] = sanitizeLabel(miniPosState.amountLine);
+    wordCount = 3;
+
+    uint16_t qrFg = themeForeground;
+    uint16_t qrBg = themeBackground;
+    if (themeInvertQr()) { qrFg = themeBackground; qrBg = themeForeground; }
+
+    // BOLT11 is bech32 (case-insensitive). Uppercase the QR content so the
+    // encoder can use alphanumeric mode: QR version 11 then holds 468 chars
+    // instead of 321 — needed for invoices with route hints. The NFC tag
+    // keeps the original lowercase URI (written elsewhere).
+    String qrText = String(lightningConfig.lightning);
+    qrText.toUpperCase();
+
+    fillScreen(qrBg);
+    if (isPortrait()) {
+        drawQRAt(qrText.c_str(), QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
+        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
+        drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
+        drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
+    } else {
+        drawQRAt(qrText.c_str(), QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+        drawLabelBox(words, wordCount, qrFg, qrBg);
+        int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
+        drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
+        drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
+    }
+    flushDisplay();
+}
+
+bool miniPosQrCancelHit(uint16_t x, uint16_t y) {
+    if (isPortrait()) {
+        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
+        return x >= (uint16_t)cbx && x <= (uint16_t)(cbx + MP_QRC_W) &&
+               y >= (uint16_t)cby && y <= (uint16_t)(cby + MP_QRC_H);
+    }
+    int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
+    return x >= (uint16_t)cbx && x <= (uint16_t)(cbx + MP_QRC_W) &&
+           y >= (uint16_t)cby && y <= (uint16_t)(cby + MP_QRC_H);
+}
+
+void miniPosPaidScreen() {
+    DisplayLock l;
+    if (!_gfx) return;
+    fillScreen(themeBackground);
+    int cx = SCR_W / 2;
+    int cy = SCR_H / 2;
+    drawCenter(cx, cy - 30, "PAID", TFT_GREEN, themeBackground, 6);
+    String line = miniPosState.amountLine;
+    if (line.length() > 0) {
+        drawCenter(cx, cy + 45, sanitizeLabel(line).c_str(), themeForeground, themeBackground, 3);
+    }
+    drawCenter(cx, cy + 95, "Thank you", themeForeground, themeBackground, 2);
+    flushDisplay();
 }
 
 void nfcTestScreen(String lnurlw) {

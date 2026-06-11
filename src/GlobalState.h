@@ -40,7 +40,7 @@ extern DisplayConfig displayConfig;
 // ============================================================================
 
 struct LightningConfig {
-  char lightning[300] = "";     // Main Lightning URL/QR code
+  char lightning[640] = "";     // Main Lightning URL/QR code (BOLT11 invoices with route hints can exceed 400 chars)
   String thresholdKey = "";     // Optional threshold mode key
   String thresholdAmount = "";  // Threshold amount in sats
   String thresholdPin = "";     // GPIO pin for threshold
@@ -588,5 +588,56 @@ struct PinPadState {
 };
 
 extern PinPadState pinPadState;
+
+// ============================================================================
+// MINI-POS MODE (Touch 3.5 only — amount entry → invoice → QR/NFC payment)
+// ============================================================================
+
+struct MiniPosConfig {
+  bool   enabled = false;      // multiControl == "minipos"
+  String currency = "EUR";     // ISO code or "Sat" for satoshi
+  bool   decimal = true;       // true: amounts forced to 2 decimal places
+  String invoiceKey = "";      // LNbits wallet Invoice/Read key (32 chars)
+};
+
+// NDEF content for the NT3H tag while no Mini-PoS invoice is pending —
+// a phone tap on the idle device opens the project website.
+constexpr const char MINIPOS_IDLE_TAG_URL[] = "https://zapbox.space";
+
+extern MiniPosConfig miniPosConfig;
+
+struct MiniPosState {
+  bool   inputActive = false;        // amount entry screen is shown
+  char   amount[9] = {0};            // entered amount, max 7 chars + null
+  int    numChars = 0;
+  uint32_t lastInputActivity = 0;    // millis() of last touch on the entry screen
+                                     // (ticker-screensaver timeout, "always" mode)
+  bool   amountLocked = false;       // true while "Last Pay" amount shown in orange
+  uint32_t lockUntil = 0;            // millis() when the orange lock expires
+  String infoMsg;                    // transient message ("No history", errors)
+  uint32_t infoUntil = 0;            // millis() when infoMsg expires
+  // Pending invoice (QR screen)
+  bool   invoicePending = false;
+  String paymentHash;
+  String amountLine;                 // e.g. "23.50 EUR" — third label line on QR screen
+  uint32_t invoiceCreatedAt = 0;     // millis() — for INVOICE_TIMEOUT
+
+  void resetInput() {
+    memset(amount, 0, sizeof(amount));
+    numChars = 0;
+    amountLocked = false;
+    lockUntil = 0;
+    infoMsg = "";
+    infoUntil = 0;
+  }
+  void resetInvoice() {
+    invoicePending = false;
+    paymentHash = "";
+    amountLine = "";
+    invoiceCreatedAt = 0;
+  }
+};
+
+extern MiniPosState miniPosState;
 
 #endif // GLOBAL_STATE_H

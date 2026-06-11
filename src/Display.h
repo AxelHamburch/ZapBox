@@ -56,6 +56,25 @@ void showPinPadScreen(const PinPadState &state);
 // Returns: 0-9=digit, 10=backspace, 11=clear, 12=cancel, -1=no hit
 int  pinPadHitTest(uint16_t x, uint16_t y);
 
+// Mini-PoS (Touch 3.5 only): amount entry screen, invoice QR with cancel
+// button, paid confirmation. Stubs on all other boards.
+#ifdef BOARD_JC3248W535C
+void showMiniPosInputScreen();
+// Returns: 0-9=digit, 10=backspace, 13=decimal point, 14=Invoice,
+//          15=Last Pay, -1=no hit
+int  miniPosHitTest(uint16_t x, uint16_t y);
+void showMiniPosQRScreen();
+// True when the touch hits the small Cancel button on the Mini-PoS QR screen
+bool miniPosQrCancelHit(uint16_t x, uint16_t y);
+void miniPosPaidScreen();
+#else
+inline void showMiniPosInputScreen() {}
+inline int  miniPosHitTest(uint16_t, uint16_t) { return -1; }
+inline void showMiniPosQRScreen() {}
+inline bool miniPosQrCancelHit(uint16_t, uint16_t) { return false; }
+inline void miniPosPaidScreen() {}
+#endif
+
 #else
 
 // Headless mode - stub implementations (no display)
@@ -100,5 +119,10 @@ inline bool isDeepSleepActive() { return false; }
 inline void nfcTestScreen(String) {}
 inline void showPinPadScreen(const PinPadState &) {}
 inline int  pinPadHitTest(uint16_t, uint16_t) { return -1; }
+inline void showMiniPosInputScreen() {}
+inline int  miniPosHitTest(uint16_t, uint16_t) { return -1; }
+inline void showMiniPosQRScreen() {}
+inline bool miniPosQrCancelHit(uint16_t, uint16_t) { return false; }
+inline void miniPosPaidScreen() {}
 
 #endif // ENABLE_DISPLAY

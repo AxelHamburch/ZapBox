@@ -132,6 +132,13 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     LOG_INFO("NFC", "LNURLW received from Bolt Card – sending WS event");
 
+    // Mini-PoS: a Bolt Card can only pay a pending invoice. On the amount
+    // entry screen (no invoice) the tap is silently ignored.
+    if (miniPosConfig.enabled && !miniPosState.invoicePending) {
+        LOG_INFO("NFC", "Mini-PoS: no invoice pending – Bolt Card tap ignored");
+        return;
+    }
+
     // Block NFC payments when any sensor condition is active
     if (lightBarrierConfig.isAnyBlocking()) {
         LOG_WARN("NFC", "NFC tap blocked — sensor blocking active");
@@ -170,6 +177,11 @@ void nfcLnurlwReceived(const String &lnurlw)
     HTTPClient http;
     String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
                  + "/api/v1/nfc/" + deviceId + "?pin=" + String(activePin);
+    // Mini-PoS: tell the extension to pay the pending invoice instead of
+    // creating a new one from the switch configuration.
+    if (miniPosConfig.enabled && miniPosState.invoicePending) {
+        url += "&minipos_hash=" + miniPosState.paymentHash;
+    }
     LOG_INFO("NFC", String("Sending NFC request to: ") + url);
     http.begin(url);
     http.addHeader("Content-Type", "application/json");

@@ -42,4 +42,19 @@ void updateBitcoinTicker();
  */
 void updateSwitchLabels();
 
+/**
+ * Mini-PoS: request a Lightning invoice from the zapbox_extension for the
+ * given normalized amount string (e.g. "5.00"). On success fills
+ * miniPosState (paymentHash, amountLine, invoicePending) and updates the
+ * lightning QR buffer with the BOLT11 payment request.
+ * On failure sets miniPosState.infoMsg and returns false.
+ */
+bool requestMiniPosInvoice(const String &amountStr);
+
+/**
+ * Mini-PoS: fetch amount of the last settled payment ("Last Pay" button).
+ * Returns true and fills amountOut (e.g. "23.50") when a paid entry exists.
+ */
+bool fetchMiniPosLastPay(String &amountOut);
+
 #endif // API_H

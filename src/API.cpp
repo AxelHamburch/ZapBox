@@ -3,6 +3,7 @@
 #include "DeviceState.h"
 #include "Log.h"
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
 
@@ -219,12 +220,34 @@ void fetchBitcoinData()
     return;
   }
 
+  // Concurrency guard: the initial fetch runs as an async task while the
+  // periodic updater in loop() may also call this function. Two parallel TLS
+  // sessions waste ~100 KB heap. If a fetch appears stuck (router drops the
+  // SSL handshake without RST), allow a new attempt after 90 s anyway.
+  static volatile bool fetchInProgress = false;
+  static volatile unsigned long fetchStartedAt = 0;
+  if (fetchInProgress && (millis() - fetchStartedAt) < 90000) {
+    Serial.println("[BTC] Skipping fetch - previous fetch still in progress");
+    // Arm the caller backoff too — otherwise updateBitcoinTicker() retries
+    // (and logs) on every single loop iteration while the fetch hangs.
+    lastFetchAttempt = millis();
+    return;
+  }
+  fetchInProgress = true;
+  fetchStartedAt = millis();
+
   Serial.println("[BTC] Fetching Bitcoin data...");
-  
+
   // Update last fetch attempt time for backoff
   lastFetchAttempt = millis();
-  
+
   HTTPClient http;
+  // Own TLS client so the SSL handshake timeout can be bounded: the default
+  // is 120 s, and consumer routers have been observed to silently drop the
+  // handshake — the fetch then hangs for the better part of a minute.
+  WiFiClientSecure secureClient;
+  secureClient.setInsecure();          // same trust model as http.begin(url)
+  secureClient.setHandshakeTimeout(10); // seconds
   // mempool.space /api/v1/prices supports: USD, EUR, GBP, CAD, CHF, AUD, JPY
   // Using uppercase currency codes as returned by the API.
   String currencyUpper = currency;
@@ -232,7 +255,8 @@ void fetchBitcoinData()
 
   // Fetch BTC price from mempool.space — same server as block height fetch
   bool priceOk = false;
-  http.begin("https://mempool.space/api/v1/prices");
+  http.begin(secureClient, "https://mempool.space/api/v1/prices");
+  http.setConnectTimeout(5000);
   http.setTimeout(8000);
 
   if (http.GET() == 200) {
@@ -255,12 +279,14 @@ void fetchBitcoinData()
   // HTTP call was running. Don't start a new SSL connection if WiFi is gone.
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
     Serial.println("[BTC] Aborting mid-fetch - CONFIG_MODE active");
+    fetchInProgress = false;
     return;
   }
 
   // Fetch block height from mempool.space — keep last known value on failure
   bool blockOk = false;
-  http.begin("https://mempool.space/api/blocks/tip/height");
+  http.begin(secureClient, "https://mempool.space/api/blocks/tip/height");
+  http.setConnectTimeout(5000);
   http.setTimeout(8000);
 
   if (http.GET() == 200) {
@@ -279,7 +305,8 @@ void fetchBitcoinData()
   if (!priceOk && blockOk && !deviceState.isInState(DeviceState::CONFIG_MODE)) {
     delay(300);
     Serial.println("[BTC] Price failed, block OK — retrying price (connection now warm)...");
-    http.begin("https://mempool.space/api/v1/prices");
+    http.begin(secureClient, "https://mempool.space/api/v1/prices");
+    http.setConnectTimeout(5000);
     http.setTimeout(8000);
     if (http.GET() == 200) {
       JsonDocument doc2;
@@ -304,8 +331,9 @@ void fetchBitcoinData()
   if (btcDataHasError) {
     Serial.println("[BTC] ERROR detected - will retry in 1 minute instead of 5 minutes");
   }
-  
+
   bitcoinData.lastUpdate = millis();
+  fetchInProgress = false;
 }
 
 /**
@@ -320,8 +348,12 @@ void updateBitcoinTicker()
 
   unsigned long currentTime = millis();
 
-  // Use shorter interval if last fetch had errors, otherwise use normal interval
-  unsigned long updateInterval = btcDataHasError ? BTC_ERROR_RETRY_INTERVAL : BTC_UPDATE_INTERVAL;
+  // Use the short interval if the last fetch had errors OR no data has ever
+  // been loaded (e.g. the initial async fetch hung on a dropped SSL
+  // handshake) — otherwise the "Loading..." placeholders would sit on the
+  // ticker for the full 5-minute interval.
+  bool noDataYet = (bitcoinData.price == "Loading...");
+  unsigned long updateInterval = (btcDataHasError || noDataYet) ? BTC_ERROR_RETRY_INTERVAL : BTC_UPDATE_INTERVAL;
 
   // Check if it's time for an update and enforce backoff for failed attempts
   if (currentTime - bitcoinData.lastUpdate >= updateInterval) {
@@ -331,11 +363,14 @@ void updateBitcoinTicker()
     }
     
     Serial.println("[BTC] Update interval reached, fetching new data...");
+    unsigned long lastUpdateBefore = bitcoinData.lastUpdate;
     fetchBitcoinData();
 
-    // Refresh the display ONLY if we're STILL on the ticker screen
-    // Use partial update to reduce flicker (only updates values, not full redraw)
-    if (multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
+    // Refresh the display ONLY if the fetch actually completed (it may have
+    // been skipped while another fetch is in progress) AND we're STILL on the
+    // ticker screen. Partial update to reduce flicker.
+    if (bitcoinData.lastUpdate != lastUpdateBefore &&
+        multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
       updateBtctickerValues(); // Partial update instead of btctickerScreen()
       Serial.println("[BTC] Values updated (partial refresh - reduced flicker)");
     }
@@ -369,4 +404,124 @@ void updateSwitchLabels()
     }
     fetchSwitchLabels();
   }
+}
+
+// ============================================================================
+// MINI-POS API (Touch 3.5 — amount entry → invoice via zapbox_extension)
+// ============================================================================
+
+extern void updateLightningQR(const String& lnurlStr);
+
+/**
+ * POST /<apiPath>/api/v1/pos/invoice
+ * Header: X-Api-Key: <wallet invoice key>
+ * Body:   {"amount": 5.00, "currency": "EUR", "device_id": "<22-char-id>"}
+ * Response: {"payment_hash": "...", "payment_request": "lnbc..."}
+ */
+bool requestMiniPosInvoice(const String &amountStr)
+{
+  if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
+    miniPosState.infoMsg = "No server configured";
+    return false;
+  }
+  if (miniPosConfig.invoiceKey.length() == 0) {
+    miniPosState.infoMsg = "No invoice key";
+    return false;
+  }
+
+  HTTPClient http;
+  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+               + "/api/v1/pos/invoice";
+  LOG_INFO("MiniPoS", "Requesting invoice: " + amountStr + " " + miniPosConfig.currency);
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-Api-Key", miniPosConfig.invoiceKey);
+  http.setConnectTimeout(5000);
+  http.setTimeout(10000);
+
+  String body = String("{\"amount\":") + amountStr
+              + ",\"currency\":\"" + miniPosConfig.currency + "\""
+              + ",\"device_id\":\"" + deviceId + "\"}";
+  int httpCode = http.POST(body);
+  if (httpCode != 200) {
+    String resp = http.getString();
+    http.end();
+    LOG_ERROR("MiniPoS", String("Invoice HTTP ") + String(httpCode) + " - " + resp);
+    miniPosState.infoMsg = (httpCode < 0) ? String("Connection failed")
+                                          : "Server error " + String(httpCode);
+    return false;
+  }
+
+  String resp = http.getString();
+  http.end();
+  JsonDocument doc;
+  if (deserializeJson(doc, resp)) {
+    LOG_ERROR("MiniPoS", "Invoice response JSON parse error");
+    miniPosState.infoMsg = "Bad response";
+    return false;
+  }
+  const char *hash = doc["payment_hash"];
+  const char *bolt11 = doc["payment_request"];
+  if (!hash || !bolt11 || strlen(bolt11) == 0) {
+    LOG_ERROR("MiniPoS", "Invoice response missing fields");
+    miniPosState.infoMsg = "Bad response";
+    return false;
+  }
+
+  LOG_INFO("MiniPoS", String("BOLT11 length: ") + String(strlen(bolt11)) + " chars");
+  miniPosState.paymentHash = String(hash);
+  miniPosState.amountLine = amountStr + " " + miniPosConfig.currency;
+  miniPosState.invoicePending = true;
+  miniPosState.invoiceCreatedAt = millis();
+  // BOLT11 into the QR/NFC buffer ("lightning:" prefix added automatically)
+  updateLightningQR(String(bolt11));
+  LOG_INFO("MiniPoS", "Invoice created: " + miniPosState.paymentHash);
+  return true;
+}
+
+/**
+ * GET /<apiPath>/api/v1/pos/invoice/last?device_id=<id>
+ * Header: X-Api-Key: <wallet invoice key>
+ * Response: {"amount": 23.5, "currency": "EUR"} or {"amount": null}
+ */
+bool fetchMiniPosLastPay(String &amountOut)
+{
+  amountOut = "";
+  if (lnbitsServer.length() == 0 || deviceId.length() == 0 ||
+      miniPosConfig.invoiceKey.length() == 0) {
+    return false;
+  }
+
+  HTTPClient http;
+  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+               + "/api/v1/pos/invoice/last?device_id=" + deviceId;
+  http.begin(url);
+  http.addHeader("X-Api-Key", miniPosConfig.invoiceKey);
+  http.setConnectTimeout(5000);
+  http.setTimeout(7000);
+
+  int httpCode = http.GET();
+  if (httpCode != 200) {
+    http.end();
+    LOG_WARN("MiniPoS", String("Last-pay HTTP ") + String(httpCode));
+    return false;
+  }
+  String resp = http.getString();
+  http.end();
+  JsonDocument doc;
+  if (deserializeJson(doc, resp)) return false;
+  if (doc["amount"].isNull()) return false;
+
+  float amount = doc["amount"];
+  if (miniPosConfig.decimal) {
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.2f", amount);
+    amountOut = String(buf);
+  } else {
+    amountOut = String((long)amount);
+  }
+  // Keep within the 7-char entry limit
+  if (amountOut.length() > 7) amountOut = amountOut.substring(0, 7);
+  LOG_INFO("MiniPoS", "Last paid amount: " + amountOut);
+  return true;
 }

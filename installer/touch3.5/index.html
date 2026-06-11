@@ -79,7 +79,8 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version-touch35" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-				<option value="../firmware/v952864t/manifest.json">v952864t (Latest - All 4 orientations, mempool.space, router stability 🌐🖥️)</option>
+				<option value="../firmware/v953139t/manifest.json">v953139t (Latest - Mini-PoS 🧾⚡)</option>
+				<option value="../firmware/v952864t/manifest.json">v952864t (All 4 orientations, mempool.space, router stability 🌐🖥️)</option>
 				<option value="../firmware/v950949t/manifest.json">v950949t (Ambient Light CH02, OFA, faster boot ⚡🖥️)</option>
 				<option value="../firmware/v950715t/manifest.json">v950715t (PIN Pad for BoltCard &amp; Touch 3.5&quot; improvements 🔐🖥️)</option>
 				<option value="../firmware/v949844t/manifest.json">v949844t (GPIO FD Fix &amp; WebSocket Self-Repair 🔌🔄)</option>
@@ -89,7 +90,7 @@
                 <option value="../firmware/v1000000t/manifest.json">v1000000t - 🖥️ Touch 3.5" initial release</option>
             </select>
 
-			<esp-web-install-button id="flash-button-touch35" manifest="../firmware/v952864t/manifest.json">
+			<esp-web-install-button id="flash-button-touch35" manifest="../firmware/v953139t/manifest.json">
                 <button slot="activate">🔥 Flash Touch 3.5"</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -264,6 +265,7 @@
                     <select name="multiControl" id="multiControl">
                         <option value="off" selected>Single channel — CH01 (pin 5 / default)</option>
                         <option value="duo">Multi-channel — CH01 to CH06</option>
+                        <option value="minipos">Mini-PoS — amount entry on display (CH01)</option>
                     </select>
                 </div>
             </div>
@@ -271,6 +273,30 @@
             <!-- Single channel info: visible only in single mode -->
             <div id="singleChannelInfo" style="margin-top: 10px;">
                 <p style="color: #888; margin: 0;"><i>CH01 is wired to <strong>GPIO pin 5</strong> and operates as a relay output (on / off). <br> In LNbits, declare <strong>pin 5</strong> for this channel.</i></p>
+            </div>
+
+            <!-- Mini-PoS configuration: visible only in Mini-PoS mode -->
+            <div id="miniPosFields" style="display: none; margin-top: 10px;">
+                <p style="color: #888; margin: 0 0 14px 0;"><i>Mini-PoS works like single channel and switches <strong>GPIO pin 5</strong> — but instead of a fixed QR code, the user enters an amount on the touch display. The ZapBox then requests a Lightning invoice from your LNbits server (zapbox_extension required) and shows it as QR code. It can be paid by scanning, by Bolt Card (PN532) or by mobile phone NFC (NFC Tag 2). After payment, pin 5 is activated with the duration configured for pin 5 in LNbits (fallback: 3000&nbsp;ms).</i></p>
+                <div class="input-wrapper">
+                    <div>
+                        <label for="miniPosCurrency">Currency (ISO Code) for Payments</label>
+                        <input type="text" name="miniPosCurrency" id="miniPosCurrency" value="EUR" placeholder="EUR" maxlength="3" autocomplete="off">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">e.g. EUR, USD, GBP — or <strong>Sat</strong> for Satoshi</p>
+                    </div>
+                    <div>
+                        <label for="miniPosDecimal">Decimal separator</label>
+                        <select name="miniPosDecimal" id="miniPosDecimal">
+                            <option value="yes" selected>YES — two decimal places (e.g. 0.50 EUR)</option>
+                            <option value="no">NO — whole numbers only (e.g. 1000 Sat)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="miniPosInvoiceKey">Wallet Invoice Key</label>
+                        <input type="text" name="miniPosInvoiceKey" id="miniPosInvoiceKey" placeholder="e.g. c9e68ab036.." maxlength="32" autocomplete="off">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">"Invoice/read key" of the LNbits wallet that receives the payments (32 characters)</p>
+                    </div>
+                </div>
             </div>
 
             <!-- CH01–CH06 + multi-channel description: hidden in single mode -->
@@ -358,17 +384,19 @@
                     GPIO 46 — FD (Field Detection) for NT3H2111 NFC Tag 2; INPUT_PULLUP, active LOW when smartphone NFC field detected; also strapping pin (LOW at boot suppresses ROM log — no bricking risk)
                 </i></p>
 
-                <!-- Activation Options -->
-                <div id="activationOptionsDiv" style="margin-top: 16px;">
-                    <div class="input-wrapper" style="margin-bottom: 0;">
-                        <div>
-                            <label for="t35ActivationMode">Activation Options</label>
-                            <select name="t35ActivationMode" id="t35ActivationMode">
-                                <option value="off" selected>Off (default) — each channel triggered separately</option>
-                                <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 5)</option>
-                            </select>
-                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
-                        </div>
+            </div>
+
+            <!-- Activation Options — shown for Multi-channel AND Mini-PoS -->
+            <div id="activationOptionsDiv" style="display: none; margin-top: 16px;">
+                <div class="input-wrapper" style="margin-bottom: 0;">
+                    <div>
+                        <label for="t35ActivationMode">Activation Options</label>
+                        <select name="t35ActivationMode" id="t35ActivationMode">
+                            <option value="off" selected>Off (default) — each channel triggered separately</option>
+                            <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 5)</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
+                        <p id="activationOptionsMiniPosHint" style="display: none; margin: 4px 0 0 0; font-size: 11px; color: #888; font-style: italic;"><strong>Mini-PoS:</strong> With One for All, a paid invoice also triggers the channels CH02–CH06 that are configured as relay/servo (configure them in Multi-channel mode first — the values are kept when switching back to Mini-PoS).</p>
                     </div>
                 </div>
             </div>
@@ -829,7 +857,11 @@
             { "name": "gpio15Mode",         "value": "off" },
             { "name": "gpio16Mode",         "value": "off" },
             // index 53 – Touch 3.5 activation mode
-            { "name": "t35ActivationMode",  "value": "off" }
+            { "name": "t35ActivationMode",  "value": "off" },
+            // indices 54-56 – Mini-PoS mode (multiControl == "minipos")
+            { "name": "miniPosCurrency",    "value": "EUR" },
+            { "name": "miniPosDecimal",     "value": "yes" },
+            { "name": "miniPosInvoiceKey",  "value": "" }
         ];
 
         // Setup Web Serial using serial.js
@@ -1236,7 +1268,10 @@
                 "gpio14Mode":         (document.getElementById('gpio14Mode')         || {value: "off"}).value,
                 "gpio15Mode":         (document.getElementById('gpio15Mode')         || {value: "off"}).value,
                 "gpio16Mode":         (document.getElementById('gpio16Mode')         || {value: "off"}).value,
-                "t35ActivationMode":  (document.getElementById('t35ActivationMode')  || {value: "off"}).value
+                "t35ActivationMode":  (document.getElementById('t35ActivationMode')  || {value: "off"}).value,
+                "miniPosCurrency":    (document.getElementById('miniPosCurrency')    || {value: "EUR"}).value || "EUR",
+                "miniPosDecimal":     (document.getElementById('miniPosDecimal')     || {value: "yes"}).value,
+                "miniPosInvoiceKey":  (document.getElementById('miniPosInvoiceKey')  || {value: ""}).value
             };
             for (const entry of config) {
                 if (map.hasOwnProperty(entry.name)) {
@@ -1284,9 +1319,16 @@
             const multi = document.getElementById('multiControl');
             const fields = document.getElementById('multiChannelFields');
             const singleInfo = document.getElementById('singleChannelInfo');
-            const isMulti = multi && multi.value !== 'off';
-            if (fields) fields.style.display = isMulti ? 'block' : 'none';
-            if (singleInfo) singleInfo.style.display = isMulti ? 'none' : 'block';
+            const miniPos = document.getElementById('miniPosFields');
+            const mode = multi ? multi.value : 'off';
+            const activation = document.getElementById('activationOptionsDiv');
+            const activationHint = document.getElementById('activationOptionsMiniPosHint');
+            if (fields) fields.style.display = (mode === 'duo') ? 'block' : 'none';
+            if (singleInfo) singleInfo.style.display = (mode === 'off') ? 'block' : 'none';
+            if (miniPos) miniPos.style.display = (mode === 'minipos') ? 'block' : 'none';
+            // Activation Options (One for All) apply to Multi-channel and Mini-PoS
+            if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos') ? 'block' : 'none';
+            if (activationHint) activationHint.style.display = (mode === 'minipos') ? 'block' : 'none';
         }
 
         const multiControlEl = document.getElementById('multiControl');

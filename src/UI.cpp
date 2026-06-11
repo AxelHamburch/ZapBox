@@ -368,6 +368,22 @@ void redrawQRScreen() {
 
   LOG_DEBUG("Display", "Redrawing QR screen...");
 
+  // Mini-PoS mode: amount entry screen, or invoice QR while one is pending
+  if (miniPosConfig.enabled) {
+    if (miniPosState.invoicePending) {
+      showMiniPosQRScreen();
+      LOG_DEBUG("Display", "Mini-PoS invoice QR screen displayed");
+    } else {
+      multiChannelConfig.btcTickerActive = false;
+      miniPosState.inputActive = true;
+      miniPosState.lastInputActivity = millis();
+      showMiniPosInputScreen();
+      LOG_DEBUG("Display", "Mini-PoS amount entry screen displayed");
+    }
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
   // Threshold mode
   if (lightningConfig.thresholdKey.length() > 0) {
     showThresholdQRScreen();
@@ -492,6 +508,27 @@ void redrawQRScreen() {
  * Handles threshold mode, multi-channel (duo/quattro) and single mode including special mode.
  */
 void showInitialScreenAfterConnections() {
+  // Mini-PoS mode: start on the amount entry screen — or on the BTC ticker
+  // when ticker mode "always" is configured (ticker acts as screensaver).
+  if (miniPosConfig.enabled) {
+    miniPosState.resetInput();
+    miniPosState.resetInvoice();
+    strncpy(lightningConfig.lightning, MINIPOS_IDLE_TAG_URL,
+            sizeof(lightningConfig.lightning) - 1);
+    lightningConfig.lightning[sizeof(lightningConfig.lightning) - 1] = '\0';
+    if (multiChannelConfig.btcTickerMode == "always") {
+      btctickerScreen();
+      multiChannelConfig.btcTickerActive = true;
+    } else {
+      miniPosState.inputActive = true;
+      miniPosState.lastInputActivity = millis();
+      showMiniPosInputScreen();
+      multiChannelConfig.btcTickerActive = false;
+    }
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
   // Threshold mode has priority
   if (lightningConfig.thresholdKey.length() > 0) {
     showThresholdQRScreen();
