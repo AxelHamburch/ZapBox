@@ -1353,34 +1353,49 @@ static void drawPinDot(int cx, int cy, bool filled, uint16_t fg, uint16_t bg) {
     if (!filled) drawRectBorder(cx-h, cy-h, 2*h, 2*h, 2, fg);
 }
 
-// Draw error message (up to 3 lines, size 2, white on red background).
+// Draw error message (word-wrapped, size 2, white on red background).
+// Number of lines is derived from the rect height so the box is fully used.
 static void drawPinError(const String &msg, int rectX, int rectY, int rectW, int rectH, int cx) {
     fillRect(rectX, rectY, rectW, rectH, TFT_RED);
     const int sz      = 2;
     const int charW   = 6 * sz;   // 12px per char at size 2
     const int lineH   = 8 * sz;   // 16px per line
-    const int lineGap = 4;
+    const int lineGap = 2;
     const int maxChars = rectW / charW;
+    const int kMaxLines = 6;
+    int maxLines = (rectH + lineGap) / (lineH + lineGap);
+    if (maxLines < 1) maxLines = 1;
+    if (maxLines > kMaxLines) maxLines = kMaxLines;
 
-    // Split on explicit newlines, then word-wrap each segment (up to 3 lines total)
-    String lines[3];
+    // Split on explicit newlines, then word-wrap each segment
+    String lines[kMaxLines];
     int numLines = 0;
     String rem = msg;
-    while (numLines < 3 && rem.length() > 0) {
+    while (numLines < maxLines && rem.length() > 0) {
         int nl = rem.indexOf('\n');
-        if (nl >= 0) {
+        if (nl >= 0 && nl <= maxChars) {
             lines[numLines++] = rem.substring(0, nl);
             rem = rem.substring(nl + 1);
-        } else if ((int)rem.length() <= maxChars) {
+        } else if (nl < 0 && (int)rem.length() <= maxChars) {
             lines[numLines++] = rem;
             rem = "";
         } else {
             int split = maxChars;
             while (split > 0 && rem[split] != ' ') split--;
-            if (split == 0) split = maxChars;
-            lines[numLines++] = rem.substring(0, split);
-            rem = rem.substring(split + 1);
+            if (split == 0) {
+                lines[numLines++] = rem.substring(0, maxChars);
+                rem = rem.substring(maxChars);
+            } else {
+                lines[numLines++] = rem.substring(0, split);
+                rem = rem.substring(split + 1);
+            }
         }
+    }
+    // Message longer than the box — mark the last line as truncated
+    if (rem.length() > 0 && numLines > 0) {
+        String &last = lines[numLines - 1];
+        if ((int)last.length() > maxChars - 3) last = last.substring(0, maxChars - 3);
+        last += "...";
     }
 
     int totalH = numLines * lineH + (numLines - 1) * lineGap;
@@ -1430,13 +1445,18 @@ void showPinPadScreen(const PinPadState &state) {
                 drawCenter(PANEL_W / 2, 108, buf, TFT_RED, themeBackground, 2);
             }
             String displayMsg = isTimeout ? "PIN entry\ntimed out." : state.errorMsg;
-            drawPinError(displayMsg, 4, 120, PANEL_W - 8, 40, PANEL_W / 2);
+            // Error box extends over the Cancel button area (4 lines).
+            // The button is not drawn while the error shows — it reappears on
+            // the auto-dismiss redraw, and its touch zone keeps working.
+            drawPinError(displayMsg, 4, 120, PANEL_W - 8, PP_V_TOP_H - 124, PANEL_W / 2);
         }
 
-        // Cancel button
-        drawRectBorder(20, PP_V_CANCEL_Y, PANEL_W - 40, PP_V_CANCEL_H, 2, themeForeground);
-        drawCenter(PANEL_W / 2, PP_V_CANCEL_Y + PP_V_CANCEL_H / 2,
-                   "CANCEL", themeForeground, themeBackground, 2);
+        // Cancel button (hidden while the error message uses its space)
+        if (!state.showError) {
+            drawRectBorder(20, PP_V_CANCEL_Y, PANEL_W - 40, PP_V_CANCEL_H, 2, themeForeground);
+            drawCenter(PANEL_W / 2, PP_V_CANCEL_Y + PP_V_CANCEL_H / 2,
+                       "CANCEL", themeForeground, themeBackground, 2);
+        }
 
         // ── Numpad ───────────────────────────────────────────────────────────
         for (int row = 0; row < 4; row++) {
@@ -1480,7 +1500,7 @@ void showPinPadScreen(const PinPadState &state) {
                 drawCenter(PP_LEFT_CX, 143, buf, TFT_RED, themeBackground, 2);
             }
             String displayMsg = isTimeout ? "PIN entry\ntimed out." : state.errorMsg;
-            drawPinError(displayMsg, 4, 157, PP_LEFT_W - 8, 76, PP_LEFT_CX);
+            drawPinError(displayMsg, 4, 155, PP_LEFT_W - 8, 108, PP_LEFT_CX);
         }
 
         // Cancel button
