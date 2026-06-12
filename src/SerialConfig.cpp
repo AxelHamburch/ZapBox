@@ -369,6 +369,10 @@ void executeCommand(String commandName, String commandData)
     {
         return appendToFile(path, data);
     }
+    if (commandName == "/file-write")
+    {
+        return writeFile(path, data);
+    }
 
     if (commandName == "/file-read")
     {
@@ -400,6 +404,22 @@ void appendToFile(String path, String data)
         file.close();
     }
     serialPrintln("- Append done");
+}
+
+void writeFile(String path, String data)
+{
+    serialPrintln("- Write file: " + path);
+    File file = FFat.open("/" + path, FILE_WRITE);
+    if (file)
+    {
+        file.print(data);
+        file.close();
+        serialPrintln("- Write done");
+    }
+    else
+    {
+        serialPrintln("- Write failed");
+    }
 }
 
 void readFile(String path)

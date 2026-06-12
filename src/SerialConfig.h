@@ -14,5 +14,6 @@ extern void* touchControllerPtr;
 void executeCommand(String commandName, String commandData);
 void removeFile(String path);
 void appendToFile(String path, String data);
+void writeFile(String path, String data);
 void readFile(String path);
 KeyValue extractKeyValue(String s);

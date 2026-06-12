@@ -894,6 +894,7 @@
         let helloSendTimeout         = null;
         let serialBuffer             = "";
         let justRestarted            = false;
+        let pendingWriteAck          = null;
         let lastDataReceivedTime     = 0;
         let connectionMonitorInterval = null;
         let inactivityWarningShown   = false;
@@ -1033,6 +1034,13 @@
                     consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 }, 800);
                 return;
+            }
+
+            // Resolve pending write ACK when firmware confirms write done
+            if (pendingWriteAck && newData.includes('- Write done')) {
+                const ack = pendingWriteAck;
+                pendingWriteAck = null;
+                ack();
             }
 
             // Trigger config parse when we see /file-read response or raw JSON array
@@ -1184,15 +1192,27 @@
                 alert('⚠️ Validation Error\n\nThe following fields are required:\n- WiFi SSID\n- Device settings string');
                 return;
             }
-            await serial.writeLine('/file-remove config.json');
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const fullCommand = '/file-append config.json ' + JSON.stringify(config) + '\n';
+            // Disable buttons during write — prevents accidental restart mid-transfer
+            const writeBtn  = document.getElementById('write-config-button');
+            const resetBtn  = document.getElementById('soft-reset-button');
+            writeBtn.disabled = true;
+            resetBtn.disabled = true;
+            // Use /file-write (overwrite) — no /file-remove step, so old config stays
+            // intact until the new data lands. Firmware confirms with "- Write done".
+            const fullCommand = '/file-write config.json ' + JSON.stringify(config) + '\n';
             const chunkSize = 128;
             for (let i = 0; i < fullCommand.length; i += chunkSize) {
                 await serial.write(fullCommand.substring(i, Math.min(i + chunkSize, fullCommand.length)));
                 await new Promise(resolve => setTimeout(resolve, 15));
             }
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Wait for firmware ACK (timeout 6 s as safety net)
+            await new Promise(resolve => {
+                const t = setTimeout(resolve, 6000);
+                pendingWriteAck = () => { clearTimeout(t); resolve(); };
+            });
+            pendingWriteAck = null;
+            writeBtn.disabled = false;
+            resetBtn.disabled = !configModeVerified;
             const successMsg = document.createElement('span');
             successMsg.style.color = '#00ff00';
             successMsg.textContent = '✓ Data written\n\n⚠️ To apply changes:\n- Press 🔄 Restart (if in Config Mode), or\n- Press 🔌 Disconnect and reset device manually\n';
