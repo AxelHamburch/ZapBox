@@ -1150,13 +1150,13 @@ void productSelectionScreen() {
   fillScreen(themeBackground);
   if (isPortrait()) {
     // Shift down so 3 items are centered in 480px (content ≈186px → top at ~147)
-    drawCenter(SCR_W / 2, 167, "SELECT",   themeForeground, themeBackground, 5);
-    drawCenter(SCR_W / 2, 232, "PRODUCT",  themeForeground, themeBackground, 5);
-    drawCenter(SCR_W / 2, 317, "<-NEXT->", themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 167, "ZapBox",      themeForeground, themeBackground, 5);
+    drawCenter(SCR_W / 2, 232, "The machine", themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 317, "Touch me..",  themeForeground, themeBackground, 4);
   } else {
-    drawCenter(SCR_W / 2, 90,  "SELECT",   themeForeground, themeBackground, 5);
-    drawCenter(SCR_W / 2, 155, "PRODUCT",  themeForeground, themeBackground, 5);
-    drawCenter(SCR_W / 2, 240, "<-NEXT->", themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 90,  "ZapBox",      themeForeground, themeBackground, 5);
+    drawCenter(SCR_W / 2, 155, "The machine", themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 240, "Touch me..",  themeForeground, themeBackground, 4);
   }
   flushDisplay();
 }
