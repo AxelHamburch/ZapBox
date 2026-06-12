@@ -1,6 +1,7 @@
 #include "API.h"
 #include "GlobalState.h"
 #include "DeviceState.h"
+#include "Display.h"
 #include "Log.h"
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -19,6 +20,10 @@ extern String currency;
 extern bool labelsLoadedSuccessfully;
 extern bool labelsValidationAttempted;
 extern ExtensionConfig extensionConfig;
+#ifdef BOARD_JC3248W535C
+extern T35AmbientConfig t35AmbientConfig;
+extern ProductSelectState productSelectState;
+#endif
 
 // External constants from main.cpp
 const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
@@ -341,8 +346,17 @@ void fetchBitcoinData()
  */
 void updateBitcoinTicker()
 {
-  // Only update if ticker is active and not in error/config/help modes
-  if (!multiChannelConfig.btcTickerActive || deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
+  // Run when the BTC ticker screen is active OR when numeric product selection
+  // needs the block height refreshed on the main screen.
+  bool needsUpdate = multiChannelConfig.btcTickerActive;
+#ifdef BOARD_JC3248W535C
+  if (t35AmbientConfig.numericSelect &&
+      deviceState.isInState(DeviceState::PRODUCT_SELECTION) &&
+      !productSelectState.panelActive && !productSelectState.qrActive) {
+    needsUpdate = true;
+  }
+#endif
+  if (!needsUpdate || deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
     return;
   }
 
@@ -370,9 +384,19 @@ void updateBitcoinTicker()
     // been skipped while another fetch is in progress) AND we're STILL on the
     // ticker screen. Partial update to reduce flicker.
     if (bitcoinData.lastUpdate != lastUpdateBefore &&
-        multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP) && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
-      updateBtctickerValues(); // Partial update instead of btctickerScreen()
-      Serial.println("[BTC] Values updated (partial refresh - reduced flicker)");
+        !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP)) {
+      if (multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
+        updateBtctickerValues(); // Partial update instead of btctickerScreen()
+        Serial.println("[BTC] Values updated (partial refresh - reduced flicker)");
+      }
+#ifdef BOARD_JC3248W535C
+      if (t35AmbientConfig.numericSelect &&
+          deviceState.isInState(DeviceState::PRODUCT_SELECTION) &&
+          !productSelectState.panelActive && !productSelectState.qrActive) {
+        updateProductSelectBlockHeight();
+        Serial.println("[BTC] Block height updated on product selection screen");
+      }
+#endif
     }
   }
 }
