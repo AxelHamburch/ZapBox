@@ -1794,10 +1794,10 @@ void miniPosPaidScreen() {
 // ============================================================================
 //
 // Same panel/numpad geometry as the PIN pad. Numpad bottom row is  < 0 OK
-// (backspace, zero, confirm — the 5×7 font is ASCII-only, so no ✓ glyph;
-// the OK key is drawn in green). The info panel holds the "Select product
-// number" header, the entered number, a two-line error field and a small
-// CANCEL button that returns to the main screen.
+// (backspace, zero, confirm — the 5×7 font is ASCII-only, so no ✓ glyph).
+// Everything uses the two theme colors only (errors excepted). The info
+// panel holds the "Select product number" header, the entered number, a
+// two-line error field and a small CANCEL button back to the main screen.
 
 // Numpad key labels for product selection (row, col)
 static const char *kPsLabels[4][3] = {
@@ -1827,13 +1827,11 @@ static void drawCenterBold(int cx, int cy, const char *s, uint16_t fg, uint16_t 
     drawString(x + 1, y, s, fg, bg, size, true);
 }
 
-// Entered number, or a single grey "-" while empty (no surrounding box).
+// Entered number, or a single "-" while empty (no surrounding box).
 static void drawProductSelectNumber(int cx, int cy) {
-    if (productSelectState.numDigits > 0) {
-        drawCenter(cx, cy, productSelectState.digits, themeForeground, themeBackground, 4);
-    } else {
-        drawCenter(cx, cy, "-", TFT_DARKGREY, themeBackground, 4);
-    }
+    const char *txt = (productSelectState.numDigits > 0)
+                      ? productSelectState.digits : "-";
+    drawCenter(cx, cy, txt, themeForeground, themeBackground, 4);
 }
 
 void showProductSelectScreen() {
@@ -1857,16 +1855,14 @@ void showProductSelectScreen() {
         drawRectBorder(PS_V_CANCEL_X, PS_V_CANCEL_Y, PS_V_CANCEL_W, PS_V_CANCEL_H, 2, themeForeground);
         drawCenter(PANEL_W / 2, PS_V_CANCEL_Y + PS_V_CANCEL_H / 2, "CANCEL", themeForeground, themeBackground, 2);
 
-        // Numpad — OK key drawn in green (confirm)
+        // Numpad
         for (int row = 0; row < 4; row++) {
             for (int col = 0; col < 3; col++) {
                 int bx = col * PP_V_COL_W + PP_V_BTN_M;
                 int by = PP_V_TOP_H + row * PP_V_ROW_H + PP_V_BTN_M;
-                bool isOk = (row == 3 && col == 2);
-                uint16_t keyColor = isOk ? TFT_GREEN : themeForeground;
-                drawRectBorder(bx, by, PP_V_BTN_W, PP_V_BTN_H, 2, keyColor);
+                drawRectBorder(bx, by, PP_V_BTN_W, PP_V_BTN_H, 2, themeForeground);
                 drawCenter(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2,
-                           kPsLabels[row][col], keyColor, themeBackground, 4);
+                           kPsLabels[row][col], themeForeground, themeBackground, 4);
             }
         }
     } else {
@@ -1884,16 +1880,14 @@ void showProductSelectScreen() {
         drawRectBorder(PS_CANCEL_X, PS_CANCEL_Y, PS_CANCEL_W, PS_CANCEL_H, 2, themeForeground);
         drawCenter(PP_LEFT_CX, PS_CANCEL_Y + PS_CANCEL_H / 2, "CANCEL", themeForeground, themeBackground, 2);
 
-        // Numpad — OK key drawn in green (confirm)
+        // Numpad
         for (int row = 0; row < 4; row++) {
             for (int col = 0; col < 3; col++) {
                 int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
                 int by = row * PP_NP_ROW_H + PP_BTN_M;
-                bool isOk = (row == 3 && col == 2);
-                uint16_t keyColor = isOk ? TFT_GREEN : themeForeground;
-                drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, keyColor);
+                drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, themeForeground);
                 drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
-                           kPsLabels[row][col], keyColor, themeBackground, 4);
+                           kPsLabels[row][col], themeForeground, themeBackground, 4);
             }
         }
     }
