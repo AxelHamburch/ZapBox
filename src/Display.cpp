@@ -524,13 +524,13 @@ void initializationScreen()
     tft.drawString("BOX", x + 5, y - 20, GFXFF);
     tft.setTextSize(2);
     tft.drawString("", x + 5, y + 15, GFXFF);
-    tft.drawString("Initializ.", x + 5, y + 35, GFXFF);
+    tft.drawString("Initializ", x + 5, y + 35, GFXFF);
     tft.drawString("in", x + 5, y + 55, GFXFF);
     tft.setTextSize(1);
     tft.drawString("", x + 5, y + 70, GFXFF);
     tft.setTextSize(2);
     tft.drawString("progress", x + 5, y + 80, GFXFF);
-    tft.drawString("...", x + 5, y + 100, GFXFF);
+    tft.drawString("..", x + 5, y + 100, GFXFF);
   } else {
     tft.setTextSize(6);
     tft.drawString("ZAPBOX", x + 5, y - 15, GFXFF);

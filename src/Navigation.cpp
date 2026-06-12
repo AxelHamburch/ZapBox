@@ -341,6 +341,17 @@ void handleTouchButton()
 
     tapLastPressed = tapNow;
   }
+
+  // 3 taps on physical button + hold on 3rd tap (≥ 1 s) → Report mode
+  if (touchState.clickCount == 3 && touchState.pressed) {
+    if (millis() - touchState.pressStartTime >= 1000) {
+      LOG_INFO("Touch", "3-tap hold confirmed -> Report Mode");
+      touchState.clickCount = 0;
+      touchState.pressed    = false;
+      reportMode();
+      return;
+    }
+  }
 #endif
 
   // If in Help mode: Allow second click to switch to Report
@@ -417,12 +428,15 @@ void handleTouchButton()
     }
     
     // For 2 clicks: Wait 1 second for potential third click
-    // If no third click after 1s → Start Report
+    // If no third click after 1s → Start Report (non-JC3248W535C only;
+    // JC3248W535C uses 3-tap-hold instead — see block above)
+#ifndef BOARD_JC3248W535C
     else if (touchState.clickCount == 2 && timeSinceLastTouch > 1000 && !deviceState.isInState(DeviceState::REPORT_SCREEN)) {
       LOG_INFO("Touch", "Timeout: 2 clicks, no third click -> Report");
       reportMode();
       touchState.clickCount = 0;
     }
+#endif
     
     // For 3 clicks: Wait 1 second for potential fourth click
     // If no fourth click after 1s → Reset (do nothing)
