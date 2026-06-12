@@ -782,8 +782,8 @@ Instead of swiping through the products one by one, the customer selects a produ
 
 **Flow:**
 1. Main screen is the *Select your product* screen (or the BTC ticker with *BTC-Ticker Mode: ON - always*) — any touch opens the **product selection panel**
-2. Type the GPIO number of the product (e.g. `5`, `7`, `14` or `200`); `<` deletes the last digit, `X` returns to the main screen
-3. Press **GO** — the ZapBox validates the number:
+2. Type the GPIO number of the product (e.g. `5`, `7`, `14` or `200`); `<` deletes the last digit, the small **CANCEL** button returns to the main screen
+3. Press the green **✓** key — the ZapBox validates the number:
    - the pin must be configured as a **relay/servo channel** on the device (CH01–CH06 or I/O expander enabled), **and**
    - LNbits must have a switch entry for this pin (fetched from the server)
    - unknown numbers show **"Product not available"**

@@ -1793,35 +1793,58 @@ void miniPosPaidScreen() {
 // NUMERICAL PRODUCT SELECTION SCREENS  (keypad → product QR)
 // ============================================================================
 //
-// Same panel/numpad geometry as the PIN pad. Numpad bottom row is  < 0 X
-// (backspace, zero, exit to main screen). The info panel holds the
-// "Select product" header, the number entry box, a two-line error field
-// and the big GO button.
+// Same panel/numpad geometry as the PIN pad. Numpad bottom row is  < 0 ✓
+// (backspace, zero, confirm — the checkmark is drawn as a custom glyph since
+// the 5×7 font is ASCII-only). The info panel holds the "Select product
+// number" header, the entered number, a two-line error field and a small
+// CANCEL button that returns to the main screen.
 
-// Numpad key labels for product selection (row, col)
+// Numpad key labels for product selection (row, col); the empty bottom-right
+// cell gets the custom checkmark glyph instead of a font character.
 static const char *kPsLabels[4][3] = {
     {"1","2","3"},
     {"4","5","6"},
     {"7","8","9"},
-    {"<","0","X"},
+    {"<","0",""},
 };
-// Hit codes: 10=backspace, 11=X (exit); the GO button reports 12
+// Hit codes: 10=backspace, 11=✓ confirm; the CANCEL button reports 12
 static const int kPsMap[4][3] = {{1,2,3},{4,5,6},{7,8,9},{10,0,11}};
 
-// Landscape GO button geometry (left panel bottom, taller than PIN pad CANCEL)
-static const int PS_GO_Y = 252;
-static const int PS_GO_H = 54;
-// Portrait GO button geometry (full-width in the top panel)
-static const int PS_V_GO_Y = 150;
-static const int PS_V_GO_H = 48;
+// Landscape CANCEL button geometry (left panel bottom, small)
+static const int PS_CANCEL_X = 45,  PS_CANCEL_Y = 264;
+static const int PS_CANCEL_W = 120, PS_CANCEL_H = 36;
+// Portrait CANCEL button geometry (small, centered in the top panel)
+static const int PS_V_CANCEL_X = 105, PS_V_CANCEL_Y = 160;
+static const int PS_V_CANCEL_W = 110, PS_V_CANCEL_H = 32;
 
-static void drawProductSelectNumberBox(int bx, int by, int bw, int bh) {
-    drawRectBorder(bx, by, bw, bh, 2, themeForeground);
+// Bold variant of drawCenter: second pass shifted 1 px with transparent
+// background thickens the 5×7 strokes.
+static void drawCenterBold(int cx, int cy, const char *s, uint16_t fg, uint16_t bg, uint8_t size) {
+    int len = 0;
+    for (const char *p = s; *p; p++) len++;
+    int x = cx - (len * 6 * size) / 2;
+    int y = cy - (8 * size) / 2;
+    drawString(x, y, s, fg, bg, size);
+    drawString(x + 1, y, s, fg, bg, size, true);
+}
+
+// Checkmark glyph for the confirm key (two 45° strokes, vertex bottom-left).
+// s = half width; total glyph is ~2s wide and ~4s/3 high.
+static void drawCheckmark(int cx, int cy, int s, uint16_t color) {
+    int t = (s >= 12) ? 4 : 3;                 // stroke thickness
+    int vx = cx - s / 3, vy = cy + (2 * s) / 3; // vertex (lowest point)
+    for (int i = 0; i <= (2 * s) / 3; i++)      // short arm to upper left
+        fillRect(vx - i - t / 2, vy - i - t / 2, t, t, color);
+    for (int i = 0; i <= (4 * s) / 3; i++)      // long arm to upper right
+        fillRect(vx + i - t / 2, vy - i - t / 2, t, t, color);
+}
+
+// Entered number, or a single grey "-" while empty (no surrounding box).
+static void drawProductSelectNumber(int cx, int cy) {
     if (productSelectState.numDigits > 0) {
-        drawCenter(bx + bw / 2, by + bh / 2, productSelectState.digits,
-                   themeForeground, themeBackground, 4);
+        drawCenter(cx, cy, productSelectState.digits, themeForeground, themeBackground, 4);
     } else {
-        drawCenter(bx + bw / 2, by + bh / 2, "---", TFT_DARKGREY, themeBackground, 4);
+        drawCenter(cx, cy, "-", TFT_DARKGREY, themeBackground, 4);
     }
 }
 
@@ -1836,15 +1859,15 @@ void showProductSelectScreen() {
         // ── Portrait: top panel + numpad below (PIN pad geometry) ───────────
         fillRect(0, PP_V_TOP_H - 1, PANEL_W, 1, themeForeground);
 
-        drawCenter(PANEL_W / 2, 24, "Select product", themeForeground, themeBackground, 2);
-        drawProductSelectNumberBox(PANEL_W / 2 - 55, 44, 110, 52);
+        drawCenterBold(PANEL_W / 2, 22, "Select product number", themeForeground, themeBackground, 2);
+        drawProductSelectNumber(PANEL_W / 2, 58);
 
         if (showInfo) {
-            drawPinError(productSelectState.infoMsg, 4, 102, PANEL_W - 8, 40, PANEL_W / 2);
+            drawPinError(productSelectState.infoMsg, 4, 84, PANEL_W - 8, 40, PANEL_W / 2);
         }
 
-        drawRectBorder(20, PS_V_GO_Y, PANEL_W - 40, PS_V_GO_H, 2, themeForeground);
-        drawCenter(PANEL_W / 2, PS_V_GO_Y + PS_V_GO_H / 2, "GO", themeForeground, themeBackground, 3);
+        drawRectBorder(PS_V_CANCEL_X, PS_V_CANCEL_Y, PS_V_CANCEL_W, PS_V_CANCEL_H, 2, themeForeground);
+        drawCenter(PANEL_W / 2, PS_V_CANCEL_Y + PS_V_CANCEL_H / 2, "CANCEL", themeForeground, themeBackground, 2);
 
         // Numpad
         for (int row = 0; row < 4; row++) {
@@ -1852,23 +1875,28 @@ void showProductSelectScreen() {
                 int bx = col * PP_V_COL_W + PP_V_BTN_M;
                 int by = PP_V_TOP_H + row * PP_V_ROW_H + PP_V_BTN_M;
                 drawRectBorder(bx, by, PP_V_BTN_W, PP_V_BTN_H, 2, themeForeground);
-                drawCenter(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2,
-                           kPsLabels[row][col], themeForeground, themeBackground, 4);
+                if (kPsLabels[row][col][0] == '\0') {
+                    drawCheckmark(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2, 14, TFT_GREEN);
+                } else {
+                    drawCenter(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2,
+                               kPsLabels[row][col], themeForeground, themeBackground, 4);
+                }
             }
         }
     } else {
         // ── Landscape: left panel + numpad right (PIN pad geometry) ─────────
         fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
 
-        drawCenter(PP_LEFT_CX, 32, "Select product", themeForeground, themeBackground, 2);
-        drawProductSelectNumberBox(PP_LEFT_CX - 55, 62, 110, 52);
+        drawCenterBold(PP_LEFT_CX, 30, "Select product", themeForeground, themeBackground, 2);
+        drawCenterBold(PP_LEFT_CX, 54, "number", themeForeground, themeBackground, 2);
+        drawProductSelectNumber(PP_LEFT_CX, 100);
 
         if (showInfo) {
-            drawPinError(productSelectState.infoMsg, 4, 136, PP_LEFT_W - 8, 40, PP_LEFT_CX);
+            drawPinError(productSelectState.infoMsg, 4, 140, PP_LEFT_W - 8, 40, PP_LEFT_CX);
         }
 
-        drawRectBorder(20, PS_GO_Y, PP_LEFT_W - 40, PS_GO_H, 2, themeForeground);
-        drawCenter(PP_LEFT_CX, PS_GO_Y + PS_GO_H / 2, "GO", themeForeground, themeBackground, 3);
+        drawRectBorder(PS_CANCEL_X, PS_CANCEL_Y, PS_CANCEL_W, PS_CANCEL_H, 2, themeForeground);
+        drawCenter(PP_LEFT_CX, PS_CANCEL_Y + PS_CANCEL_H / 2, "CANCEL", themeForeground, themeBackground, 2);
 
         // Numpad
         for (int row = 0; row < 4; row++) {
@@ -1876,8 +1904,12 @@ void showProductSelectScreen() {
                 int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
                 int by = row * PP_NP_ROW_H + PP_BTN_M;
                 drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, themeForeground);
-                drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
-                           kPsLabels[row][col], themeForeground, themeBackground, 4);
+                if (kPsLabels[row][col][0] == '\0') {
+                    drawCheckmark(bx + PP_BTN_W / 2, by + PP_BTN_H / 2, 16, TFT_GREEN);
+                } else {
+                    drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
+                               kPsLabels[row][col], themeForeground, themeBackground, 4);
+                }
             }
         }
     }
@@ -1885,11 +1917,12 @@ void showProductSelectScreen() {
     flushDisplay();
 }
 
-// Returns: 0-9=digit, 10=backspace, 11=X (exit), 12=GO, -1=no hit.
+// Returns: 0-9=digit, 10=backspace, 11=✓ confirm, 12=CANCEL, -1=no hit.
 int productSelectHitTest(uint16_t x, uint16_t y) {
     if (isPortrait()) {
         if (y < (uint16_t)PP_V_TOP_H) {
-            if (y >= (uint16_t)PS_V_GO_Y && y <= (uint16_t)(PS_V_GO_Y + PS_V_GO_H)) return 12;
+            if (x >= (uint16_t)PS_V_CANCEL_X && x <= (uint16_t)(PS_V_CANCEL_X + PS_V_CANCEL_W) &&
+                y >= (uint16_t)PS_V_CANCEL_Y && y <= (uint16_t)(PS_V_CANCEL_Y + PS_V_CANCEL_H)) return 12;
             return -1;
         }
         int col = x / PP_V_COL_W;
@@ -1904,7 +1937,8 @@ int productSelectHitTest(uint16_t x, uint16_t y) {
 
     // Landscape
     if (x < (uint16_t)PP_NP_X) {
-        if (y >= (uint16_t)PS_GO_Y && y <= (uint16_t)(PS_GO_Y + PS_GO_H)) return 12;
+        if (x >= (uint16_t)PS_CANCEL_X && x <= (uint16_t)(PS_CANCEL_X + PS_CANCEL_W) &&
+            y >= (uint16_t)PS_CANCEL_Y && y <= (uint16_t)(PS_CANCEL_Y + PS_CANCEL_H)) return 12;
         return -1;
     }
     int col = (x - PP_NP_X) / PP_NP_COL_W;

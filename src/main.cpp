@@ -2611,11 +2611,11 @@ void loop()
                   productSelectState.digits[--productSelectState.numDigits] = '\0';
                   showProductSelectScreen();
                 }
-              } else if (hit == 11) {  // X — exit to main screen
-                LOG_INFO("NumSel", "Keypad exited - back to main screen");
-                numericShowMainScreen();
-              } else if (hit == 12) {  // GO
+              } else if (hit == 11) {  // ✓ — confirm the entered number
                 numericHandleGo();
+              } else if (hit == 12) {  // CANCEL — exit to main screen
+                LOG_INFO("NumSel", "Keypad cancelled - back to main screen");
+                numericShowMainScreen();
               }
             } else {
               // Main screen (select-product or BTC ticker): open the keypad
