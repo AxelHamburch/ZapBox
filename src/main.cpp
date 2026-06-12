@@ -2611,7 +2611,7 @@ void loop()
                   productSelectState.digits[--productSelectState.numDigits] = '\0';
                   showProductSelectScreen();
                 }
-              } else if (hit == 11) {  // ✓ — confirm the entered number
+              } else if (hit == 11) {  // OK — confirm the entered number
                 numericHandleGo();
               } else if (hit == 12) {  // CANCEL — exit to main screen
                 LOG_INFO("NumSel", "Keypad cancelled - back to main screen");

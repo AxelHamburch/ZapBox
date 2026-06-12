@@ -1793,21 +1793,20 @@ void miniPosPaidScreen() {
 // NUMERICAL PRODUCT SELECTION SCREENS  (keypad → product QR)
 // ============================================================================
 //
-// Same panel/numpad geometry as the PIN pad. Numpad bottom row is  < 0 ✓
-// (backspace, zero, confirm — the checkmark is drawn as a custom glyph since
-// the 5×7 font is ASCII-only). The info panel holds the "Select product
+// Same panel/numpad geometry as the PIN pad. Numpad bottom row is  < 0 OK
+// (backspace, zero, confirm — the 5×7 font is ASCII-only, so no ✓ glyph;
+// the OK key is drawn in green). The info panel holds the "Select product
 // number" header, the entered number, a two-line error field and a small
 // CANCEL button that returns to the main screen.
 
-// Numpad key labels for product selection (row, col); the empty bottom-right
-// cell gets the custom checkmark glyph instead of a font character.
+// Numpad key labels for product selection (row, col)
 static const char *kPsLabels[4][3] = {
     {"1","2","3"},
     {"4","5","6"},
     {"7","8","9"},
-    {"<","0",""},
+    {"<","0","OK"},
 };
-// Hit codes: 10=backspace, 11=✓ confirm; the CANCEL button reports 12
+// Hit codes: 10=backspace, 11=OK confirm; the CANCEL button reports 12
 static const int kPsMap[4][3] = {{1,2,3},{4,5,6},{7,8,9},{10,0,11}};
 
 // Landscape CANCEL button geometry (left panel bottom, small)
@@ -1826,17 +1825,6 @@ static void drawCenterBold(int cx, int cy, const char *s, uint16_t fg, uint16_t 
     int y = cy - (8 * size) / 2;
     drawString(x, y, s, fg, bg, size);
     drawString(x + 1, y, s, fg, bg, size, true);
-}
-
-// Checkmark glyph for the confirm key (two 45° strokes, vertex bottom-left).
-// s = half width; total glyph is ~2s wide and ~4s/3 high.
-static void drawCheckmark(int cx, int cy, int s, uint16_t color) {
-    int t = (s >= 12) ? 4 : 3;                 // stroke thickness
-    int vx = cx - s / 3, vy = cy + (2 * s) / 3; // vertex (lowest point)
-    for (int i = 0; i <= (2 * s) / 3; i++)      // short arm to upper left
-        fillRect(vx - i - t / 2, vy - i - t / 2, t, t, color);
-    for (int i = 0; i <= (4 * s) / 3; i++)      // long arm to upper right
-        fillRect(vx + i - t / 2, vy - i - t / 2, t, t, color);
 }
 
 // Entered number, or a single grey "-" while empty (no surrounding box).
@@ -1869,18 +1857,16 @@ void showProductSelectScreen() {
         drawRectBorder(PS_V_CANCEL_X, PS_V_CANCEL_Y, PS_V_CANCEL_W, PS_V_CANCEL_H, 2, themeForeground);
         drawCenter(PANEL_W / 2, PS_V_CANCEL_Y + PS_V_CANCEL_H / 2, "CANCEL", themeForeground, themeBackground, 2);
 
-        // Numpad
+        // Numpad — OK key drawn in green (confirm)
         for (int row = 0; row < 4; row++) {
             for (int col = 0; col < 3; col++) {
                 int bx = col * PP_V_COL_W + PP_V_BTN_M;
                 int by = PP_V_TOP_H + row * PP_V_ROW_H + PP_V_BTN_M;
-                drawRectBorder(bx, by, PP_V_BTN_W, PP_V_BTN_H, 2, themeForeground);
-                if (kPsLabels[row][col][0] == '\0') {
-                    drawCheckmark(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2, 14, TFT_GREEN);
-                } else {
-                    drawCenter(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2,
-                               kPsLabels[row][col], themeForeground, themeBackground, 4);
-                }
+                bool isOk = (row == 3 && col == 2);
+                uint16_t keyColor = isOk ? TFT_GREEN : themeForeground;
+                drawRectBorder(bx, by, PP_V_BTN_W, PP_V_BTN_H, 2, keyColor);
+                drawCenter(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2,
+                           kPsLabels[row][col], keyColor, themeBackground, 4);
             }
         }
     } else {
@@ -1898,18 +1884,16 @@ void showProductSelectScreen() {
         drawRectBorder(PS_CANCEL_X, PS_CANCEL_Y, PS_CANCEL_W, PS_CANCEL_H, 2, themeForeground);
         drawCenter(PP_LEFT_CX, PS_CANCEL_Y + PS_CANCEL_H / 2, "CANCEL", themeForeground, themeBackground, 2);
 
-        // Numpad
+        // Numpad — OK key drawn in green (confirm)
         for (int row = 0; row < 4; row++) {
             for (int col = 0; col < 3; col++) {
                 int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
                 int by = row * PP_NP_ROW_H + PP_BTN_M;
-                drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, themeForeground);
-                if (kPsLabels[row][col][0] == '\0') {
-                    drawCheckmark(bx + PP_BTN_W / 2, by + PP_BTN_H / 2, 16, TFT_GREEN);
-                } else {
-                    drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
-                               kPsLabels[row][col], themeForeground, themeBackground, 4);
-                }
+                bool isOk = (row == 3 && col == 2);
+                uint16_t keyColor = isOk ? TFT_GREEN : themeForeground;
+                drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, keyColor);
+                drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
+                           kPsLabels[row][col], keyColor, themeBackground, 4);
             }
         }
     }
@@ -1917,7 +1901,7 @@ void showProductSelectScreen() {
     flushDisplay();
 }
 
-// Returns: 0-9=digit, 10=backspace, 11=✓ confirm, 12=CANCEL, -1=no hit.
+// Returns: 0-9=digit, 10=backspace, 11=OK confirm, 12=CANCEL, -1=no hit.
 int productSelectHitTest(uint16_t x, uint16_t y) {
     if (isPortrait()) {
         if (y < (uint16_t)PP_V_TOP_H) {

@@ -70,7 +70,7 @@ void miniPosPaidScreen();
 // Numerical product selection (Touch 3.5 multi-channel only):
 // keypad panel, product QR with cancel button
 void showProductSelectScreen();
-// Returns: 0-9=digit, 10=backspace, 11=checkmark (confirm), 12=CANCEL, -1=no hit
+// Returns: 0-9=digit, 10=backspace, 11=OK (confirm), 12=CANCEL, -1=no hit
 int  productSelectHitTest(uint16_t x, uint16_t y);
 void showProductSelectQRScreen(String label, int pin);
 // True when the touch hits the small Cancel button on the product QR screen
