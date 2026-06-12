@@ -306,6 +306,10 @@ struct T35AmbientConfig {
   // Activation mode
   bool oneForAll = false;      // true: CH01 payment fires all actor channels simultaneously
 
+  // Numerical product selection: customer picks a product by typing its GPIO
+  // number on a touch keypad (mutually exclusive with oneForAll)
+  bool numericSelect = false;
+
   // Derived: total number of independent payment channels (CH01 + relay/servo CH02-CH06)
   int paymentChannelCount = 1;
 };
@@ -348,6 +352,10 @@ extern BitcoinData bitcoinData;
 // MULTI-PRODUCT LABELS
 // ============================================================================
 
+// Number of product label slots. 14 covers the largest layout
+// (JC3248W535C: 6 GPIO channels + 8 PCF8574 virtual pins).
+constexpr int PRODUCT_LABELS_MAX = 14;
+
 struct ProductLabels {
   // Labels stored in array by RELAY_CHANNEL_PINS order (see PinConfig.h):
   //   index 0=GPIO12(CH01), 1=GPIO13(CH02)
@@ -356,8 +364,10 @@ struct ProductLabels {
   //   index 4=GPIO19(CH05), 5=GPIO22(CH06), 6=GPIO23(CH07), 7=GPIO25(CH08)
   //   index 8=GPIO26(CH09), 9=GPIO27(CH10), 10=GPIO32(CH11), 11=GPIO33(CH12)
   //   indices 4-11 only on esp32dev
-  String labels[12] = {"", "", "", "", "", "", "", "", "", "", "", ""};
-  int durations[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Action time per pin in ms (0 = not configured)
+  // JC3248W535C: index 0-5=GPIO 5/6/7/14/15/16 (CH01-CH06),
+  //   index 6-13=PCF8574 virtual pins 200-207
+  String labels[PRODUCT_LABELS_MAX];
+  int durations[PRODUCT_LABELS_MAX] = {0}; // Action time per pin in ms (0 = not configured)
   unsigned long lastUpdate = 0;
 };
 
@@ -386,6 +396,16 @@ inline int getPinIndex(int pin) {
     case 14: return 3;  // CH04
     case 15: return 4;  // CH05
     case 16: return 5;  // CH06
+    // Virtual IOExpander pins (PCF8574 P0–P7) get their own slots 6–13 —
+    // indices 4/5 are taken by GPIO 15/16 on this board.
+    case 200: return 6;
+    case 201: return 7;
+    case 202: return 8;
+    case 203: return 9;
+    case 204: return 10;
+    case 205: return 11;
+    case 206: return 12;
+    case 207: return 13;
 #endif
     case 12: return 0;
     case 13: return 1;
@@ -404,6 +424,7 @@ inline int getPinIndex(int pin) {
     case 27: return 9;
     case 32: return 10;
     case 33: return 11;
+#ifndef BOARD_JC3248W535C
     // Virtual IOExpander pins (PCF8574 P0–P7) reuse indices 4–11 on T-Display-S3
     // (GPIO 19/22/23/25/26/27/32/33 are unused on T-Display-S3)
     case 200: return 4;
@@ -414,6 +435,7 @@ inline int getPinIndex(int pin) {
     case 205: return 9;
     case 206: return 10;
     case 207: return 11;
+#endif
     default: return -1;
   }
 }
@@ -639,5 +661,41 @@ struct MiniPosState {
 };
 
 extern MiniPosState miniPosState;
+
+// ============================================================================
+// NUMERICAL PRODUCT SELECTION (Touch 3.5 multi-channel only)
+// Keypad panel where the customer types the GPIO number of a product
+// (5-16 direct GPIOs, 200-207 PCF8574) and gets its LNURL QR code.
+// ============================================================================
+#ifdef BOARD_JC3248W535C
+struct ProductSelectState {
+  bool     panelActive = false;   // keypad panel is shown
+  char     digits[4] = {0};       // entered product number, max 3 digits + null
+  int      numDigits = 0;
+  String   infoMsg;               // transient error ("Product not available")
+  uint32_t infoUntil = 0;         // millis() when infoMsg expires
+  uint32_t lastActivity = 0;      // millis() of last touch on the panel
+  // Product QR screen opened via GO
+  bool     qrActive = false;
+  int      qrPin = -1;            // GPIO/virtual pin whose LNURL is displayed
+  uint32_t qrShownAt = 0;         // millis() — for the product timeout
+
+  void resetInput() {
+    memset(digits, 0, sizeof(digits));
+    numDigits = 0;
+    infoMsg = "";
+    infoUntil = 0;
+  }
+  void resetAll() {
+    resetInput();
+    panelActive = false;
+    qrActive = false;
+    qrPin = -1;
+    qrShownAt = 0;
+  }
+};
+
+extern ProductSelectState productSelectState;
+#endif  // BOARD_JC3248W535C
 
 #endif // GLOBAL_STATE_H

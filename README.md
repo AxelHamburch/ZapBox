@@ -775,6 +775,26 @@ The *Device settings string* must be configured as usual — it identifies the L
 
 **Use Cases**: Market stalls, flea markets, tip boxes, club bars, small shops — anywhere a fixed-price switch is not enough and a full PoS is too much.
 
+#### Numerical Product Selection (Touch 3.5" only)
+**Available on JC3248W535C Touch 3.5" in Multi-channel mode**
+
+Instead of swiping through the products one by one, the customer selects a product by typing its **GPIO number** on a touch keypad and gets the matching QR code. The fixed binding to the GPIO number guarantees a unique assignment and maximum flexibility — every relay/servo channel that is configured as a switch in the LNbits extension is directly addressable, including the **I/O expander virtual pins 200–207**.
+
+**Flow:**
+1. Main screen is the *Select your product* screen (or the BTC ticker with *BTC-Ticker Mode: ON - always*) — any touch opens the **product selection panel**
+2. Type the GPIO number of the product (e.g. `5`, `7`, `14` or `200`); `<` deletes the last digit, `X` returns to the main screen
+3. Press **GO** — the ZapBox validates the number:
+   - the pin must be configured as a **relay/servo channel** on the device (CH01–CH06 or I/O expander enabled), **and**
+   - LNbits must have a switch entry for this pin (fetched from the server)
+   - unknown numbers show **"Product not available"**
+4. The product QR code is shown with the LNbits label; the content is also served via NFC: the **NFC Tag 2** carries the LNURL for phone taps and a **Bolt Card** tap on the PN532 pays this exact product (PIN protection supported)
+5. **CANCEL** (bottom-right) returns to the keypad; after `PRODUCT_TIMEOUT` of inactivity the device falls back to the main screen
+6. After payment the relay/servo switches with the LNbits duration and the device returns to the main screen
+
+While no product QR is shown, the NFC Tag 2 carries `https://zapbox.space` and Bolt Card taps are ignored. A pin triggered by the server (paid QR code from elsewhere) always switches, regardless of the current screen.
+
+**Configuration (Web Installer → ZapBox Mode → Multi-channel → Numerical Product Selection):** `Yes — Product selection panel`. Cannot be combined with *One for All* (the installer enforces this).
+
 #### Multi-Channel-Control Mode (Touch Variant)
 **Available on T-Display-S3 Touch variant only**
 

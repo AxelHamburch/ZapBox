@@ -1789,6 +1789,170 @@ void miniPosPaidScreen() {
     flushDisplay();
 }
 
+// ============================================================================
+// NUMERICAL PRODUCT SELECTION SCREENS  (keypad → product QR)
+// ============================================================================
+//
+// Same panel/numpad geometry as the PIN pad. Numpad bottom row is  < 0 X
+// (backspace, zero, exit to main screen). The info panel holds the
+// "Select product" header, the number entry box, a two-line error field
+// and the big GO button.
+
+// Numpad key labels for product selection (row, col)
+static const char *kPsLabels[4][3] = {
+    {"1","2","3"},
+    {"4","5","6"},
+    {"7","8","9"},
+    {"<","0","X"},
+};
+// Hit codes: 10=backspace, 11=X (exit); the GO button reports 12
+static const int kPsMap[4][3] = {{1,2,3},{4,5,6},{7,8,9},{10,0,11}};
+
+// Landscape GO button geometry (left panel bottom, taller than PIN pad CANCEL)
+static const int PS_GO_Y = 252;
+static const int PS_GO_H = 54;
+// Portrait GO button geometry (full-width in the top panel)
+static const int PS_V_GO_Y = 150;
+static const int PS_V_GO_H = 48;
+
+static void drawProductSelectNumberBox(int bx, int by, int bw, int bh) {
+    drawRectBorder(bx, by, bw, bh, 2, themeForeground);
+    if (productSelectState.numDigits > 0) {
+        drawCenter(bx + bw / 2, by + bh / 2, productSelectState.digits,
+                   themeForeground, themeBackground, 4);
+    } else {
+        drawCenter(bx + bw / 2, by + bh / 2, "---", TFT_DARKGREY, themeBackground, 4);
+    }
+}
+
+void showProductSelectScreen() {
+    DisplayLock l;
+    if (!_gfx) return;
+    fillScreen(themeBackground);
+
+    bool showInfo = productSelectState.infoMsg.length() > 0;
+
+    if (isPortrait()) {
+        // ── Portrait: top panel + numpad below (PIN pad geometry) ───────────
+        fillRect(0, PP_V_TOP_H - 1, PANEL_W, 1, themeForeground);
+
+        drawCenter(PANEL_W / 2, 24, "Select product", themeForeground, themeBackground, 2);
+        drawProductSelectNumberBox(PANEL_W / 2 - 55, 44, 110, 52);
+
+        if (showInfo) {
+            drawPinError(productSelectState.infoMsg, 4, 102, PANEL_W - 8, 40, PANEL_W / 2);
+        }
+
+        drawRectBorder(20, PS_V_GO_Y, PANEL_W - 40, PS_V_GO_H, 2, themeForeground);
+        drawCenter(PANEL_W / 2, PS_V_GO_Y + PS_V_GO_H / 2, "GO", themeForeground, themeBackground, 3);
+
+        // Numpad
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 3; col++) {
+                int bx = col * PP_V_COL_W + PP_V_BTN_M;
+                int by = PP_V_TOP_H + row * PP_V_ROW_H + PP_V_BTN_M;
+                drawRectBorder(bx, by, PP_V_BTN_W, PP_V_BTN_H, 2, themeForeground);
+                drawCenter(bx + PP_V_BTN_W / 2, by + PP_V_BTN_H / 2,
+                           kPsLabels[row][col], themeForeground, themeBackground, 4);
+            }
+        }
+    } else {
+        // ── Landscape: left panel + numpad right (PIN pad geometry) ─────────
+        fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
+
+        drawCenter(PP_LEFT_CX, 32, "Select product", themeForeground, themeBackground, 2);
+        drawProductSelectNumberBox(PP_LEFT_CX - 55, 62, 110, 52);
+
+        if (showInfo) {
+            drawPinError(productSelectState.infoMsg, 4, 136, PP_LEFT_W - 8, 40, PP_LEFT_CX);
+        }
+
+        drawRectBorder(20, PS_GO_Y, PP_LEFT_W - 40, PS_GO_H, 2, themeForeground);
+        drawCenter(PP_LEFT_CX, PS_GO_Y + PS_GO_H / 2, "GO", themeForeground, themeBackground, 3);
+
+        // Numpad
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 3; col++) {
+                int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
+                int by = row * PP_NP_ROW_H + PP_BTN_M;
+                drawRectBorder(bx, by, PP_BTN_W, PP_BTN_H, 2, themeForeground);
+                drawCenter(bx + PP_BTN_W / 2, by + PP_BTN_H / 2,
+                           kPsLabels[row][col], themeForeground, themeBackground, 4);
+            }
+        }
+    }
+
+    flushDisplay();
+}
+
+// Returns: 0-9=digit, 10=backspace, 11=X (exit), 12=GO, -1=no hit.
+int productSelectHitTest(uint16_t x, uint16_t y) {
+    if (isPortrait()) {
+        if (y < (uint16_t)PP_V_TOP_H) {
+            if (y >= (uint16_t)PS_V_GO_Y && y <= (uint16_t)(PS_V_GO_Y + PS_V_GO_H)) return 12;
+            return -1;
+        }
+        int col = x / PP_V_COL_W;
+        int row = (y - PP_V_TOP_H) / PP_V_ROW_H;
+        if (col > 2 || row > 3) return -1;
+        int bx = col * PP_V_COL_W + PP_V_BTN_M;
+        int by = PP_V_TOP_H + row * PP_V_ROW_H + PP_V_BTN_M;
+        if (x < (uint16_t)bx || x > (uint16_t)(bx + PP_V_BTN_W)) return -1;
+        if (y < (uint16_t)by || y > (uint16_t)(by + PP_V_BTN_H)) return -1;
+        return kPsMap[row][col];
+    }
+
+    // Landscape
+    if (x < (uint16_t)PP_NP_X) {
+        if (y >= (uint16_t)PS_GO_Y && y <= (uint16_t)(PS_GO_Y + PS_GO_H)) return 12;
+        return -1;
+    }
+    int col = (x - PP_NP_X) / PP_NP_COL_W;
+    int row = y / PP_NP_ROW_H;
+    if (col > 2 || row > 3) return -1;
+    int bx = PP_NP_X + col * PP_NP_COL_W + PP_BTN_M;
+    int by = row * PP_NP_ROW_H + PP_BTN_M;
+    if (x < (uint16_t)bx || x > (uint16_t)(bx + PP_BTN_W)) return -1;
+    if (y < (uint16_t)by || y > (uint16_t)(by + PP_BTN_H)) return -1;
+    return kPsMap[row][col];
+}
+
+// Product QR screen opened via GO: standard product QR layout plus a small
+// CANCEL button (same geometry as the Mini-PoS QR screen) to return to the
+// keypad panel.
+void showProductSelectQRScreen(String label, int pin) {
+    DisplayLock l;
+    if (!_gfx) return;
+    label = sanitizeLabel(label);
+    String words[3];
+    int wordCount;
+    splitLabelWords(label, pin, words, wordCount);
+
+    uint16_t qrFg = themeForeground;
+    uint16_t qrBg = themeBackground;
+    if (themeInvertQr()) { qrFg = themeBackground; qrBg = themeForeground; }
+
+    fillScreen(qrBg);
+    if (isPortrait()) {
+        drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
+        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
+        drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
+        drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
+    } else {
+        drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+        drawLabelBox(words, wordCount, qrFg, qrBg);
+        int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
+        drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
+        drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
+    }
+    flushDisplay();
+}
+
+bool productSelectQrCancelHit(uint16_t x, uint16_t y) {
+    return miniPosQrCancelHit(x, y);  // identical button geometry
+}
+
 void nfcTestScreen(String lnurlw) {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);

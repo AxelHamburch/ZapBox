@@ -130,8 +130,8 @@ void fetchSwitchLabels()
         LOG_INFO("LABELS", "No currency in API response – using: " + currency);
       }
       
-      // Clear existing labels and durations (12 channels: 4 shared + 8 headless-only)
-      for (int i = 0; i < 12; i++) {
+      // Clear existing labels and durations (all PRODUCT_LABELS_MAX slots)
+      for (int i = 0; i < PRODUCT_LABELS_MAX; i++) {
         productLabels.labels[i] = "";
         productLabels.durations[i] = 0;
       }
@@ -146,7 +146,7 @@ void fetchSwitchLabels()
         
         // Store label and duration based on pin number using array index (0-11)
         int pinIndex = getPinIndex(pin);
-        if (pinIndex >= 0 && pinIndex < 12) {
+        if (pinIndex >= 0 && pinIndex < PRODUCT_LABELS_MAX) {
           productLabels.labels[pinIndex] = labelStr;
           productLabels.durations[pinIndex] = pinDuration;
           Serial.println("[LABELS] Pin " + String(pin) + " label: " + labelStr + " duration: " + String(pinDuration) + " ms");

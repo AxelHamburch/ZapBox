@@ -401,6 +401,20 @@
                 </div>
             </div>
 
+            <!-- Numerical Product Selection — Multi-channel only -->
+            <div id="numericSelectDiv" style="display: none; margin-top: 16px;">
+                <div class="input-wrapper" style="margin-bottom: 0;">
+                    <div>
+                        <label for="t35NumericSelect">Numerical Product Selection</label>
+                        <select name="t35NumericSelect" id="t35NumericSelect">
+                            <option value="no" selected>No (default)</option>
+                            <option value="yes">Yes — Product selection panel</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">With the <strong>product selection panel</strong>, customers select a product by typing its <strong>GPIO number</strong> on a touch keypad — e.g. 5, 7, 14, or 200–207 when the I/O expander is used — and get the matching QR code (also served via NFC). The fixed binding to the GPIO number guarantees a unique assignment and maximum flexibility: simply configure and label each pin as a switch in your LNbits extension. Numbers without an LNbits switch show <strong>"Product not available"</strong>. Cannot be combined with <strong>One for All</strong>.</p>
+                    </div>
+                </div>
+            </div>
+
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
@@ -861,7 +875,9 @@
             // indices 54-56 – Mini-PoS mode (multiControl == "minipos")
             { "name": "miniPosCurrency",    "value": "EUR" },
             { "name": "miniPosDecimal",     "value": "yes" },
-            { "name": "miniPosInvoiceKey",  "value": "" }
+            { "name": "miniPosInvoiceKey",  "value": "" },
+            // index 57 – numerical product selection (multiControl == "duo" only)
+            { "name": "t35NumericSelect",   "value": "no" }
         ];
 
         // Setup Web Serial using serial.js
@@ -1271,7 +1287,8 @@
                 "t35ActivationMode":  (document.getElementById('t35ActivationMode')  || {value: "off"}).value,
                 "miniPosCurrency":    (document.getElementById('miniPosCurrency')    || {value: "EUR"}).value || "EUR",
                 "miniPosDecimal":     (document.getElementById('miniPosDecimal')     || {value: "yes"}).value,
-                "miniPosInvoiceKey":  (document.getElementById('miniPosInvoiceKey')  || {value: ""}).value
+                "miniPosInvoiceKey":  (document.getElementById('miniPosInvoiceKey')  || {value: ""}).value,
+                "t35NumericSelect":   (document.getElementById('t35NumericSelect')   || {value: "no"}).value
             };
             for (const entry of config) {
                 if (map.hasOwnProperty(entry.name)) {
@@ -1323,13 +1340,52 @@
             const mode = multi ? multi.value : 'off';
             const activation = document.getElementById('activationOptionsDiv');
             const activationHint = document.getElementById('activationOptionsMiniPosHint');
+            const numericSelect = document.getElementById('numericSelectDiv');
             if (fields) fields.style.display = (mode === 'duo') ? 'block' : 'none';
             if (singleInfo) singleInfo.style.display = (mode === 'off') ? 'block' : 'none';
             if (miniPos) miniPos.style.display = (mode === 'minipos') ? 'block' : 'none';
             // Activation Options (One for All) apply to Multi-channel and Mini-PoS
             if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos') ? 'block' : 'none';
             if (activationHint) activationHint.style.display = (mode === 'minipos') ? 'block' : 'none';
+            // Numerical product selection applies to Multi-channel only
+            if (numericSelect) numericSelect.style.display = (mode === 'duo') ? 'block' : 'none';
+            updateNumericSelectState();
         }
+
+        // One for All and Numerical Product Selection are mutually exclusive:
+        // selecting OFA forces numeric selection back to "No" and disables it;
+        // selecting numeric "Yes" forces the activation mode back to "Off".
+        function updateNumericSelectState() {
+            const act = document.getElementById('t35ActivationMode');
+            const num = document.getElementById('t35NumericSelect');
+            if (!act || !num) return;
+            if (act.value === 'one-for-all' && num.value === 'yes') {
+                num.value = 'no';
+                const cfg = config.find(c => c.name === 't35NumericSelect');
+                if (cfg) cfg.value = 'no';
+            }
+            num.disabled = (act.value === 'one-for-all');
+            act.disabled = (num.value === 'yes');
+        }
+
+        (function() {
+            const act = document.getElementById('t35ActivationMode');
+            const num = document.getElementById('t35NumericSelect');
+            if (act) {
+                act.addEventListener('change', () => {
+                    const cfg = config.find(c => c.name === 't35ActivationMode');
+                    if (cfg) cfg.value = act.value;
+                    updateNumericSelectState();
+                });
+            }
+            if (num) {
+                num.addEventListener('change', () => {
+                    const cfg = config.find(c => c.name === 't35NumericSelect');
+                    if (cfg) cfg.value = num.value;
+                    updateNumericSelectState();
+                });
+            }
+        })();
 
         const multiControlEl = document.getElementById('multiControl');
         if (multiControlEl) {

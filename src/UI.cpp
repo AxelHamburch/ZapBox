@@ -393,6 +393,36 @@ void redrawQRScreen() {
 
   // Multi-Channel-Control mode
   if (multiChannelConfig.mode != "off") {
+    // Numerical product selection: restore keypad panel / product QR / main screen
+    #ifdef BOARD_JC3248W535C
+    if (t35AmbientConfig.numericSelect) {
+      if (productSelectState.qrActive && productSelectState.qrPin > 0) {
+        int pin = productSelectState.qrPin;
+        int idx = getPinIndex(pin);
+        String label = (idx >= 0 && productLabels.labels[idx].length() > 0)
+                       ? productLabels.labels[idx] : "Pin " + String(pin);
+        ensureQrForPin(pin);
+        showProductSelectQRScreen(label, pin);
+        LOG_DEBUG("Display", "Numeric selection product QR redrawn");
+      } else if (productSelectState.panelActive) {
+        productSelectState.lastActivity = millis();
+        showProductSelectScreen();
+        LOG_DEBUG("Display", "Numeric selection keypad panel redrawn");
+      } else if (multiChannelConfig.btcTickerMode == "always") {
+        multiChannelConfig.currentProduct = 0;
+        btctickerScreen();
+        multiChannelConfig.btcTickerActive = true;
+        LOG_DEBUG("Display", "Numeric selection main screen (ticker) redrawn");
+      } else {
+        multiChannelConfig.currentProduct = -1;
+        multiChannelConfig.btcTickerActive = false;
+        productSelectionScreen();
+        LOG_DEBUG("Display", "Numeric selection main screen (select product) redrawn");
+      }
+      deviceState.transition(DeviceState::READY);
+      return;
+    }
+    #endif
     // Servo mode with only 1 active product: skip product selection, use product 1 directly
     if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) {
       if (multiChannelConfig.currentProduct == -1 ||
@@ -560,6 +590,27 @@ void showInitialScreenAfterConnections() {
   Serial.printf("[T35-INIT-DEBUG] oneForAll=%d maxProducts=%d mode=%s ticker=%s\n",
       (int)t35AmbientConfig.oneForAll, maxProducts,
       multiChannelConfig.mode.c_str(), multiChannelConfig.btcTickerMode.c_str());
+  // Numerical product selection: no QR is shown on the main screen — the NT3H
+  // tag carries the project URL until a product QR is opened via the keypad.
+  if (t35AmbientConfig.numericSelect) {
+    strncpy(lightningConfig.lightning, MINIPOS_IDLE_TAG_URL,
+            sizeof(lightningConfig.lightning) - 1);
+    lightningConfig.lightning[sizeof(lightningConfig.lightning) - 1] = '\0';
+    productSelectState.resetAll();
+    if (multiChannelConfig.btcTickerMode == "always") {
+      multiChannelConfig.currentProduct = 0;
+      btctickerScreen();
+      multiChannelConfig.btcTickerActive = true;
+      deviceState.transition(DeviceState::BTC_TICKER);
+    } else {
+      multiChannelConfig.currentProduct = -1;
+      multiChannelConfig.btcTickerActive = false;
+      productSelectionScreen();
+      deviceState.transition(DeviceState::PRODUCT_SELECTION);
+    }
+    productSelectionState.showTime = millis();
+    return;
+  }
   // OFA active: always show CH01 QR directly, skip product selection entirely
   if (t35AmbientConfig.oneForAll && multiChannelConfig.mode != "off") {
     Serial.println("[T35-INIT-DEBUG] OFA path taken — showing CH01 QR");

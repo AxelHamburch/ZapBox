@@ -747,9 +747,19 @@ void readFiles()
         LOG_INFO("Config", "T35: No extra payment channels — overriding multi-channel to single");
       }
 
+      // Index 57: numerical product selection ("no" | "yes") — multi-channel only,
+      // mutually exclusive with One for All (the installer enforces this too)
+      String numSel = readGpioMode(57);
+      t35AmbientConfig.numericSelect = (numSel == "yes" && multiChannelConfig.mode == "duo");
+      if (t35AmbientConfig.numericSelect && t35AmbientConfig.oneForAll) {
+        t35AmbientConfig.numericSelect = false;
+        LOG_INFO("Config", "T35: Numeric product selection disabled (One for All active)");
+      }
+
       LOG_INFO("Config", String("T35 GPIO modes — 6:") + m6 + " 7:" + m7
                + " 14:" + m14 + " 15:" + m15 + " 16:" + m16
                + " | OFA:" + (t35AmbientConfig.oneForAll ? "yes" : "no")
+               + " | numSel:" + (t35AmbientConfig.numericSelect ? "yes" : "no")
                + " | paymentCh:" + t35AmbientConfig.paymentChannelCount);
     }
     #endif
@@ -1809,6 +1819,90 @@ static void miniPosShowInfo(const String &msg) {
   showMiniPosInputScreen();
 }
 
+#ifdef BOARD_JC3248W535C
+// ============================================================================
+// NUMERICAL PRODUCT SELECTION HELPERS (Touch 3.5 multi-channel)
+// Keypad panel → GPIO number → product QR. While no product QR is shown the
+// NT3H tag carries the project URL (like Mini-PoS idle) and the PN532 ignores
+// Bolt Card taps.
+// ============================================================================
+
+// True when the GPIO/virtual pin is configured as a payment actor on this
+// device (relay or servo channel, or PCF8574 virtual pin with expander on).
+static bool numericPinSelectable(int pin) {
+  switch (pin) {
+    case 5:  return true;  // CH01 is always a payment actor (relay or servo)
+    case 6:  return t35AmbientConfig.gpio6Actor;
+    case 7:  return t35AmbientConfig.gpio7Actor;
+    case 14: return t35AmbientConfig.gpio14Actor;
+    case 15: return t35AmbientConfig.gpio15Actor;
+    case 16: return t35AmbientConfig.gpio16Actor;
+    default: break;
+  }
+  if (pin >= 200 && pin <= 207) return ioExpanderConfig.enabled;
+  return false;
+}
+
+// Reset input state and show the keypad panel.
+static void numericShowPanel() {
+  productSelectState.resetInput();
+  productSelectState.panelActive = true;
+  productSelectState.qrActive = false;
+  productSelectState.qrPin = -1;
+  productSelectState.lastActivity = millis();
+  multiChannelConfig.btcTickerActive = false;
+  miniPosIdleNfcTag(); // panel shows no QR — tag carries the project URL
+  showProductSelectScreen();
+}
+
+// Return to the main screen: product selection screen, or the BTC ticker
+// when ticker mode "always" is configured.
+static void numericShowMainScreen() {
+  productSelectState.resetAll();
+  miniPosIdleNfcTag();
+  if (multiChannelConfig.btcTickerMode == "always") {
+    multiChannelConfig.currentProduct = 0;
+    btctickerScreen();
+    multiChannelConfig.btcTickerActive = true;
+  } else {
+    multiChannelConfig.currentProduct = -1;
+    multiChannelConfig.btcTickerActive = false;
+    productSelectionScreen();
+    deviceState.transition(DeviceState::PRODUCT_SELECTION);
+  }
+}
+
+// GO pressed: validate the entered number against the device channel config
+// and the switches loaded from LNbits; show the product QR or an error.
+static void numericHandleGo() {
+  int pin = (productSelectState.numDigits > 0)
+            ? String(productSelectState.digits).toInt() : -1;
+  int idx = (pin > 0) ? getPinIndex(pin) : -1;
+  bool known = (pin > 0) && numericPinSelectable(pin) &&
+               labelsLoadedSuccessfully && idx >= 0 &&
+               (productLabels.durations[idx] > 0 ||
+                productLabels.labels[idx].length() > 0);
+  if (!known) {
+    LOG_INFO("NumSel", String("Product ") + String(productSelectState.digits) + " not available");
+    productSelectState.infoMsg = "Product not available";
+    productSelectState.infoUntil = millis() + 3000;
+    showProductSelectScreen();
+    return;
+  }
+  String label = (productLabels.labels[idx].length() > 0)
+                 ? productLabels.labels[idx] : "Pin " + String(pin);
+  ensureQrForPin(pin); // also updates the NT3H tag content
+  productSelectState.panelActive = false;
+  productSelectState.qrActive = true;
+  productSelectState.qrPin = pin;
+  productSelectState.qrShownAt = millis();
+  productSelectState.infoMsg = "";
+  productSelectState.infoUntil = 0;
+  showProductSelectQRScreen(label, pin);
+  LOG_INFO("NumSel", String("Showing product QR for pin ") + String(pin) + " (" + label + ")");
+}
+#endif // BOARD_JC3248W535C
+
 void loop()
 {
   // Wait for setup to complete before running loop
@@ -2175,6 +2269,36 @@ void loop()
       }
     }
 
+    // ── Numerical product selection timers (Touch 3.5 multi-channel) ─────
+    #ifdef BOARD_JC3248W535C
+    if (t35AmbientConfig.numericSelect &&
+        !pinPadState.active && !extensionConfig.nfcPaymentPending) {
+      uint32_t nsNow = millis();
+      if (productSelectState.panelActive) {
+        // Transient error message expires
+        if (productSelectState.infoMsg.length() > 0 && productSelectState.infoUntil > 0 &&
+            nsNow >= productSelectState.infoUntil) {
+          productSelectState.infoMsg = "";
+          productSelectState.infoUntil = 0;
+          showProductSelectScreen();
+        }
+        // Panel idle → back to main screen, entered digits discarded
+        if (productSelectState.lastActivity > 0 &&
+            nsNow - productSelectState.lastActivity >= PRODUCT_SELECTION_DELAY) {
+          LOG_INFO("NumSel", "Keypad panel idle - returning to main screen");
+          numericShowMainScreen();
+        }
+      } else if (productSelectState.qrActive) {
+        // Product QR idle → back to main screen
+        if (productSelectState.qrShownAt > 0 &&
+            nsNow - productSelectState.qrShownAt >= PRODUCT_SELECTION_DELAY) {
+          LOG_INFO("NumSel", "Product QR idle - returning to main screen");
+          numericShowMainScreen();
+        }
+      }
+    }
+    #endif
+
     // Check for touch input (if available)
     static unsigned long lastTouchEvent = 0;
     static bool wasTouched = false;
@@ -2442,6 +2566,68 @@ void loop()
           wasTouched = isTouched;
           goto skip_product_touch_processing;
         }
+
+        // ── Numerical product selection (Touch 3.5 multi-channel) ────────
+        // Replaces the generic swipe/tap product navigation: a touch on the
+        // main screen (select-product or ticker) opens the keypad panel.
+        #ifdef BOARD_JC3248W535C
+        if (t35AmbientConfig.numericSelect) {
+          // Ignore touches while an NFC payment is pending or a transient
+          // screen (help/report/error) owns the display.
+          if (extensionConfig.nfcPaymentPending ||
+              !(deviceState.isInState(DeviceState::READY) ||
+                deviceState.isInState(DeviceState::PRODUCT_SELECTION) ||
+                deviceState.isInState(DeviceState::BTC_TICKER))) {
+            if (isTouched && !wasTouched) activityTracking.lastActivityTime = millis();
+            wasTouched = isTouched;
+            goto skip_product_touch_processing;
+          }
+          if (isTouched && !wasTouched) {
+            activityTracking.lastActivityTime = millis();
+            if (productSelectState.qrActive) {
+              // Product QR screen: only the CANCEL button reacts
+              if (productSelectQrCancelHit(x, y)) {
+                LOG_INFO("NumSel", "Product QR cancelled - back to keypad");
+                numericShowPanel();
+              } else {
+                productSelectState.qrShownAt = millis(); // touch keeps the QR alive
+              }
+            } else if (productSelectState.panelActive) {
+              productSelectState.lastActivity = millis();
+              int hit = productSelectHitTest(x, y);
+              if (hit >= 0 && hit <= 9) {  // digit
+                if (productSelectState.numDigits < 3) {
+                  if (productSelectState.numDigits == 1 && productSelectState.digits[0] == '0') {
+                    // Replace a single leading zero
+                    productSelectState.digits[0] = '0' + hit;
+                  } else {
+                    productSelectState.digits[productSelectState.numDigits++] = '0' + hit;
+                    productSelectState.digits[productSelectState.numDigits] = '\0';
+                  }
+                  showProductSelectScreen();
+                }
+              } else if (hit == 10) {  // backspace
+                if (productSelectState.numDigits > 0) {
+                  productSelectState.digits[--productSelectState.numDigits] = '\0';
+                  showProductSelectScreen();
+                }
+              } else if (hit == 11) {  // X — exit to main screen
+                LOG_INFO("NumSel", "Keypad exited - back to main screen");
+                numericShowMainScreen();
+              } else if (hit == 12) {  // GO
+                numericHandleGo();
+              }
+            } else {
+              // Main screen (select-product or BTC ticker): open the keypad
+              LOG_INFO("NumSel", "Main screen touched - showing keypad panel");
+              deviceState.transition(DeviceState::READY);
+              numericShowPanel();
+            }
+          }
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
+        #endif // BOARD_JC3248W535C
 
         // Log any detected gesture (except LONG_PRESS which spams continuously)
         if (gesture != GESTURE_NONE && gesture != GESTURE_LONG_PRESS) {
@@ -2735,7 +2921,13 @@ void loop()
     
     // Check if it's time to show/hide Bitcoin ticker screen
     // Behavior depends on multiChannelConfig.btcTickerMode
-    if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && lightningConfig.thresholdKey.length() == 0) {
+    // Numerical product selection manages its own screens/timeouts (see above).
+    bool numericSelectActive = false;
+    #ifdef BOARD_JC3248W535C
+    numericSelectActive = t35AmbientConfig.numericSelect;
+    #endif
+    if (!numericSelectActive &&
+        !deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && lightningConfig.thresholdKey.length() == 0) {
       if (multiChannelConfig.btcTickerMode == "always") {
         if (multiChannelConfig.mode != "off") {
           // ALWAYS mode Duo/Quattro: Show ticker after PRODUCT_SELECTION_DELAY on products
@@ -4200,6 +4392,15 @@ static void processNormalPayment(int pin, int duration)
     miniPosState.lastInputActivity = millis();
     miniPosIdleNfcTag();
   }
+
+  // Numeric selection: payment settled — back to the main screen, the NFC
+  // tag carries the project URL again until the next product is selected.
+  #ifdef BOARD_JC3248W535C
+  if (t35AmbientConfig.numericSelect) {
+    productSelectState.resetAll();
+    miniPosIdleNfcTag();
+  }
+  #endif
 
   // Restore correct product QR (handles single, multi-channel, servo)
   redrawQRScreen();

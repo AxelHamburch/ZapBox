@@ -139,6 +139,15 @@ void nfcLnurlwReceived(const String &lnurlw)
         return;
     }
 
+    // Numeric selection: a Bolt Card can only pay the product QR currently
+    // shown. On the keypad/select/ticker screens the tap is silently ignored.
+    #ifdef BOARD_JC3248W535C
+    if (t35AmbientConfig.numericSelect && !productSelectState.qrActive) {
+        LOG_INFO("NFC", "Numeric selection: no product QR shown – Bolt Card tap ignored");
+        return;
+    }
+    #endif
+
     // Block NFC payments when any sensor condition is active
     if (lightBarrierConfig.isAnyBlocking()) {
         LOG_WARN("NFC", "NFC tap blocked — sensor blocking active");
@@ -150,6 +159,14 @@ void nfcLnurlwReceived(const String &lnurlw)
     // Products 1-4 → RELAY_CHANNEL_PINS[0-3] (GPIO 12/13/10/11).
     // Products 5-12 → virtual IOExpander pins 200-207 (PCF8574 P0-P7).
     int activePin = RELAY_CHANNEL_PINS[0]; // Default: CH01 / GPIO 12
+    #ifdef BOARD_JC3248W535C
+    // Numeric selection: the displayed product QR defines the pin directly
+    // (supports direct GPIOs and PCF8574 virtual pins 200-207)
+    if (t35AmbientConfig.numericSelect && productSelectState.qrActive &&
+        productSelectState.qrPin > 0) {
+        activePin = productSelectState.qrPin;
+    } else
+    #endif
     if (multiChannelConfig.mode != "off" && multiChannelConfig.currentProduct > 0)
     {
         if (multiChannelConfig.mode == "servo") {

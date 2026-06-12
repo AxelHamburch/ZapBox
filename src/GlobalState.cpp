@@ -90,3 +90,8 @@ PinPadState pinPadState;
 // Mini-PoS Mode (Touch 3.5)
 MiniPosConfig miniPosConfig;
 MiniPosState miniPosState;
+
+// Numerical Product Selection (Touch 3.5 multi-channel)
+#ifdef BOARD_JC3248W535C
+ProductSelectState productSelectState;
+#endif

@@ -67,12 +67,24 @@ void showMiniPosQRScreen();
 // True when the touch hits the small Cancel button on the Mini-PoS QR screen
 bool miniPosQrCancelHit(uint16_t x, uint16_t y);
 void miniPosPaidScreen();
+// Numerical product selection (Touch 3.5 multi-channel only):
+// keypad panel, product QR with cancel button
+void showProductSelectScreen();
+// Returns: 0-9=digit, 10=backspace, 11=X (exit), 12=GO, -1=no hit
+int  productSelectHitTest(uint16_t x, uint16_t y);
+void showProductSelectQRScreen(String label, int pin);
+// True when the touch hits the small Cancel button on the product QR screen
+bool productSelectQrCancelHit(uint16_t x, uint16_t y);
 #else
 inline void showMiniPosInputScreen() {}
 inline int  miniPosHitTest(uint16_t, uint16_t) { return -1; }
 inline void showMiniPosQRScreen() {}
 inline bool miniPosQrCancelHit(uint16_t, uint16_t) { return false; }
 inline void miniPosPaidScreen() {}
+inline void showProductSelectScreen() {}
+inline int  productSelectHitTest(uint16_t, uint16_t) { return -1; }
+inline void showProductSelectQRScreen(String, int) {}
+inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
 #endif
 
 #else
@@ -124,5 +136,9 @@ inline int  miniPosHitTest(uint16_t, uint16_t) { return -1; }
 inline void showMiniPosQRScreen() {}
 inline bool miniPosQrCancelHit(uint16_t, uint16_t) { return false; }
 inline void miniPosPaidScreen() {}
+inline void showProductSelectScreen() {}
+inline int  productSelectHitTest(uint16_t, uint16_t) { return -1; }
+inline void showProductSelectQRScreen(String, int) {}
+inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
 
 #endif // ENABLE_DISPLAY
