@@ -173,7 +173,7 @@ extern String currency;
 #define NFC_V_BOX_W  200
 
 // ============================================================================
-// BITCOIN LOGO — 64×64 monochrome bitmap (from original Display.cpp)
+// BITCOIN LOGO — 64×64 monochrome bitmap
 // ============================================================================
 static const uint8_t bitcoin_logo[] PROGMEM = {
   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -208,9 +208,7 @@ static const uint8_t bitcoin_logo[] PROGMEM = {
   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-};
-
-// ============================================================================
+};// ============================================================================
 // GFX HANDLES, BACKBUFFER & MUTEX
 // ============================================================================
 
@@ -538,23 +536,28 @@ static void blankScreen() {
 // ============================================================================
 // BTC TICKER — T-Display-S3 horizontal layout (logo left, three text rows right)
 // ============================================================================
-// Layout on 480×320 landscape:
-//   x=  20..148  Bitcoin logo (64×64 ×2 = 128×128, vertically centered)
-//   x= 165..     Right-side text section (centered around cx=320)
-//     y= 110     "<currency>/BTC: <price>"        (size 2)
-//     y= 160     "SAT/<currency>: <sats>"         (size 2)
-//     y= 210     "Block: <block>"                 (size 2)
+// Landscape BTC ticker layout (480×320):
+//   x= 120..184  Bitcoin logo 64×64 (scale 1, vertically centered)
+//   x= 188..     Right-side text section (centered around cx=295)
+//     cy=  80    label "<currency>/BTC"  size 2
+//     cy= 106    value price             size 3   ← updated
+//     cy= 144    label "SAT/<currency>"  size 2
+//     cy= 172    value sats              size 3   ← updated
+//     cy= 208    label "Block"           size 2
+//     cy= 236    value blockheight       size 3   ← updated
 //
-// updateBtctickerValues redraws only the right-side text rows so the logo
-// doesn't flicker every refresh.
+// updateBtctickerValues redraws only the 3 value rows to avoid logo flicker.
 
-static const int BTC_TXT_CX     = 320;        // horizontal center of text column
-static const int BTC_LINE1_Y    = 110;
-static const int BTC_LINE2_Y    = 160;
-static const int BTC_LINE3_Y    = 210;
-static const int BTC_TXT_X      = 160;        // left edge of text clear band
-static const int BTC_TXT_W      = 320;        // width of text clear band
-static const int BTC_TXT_BAND_H = 28;         // height per cleared row
+static const int BTC_H_TXT_CX  = 295;
+static const int BTC_H_LBL1_Y  =  80;
+static const int BTC_H_VAL1_Y  = 106;
+static const int BTC_H_LBL2_Y  = 144;
+static const int BTC_H_VAL2_Y  = 172;
+static const int BTC_H_LBL3_Y  = 208;
+static const int BTC_H_VAL3_Y  = 236;
+static const int BTC_H_VAL_H   =  24;   // height of size-3 text (8×3)
+static const int BTC_H_VAL_X   = 188;   // left edge of value clear area (just past logo right)
+static const int BTC_H_VAL_W   = 292;   // width of value clear area (188 to 480)
 
 static String calcSatsPerCurrency() {
   float price = bitcoinData.price.toFloat();
@@ -589,19 +592,10 @@ static void btcDrawValues_portrait() {
              themeForeground, themeBackground, 4);
 }
 
-static void btcDrawTextLines() {
-  if (isPortrait()) {
-    btcDrawValues_portrait();
-    return;
-  }
-  // Landscape: combined label+value on one line, size 2
-  String s;
-  s = currency + "/BTC: " + bitcoinData.price;
-  drawCenter(BTC_TXT_CX, BTC_LINE1_Y, s.c_str(), themeForeground, themeBackground, 2);
-  s = "SAT/" + currency + ": " + calcSatsPerCurrency();
-  drawCenter(BTC_TXT_CX, BTC_LINE2_Y, s.c_str(), themeForeground, themeBackground, 2);
-  s = "Block: " + bitcoinData.blockHigh;
-  drawCenter(BTC_TXT_CX, BTC_LINE3_Y, s.c_str(), themeForeground, themeBackground, 2);
+static void btcDrawValues_landscape() {
+  drawCenter(BTC_H_TXT_CX, BTC_H_VAL1_Y, bitcoinData.price.c_str(),     themeForeground, themeBackground, 3);
+  drawCenter(BTC_H_TXT_CX, BTC_H_VAL2_Y, calcSatsPerCurrency().c_str(), themeForeground, themeBackground, 3);
+  drawCenter(BTC_H_TXT_CX, BTC_H_VAL3_Y, bitcoinData.blockHigh.c_str(), themeForeground, themeBackground, 3);
 }
 
 void btctickerScreen() {
@@ -609,17 +603,18 @@ void btctickerScreen() {
   if (!_gfx) return;
   fillScreen(themeBackground);
   if (isPortrait()) {
-    // Small header logo (64×64, scale 1) + 3 label/value pairs
     drawMonoBitmapScaled((PANEL_W - 64) / 2, 98, bitcoin_logo, 64, 64, themeForeground, 1);
     int cx = PANEL_W / 2;
-    drawCenter(cx, 185, (currency + "/BTC").c_str(),   themeForeground, themeBackground, 2);
-    drawCenter(cx, 258, ("SAT/" + currency).c_str(),   themeForeground, themeBackground, 2);
-    drawCenter(cx, 331, "Block",                        themeForeground, themeBackground, 2);
+    drawCenter(cx, 185, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
+    drawCenter(cx, 258, ("SAT/" + currency).c_str(), themeForeground, themeBackground, 2);
+    drawCenter(cx, 331, "Block",                      themeForeground, themeBackground, 2);
     btcDrawValues_portrait();
   } else {
-    // Landscape: large logo left, 3 combined lines right
-    drawMonoBitmapScaled(20, (SCR_H - 128) / 2, bitcoin_logo, 64, 64, themeForeground, 2);
-    btcDrawTextLines();
+    drawMonoBitmapScaled(120, (SCR_H - 64) / 2, bitcoin_logo, 64, 64, themeForeground, 1);
+    drawCenter(BTC_H_TXT_CX, BTC_H_LBL1_Y, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
+    drawCenter(BTC_H_TXT_CX, BTC_H_LBL2_Y, ("SAT/" + currency).c_str(), themeForeground, themeBackground, 2);
+    drawCenter(BTC_H_TXT_CX, BTC_H_LBL3_Y, "Block",                      themeForeground, themeBackground, 2);
+    btcDrawValues_landscape();
   }
   flushDisplay();
 }
@@ -628,16 +623,15 @@ void updateBtctickerValues() {
   DisplayLock l;
   if (!_gfx) return;
   if (isPortrait()) {
-    // Wipe only the 3 value rows (labels are static)
     fillRect(0, BTC_V_VAL1_Y - BTC_V_VAL_H / 2, PANEL_W, BTC_V_VAL_H, themeBackground);
     fillRect(0, BTC_V_VAL2_Y - BTC_V_VAL_H / 2, PANEL_W, BTC_V_VAL_H, themeBackground);
     fillRect(0, BTC_V_VAL3_Y - BTC_V_VAL_H / 2, PANEL_W, BTC_V_VAL_H, themeBackground);
     btcDrawValues_portrait();
   } else {
-    fillRect(BTC_TXT_X, BTC_LINE1_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
-    fillRect(BTC_TXT_X, BTC_LINE2_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
-    fillRect(BTC_TXT_X, BTC_LINE3_Y - BTC_TXT_BAND_H / 2, BTC_TXT_W, BTC_TXT_BAND_H, themeBackground);
-    btcDrawTextLines();
+    fillRect(BTC_H_VAL_X, BTC_H_VAL1_Y - BTC_H_VAL_H / 2, BTC_H_VAL_W, BTC_H_VAL_H, themeBackground);
+    fillRect(BTC_H_VAL_X, BTC_H_VAL2_Y - BTC_H_VAL_H / 2, BTC_H_VAL_W, BTC_H_VAL_H, themeBackground);
+    fillRect(BTC_H_VAL_X, BTC_H_VAL3_Y - BTC_H_VAL_H / 2, BTC_H_VAL_W, BTC_H_VAL_H, themeBackground);
+    btcDrawValues_landscape();
   }
   flushDisplay();
 }
