@@ -3102,12 +3102,21 @@ void loop()
           // First data just arrived — draw it if the ticker is on screen.
           // Without this the periodic updater waits a full update interval
           // (5 min) before the "Loading..." placeholders are replaced.
-          if (multiChannelConfig.btcTickerActive &&
-              !deviceState.isInState(DeviceState::SCREENSAVER) &&
+          if (!deviceState.isInState(DeviceState::SCREENSAVER) &&
               !deviceState.isInState(DeviceState::DEEP_SLEEP) &&
               !deviceState.isInState(DeviceState::CONFIG_MODE)) {
-            updateBtctickerValues();
-            Serial.println("[BTC] Initial data drawn to active ticker");
+            if (multiChannelConfig.btcTickerActive) {
+              updateBtctickerValues();
+              Serial.println("[BTC] Initial data drawn to active ticker");
+            }
+            #ifdef BOARD_JC3248W535C
+            if (t35AmbientConfig.numericSelect &&
+                deviceState.isInState(DeviceState::PRODUCT_SELECTION) &&
+                !productSelectState.panelActive && !productSelectState.qrActive) {
+              updateProductSelectBlockHeight();
+              Serial.println("[BTC] Initial block height drawn to product selection screen");
+            }
+            #endif
           }
           vTaskDelete(nullptr);
         },
@@ -4471,8 +4480,28 @@ void processPaymentEvent(String &payloadStr)
     processThresholdPayment(doc);
   } else {
     Serial.println("[NORMAL] Processing payment in normal mode...");
-    int pin = getValue(payloadStr, '-', 0).toInt();
+    int pin      = getValue(payloadStr, '-', 0).toInt();
     int duration = getValue(payloadStr, '-', 1).toInt();
+
+#ifdef BOARD_JC3248W535C
+    // Numeric product selection: only accept a payment that matches the
+    // product QR currently on screen.  A payment for a different pin (e.g.
+    // an old invoice still pending in the payer's wallet) must be rejected
+    // so the wrong relay is not triggered.
+    if (t35AmbientConfig.numericSelect) {
+      if (!productSelectState.qrActive || productSelectState.qrPin <= 0) {
+        LOG_WARN("NumSel", "Payment received but no product QR active — ignoring");
+        return;
+      }
+      if (pin != productSelectState.qrPin) {
+        LOG_WARN("NumSel", String("Payment pin ") + String(pin) +
+                 " does not match displayed pin " + String(productSelectState.qrPin) +
+                 " — rejected");
+        return;
+      }
+    }
+#endif
+
     processNormalPayment(pin, duration);
   }
 }
