@@ -536,7 +536,7 @@ void initializationScreen()
     tft.drawString("ZAPBOX", x + 5, y - 15, GFXFF);
     tft.setTextSize(2);
     tft.drawString("Initialization in", x, y + 25, GFXFF);
-    tft.drawString("progress...", x, y + 45, GFXFF);
+    tft.drawString("progress..", x, y + 45, GFXFF);
   }
 }
 
