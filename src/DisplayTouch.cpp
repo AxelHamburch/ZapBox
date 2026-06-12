@@ -1148,14 +1148,18 @@ void showMobilePhoneScreen(String label, int pin) {
 void productSelectionScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
+  // Underline width matches "the machine" (11 chars × 6 px × size 4 = 264 px)
+  const int ulW = 11 * 6 * 4;
   if (isPortrait()) {
     // Shift down so 3 items are centered in 480px (content ≈186px → top at ~147)
     drawCenter(SCR_W / 2, 167, "ZapBox",      themeForeground, themeBackground, 5);
-    drawCenter(SCR_W / 2, 232, "The machine", themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 232, "the machine", themeForeground, themeBackground, 4);
+    fillRect(SCR_W / 2 - ulW / 2, 254, ulW, 4, themeForeground);
     drawCenter(SCR_W / 2, 317, "Touch me..",  themeForeground, themeBackground, 4);
   } else {
     drawCenter(SCR_W / 2, 90,  "ZapBox",      themeForeground, themeBackground, 5);
-    drawCenter(SCR_W / 2, 155, "The machine", themeForeground, themeBackground, 4);
+    drawCenter(SCR_W / 2, 155, "the machine", themeForeground, themeBackground, 4);
+    fillRect(SCR_W / 2 - ulW / 2, 177, ulW, 4, themeForeground);
     drawCenter(SCR_W / 2, 240, "Touch me..",  themeForeground, themeBackground, 4);
   }
   flushDisplay();
