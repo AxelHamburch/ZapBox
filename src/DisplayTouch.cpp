@@ -160,14 +160,15 @@ extern String currency;
 #define BOX_V_Y      244
 #define BOX_V_W      280
 #define BOX_V_H      200
-// Action-time box — centered: ACTION(40px) + gap + box(80px) = ~160px total → top@160
+// Action-time (portrait) — ACTION + TIME box + MM:SS countdown stacked and
+// vertically centered on the 320×480 screen (countdown sits below the box,
+// since the narrow portrait width leaves no room for side digits).
 #define AT_V_BOX_X    60
-#define AT_V_BOX_Y   240
+#define AT_V_BOX_Y   205
 #define AT_V_BOX_W   200
 #define AT_V_BOX_H    80
-#define AT_V_LABEL_Y 280
-#define AT_V_MM_CX    28
-#define AT_V_SS_CX   292
+#define AT_V_LABEL_Y 245
+#define AT_V_TIME_Y  325
 // NFC box (portrait — 200 px wide, centered in 320)
 #define NFC_V_BOX_X   60
 #define NFC_V_BOX_W  200
@@ -477,7 +478,19 @@ void initDisplay() {
 
 static void renderStatusBox(const char *label) {
   fillScreen(themeBackground);
-  drawCenter(SCR_W / 2, SCR_H / 2, label, themeForeground, themeBackground, 4);
+  const uint8_t size = 4;
+  String s(label);
+  int textW = (int)s.length() * 6 * size;
+  int sp = s.indexOf(' ');
+  // If the single line is too wide for the screen (portrait), split at the
+  // first space into two stacked lines (e.g. "NO" / "WEB SOCKET").
+  if (textW > SCR_W - 16 && sp > 0) {
+    int lh = 8 * size;
+    drawCenter(SCR_W / 2, SCR_H / 2 - lh / 2 - 4, s.substring(0, sp).c_str(), themeForeground, themeBackground, size);
+    drawCenter(SCR_W / 2, SCR_H / 2 + lh / 2 + 4, s.substring(sp + 1).c_str(), themeForeground, themeBackground, size);
+  } else {
+    drawCenter(SCR_W / 2, SCR_H / 2, label, themeForeground, themeBackground, size);
+  }
   flushDisplay();
 }
 
@@ -679,34 +692,31 @@ void stepThreeScreen() {
 }
 
 // ============================================================================
-// ACTION TIME — "ACTION" big at top, "TIME" in inverted box, countdown sides
+// ACTION TIME — "ACTION" big at top, "TIME" in inverted box, MM:SS below
 // ============================================================================
-// Layout on 480×320 (shifted 32px / 10% down vs. original):
-//   y=117    "ACTION"           size 6 (centered)
-//   y=162..242  TIME box (220×80, x=130..350)
-//      y=202  "TIME" inside box, size 5
-//   countdown:
-//      MM at (cx=60, cy=202)   size 4   (left of box)
-//      SS at (cx=420, cy=202)  size 4   (right of box)
+// Landscape layout on 480×320 (stacked and vertically centered):
+//   y=82       "ACTION"          size 6 (centered)
+//   y=128..208 TIME box (220×80, x=130..350)
+//      y=168   "TIME" inside box, size 5
+//   y=246      "MM:SS" countdown size 4 (centered below the box)
 
 #define AT_BOX_X    130
-#define AT_BOX_Y    162
+#define AT_BOX_Y    128
 #define AT_BOX_W    220
 #define AT_BOX_H    80
-#define AT_LABEL_Y  202
-#define AT_MM_CX    60
-#define AT_SS_CX    420
+#define AT_LABEL_Y  168
+#define AT_TIME_Y   246
 
 void actionTimeScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
   if (isPortrait()) {
-    // ACTION + gap + TIME-box centered in 480px: ACTION at y=180
-    drawCenter(SCR_W / 2, 180, "ACTION", themeForeground, themeBackground, 5);
+    // ACTION + TIME box + MM:SS countdown, stacked and centered
+    drawCenter(SCR_W / 2, 160, "ACTION", themeForeground, themeBackground, 5);
     fillRect(AT_V_BOX_X, AT_V_BOX_Y, AT_V_BOX_W, AT_V_BOX_H, themeForeground);
     drawCenter(SCR_W / 2, AT_V_LABEL_Y, "TIME", themeBackground, themeForeground, 4);
   } else {
-    drawCenter(SCR_W / 2, 117, "ACTION", themeForeground, themeBackground, 6);
+    drawCenter(SCR_W / 2, 82, "ACTION", themeForeground, themeBackground, 6);
     fillRect(AT_BOX_X, AT_BOX_Y, AT_BOX_W, AT_BOX_H, themeForeground);
     drawCenter(SCR_W / 2, AT_LABEL_Y, "TIME", themeBackground, themeForeground, 5);
   }
@@ -720,20 +730,12 @@ void updateActionTimeCountdown(int remainingSecs) {
   int secs = remainingSecs % 60;
   if (mins > 99) mins = 99;
 
+  // One combined MM:SS line, centered below the TIME box (both orientations)
+  int timeY = isPortrait() ? AT_V_TIME_Y : AT_TIME_Y;
   char buf[8];
-  int mmCX, ssCX, labelY, bandW;
-  if (isPortrait()) {
-    mmCX = AT_V_MM_CX; ssCX = AT_V_SS_CX; labelY = AT_V_LABEL_Y; bandW = 56;
-  } else {
-    mmCX = AT_MM_CX;   ssCX = AT_SS_CX;   labelY = AT_LABEL_Y;   bandW = 80;
-  }
-  fillRect(mmCX - bandW / 2, labelY - 22, bandW, 44, themeBackground);
-  fillRect(ssCX - bandW / 2, labelY - 22, bandW, 44, themeBackground);
-
-  snprintf(buf, sizeof(buf), "%02d", mins);
-  drawCenter(mmCX, labelY, buf, themeForeground, themeBackground, 4);
-  snprintf(buf, sizeof(buf), "%02d", secs);
-  drawCenter(ssCX, labelY, buf, themeForeground, themeBackground, 4);
+  snprintf(buf, sizeof(buf), "%02d:%02d", mins, secs);
+  fillRect(0, timeY - 22, SCR_W, 44, themeBackground);
+  drawCenter(SCR_W / 2, timeY, buf, themeForeground, themeBackground, 4);
   flushDisplay();
 }
 // ============================================================================
