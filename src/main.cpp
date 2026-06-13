@@ -4134,6 +4134,15 @@ static void processNormalPayment(int pin, int duration)
     nfcErrorDetailShown   = false;
     nfcNotSupportedShown  = false;
     #endif
+    // Numeric selection (Touch 3.5): payment settled — clear the product QR
+    // state so redrawQRScreen() returns to the main product-selection screen,
+    // matching the physical-pin path (otherwise it stays on the same QR).
+    #ifdef BOARD_JC3248W535C
+    if (t35AmbientConfig.numericSelect) {
+      productSelectState.resetAll();
+      miniPosIdleNfcTag();
+    }
+    #endif
     redrawQRScreen();
     Serial.println("[NORMAL] Ready for next payment");
     return;
