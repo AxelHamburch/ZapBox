@@ -16,6 +16,18 @@ static bool servoFlex6Attached = false;
 static bool servoFlex7Attached = false;
 #endif
 
+#ifdef BOARD_JC3248W535C
+// Touch 3.5 multi-channel: one servo per flex channel (CH01..CH06).
+// Index 0..5 maps to GPIO 5, 6, 7, 14, 15, 16 (== RELAY_CHANNEL_PINS).
+static const int T35_SERVO_GPIO[6] = {5, 6, 7, 14, 15, 16};
+static Servo t35Servos[6];
+static bool  t35Attached[6] = {false, false, false, false, false, false};
+static int t35ServoIdx(int gpio) {
+  for (int i = 0; i < 6; i++) if (T35_SERVO_GPIO[i] == gpio) return i;
+  return -1;
+}
+#endif
+
 // Slowly sweep a servo from one angle to another over the given duration.
 // If duration_ms == 0, jump directly to target (native servo speed).
 static void slowSweep(Servo &srv, int fromAngle, int toAngle, int duration_ms) {
@@ -83,9 +95,40 @@ void initServos() {
              (c3FlexConfig.gpio7Servo180 ? String(c3FlexConfig.gpio7S180Start) + "°" : String("90 (stop)")));
   }
 #endif
+#ifdef BOARD_JC3248W535C
+  for (int i = 0; i < 6; i++) {
+    const T35AmbientConfig::ServoChannel& sc = t35AmbientConfig.servo[i];
+    if (!sc.isServo()) continue;
+    t35Servos[i].attach(T35_SERVO_GPIO[i]);
+    t35Attached[i] = true;
+    t35Servos[i].write(sc.servo180 ? sc.s180Start : 90); // 90 = stop for continuous
+    LOG_INFO("Servo", String("T35 GPIO") + T35_SERVO_GPIO[i] + " servo attached, start: " +
+             (sc.servo180 ? String(sc.s180Start) + "°" : String("90 (stop)")));
+  }
+#endif
 }
 
 void activateServo(int servoPin) {
+#ifdef BOARD_JC3248W535C
+  {
+    int i = t35ServoIdx(servoPin);
+    if (i >= 0 && t35Attached[i]) {
+      const T35AmbientConfig::ServoChannel& sc = t35AmbientConfig.servo[i];
+      if (sc.servo180) {
+        LOG_INFO("Servo", String("T35 GPIO") + servoPin + " 180°: " + sc.s180Start + "° → " + sc.s180End + "°");
+        slowSweep(t35Servos[i], sc.s180Start, sc.s180End, sc.s180Duration);
+      } else if (sc.servo360) {
+        LOG_INFO("Servo", String("T35 GPIO") + servoPin + " 360°: speed " + sc.s360Speed);
+        t35Servos[i].write(sc.s360Speed);
+        if (sc.s360Duration > 0) {
+          vTaskDelay(pdMS_TO_TICKS(sc.s360Duration));
+          t35Servos[i].write(90); // stop
+        }
+      }
+      return;
+    }
+  }
+#endif
 #ifdef BOARD_ESP32C3_21_1
   if (servoPin == PIN_FLEX_CH01 && servoFlex6Attached) {
     if (c3FlexConfig.gpio6Servo180) {
@@ -142,6 +185,22 @@ void activateServo(int servoPin) {
 }
 
 void deactivateServo(int servoPin) {
+#ifdef BOARD_JC3248W535C
+  {
+    int i = t35ServoIdx(servoPin);
+    if (i >= 0 && t35Attached[i]) {
+      const T35AmbientConfig::ServoChannel& sc = t35AmbientConfig.servo[i];
+      if (sc.servo180) {
+        LOG_INFO("Servo", String("T35 GPIO") + servoPin + " 180°: returning to " + sc.s180Start + "°");
+        slowSweep(t35Servos[i], sc.s180End, sc.s180Start, sc.s180Duration);
+      } else if (sc.servo360) {
+        t35Servos[i].write(90); // stop
+        LOG_INFO("Servo", String("T35 GPIO") + servoPin + " 360°: stopped");
+      }
+      return;
+    }
+  }
+#endif
 #ifdef BOARD_ESP32C3_21_1
   if (servoPin == PIN_FLEX_CH01 && servoFlex6Attached && c3FlexConfig.gpio6Servo180) {
     LOG_INFO("Servo", String("Flex GPIO6 180°: returning to ") + c3FlexConfig.gpio6S180Start + "°");
@@ -179,5 +238,10 @@ void detachServos() {
 #ifdef BOARD_ESP32C3_21_1
   if (servoFlex6Attached) { servo_flex6.detach(); servoFlex6Attached = false; }
   if (servoFlex7Attached) { servo_flex7.detach(); servoFlex7Attached = false; }
+#endif
+#ifdef BOARD_JC3248W535C
+  for (int i = 0; i < 6; i++) {
+    if (t35Attached[i]) { t35Servos[i].detach(); t35Attached[i] = false; }
+  }
 #endif
 }

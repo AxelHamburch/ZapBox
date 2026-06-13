@@ -312,6 +312,39 @@ struct T35AmbientConfig {
 
   // Derived: total number of independent payment channels (CH01 + relay/servo CH02-CH06)
   int paymentChannelCount = 1;
+
+  // ── Per-channel servo configuration ──────────────────────────────────
+  // A channel set to "servo180"/"servo360" drives a servo (with these
+  // parameters) instead of a relay when paid. Array index 0..5 maps to
+  // RELAY_CHANNEL_PINS = {GPIO 5, 6, 7, 14, 15, 16} = CH01..CH06.
+  struct ServoChannel {
+    bool servo180 = false;     // mode == "servo180" (positional 0-180°)
+    bool servo360 = false;     // mode == "servo360" (continuous rotation)
+    int  s180Start    = 0;     // 180°: start angle (rest position)
+    int  s180End      = 0;     // 180°: end angle (active position)
+    int  s180Duration = 0;     // 180°: sweep duration ms (0 = max speed)
+    int  s360Speed    = 0;     // 360°: speed 0-180 (90 = stop, <90 CCW, >90 CW)
+    int  s360Duration = 0;     // 360°: spin duration ms (0 = until action ends)
+    bool isServo() const { return servo180 || servo360; }
+  };
+  ServoChannel servo[6];
+
+  // Map a GPIO to its servo[] channel index, or -1 if it is not a flex channel.
+  int servoIndexForGpio(int gpio) const {
+    switch (gpio) {
+      case 5:  return 0;
+      case 6:  return 1;
+      case 7:  return 2;
+      case 14: return 3;
+      case 15: return 4;
+      case 16: return 5;
+      default: return -1;
+    }
+  }
+  bool isServoGpio(int gpio) const {
+    int i = servoIndexForGpio(gpio);
+    return i >= 0 && servo[i].isServo();
+  }
 };
 extern T35AmbientConfig t35AmbientConfig;
 #endif  // BOARD_JC3248W535C

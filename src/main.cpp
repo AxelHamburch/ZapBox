@@ -710,6 +710,7 @@ void readFiles()
         return m == "relay" || m == "servo180" || m == "servo360";
       };
 
+      String m5  = readGpioMode(47); // CH01 (GPIO 5) — primary channel
       String m6  = readGpioMode(48);
       String m7  = readGpioMode(49);
       String m14 = readGpioMode(50);
@@ -730,6 +731,35 @@ void readFiles()
       t35AmbientConfig.gpio16Actor = isActor(m16);
 
       t35AmbientConfig.oneForAll = (act == "one-for-all");
+
+      // Per-channel servo configuration (indices 58-87: 6 channels × 5 params).
+      //   58-62 CH01(GPIO5)  63-67 CH02(GPIO6)  68-72 CH03(GPIO7)
+      //   73-77 CH04(GPIO14) 78-82 CH05(GPIO15) 83-87 CH06(GPIO16)
+      // Param order per channel: S180Start, S180End, S180Duration, S360Speed, S360Duration
+      {
+        auto readInt = [&](int idx) -> int {
+          const JsonObject o = doc[idx];
+          if (o.isNull()) return 0;
+          const char* v = o["value"];
+          return v ? String(v).toInt() : 0;
+        };
+        auto setupServoCh = [&](int chIdx, const String& mode, int base) {
+          auto& sc = t35AmbientConfig.servo[chIdx];
+          sc.servo180    = (mode == "servo180");
+          sc.servo360    = (mode == "servo360");
+          sc.s180Start    = readInt(base + 0);
+          sc.s180End      = readInt(base + 1);
+          sc.s180Duration = readInt(base + 2);
+          sc.s360Speed    = readInt(base + 3);
+          sc.s360Duration = readInt(base + 4);
+        };
+        setupServoCh(0, m5,  58);
+        setupServoCh(1, m6,  63);
+        setupServoCh(2, m7,  68);
+        setupServoCh(3, m14, 73);
+        setupServoCh(4, m15, 78);
+        setupServoCh(5, m16, 83);
+      }
 
       // Count actual payment channels: CH01 always, plus each relay/servo channel
       int extra = (t35AmbientConfig.gpio6Actor  ? 1 : 0)
@@ -1288,9 +1318,14 @@ void setup()
         digitalWrite(p.gpio, HIGH); // Display is on at startup
         Serial.printf("[AMBIENT LIGHT] GPIO %d initialized (synced with display backlight)\n", p.gpio);
       } else if (p.actor) {
-        pinMode(p.gpio, OUTPUT);
-        digitalWrite(p.gpio, LOW);
-        Serial.printf("[FLEX] GPIO %d initialized as OUTPUT LOW (relay/servo)\n", p.gpio);
+        if (t35AmbientConfig.isServoGpio(p.gpio)) {
+          // Servo channel: attached/positioned by initServos(), not driven as a relay GPIO
+          Serial.printf("[FLEX] GPIO %d: servo — attached separately\n", p.gpio);
+        } else {
+          pinMode(p.gpio, OUTPUT);
+          digitalWrite(p.gpio, LOW);
+          Serial.printf("[FLEX] GPIO %d initialized as OUTPUT LOW (relay)\n", p.gpio);
+        }
       } else {
         Serial.printf("[FLEX] GPIO %d: off/sensor — skipped\n", p.gpio);
       }
@@ -1307,6 +1342,14 @@ void setup()
   else if (c3FlexConfig.gpio6Servo180 || c3FlexConfig.gpio6Servo360 ||
            c3FlexConfig.gpio7Servo180 || c3FlexConfig.gpio7Servo360) {
     initServos();
+  }
+#endif
+#ifdef BOARD_JC3248W535C
+  // Touch 3.5: init per-channel servos (multi-channel mode is "duo"/"off", not "servo*")
+  else {
+    bool anyT35Servo = false;
+    for (int i = 0; i < 6; i++) if (t35AmbientConfig.servo[i].isServo()) anyT35Servo = true;
+    if (anyT35Servo) initServos();
   }
 #endif
 
@@ -3987,16 +4030,41 @@ static void oneForAllActivationTask(void* pvParams) {
 #endif
 #ifdef BOARD_JC3248W535C
   else {
-    // Touch 3.5 relay channel (GPIO 6/7/14/15/16): HIGH for fallbackDuration, then LOW
-    digitalWrite(pin, HIGH);
-    Serial.printf("[OFA-T35] GPIO%d set HIGH\n", pin);
-    unsigned long t0 = millis();
-    while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
-      vTaskDelay(pdMS_TO_TICKS(10));
+    int si = t35AmbientConfig.servoIndexForGpio(pin);
+    if (si >= 0 && t35AmbientConfig.servo[si].isServo()) {
+      // Touch 3.5 servo channel: sweep/spin with the channel's own parameters
+      auto& sc = t35AmbientConfig.servo[si];
+      if (sc.servo180) {
+        activateServo(pin); // sweep start → end (takes s180Duration ms)
+        int holdTime = fallback - sc.s180Duration;
+        if (holdTime > 0) {
+          unsigned long t0 = millis();
+          while (!g_ofaStop && (millis() - t0 < (unsigned long)holdTime))
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        deactivateServo(pin); // sweep end → start
+      } else { // servo360
+        activateServo(pin); // self-stops when s360Duration > 0
+        if (sc.s360Duration == 0) {
+          unsigned long t0 = millis();
+          while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback))
+            vTaskDelay(pdMS_TO_TICKS(10));
+          deactivateServo(pin); // stop spinning
+        }
+      }
+      Serial.printf("[OFA-T35] GPIO%d servo action done\n", pin);
+    } else {
+      // Touch 3.5 relay channel (GPIO 6/7/14/15/16): HIGH for fallbackDuration, then LOW
+      digitalWrite(pin, HIGH);
+      Serial.printf("[OFA-T35] GPIO%d set HIGH\n", pin);
+      unsigned long t0 = millis();
+      while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
+      if (g_ofaStop) Serial.printf("[OFA-T35] GPIO%d stopped early\n", pin);
+      digitalWrite(pin, LOW);
+      Serial.printf("[OFA-T35] GPIO%d set LOW\n", pin);
     }
-    if (g_ofaStop) Serial.printf("[OFA-T35] GPIO%d stopped early\n", pin);
-    digitalWrite(pin, LOW);
-    Serial.printf("[OFA-T35] GPIO%d set LOW\n", pin);
   }
 #endif
 
@@ -4098,6 +4166,10 @@ static void processNormalPayment(int pin, int duration)
                        ((pin == 13 && !servoConfig.pin13IsRelay) ||
                         (pin == 10 && !servoConfig.pin10IsRelay)))
                  || ((multiChannelConfig.mode == "servo180" || multiChannelConfig.mode == "servo360") && pin == 12);
+  #ifdef BOARD_JC3248W535C
+  // Touch 3.5 multi-channel: any flex channel set to servo180/servo360
+  if (t35AmbientConfig.isServoGpio(pin)) isServoPin = true;
+  #endif
   bool useSpecialMode = (specialModeConfig.mode != "standard" && specialModeConfig.mode != "")
                      && !isServoPin
                      && !(channel4AmbientConfig.enabled && pin == 11);

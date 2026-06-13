@@ -313,6 +313,19 @@
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
                         </select>
+                        <div id="gpio5Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
+                            <div><label for="gpio5Servo180Start">Start angle (°)</label><input type="number" id="gpio5Servo180Start" name="gpio5Servo180Start" min="0" max="180" value="0"></div>
+                            <div><label for="gpio5Servo180End">End angle (°)</label><input type="number" id="gpio5Servo180End" name="gpio5Servo180End" min="0" max="180" value="0"></div>
+                            <div><label for="gpio5Servo180Duration">Sweep duration (ms)</label><input type="number" id="gpio5Servo180Duration" name="gpio5Servo180Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">0 = max speed / 1000 = 1 second.<br>The servo returns to the start position after the action.</p>
+                        </div>
+                        <div id="gpio5Servo360Box" class="t35Servo360Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">360° Servo</p>
+                            <div><label for="gpio5Servo360Speed">Speed (0–180)</label><input type="number" id="gpio5Servo360Speed" name="gpio5Servo360Speed" min="0" max="180" value="0"></div>
+                            <div><label for="gpio5Servo360Duration">Spin duration (ms)</label><input type="number" id="gpio5Servo360Duration" name="gpio5Servo360Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">90 = stop / &lt;90 = CCW / &gt;90 = CW.<br>0 ms = spin until action time ends.</p>
+                        </div>
                     </div>
                     <div>
                         <label for="gpio6Mode">CH02 — GPIO 6</label>
@@ -323,6 +336,19 @@
                             <option value="servo360">Servo 360° (continuous)</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
+                        <div id="gpio6Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
+                            <div><label for="gpio6Servo180Start">Start angle (°)</label><input type="number" id="gpio6Servo180Start" name="gpio6Servo180Start" min="0" max="180" value="0"></div>
+                            <div><label for="gpio6Servo180End">End angle (°)</label><input type="number" id="gpio6Servo180End" name="gpio6Servo180End" min="0" max="180" value="0"></div>
+                            <div><label for="gpio6Servo180Duration">Sweep duration (ms)</label><input type="number" id="gpio6Servo180Duration" name="gpio6Servo180Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">0 = max speed / 1000 = 1 second.<br>The servo returns to the start position after the action.</p>
+                        </div>
+                        <div id="gpio6Servo360Box" class="t35Servo360Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">360° Servo</p>
+                            <div><label for="gpio6Servo360Speed">Speed (0–180)</label><input type="number" id="gpio6Servo360Speed" name="gpio6Servo360Speed" min="0" max="180" value="0"></div>
+                            <div><label for="gpio6Servo360Duration">Spin duration (ms)</label><input type="number" id="gpio6Servo360Duration" name="gpio6Servo360Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">90 = stop / &lt;90 = CCW / &gt;90 = CW.<br>0 ms = spin until action time ends.</p>
+                        </div>
                     </div>
                     <div style="margin-top: 10px;">
                         <label for="gpio7Mode">CH03 — GPIO 7</label>
@@ -336,6 +362,19 @@
                             <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
+                        <div id="gpio7Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
+                            <div><label for="gpio7Servo180Start">Start angle (°)</label><input type="number" id="gpio7Servo180Start" name="gpio7Servo180Start" min="0" max="180" value="0"></div>
+                            <div><label for="gpio7Servo180End">End angle (°)</label><input type="number" id="gpio7Servo180End" name="gpio7Servo180End" min="0" max="180" value="0"></div>
+                            <div><label for="gpio7Servo180Duration">Sweep duration (ms)</label><input type="number" id="gpio7Servo180Duration" name="gpio7Servo180Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">0 = max speed / 1000 = 1 second.<br>The servo returns to the start position after the action.</p>
+                        </div>
+                        <div id="gpio7Servo360Box" class="t35Servo360Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">360° Servo</p>
+                            <div><label for="gpio7Servo360Speed">Speed (0–180)</label><input type="number" id="gpio7Servo360Speed" name="gpio7Servo360Speed" min="0" max="180" value="0"></div>
+                            <div><label for="gpio7Servo360Duration">Spin duration (ms)</label><input type="number" id="gpio7Servo360Duration" name="gpio7Servo360Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">90 = stop / &lt;90 = CCW / &gt;90 = CW.<br>0 ms = spin until action time ends.</p>
+                        </div>
                     </div>
                     <div style="margin-top: 10px;">
                         <label for="gpio14Mode">CH04 — GPIO 14</label>
@@ -349,6 +388,19 @@
                             <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
+                        <div id="gpio14Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
+                            <div><label for="gpio14Servo180Start">Start angle (°)</label><input type="number" id="gpio14Servo180Start" name="gpio14Servo180Start" min="0" max="180" value="0"></div>
+                            <div><label for="gpio14Servo180End">End angle (°)</label><input type="number" id="gpio14Servo180End" name="gpio14Servo180End" min="0" max="180" value="0"></div>
+                            <div><label for="gpio14Servo180Duration">Sweep duration (ms)</label><input type="number" id="gpio14Servo180Duration" name="gpio14Servo180Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">0 = max speed / 1000 = 1 second.<br>The servo returns to the start position after the action.</p>
+                        </div>
+                        <div id="gpio14Servo360Box" class="t35Servo360Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">360° Servo</p>
+                            <div><label for="gpio14Servo360Speed">Speed (0–180)</label><input type="number" id="gpio14Servo360Speed" name="gpio14Servo360Speed" min="0" max="180" value="0"></div>
+                            <div><label for="gpio14Servo360Duration">Spin duration (ms)</label><input type="number" id="gpio14Servo360Duration" name="gpio14Servo360Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">90 = stop / &lt;90 = CCW / &gt;90 = CW.<br>0 ms = spin until action time ends.</p>
+                        </div>
                     </div>
                     <div style="margin-top: 10px;">
                         <label for="gpio15Mode">CH05 — GPIO 15</label>
@@ -362,6 +414,19 @@
                             <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
+                        <div id="gpio15Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
+                            <div><label for="gpio15Servo180Start">Start angle (°)</label><input type="number" id="gpio15Servo180Start" name="gpio15Servo180Start" min="0" max="180" value="0"></div>
+                            <div><label for="gpio15Servo180End">End angle (°)</label><input type="number" id="gpio15Servo180End" name="gpio15Servo180End" min="0" max="180" value="0"></div>
+                            <div><label for="gpio15Servo180Duration">Sweep duration (ms)</label><input type="number" id="gpio15Servo180Duration" name="gpio15Servo180Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">0 = max speed / 1000 = 1 second.<br>The servo returns to the start position after the action.</p>
+                        </div>
+                        <div id="gpio15Servo360Box" class="t35Servo360Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">360° Servo</p>
+                            <div><label for="gpio15Servo360Speed">Speed (0–180)</label><input type="number" id="gpio15Servo360Speed" name="gpio15Servo360Speed" min="0" max="180" value="0"></div>
+                            <div><label for="gpio15Servo360Duration">Spin duration (ms)</label><input type="number" id="gpio15Servo360Duration" name="gpio15Servo360Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">90 = stop / &lt;90 = CCW / &gt;90 = CW.<br>0 ms = spin until action time ends.</p>
+                        </div>
                     </div>
                     <div style="margin-top: 10px;">
                         <label for="gpio16Mode">CH06 — GPIO 16</label>
@@ -375,6 +440,19 @@
                             <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
+                        <div id="gpio16Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
+                            <div><label for="gpio16Servo180Start">Start angle (°)</label><input type="number" id="gpio16Servo180Start" name="gpio16Servo180Start" min="0" max="180" value="0"></div>
+                            <div><label for="gpio16Servo180End">End angle (°)</label><input type="number" id="gpio16Servo180End" name="gpio16Servo180End" min="0" max="180" value="0"></div>
+                            <div><label for="gpio16Servo180Duration">Sweep duration (ms)</label><input type="number" id="gpio16Servo180Duration" name="gpio16Servo180Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">0 = max speed / 1000 = 1 second.<br>The servo returns to the start position after the action.</p>
+                        </div>
+                        <div id="gpio16Servo360Box" class="t35Servo360Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
+                            <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">360° Servo</p>
+                            <div><label for="gpio16Servo360Speed">Speed (0–180)</label><input type="number" id="gpio16Servo360Speed" name="gpio16Servo360Speed" min="0" max="180" value="0"></div>
+                            <div><label for="gpio16Servo360Duration">Spin duration (ms)</label><input type="number" id="gpio16Servo360Duration" name="gpio16Servo360Duration" min="0" max="10000" value="0"></div>
+                            <p style="margin:6px 0 0 0; font-size:11px; color:#888; font-style:italic;">90 = stop / &lt;90 = CCW / &gt;90 = CW.<br>0 ms = spin until action time ends.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -878,7 +956,39 @@
             { "name": "miniPosDecimal",     "value": "yes" },
             { "name": "miniPosInvoiceKey",  "value": "" },
             // index 57 – numerical product selection (multiControl == "duo" only)
-            { "name": "t35NumericSelect",   "value": "no" }
+            { "name": "t35NumericSelect",   "value": "no" },
+            // indices 58-87 – per-channel servo parameters (6 channels × 5 params)
+            // order per channel: S180Start, S180End, S180Duration, S360Speed, S360Duration
+            { "name": "gpio5Servo180Start",    "value": "0" }, // 58
+            { "name": "gpio5Servo180End",      "value": "0" }, // 59
+            { "name": "gpio5Servo180Duration", "value": "0" }, // 60
+            { "name": "gpio5Servo360Speed",    "value": "0" }, // 61
+            { "name": "gpio5Servo360Duration", "value": "0" }, // 62
+            { "name": "gpio6Servo180Start",    "value": "0" }, // 63
+            { "name": "gpio6Servo180End",      "value": "0" }, // 64
+            { "name": "gpio6Servo180Duration", "value": "0" }, // 65
+            { "name": "gpio6Servo360Speed",    "value": "0" }, // 66
+            { "name": "gpio6Servo360Duration", "value": "0" }, // 67
+            { "name": "gpio7Servo180Start",    "value": "0" }, // 68
+            { "name": "gpio7Servo180End",      "value": "0" }, // 69
+            { "name": "gpio7Servo180Duration", "value": "0" }, // 70
+            { "name": "gpio7Servo360Speed",    "value": "0" }, // 71
+            { "name": "gpio7Servo360Duration", "value": "0" }, // 72
+            { "name": "gpio14Servo180Start",    "value": "0" }, // 73
+            { "name": "gpio14Servo180End",      "value": "0" }, // 74
+            { "name": "gpio14Servo180Duration", "value": "0" }, // 75
+            { "name": "gpio14Servo360Speed",    "value": "0" }, // 76
+            { "name": "gpio14Servo360Duration", "value": "0" }, // 77
+            { "name": "gpio15Servo180Start",    "value": "0" }, // 78
+            { "name": "gpio15Servo180End",      "value": "0" }, // 79
+            { "name": "gpio15Servo180Duration", "value": "0" }, // 80
+            { "name": "gpio15Servo360Speed",    "value": "0" }, // 81
+            { "name": "gpio15Servo360Duration", "value": "0" }, // 82
+            { "name": "gpio16Servo180Start",    "value": "0" }, // 83
+            { "name": "gpio16Servo180End",      "value": "0" }, // 84
+            { "name": "gpio16Servo180Duration", "value": "0" }, // 85
+            { "name": "gpio16Servo360Speed",    "value": "0" }, // 86
+            { "name": "gpio16Servo360Duration", "value": "0" }  // 87
         ];
 
         // Setup Web Serial using serial.js
@@ -1106,6 +1216,7 @@
 
                 updateMultiControlState();
                 updateIOExpanderFieldState();
+                updateT35ServoBoxes();
 
                 serialBuffer = '';
                 const successMsg = document.createElement('span');
@@ -1311,6 +1422,13 @@
                 "miniPosInvoiceKey":  (document.getElementById('miniPosInvoiceKey')  || {value: ""}).value,
                 "t35NumericSelect":   (document.getElementById('t35NumericSelect')   || {value: "no"}).value
             };
+            // Per-channel servo parameters (input id == config name)
+            ['gpio5', 'gpio6', 'gpio7', 'gpio14', 'gpio15', 'gpio16'].forEach((g) => {
+                ['Servo180Start', 'Servo180End', 'Servo180Duration', 'Servo360Speed', 'Servo360Duration'].forEach((suf) => {
+                    const el = document.getElementById(g + suf);
+                    if (el) map[g + suf] = (el.value === '' ? '0' : el.value);
+                });
+            });
             for (const entry of config) {
                 if (map.hasOwnProperty(entry.name)) {
                     entry.value = map[entry.name];
@@ -1336,6 +1454,19 @@
             });
         }
 
+        // Show the matching grey servo-parameter box for each channel based on its
+        // mode select (servo180 → 180° box, servo360 → 360° box, otherwise hidden).
+        function updateT35ServoBoxes() {
+            const gpios = ['gpio5', 'gpio6', 'gpio7', 'gpio14', 'gpio15', 'gpio16'];
+            gpios.forEach((g) => {
+                const mode = (document.getElementById(g + 'Mode') || { value: 'off' }).value;
+                const box180 = document.getElementById(g + 'Servo180Box');
+                const box360 = document.getElementById(g + 'Servo360Box');
+                if (box180) box180.style.display = (mode === 'servo180') ? 'block' : 'none';
+                if (box360) box360.style.display = (mode === 'servo360') ? 'block' : 'none';
+            });
+        }
+
         (function() {
             const ioChIds = [
                 'gpio5Mode', 'gpio6Mode', 'gpio7Mode',
@@ -1347,11 +1478,13 @@
                 el.addEventListener('change', (event) => {
                     const cfg = config.find(c => c.name === id);
                     if (cfg) cfg.value = event.target.value;
+                    updateT35ServoBoxes();
                 });
             });
         })();
 
         updateIOExpanderFieldState();
+        updateT35ServoBoxes();
 
         function updateMultiControlState() {
             const multi = document.getElementById('multiControl');
