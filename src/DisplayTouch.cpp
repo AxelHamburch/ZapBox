@@ -1143,9 +1143,9 @@ static String fmtBlockHeight(const String& raw) {
   // Format raw block height as "#X.XXX.XXX" (zero-padded to 7 digits)
   char buf[8];
   snprintf(buf, sizeof(buf), "%07ld", raw.toInt());
-  String s = "@";
-  s += buf[0]; s += '\'';
-  s += buf[1]; s += buf[2]; s += buf[3]; s += '\'';
+  String s = "BH:";
+  s += buf[0]; s += '\,';
+  s += buf[1]; s += buf[2]; s += buf[3]; s += '\,';
   s += buf[4]; s += buf[5]; s += buf[6];
   return s;
 }
@@ -1154,13 +1154,8 @@ void updateProductSelectBlockHeight() {
   DisplayLock l; if (!_gfx) return;
   if (bitcoinData.blockHigh == "...") return;
   String blk = fmtBlockHeight(bitcoinData.blockHigh);
-  if (isPortrait()) {
-    fillRect(0, 336, SCR_W, 20, themeBackground);
-    drawCenter(SCR_W / 2, 338, blk.c_str(), themeForeground, themeBackground, 2);
-  } else {
-    fillRect(0, 249, SCR_W, 20, themeBackground);
-    drawCenter(SCR_W / 2, 251, blk.c_str(), themeForeground, themeBackground, 2);
-  }
+  fillRect(0, SCR_H - 22, SCR_W, 20, themeBackground);
+  drawCenter(SCR_W / 2, SCR_H - 14, blk.c_str(), themeForeground, themeBackground, 2);
   flushDisplay();
 }
 
@@ -1171,18 +1166,14 @@ void productSelectionScreen() {
     drawCenter(SCR_W / 2, 177, "ZAPBOX",      themeForeground, themeBackground, 5);
     drawCenter(SCR_W / 2, 242, "the machine", themeForeground, themeBackground, 4);
     drawCenter(SCR_W / 2, 299, "touch me..",  themeForeground, themeBackground, 3);
-    if (bitcoinData.blockHigh != "...") {
-      String blk = fmtBlockHeight(bitcoinData.blockHigh);
-      drawCenter(SCR_W / 2, 338, blk.c_str(), themeForeground, themeBackground, 2);
-    }
   } else {
     drawCenter(SCR_W / 2,  92, "ZAPBOX",      themeForeground, themeBackground, 5);
     drawCenter(SCR_W / 2, 157, "the machine", themeForeground, themeBackground, 4);
     drawCenter(SCR_W / 2, 214, "touch me..",  themeForeground, themeBackground, 3);
-    if (bitcoinData.blockHigh != "...") {
-      String blk = fmtBlockHeight(bitcoinData.blockHigh);
-      drawCenter(SCR_W / 2, 251, blk.c_str(), themeForeground, themeBackground, 2);
-    }
+  }
+  if (bitcoinData.blockHigh != "...") {
+    String blk = fmtBlockHeight(bitcoinData.blockHigh);
+    drawCenter(SCR_W / 2, SCR_H - 14, blk.c_str(), themeForeground, themeBackground, 2);
   }
   flushDisplay();
 }
