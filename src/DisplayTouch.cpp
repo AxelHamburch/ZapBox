@@ -1143,7 +1143,7 @@ static String fmtBlockHeight(const String& raw) {
   // Format raw block height as "#X.XXX.XXX" (zero-padded to 7 digits)
   char buf[8];
   snprintf(buf, sizeof(buf), "%07ld", raw.toInt());
-  String s = "BH:";
+  String s = "#";
   s += buf[0]; s += '\,';
   s += buf[1]; s += buf[2]; s += buf[3]; s += '\,';
   s += buf[4]; s += buf[5]; s += buf[6];
