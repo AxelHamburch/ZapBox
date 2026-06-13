@@ -775,6 +775,37 @@ The *Device settings string* must be configured as usual — it identifies the L
 
 **Use Cases**: Market stalls, flea markets, tip boxes, club bars, small shops — anywhere a fixed-price switch is not enough and a full PoS is too much.
 
+#### Multi-Channel-Control Mode (Touch 3.5")
+**Available on JC3248W535C Touch 3.5" — up to 6 independent channels**
+
+The Touch 3.5" drives **six freely configurable channels** on GPIO 5, 6, 7, 14, 15 and 16 (CH01–CH06). Each channel's function is set independently in the Web Installer, so one device can mix dispensers, relays, sensors and ambient lighting:
+
+| Channel | GPIO | Selectable functions |
+|---------|------|----------------------|
+| CH01 | 5 | Relay *(default)* · Servo 180° · Servo 360° — primary / Special-Mode channel |
+| CH02 | 6 | Off · Relay · Servo 180°/360° · Ambient Light |
+| CH03–CH06 | 7, 14, 15, 16 | Off · Relay · Servo 180°/360° · Sensor (stop / blockage-monitor / level) · Ambient Light |
+
+- **Payment channels**: every channel set to *relay* or *servo* becomes its own payment channel with a unique LNURL/QR code and its own amount and duration from the LNbits switch entry. Channels set to *ambient-light*, *sensor* or *off* are not counted as payment channels.
+- **CH01** is always active as the primary channel and is the only one that supports the **Special Modes** (blink / pulse / strobe); additional channels switch in standard on/off mode.
+- Customers pick a product by **swiping** the selection screen, or by typing its number with [Numerical Product Selection](#numerical-product-selection-touch-35-only).
+
+**Per-channel servo parameters:**
+Any channel set to **Servo 180°** or **Servo 360°** gets its own parameter box directly below that channel in the Web Installer, so every dispenser or barrier is tuned independently:
+
+| Servo type | Parameters | Behaviour |
+|------------|------------|-----------|
+| **180°** (positional) | Start angle (°) · End angle (°) · Sweep duration (ms) | Sweeps Start→End on payment, holds for the action time, then returns to Start. `0 ms` = native (max) speed. |
+| **360°** (continuous) | Speed (0–180) · Spin duration (ms) | Spins at the set speed (`90` = stop, `<90` = CCW, `>90` = CW). `0 ms` = spins until the action time ends. |
+
+**Activation Options (One for All):**
+- **Off** *(default)* — each channel is triggered separately by its own QR/payment.
+- **One for All** — a single payment on **CH01** fires *all* relay/servo channels at once (one QR code). Each channel runs for its own LNbits-configured duration (fallback: CH01's duration). Ambient-light and sensor channels are unaffected. Mutually exclusive with Numerical Product Selection.
+
+**Configuration (Web Installer → ZapBox Mode → Multi-channel):** set each channel's function in the CH01–CH06 dropdowns; the servo parameter box appears automatically when a channel is set to Servo 180°/360°. *Activation Options* and *Numerical Product Selection* live in the same panel.
+
+**Reserved GPIOs** (not available as channels): 17/18 (I²C — NFC reader + NT3H2111), 9 (PN532 IRQ), 46 (NT3H2111 Field Detection).
+
 #### Numerical Product Selection (Touch 3.5" only)
 **Available on JC3248W535C Touch 3.5" in Multi-channel mode**
 
@@ -795,7 +826,7 @@ While no product QR is shown, the NFC Tag 2 carries `https://zapbox.space` and B
 
 **Configuration (Web Installer → ZapBox Mode → Multi-channel → Numerical Product Selection):** `Yes — Product selection panel`. Cannot be combined with *One for All* (the installer enforces this).
 
-#### Multi-Channel-Control Mode (Touch Variant)
+#### Multi-Channel-Control Mode (T-Display-S3)
 **Available on T-Display-S3 Touch variant only**
 
 Control multiple relays with automatic product selection and label integration:
