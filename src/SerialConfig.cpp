@@ -29,8 +29,11 @@ static bool checkButtonExit() {
     // This prevents triggering exit if buttons are already pressed when config mode starts
     if (!initialized) {
         prevNextState = digitalRead(PIN_BUTTON_1);
-        #ifndef BOARD_ESP32C3_21_1
-        // PIN_BUTTON_2 = GPIO14 = SPI Flash IO1 on ESP32-C3 — never read as GPIO
+        #if !defined(BOARD_ESP32C3_21_1) && !defined(BOARD_JC3248W535C)
+        // PIN_BUTTON_2 = GPIO14 = SPI Flash IO1 on ESP32-C3 — never read as GPIO.
+        // On JC3248W535C, GPIO14 = flex channel CH04 (no physical HELP button;
+        // config is exited via touch) — reading it as a button causes spurious
+        // floating-pin exits and a config-mode boot loop.
         prevHelpState = digitalRead(PIN_BUTTON_2);
         #endif
         #ifdef PIN_LED_BUTTON_SW
@@ -57,8 +60,10 @@ static bool checkButtonExit() {
     prevNextState = nextState;
     
     // Check HELP button (PIN_BUTTON_2)
-    // On ESP32-C3-21-1, PIN_BUTTON_2 = GPIO14 = SPI Flash IO1 — skip to avoid spurious exits
-    #ifndef BOARD_ESP32C3_21_1
+    // On ESP32-C3-21-1, PIN_BUTTON_2 = GPIO14 = SPI Flash IO1 — skip to avoid spurious exits.
+    // On JC3248W535C, PIN_BUTTON_2 defaults to GPIO14 = flex channel CH04 (no HELP button) —
+    // the floating pin produces phantom HIGH→LOW edges and a config-mode boot loop. Exit via touch.
+    #if !defined(BOARD_ESP32C3_21_1) && !defined(BOARD_JC3248W535C)
     int helpState = digitalRead(PIN_BUTTON_2);
     if (prevHelpState == HIGH && helpState == LOW) { // Negative edge (button pressed)
         Serial.println("[CONFIG] HELP button pressed - exiting config mode");
