@@ -537,6 +537,83 @@
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
+        <!-- I/O-Expander Section (PCF8574) -->
+            <div class="input-wrapper" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                <div style="flex: 2; min-width: 280px;">
+                    <label for="ioExpander">I/O-Expander (PCF8574)</label>
+                    <select name="ioExpander" id="ioExpander">
+                        <option value="no" selected>No (default)</option>
+                        <option value="yes">Yes — CH200–CH207 (virtual pins 200–207)</option>
+                        <option value="yes2" disabled style="color: #aaa;">Yes — CH200–CH207 &amp; CH210–CH217 (prepared, not yet implemented)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I²C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V) — dual expander option is firmware-side in preparation</p>
+                </div>
+                <div style="flex: 1; max-width: 260px; margin-top: 2px; text-align: right;">
+                    <a href="./assets/IO-Expander-PCF8574.webp" target="_blank" rel="noopener noreferrer">
+                        <img src="./assets/IO-Expander-PCF8574.webp" alt="I/O-Expander PCF8574 wiring" style="width: 100%; max-width: 240px; height: auto; border-radius: 6px; display: inline-block;">
+                    </a>
+                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #888;"><i>PCF8574 wiring example</i></p>
+                </div>
+            </div>
+
+            <!-- I/O-Expander info panel (visible when expander is enabled) -->
+            <div id="ioExpanderChannels" style="display: none; margin-top: 15px; padding: 16px; background: rgba(0,0,0,0.05); border: 1px solid #bbb; border-radius: 6px; color: #666; font-size: 13px;">
+                <p style="margin: 0 0 12px 0; font-weight: bold; color: #444;">I/O-Expander — How it works</p>
+                <p style="margin: 0 0 8px 0;"><i>
+                    Each PCF8574 provides 8 open-collector I/O ports. All ports are configured as <strong>relay outputs (active LOW)</strong> — the relay fires when the port is pulled LOW.
+                    Channels are activated directly by the switch assignments in your <strong>LNbits extension</strong>: if a switch entry for virtual pin 200–207 (or 210–217) is present in LNbits, the corresponding PCF8574 port will be triggered on payment — no further configuration needed here.
+                </i></p>
+                <div id="ioExpanderInfoSingle" style="display: none; margin-top: 10px;">
+                    <strong>PCF8574 #1</strong> — I²C address <code>0x20</code> (A0/A1/A2 all to GND)
+                    <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH200</strong></td><td>P0</td><td style="padding-left:12px; color:#aaa;">virtual pin 200</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH201</strong></td><td>P1</td><td style="padding-left:12px; color:#aaa;">virtual pin 201</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH202</strong></td><td>P2</td><td style="padding-left:12px; color:#aaa;">virtual pin 202</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH203</strong></td><td>P3</td><td style="padding-left:12px; color:#aaa;">virtual pin 203</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH204</strong></td><td>P4</td><td style="padding-left:12px; color:#aaa;">virtual pin 204</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH205</strong></td><td>P5</td><td style="padding-left:12px; color:#aaa;">virtual pin 205</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH206</strong></td><td>P6</td><td style="padding-left:12px; color:#aaa;">virtual pin 206</td></tr>
+                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH207</strong></td><td>P7</td><td style="padding-left:12px; color:#aaa;">virtual pin 207</td></tr>
+                    </table>
+                </div>
+                <div id="ioExpanderInfoDual" style="display: none; margin-top: 10px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px;">
+                        <div>
+                            <strong>PCF8574 #1</strong> — I²C address <code>0x20</code><br>
+                            <span style="font-size: 11px; color: #888;">A0/A1/A2 all to GND</span>
+                            <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH200</strong></td><td>P0</td><td style="padding-left:10px; color:#aaa;">pin 200</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH201</strong></td><td>P1</td><td style="padding-left:10px; color:#aaa;">pin 201</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH202</strong></td><td>P2</td><td style="padding-left:10px; color:#aaa;">pin 202</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH203</strong></td><td>P3</td><td style="padding-left:10px; color:#aaa;">pin 203</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH204</strong></td><td>P4</td><td style="padding-left:10px; color:#aaa;">pin 204</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH205</strong></td><td>P5</td><td style="padding-left:10px; color:#aaa;">pin 205</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH206</strong></td><td>P6</td><td style="padding-left:10px; color:#aaa;">pin 206</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH207</strong></td><td>P7</td><td style="padding-left:10px; color:#aaa;">pin 207</td></tr>
+                            </table>
+                        </div>
+                        <div>
+                            <strong>PCF8574 #2</strong> — I²C address <code>0x21</code><br>
+                            <span style="font-size: 11px; color: #888;">A0 to VCC, A1/A2 to GND</span>
+                            <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH210</strong></td><td>P0</td><td style="padding-left:10px; color:#aaa;">pin 210</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH211</strong></td><td>P1</td><td style="padding-left:10px; color:#aaa;">pin 211</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH212</strong></td><td>P2</td><td style="padding-left:10px; color:#aaa;">pin 212</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH213</strong></td><td>P3</td><td style="padding-left:10px; color:#aaa;">pin 213</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH214</strong></td><td>P4</td><td style="padding-left:10px; color:#aaa;">pin 214</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH215</strong></td><td>P5</td><td style="padding-left:10px; color:#aaa;">pin 215</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH216</strong></td><td>P6</td><td style="padding-left:10px; color:#aaa;">pin 216</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH217</strong></td><td>P7</td><td style="padding-left:10px; color:#aaa;">pin 217</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <p style="margin: 12px 0 0 0; font-size: 11px; color: #888;"><i>Relay outputs: active LOW (LOW = relay on, HIGH = relay off). Connect PCF8574 ports P0–P7 directly to the IN1–IN8 inputs of a low-level trigger relay board. All ports start HIGH (all relays off) on boot.</i></p>
+            </div>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
         <!-- BTC-Ticker Section -->
             <div class="input-wrapper">
                 <div>
@@ -650,82 +727,6 @@
             <p style="margin-top: 5px; color: #888;"><i><b>Mobile Phones (NFC Tag 2 / NT3H2111, I²C 0x55, FD → GPIO 3)</b> — Passive NFC tag: unlike the PN532, the NT3H2111 generates no field of its own. It is a true NTAG chip that delivers the LNURL autonomously as soon as the active field of an approaching mobile phone is detected. The ZapBox writes the current LNURL to the chip via I²C — the ESP32 is not involved during the tap. The FD (Field Detection) pin of the NT3H2111 is permanently wired to GPIO 3 and used to pause the PN532 RF field while a phone is near. Compatible with Android NFC Tools and wallets that support LNURL via NFC (e.g. Phoenix). No configuration required — auto-detected at startup.</i></p>
             <p style="margin-top: 5px; color: #888;"><i>Both modules operate independently and in parallel. If a module is not connected, it is simply skipped — normal operation is not affected.</i></p>
 
-        <!-- Section Separator -->
-        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
-
-        <!-- I/O-Expander Section (PCF8574) -->
-            <div class="input-wrapper" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-                <div style="flex: 2; min-width: 280px;">
-                    <label for="ioExpander">I/O-Expander (PCF8574)</label>
-                    <select name="ioExpander" id="ioExpander">
-                        <option value="no" selected>No (default)</option>
-                        <option value="yes">Yes — CH200–CH207 (virtual pins 200–207)</option>
-                        <option value="yes2" disabled style="color: #aaa;">Yes — CH200–CH207 &amp; CH210–CH217 (prepared, not yet implemented)</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I²C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V) — dual expander option is firmware-side in preparation</p>
-                </div>
-                <div style="flex: 1; max-width: 260px; margin-top: 2px; text-align: right;">
-                    <a href="./assets/IO-Expander-PCF8574.webp" target="_blank" rel="noopener noreferrer">
-                        <img src="./assets/IO-Expander-PCF8574.webp" alt="I/O-Expander PCF8574 wiring" style="width: 100%; max-width: 240px; height: auto; border-radius: 6px; display: inline-block;">
-                    </a>
-                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #888;"><i>PCF8574 wiring example</i></p>
-                </div>
-            </div>
-
-            <!-- I/O-Expander info panel (visible when expander is enabled) -->
-            <div id="ioExpanderChannels" style="display: none; margin-top: 15px; padding: 16px; background: rgba(0,0,0,0.05); border: 1px solid #bbb; border-radius: 6px; color: #666; font-size: 13px;">
-                <p style="margin: 0 0 12px 0; font-weight: bold; color: #444;">I/O-Expander — How it works</p>
-                <p style="margin: 0 0 8px 0;"><i>
-                    Each PCF8574 provides 8 open-collector I/O ports. All ports are configured as <strong>relay outputs (active LOW)</strong> — the relay fires when the port is pulled LOW.
-                    Channels are activated directly by the switch assignments in your <strong>LNbits extension</strong>: if a switch entry for virtual pin 200–207 (or 210–217) is present in LNbits, the corresponding PCF8574 port will be triggered on payment — no further configuration needed here.
-                </i></p>
-                <div id="ioExpanderInfoSingle" style="display: none; margin-top: 10px;">
-                    <strong>PCF8574 #1</strong> — I²C address <code>0x20</code> (A0/A1/A2 all to GND)
-                    <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
-                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH200</strong></td><td>P0</td><td style="padding-left:12px; color:#aaa;">virtual pin 200</td></tr>
-                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH201</strong></td><td>P1</td><td style="padding-left:12px; color:#aaa;">virtual pin 201</td></tr>
-                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH202</strong></td><td>P2</td><td style="padding-left:12px; color:#aaa;">virtual pin 202</td></tr>
-                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH203</strong></td><td>P3</td><td style="padding-left:12px; color:#aaa;">virtual pin 203</td></tr>
-                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH204</strong></td><td>P4</td><td style="padding-left:12px; color:#aaa;">virtual pin 204</td></tr>
-                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH205</strong></td><td>P5</td><td style="padding-left:12px; color:#aaa;">virtual pin 205</td></tr>
-                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH206</strong></td><td>P6</td><td style="padding-left:12px; color:#aaa;">virtual pin 206</td></tr>
-                        <tr><td style="padding: 2px 16px 2px 0;"><strong>CH207</strong></td><td>P7</td><td style="padding-left:12px; color:#aaa;">virtual pin 207</td></tr>
-                    </table>
-                </div>
-                <div id="ioExpanderInfoDual" style="display: none; margin-top: 10px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px;">
-                        <div>
-                            <strong>PCF8574 #1</strong> — I²C address <code>0x20</code><br>
-                            <span style="font-size: 11px; color: #888;">A0/A1/A2 all to GND</span>
-                            <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH200</strong></td><td>P0</td><td style="padding-left:10px; color:#aaa;">pin 200</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH201</strong></td><td>P1</td><td style="padding-left:10px; color:#aaa;">pin 201</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH202</strong></td><td>P2</td><td style="padding-left:10px; color:#aaa;">pin 202</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH203</strong></td><td>P3</td><td style="padding-left:10px; color:#aaa;">pin 203</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH204</strong></td><td>P4</td><td style="padding-left:10px; color:#aaa;">pin 204</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH205</strong></td><td>P5</td><td style="padding-left:10px; color:#aaa;">pin 205</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH206</strong></td><td>P6</td><td style="padding-left:10px; color:#aaa;">pin 206</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH207</strong></td><td>P7</td><td style="padding-left:10px; color:#aaa;">pin 207</td></tr>
-                            </table>
-                        </div>
-                        <div>
-                            <strong>PCF8574 #2</strong> — I²C address <code>0x21</code><br>
-                            <span style="font-size: 11px; color: #888;">A0 to VCC, A1/A2 to GND</span>
-                            <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH210</strong></td><td>P0</td><td style="padding-left:10px; color:#aaa;">pin 210</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH211</strong></td><td>P1</td><td style="padding-left:10px; color:#aaa;">pin 211</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH212</strong></td><td>P2</td><td style="padding-left:10px; color:#aaa;">pin 212</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH213</strong></td><td>P3</td><td style="padding-left:10px; color:#aaa;">pin 213</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH214</strong></td><td>P4</td><td style="padding-left:10px; color:#aaa;">pin 214</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH215</strong></td><td>P5</td><td style="padding-left:10px; color:#aaa;">pin 215</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH216</strong></td><td>P6</td><td style="padding-left:10px; color:#aaa;">pin 216</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH217</strong></td><td>P7</td><td style="padding-left:10px; color:#aaa;">pin 217</td></tr>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                <p style="margin: 12px 0 0 0; font-size: 11px; color: #888;"><i>Relay outputs: active LOW (LOW = relay on, HIGH = relay off). Connect PCF8574 ports P0–P7 directly to the IN1–IN8 inputs of a low-level trigger relay board. All ports start HIGH (all relays off) on boot.</i></p>
-            </div>
 
         </div>
 
@@ -2326,6 +2327,14 @@
             }
             sections += section('Special Mode', specialRows);
 
+            // I/O-Expander (PCF8574) — ports are fixed relay outputs (LNbits-controlled)
+            const ioExpVal = (document.getElementById('ioExpander') || { value: 'no' }).value;
+            let ioExpRows = row('I/O-Expander', selText('ioExpander'));
+            if (ioExpVal && ioExpVal !== 'no') {
+                ioExpRows += row('Channels', 'CH200–CH207 — relay outputs, triggered via LNbits switch entries');
+            }
+            sections += section('I/O-Expander (PCF8574)', ioExpRows);
+
             sections += section('BTC-Ticker',
                 row('BTC-Ticker Mode', selText('btcTicker')) +
                 row('Currency (ISO Code)', inputVal('currency'))
@@ -2333,12 +2342,15 @@
 
             if (thresholdKeyVal) {
                 sections += section('Threshold Mode',
+                    row('Threshold Mode', 'on') +
                     row('Wallet Invoice/Read Key', thresholdKeyVal) +
                     row('Threshold Value (satoshi)', inputVal('thresholdAmount')) +
                     row('GPIO Pin', inputVal('thresholdPin')) +
                     row('Control Time (ms)', inputVal('thresholdTime')) +
                     row('LNURL / Lightning Address', inputVal('thresholdLnurl'))
                 );
+            } else {
+                sections += section('Threshold Mode', row('Threshold Mode', 'Off (default)'));
             }
 
             sections += section('Screensaver &amp; Deep Sleep',
