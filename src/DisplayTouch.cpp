@@ -1477,8 +1477,20 @@ void setupDeepSleepWakeup(String mode) {
     esp_deep_sleep_start();   // does not return
   } else if (mode == "light") {
     gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
+    #ifdef PIN_LED_BUTTON_SW
+    // External LED button (GPIO 44): light sleep can wake on ANY GPIO via the
+    // digital GPIO-wakeup path. (Deep sleep cannot use it — GPIO 44 is not
+    // RTC-capable; ext0/ext1 wake needs an RTC GPIO 0-21.) INPUT_PULLUP means
+    // an unconnected pin stays HIGH and won't cause a spurious wake.
+    pinMode(PIN_LED_BUTTON_SW, INPUT_PULLUP);
+    gpio_wakeup_enable((gpio_num_t)PIN_LED_BUTTON_SW, GPIO_INTR_LOW_LEVEL);
+    #endif
     esp_sleep_enable_gpio_wakeup();
+    #ifdef PIN_LED_BUTTON_SW
+    Serial.println("[LIGHT_SLEEP] Wake on BOOT (GPIO 0) or LED button (GPIO 44). Entering light sleep.");
+    #else
     Serial.println("[LIGHT_SLEEP] Wake on BOOT (GPIO 0). Entering light sleep.");
+    #endif
     Serial.flush();
     delay(200);
     esp_light_sleep_start();
@@ -1486,6 +1498,9 @@ void setupDeepSleepWakeup(String mode) {
     // Light sleep returns here on wake.
     Serial.println("[LIGHT_SLEEP] Woke up — restarting for clean state.");
     gpio_wakeup_disable(GPIO_NUM_0);
+    #ifdef PIN_LED_BUTTON_SW
+    gpio_wakeup_disable((gpio_num_t)PIN_LED_BUTTON_SW);
+    #endif
     deepSleepIsActive = false;
     deepSleepMode = "off";
     Serial.flush();

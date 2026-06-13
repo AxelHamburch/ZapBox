@@ -680,9 +680,10 @@
                     <label for="deepSleep">Deep sleep</label>
                     <select name="deepSleep" id="deepSleep">
                         <option value="off" selected>Off (default)</option>
-                        <option value="light">Light sleep (touch to wake)</option>
-                        <option value="freeze">Freeze (touch-only wake, ~0.01-0.15mA)</option>
+                        <option value="light">Light deep sleep (wake via BOOT or LED button)</option>
+                        <option value="freeze" disabled style="color: #aaa;">Freeze (deep sleep — wake only via BOOT button / GPIO 0, not accessible on this board)</option>
                     </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">The AXS15231B touch interrupt is not wired on this module, so <strong>touch cannot wake the device from sleep</strong>. Light deep sleep wakes via the BOOT button (GPIO 0) or an external LED button (GPIO 44). Freeze (deep sleep) can only wake via GPIO 0 and is disabled here because the BOOT button is not externally accessible.</p>
                 </div>
                 <div>
                     <label for="deepSleepTime">Time until activation - Deep sleep</label>
