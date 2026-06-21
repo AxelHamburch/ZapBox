@@ -947,8 +947,18 @@
                 }, 6000); // Wait 6 seconds after boot
             }
             
+            // A single USB CDC receive event can carry both stale [LOOP] output
+            // (printed during WiFi teardown) and the [CONFIG_MODE_ENTER] marker /
+            // config banner. Don't let the normal-output reminder swallow such a
+            // mixed chunk — the config-mode detection below must still run.
+            const chunkHasConfigSignal =
+                newData.includes("[CONFIG_MODE_ENTER]") ||
+                newData.includes("CONFIG_MODE_ENTER") ||
+                newData.includes("Serial Config Mode Active") ||
+                newData.includes("Waiting for commands");
+
             // Device is running normally - show gentle reminder (NO CLOSE)
-            if (hasNormalProgramOutput && configModeVerified !== true && !justRestarted && !waitingForManualConfigMode) {
+            if (hasNormalProgramOutput && !chunkHasConfigSignal && configModeVerified !== true && !justRestarted && !waitingForManualConfigMode) {
                 console.log("Normal program detected - waiting for user to enter config mode");
                 
                 waitingForManualConfigMode = true;
