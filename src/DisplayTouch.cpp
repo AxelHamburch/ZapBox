@@ -913,9 +913,14 @@ void actionTimeScreen() {
   flushDisplay();
 }
 
+// Dual-page tab button (bottom-left). Defined later (needs drawRectBorder);
+// forward-declared so the start screen can draw it.
+static void drawAuthTab(const char *txt, uint16_t fg, uint16_t bg);
+
 // IDENTITY TRIGGER — Authy idle/start screen. Same look as ACTION TIME
 // ("IDENTITY" big at top, "TRIGGER" in the inverted box), but no countdown.
 // Shown while no auth QR is requested, so the NT3H tag is not rewritten.
+// In dual-page mode a "PAY >" tab (bottom-left) switches to the payment page.
 void identityTriggerScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
@@ -932,6 +937,7 @@ void identityTriggerScreen() {
     drawCenter(SCR_W / 2, AT_BOX_Y + AT_BOX_H + 35, "touch to start..",
                themeForeground, themeBackground, 2);
   }
+  if (authyConfig.dualPage) drawAuthTab("PAY >", themeForeground, themeBackground);
   flushDisplay();
 }
 
@@ -2257,6 +2263,48 @@ void showAuthTeachScreen(String label, int pin) {
 
 bool authTeachCancelHit(uint16_t x, uint16_t y) {
     return miniPosQrCancelHit(x, y);  // identical button geometry
+}
+
+// ── Authy dual-page tab button (bottom-left corner) ─────────────────────────
+// Mirrors the CANCEL button geometry but on the opposite (left) corner, so it
+// never collides with a CANCEL/INVOICE button on the right.
+static const int AT_TAB_W = 96, AT_TAB_H = 34;
+static void drawAuthTab(const char *txt, uint16_t fg, uint16_t bg) {
+    int tx = 12, ty = SCR_H - AT_TAB_H - 8;
+    drawRectBorder(tx, ty, AT_TAB_W, AT_TAB_H, 2, fg);
+    drawCenter(tx + AT_TAB_W / 2, ty + AT_TAB_H / 2, txt, fg, bg, 2);
+}
+bool authTabHit(uint16_t x, uint16_t y) {
+    int tx = 12, ty = SCR_H - AT_TAB_H - 8;
+    return x >= (uint16_t)tx && x <= (uint16_t)(tx + AT_TAB_W) &&
+           y >= (uint16_t)ty && y <= (uint16_t)(ty + AT_TAB_H);
+}
+
+// Authy dual-page payment screen: the classic ZapBox product QR for the auth
+// pin (content from lightningConfig.lightning via ensureQrForPin), plus a
+// "< ID" tab (bottom-left) that switches back to the identity-trigger page.
+void showAuthPayScreen(String label, int pin) {
+    DisplayLock l;
+    if (!_gfx) return;
+    label = sanitizeLabel(label);
+    String words[3];
+    int wordCount;
+    splitLabelWords(label, pin, words, wordCount);
+
+    uint16_t qrFg = themeForeground;
+    uint16_t qrBg = themeBackground;
+    if (themeInvertQr()) { qrFg = themeBackground; qrBg = themeForeground; }
+
+    fillScreen(qrBg);
+    if (isPortrait()) {
+        drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
+    } else {
+        drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+        drawLabelBox(words, wordCount, qrFg, qrBg);
+    }
+    drawAuthTab("< ID", qrFg, qrBg);
+    flushDisplay();
 }
 
 void nfcTestScreen(String lnurlw) {

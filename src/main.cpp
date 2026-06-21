@@ -1945,6 +1945,19 @@ static void miniPosShowInfo(const String &msg) {
 void authyShowStart() {
   authyState.qrShown   = false;
   authyState.qrShownAt = 0;
+  // Dual-page mode: when the payment page is active, show the classic ZapBox
+  // product QR for the auth pin (LNURL + NFC tag from ensureQrForPin) with a
+  // "< ID" tab back to the identity page.
+  if (authyConfig.dualPage && authyState.payPage) {
+    ensureQrForPin(authyConfig.authPin);   // generates LNURL and writes NT3H tag
+    int idx = getPinIndex(authyConfig.authPin);
+    String lbl = (idx >= 0 && productLabels.labels[idx].length() > 0)
+                   ? productLabels.labels[idx]
+                   : String("Pin ") + String(authyConfig.authPin);
+    showAuthPayScreen(lbl, authyConfig.authPin);
+    multiChannelConfig.btcTickerActive = false;
+    return;
+  }
   miniPosIdleNfcTag();   // idle NFC: project URL, not a (soon-stale) auth k1
   if (multiChannelConfig.btcTickerMode == "always") {
     btctickerScreen();
@@ -2690,7 +2703,17 @@ void loop()
         if (authyConfig.enabled) {
           if (isTouched && !wasTouched) {
             activityTracking.lastActivityTime = millis();
-            if (!authyState.qrShown) {
+            // Dual-page: the bottom-left tab flips between identity and payment.
+            if (authyConfig.dualPage && authTabHit(x, y)) {
+              authyState.payPage = !authyState.payPage;
+              authyState.qrShown = false;
+              LOG_INFO("Authy", String("Tab pressed - page = ") +
+                       (authyState.payPage ? "PAYMENT" : "IDENTITY"));
+              authyShowStart();
+            } else if (authyState.payPage) {
+              // Payment page: the QR is always shown and scannable/NFC-payable;
+              // a touch elsewhere does nothing (no idle timeout, like classic).
+            } else if (!authyState.qrShown) {
               LOG_INFO("Authy", "Touch on start screen - opening identity QR");
               authyShowQR();
             } else {

@@ -732,6 +732,7 @@ struct AuthyState {
   bool   needsRefresh = false;       // request a fresh auth/register LNURL on next loop
   bool   qrShown = false;            // identity-trigger QR is on screen (else: start screen)
   uint32_t qrShownAt = 0;            // millis() the QR screen was opened (idle timeout)
+  bool   payPage = false;            // dual-page mode: classic payment page active (else identity)
   String infoMsg;                    // transient message (errors, status)
   uint32_t infoUntil = 0;            // millis() when infoMsg expires
 
@@ -742,6 +743,7 @@ struct AuthyState {
     needsRefresh = false;
     qrShown = false;
     qrShownAt = 0;
+    payPage = false;
     infoMsg = "";
     infoUntil = 0;
   }
