@@ -1034,6 +1034,12 @@
         let helloSendTimeout         = null;
         let serialBuffer             = "";
         let justRestarted            = false;
+        // millis() timestamp of the last [CONFIG_MODE_ENTER]. In real config
+        // mode the main loop is suspended, so any [LOOP]/[WS] output arriving
+        // shortly after is stale dual-core output from the WiFi teardown window
+        // and must not un-verify config mode.
+        let configModeEnterSeenAt    = 0;
+        const CONFIG_ENTER_GRACE_MS  = 4000;
         let pendingWriteAck          = null;
         let lastDataReceivedTime     = 0;
         let connectionMonitorInterval = null;
@@ -1102,6 +1108,8 @@
             // Detect config mode exit (device leaving config mode and restarting)
             if (newData.includes("[CONFIG_MODE_EXIT]")) {
                 configModeVerified = false;
+                configModeEnterSeenAt = 0;
+                serialBuffer = '';          // drop any stale [CONFIG_MODE_ENTER]
                 justRestarted = true;
                 document.getElementById("read-config-button").disabled  = true;
                 document.getElementById("write-config-button").disabled = true;
@@ -1115,42 +1123,27 @@
                 return;
             }
 
-            // Detect normal operation (not in config mode)
-            const hasNormalProgramOutput =
-                newData.includes("[LOOP]") ||
-                newData.includes("[WS]") ||
-                newData.includes("[INFO][Config] Socket:") ||
-                newData.includes("[STARTUP] WiFi connection") ||
-                newData.includes("Still waiting") ||
-                newData.includes("[CHECK]");
-
-            if (hasNormalProgramOutput && !justRestarted) {
-                if (configModeVerified) {
-                    configModeVerified = false;
-                    document.getElementById("read-config-button").disabled  = true;
-                    document.getElementById("write-config-button").disabled = true;
-                    document.getElementById("soft-reset-button").disabled   = true;
-                }
-                updateConfigModeStatus(false);
-                return;
-            }
-
-            // Detect config mode acknowledgment
-            // IMPORTANT: only react to [CONFIG_MODE_ENTER], which fires after WiFi teardown
-            // and RX-buffer drain. Earlier log lines like "entering config mode" arrive
-            // while the ESP32 is still tearing down WiFi and draining stale RX bytes —
-            // any command sent at that point is silently discarded.
-            // Check both newData and the rolling serialBuffer so that [CONFIG_MODE_ENTER]
-            // is detected even when split across two USB CDC receive events.
-            serialBuffer += newData;
-            const hasConfigModeEnter = newData.includes("[CONFIG_MODE_ENTER]") ||
-                                       serialBuffer.includes("[CONFIG_MODE_ENTER]");
+            // Detect config mode acknowledgment FIRST, before the normal-output
+            // reset below. A single USB CDC receive event can contain both stale
+            // dual-core [LOOP] output (printed during WiFi teardown) AND the
+            // [CONFIG_MODE_ENTER] marker; checking markers first ensures such a
+            // mixed chunk still flips the badge instead of being swallowed by the
+            // normal-output early-return.
+            // IMPORTANT: [CONFIG_MODE_ENTER] fires after WiFi teardown and RX-buffer
+            // drain. Check both newData and a rolling buffer so the marker is
+            // detected even when split across two receive events.
+            // Rolling buffer: large enough to hold a full /file-read config JSON
+            // (~1.5 KB) for tryParseConfig(), bounded so a long normal-operation
+            // session can't grow it without limit.
+            serialBuffer = (serialBuffer + newData).slice(-8192);
+            const hasConfigModeEnter = serialBuffer.includes("[CONFIG_MODE_ENTER]");
             const hasConfigTriggerLog = !configModeVerified && (
                 newData.includes("Serial Config Mode Active") ||
                 newData.includes("Waiting for commands")
             );
             if ((hasConfigModeEnter || hasConfigTriggerLog) && !configModeVerified) {
                 configModeVerified = true;
+                configModeEnterSeenAt = Date.now();
                 justRestarted = false;   // mirrors T-Display-S3: clear restart flag
                 waitingForManualConfigMode = false;
                 serialBuffer = '';       // clear buffer; /file-read comes later on demand
@@ -1174,6 +1167,38 @@
                     consoleDebug.scrollTop = consoleDebug.scrollHeight;
                 }, 800);
                 return;
+            }
+
+            // Detect normal operation (device NOT in config mode). Checked AFTER
+            // the config-mode markers above so a mixed chunk doesn't cancel them.
+            const hasNormalProgramOutput =
+                newData.includes("[LOOP]") ||
+                newData.includes("[WS]") ||
+                newData.includes("[INFO][Config] Socket:") ||
+                newData.includes("[STARTUP] WiFi connection") ||
+                newData.includes("Still waiting") ||
+                newData.includes("[CHECK]");
+
+            if (hasNormalProgramOutput && !justRestarted) {
+                // In real config mode the main loop is suspended. [LOOP]/[WS]
+                // output arriving within the grace window after [CONFIG_MODE_ENTER]
+                // is stale dual-core output from the WiFi teardown — ignore it so
+                // it can't un-verify config mode before the badge turns green.
+                const staleAfterEnter = configModeVerified &&
+                    (Date.now() - configModeEnterSeenAt) < CONFIG_ENTER_GRACE_MS;
+                if (!staleAfterEnter) {
+                    if (configModeVerified) {
+                        configModeVerified = false;
+                        document.getElementById("read-config-button").disabled  = true;
+                        document.getElementById("write-config-button").disabled = true;
+                        document.getElementById("soft-reset-button").disabled   = true;
+                    }
+                    // Drop the rolling buffer so a stale [CONFIG_MODE_ENTER] from an
+                    // earlier session can't re-trigger detection during normal output.
+                    serialBuffer = '';
+                    updateConfigModeStatus(false);
+                    return;
+                }
             }
 
             // Resolve pending write ACK when firmware confirms write done
