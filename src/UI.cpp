@@ -27,6 +27,7 @@ extern T35AmbientConfig t35AmbientConfig;
 
 // External function declarations from main.cpp
 extern void showQRScreen();
+extern void authyShowStart();   // Authy: IDENTITY TRIGGER idle screen
 extern void showProductQRScreen(String label, int displayPin);
 extern void showThresholdQRScreen();
 extern void btctickerScreen();
@@ -499,6 +500,14 @@ void redrawQRScreen() {
     }
   }
 
+  // Authy mode: redraws (after a payment, help, recovery) return to the
+  // IDENTITY TRIGGER start screen — never the generic QR.
+  if (authyConfig.enabled) {
+    authyShowStart();
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
   // Single mode (1-channel)
   if (specialModeConfig.mode != "standard") {
     // SPECIAL MODE: ensure LNURL for primary channel is up-to-date, then show QR
@@ -562,6 +571,15 @@ void showInitialScreenAfterConnections() {
   // Threshold mode has priority
   if (lightningConfig.thresholdKey.length() > 0) {
     showThresholdQRScreen();
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
+  // Authy mode: idle on the IDENTITY TRIGGER start screen; the auth QR is only
+  // fetched/shown when the user opens it by touch.
+  if (authyConfig.enabled) {
+    authyShowStart();
+    productSelectionState.showTime = 0;
     deviceState.transition(DeviceState::READY);
     return;
   }

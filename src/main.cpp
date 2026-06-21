@@ -166,7 +166,7 @@ void reportMode();
 void configMode();
 void showHelp();
 void startAuthTeachEntry();  // Authy: open 6-digit teach PIN pad (called from Navigation.cpp)
-static void authyShowStart(); // Authy: IDENTITY TRIGGER idle screen
+void authyShowStart();        // Authy: IDENTITY TRIGGER idle screen (also called from UI.cpp)
 static void authyShowQR();     // Authy: open the identity-trigger QR
 
 //////////////////HELPERS///////////////////
@@ -1921,7 +1921,7 @@ static void miniPosShowInfo(const String &msg) {
 // Idle/start screen: "IDENTITY TRIGGER" (or the BTC ticker if preselected).
 // No auth LNURL is fetched here and the NT3H tag carries the project URL, so
 // the tag is NOT rewritten every ~120 s — only when the QR screen is opened.
-static void authyShowStart() {
+void authyShowStart() {
   authyState.qrShown   = false;
   authyState.qrShownAt = 0;
   miniPosIdleNfcTag();   // idle NFC: project URL, not a (soon-stale) auth k1
