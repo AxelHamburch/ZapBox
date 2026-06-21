@@ -1704,10 +1704,16 @@ void showPinPadScreen(const PinPadState &state) {
         drawCenter(PP_LEFT_CX, 38, state.teachMode ? "Teach PIN" : "Enter PIN",
                    themeForeground, themeBackground, 3);
 
-        // PIN dots (4 for payment, 6 for teach)
-        int firstDotX = PP_LEFT_CX - (state.maxDigits - 1) * PP_DOT_GAP / 2;
+        // PIN dots (4 for payment, 6 for teach). Shrink the spacing if the row
+        // would otherwise collide with the left edge and the numpad divider —
+        // 6 dots at the 4-digit gap overflow the narrow left panel.
+        int dotGap = PP_DOT_GAP;
+        const int maxSpan = PP_NP_X - 40;      // ~20px margin each side
+        if ((state.maxDigits - 1) * dotGap > maxSpan)
+            dotGap = maxSpan / (state.maxDigits - 1);
+        int firstDotX = PP_LEFT_CX - (state.maxDigits - 1) * dotGap / 2;
         for (int i = 0; i < state.maxDigits; i++) {
-            drawPinDot(firstDotX + i * PP_DOT_GAP, PP_DOT_Y,
+            drawPinDot(firstDotX + i * dotGap, PP_DOT_Y,
                        i < state.numDigits, themeForeground, themeBackground);
         }
 
