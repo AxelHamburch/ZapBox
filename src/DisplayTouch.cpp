@@ -923,10 +923,14 @@ void identityTriggerScreen() {
     drawCenter(SCR_W / 2, 160, "IDENTITY", themeForeground, themeBackground, 4);
     fillRect(AT_V_BOX_X, AT_V_BOX_Y, AT_V_BOX_W, AT_V_BOX_H, themeForeground);
     drawCenter(SCR_W / 2, AT_V_LABEL_Y, "TRIGGER", themeBackground, themeForeground, 4);
+    drawCenter(SCR_W / 2, AT_V_BOX_Y + AT_V_BOX_H + 35, "touch to start..",
+               themeForeground, themeBackground, 2);
   } else {
     drawCenter(SCR_W / 2, 82, "IDENTITY", themeForeground, themeBackground, 5);
     fillRect(AT_BOX_X, AT_BOX_Y, AT_BOX_W, AT_BOX_H, themeForeground);
     drawCenter(SCR_W / 2, AT_LABEL_Y, "TRIGGER", themeBackground, themeForeground, 4);
+    drawCenter(SCR_W / 2, AT_BOX_Y + AT_BOX_H + 35, "touch to start..",
+               themeForeground, themeBackground, 2);
   }
   flushDisplay();
 }
