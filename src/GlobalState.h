@@ -710,7 +710,7 @@ struct AuthyConfig {
   bool   enabled = false;      // multiControl == "authy"
   int    authPin = 5;          // GPIO triggered on a successful auth (CH01 relay)
   int    authDuration = 3000;  // ms the relay stays on
-  String label = "Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
+  String label = "ZAPBOX Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
 };
 
 // The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh

@@ -849,8 +849,9 @@ void readFiles()
       LOG_INFO("Config", "==============================");
     }
 
-    // Read Authy configuration (indices 88-89, Touch 3.5 only)
+    // Read Authy configuration (indices 88-90, Touch 3.5 only)
     // 88=authPin (GPIO triggered on success)  89=authDuration (ms)
+    // 90=authLabel (text next to the identity-trigger QR, split into 3 lines)
     if (authyConfig.enabled) {
       const JsonObject maRoot88 = doc[88];
       if (!maRoot88.isNull()) {
@@ -870,6 +871,13 @@ void readFiles()
           authyConfig.authDuration = d;
         }
       }
+      const JsonObject maRoot90 = doc[90];
+      if (!maRoot90.isNull()) {
+        const char *v = maRoot90["value"];
+        if (v != nullptr && strlen(v) > 0) {
+          authyConfig.label = String(v);
+        }
+      }
       // Authy owns the screen like Mini-PoS: no fixed-amount threshold QR.
       if (multiChannelConfig.btcTickerMode != "always") {
         multiChannelConfig.btcTickerMode = "off";
@@ -878,6 +886,7 @@ void readFiles()
       LOG_INFO("Config", "=== AUTHY CONFIGURATION ===");
       LOG_INFO("Config", String("Auth pin: ") + String(authyConfig.authPin));
       LOG_INFO("Config", String("Activation time: ") + String(authyConfig.authDuration) + "ms");
+      LOG_INFO("Config", String("Identity label: ") + authyConfig.label);
       LOG_INFO("Config", "===========================");
     }
 
