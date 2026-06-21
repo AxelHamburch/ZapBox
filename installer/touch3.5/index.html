@@ -267,6 +267,7 @@
                         <option value="off" selected>Single channel — CH01 (pin 5 / default)</option>
                         <option value="duo">Multi-channel — CH01 to CH06</option>
                         <option value="minipos">Mini-PoS — amount entry on display (CH01)</option>
+                        <option value="authy">Authy — LNURL-auth identification (CH01)</option>
                     </select>
                 </div>
             </div>
@@ -296,6 +297,30 @@
                         <label for="miniPosInvoiceKey">Wallet Invoice Key</label>
                         <input type="text" name="miniPosInvoiceKey" id="miniPosInvoiceKey" placeholder="e.g. c9e68ab036.." maxlength="32" autocomplete="off">
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">"Invoice/read key" of the LNbits wallet that receives the payments (32 characters)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Authy configuration: visible only in Authy (LNURL-auth) mode -->
+            <div id="authyFields" style="display: none; margin-top: 10px;">
+                <p style="color: #888; margin: 0 0 14px 0;"><i><strong>Authy</strong> identifies a <strong>known wallet</strong> via LNURL-auth (LUD-04) and triggers a relay — like a payment, but <strong>nothing is paid</strong>. The device shows a login QR; a known wallet scans it and the configured pin is switched. New wallets are enrolled in a PIN-protected <strong>teach mode</strong> on the device (6 taps + hold on the 6th). The <strong>Teach-PIN</strong> and the list of identities are set in the LNbits zapbox_extension (v2.4.0+), not here.</i></p>
+                <div class="input-wrapper">
+                    <div>
+                        <label for="authPin">Auth Pin (GPIO triggered on success)</label>
+                        <select name="authPin" id="authPin">
+                            <option value="5" selected>CH01 — GPIO 5 (default relay)</option>
+                            <option value="6">CH02 — GPIO 6</option>
+                            <option value="7">CH03 — GPIO 7</option>
+                            <option value="14">CH04 — GPIO 14</option>
+                            <option value="15">CH05 — GPIO 15</option>
+                            <option value="16">CH06 — GPIO 16</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known wallets trigger this pin (v1: same action for every identity).</p>
+                    </div>
+                    <div>
+                        <label for="authDuration">Activation time (ms)</label>
+                        <input type="number" name="authDuration" id="authDuration" min="100" max="60000" value="3000">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How long the relay stays on after a successful identification.</p>
                     </div>
                 </div>
             </div>
@@ -989,7 +1014,10 @@
             { "name": "gpio16Servo180End",      "value": "0" }, // 84
             { "name": "gpio16Servo180Duration", "value": "0" }, // 85
             { "name": "gpio16Servo360Speed",    "value": "0" }, // 86
-            { "name": "gpio16Servo360Duration", "value": "0" }  // 87
+            { "name": "gpio16Servo360Duration", "value": "0" }, // 87
+            // indices 88-89 – Authy mode (multiControl == "authy")
+            { "name": "authPin",      "value": "5" },    // 88
+            { "name": "authDuration", "value": "3000" }  // 89
         ];
 
         // Setup Web Serial using serial.js
@@ -1421,7 +1449,9 @@
                 "miniPosCurrency":    (document.getElementById('miniPosCurrency')    || {value: "EUR"}).value || "EUR",
                 "miniPosDecimal":     (document.getElementById('miniPosDecimal')     || {value: "yes"}).value,
                 "miniPosInvoiceKey":  (document.getElementById('miniPosInvoiceKey')  || {value: ""}).value,
-                "t35NumericSelect":   (document.getElementById('t35NumericSelect')   || {value: "no"}).value
+                "t35NumericSelect":   (document.getElementById('t35NumericSelect')   || {value: "no"}).value,
+                "authPin":            (document.getElementById('authPin')            || {value: "5"}).value,
+                "authDuration":       (document.getElementById('authDuration')       || {value: "3000"}).value || "3000"
             };
             // Per-channel servo parameters (input id == config name)
             ['gpio5', 'gpio6', 'gpio7', 'gpio14', 'gpio15', 'gpio16'].forEach((g) => {
@@ -1492,6 +1522,7 @@
             const fields = document.getElementById('multiChannelFields');
             const singleInfo = document.getElementById('singleChannelInfo');
             const miniPos = document.getElementById('miniPosFields');
+            const authy = document.getElementById('authyFields');
             const mode = multi ? multi.value : 'off';
             const activation = document.getElementById('activationOptionsDiv');
             const activationHint = document.getElementById('activationOptionsMiniPosHint');
@@ -1499,6 +1530,7 @@
             if (fields) fields.style.display = (mode === 'duo') ? 'block' : 'none';
             if (singleInfo) singleInfo.style.display = (mode === 'off') ? 'block' : 'none';
             if (miniPos) miniPos.style.display = (mode === 'minipos') ? 'block' : 'none';
+            if (authy) authy.style.display = (mode === 'authy') ? 'block' : 'none';
             // Activation Options (One for All) apply to Multi-channel and Mini-PoS
             if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos') ? 'block' : 'none';
             if (activationHint) activationHint.style.display = (mode === 'minipos') ? 'block' : 'none';
@@ -1648,6 +1680,13 @@
                     row('Decimal separator', selText('miniPosDecimal')) +
                     row('Wallet Invoice Key', inputVal('miniPosInvoiceKey')) +
                     row('Activation Options', selText('t35ActivationMode')));
+            }
+
+            // Authy (LNURL-auth)
+            if (zbMode === 'authy') {
+                sections += section('Authy (LNURL-auth)',
+                    row('Auth Pin', selText('authPin')) +
+                    row('Activation time (ms)', inputVal('authDuration')));
             }
 
             // Special Mode (CH01 only)

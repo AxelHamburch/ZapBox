@@ -710,12 +710,17 @@ struct AuthyConfig {
   int    authDuration = 3000;  // ms the relay stays on
 };
 
+// The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
+// it well before expiry so an idle QR screen always shows a valid challenge.
+constexpr uint32_t AUTHY_LNURL_REFRESH_MS = 90000;
+
 extern AuthyConfig authyConfig;
 
 struct AuthyState {
   bool   teachActive = false;        // teach session open (register QR shown)
   uint32_t teachUntil = 0;           // millis() backup 5-min timeout for the session
   bool   enrolledPrompt = false;     // "Wallet registered — one more / cancel" shown
+  bool   needsRefresh = false;       // request a fresh auth/register LNURL on next loop
   String infoMsg;                    // transient message (errors, status)
   uint32_t infoUntil = 0;            // millis() when infoMsg expires
 
@@ -723,6 +728,7 @@ struct AuthyState {
     teachActive = false;
     teachUntil = 0;
     enrolledPrompt = false;
+    needsRefresh = false;
     infoMsg = "";
     infoUntil = 0;
   }

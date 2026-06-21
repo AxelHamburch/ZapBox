@@ -846,6 +846,38 @@ void readFiles()
       LOG_INFO("Config", "==============================");
     }
 
+    // Read Authy configuration (indices 88-89, Touch 3.5 only)
+    // 88=authPin (GPIO triggered on success)  89=authDuration (ms)
+    if (authyConfig.enabled) {
+      const JsonObject maRoot88 = doc[88];
+      if (!maRoot88.isNull()) {
+        const char *v = maRoot88["value"];
+        if (v != nullptr && strlen(v) > 0) {
+          int p = String(v).toInt();
+          if (p > 0) authyConfig.authPin = p;
+        }
+      }
+      const JsonObject maRoot89 = doc[89];
+      if (!maRoot89.isNull()) {
+        const char *v = maRoot89["value"];
+        if (v != nullptr && strlen(v) > 0) {
+          int d = String(v).toInt();
+          if (d < 100) d = 100;
+          if (d > 60000) d = 60000;
+          authyConfig.authDuration = d;
+        }
+      }
+      // Authy owns the screen like Mini-PoS: no fixed-amount threshold QR.
+      if (multiChannelConfig.btcTickerMode != "always") {
+        multiChannelConfig.btcTickerMode = "off";
+      }
+      lightningConfig.thresholdKey = "";
+      LOG_INFO("Config", "=== AUTHY CONFIGURATION ===");
+      LOG_INFO("Config", String("Auth pin: ") + String(authyConfig.authPin));
+      LOG_INFO("Config", String("Activation time: ") + String(authyConfig.authDuration) + "ms");
+      LOG_INFO("Config", "===========================");
+    }
+
     // Apply predefined mode settings
     if (specialModeConfig.mode == "blink") {
       specialModeConfig.frequency = 1.0;
@@ -1804,6 +1836,15 @@ void setup()
         multiChannelConfig.btcTickerActive = false;
       }
       productSelectionState.showTime = 0;
+    } else if (authyConfig.enabled) {
+      // Authy: the QR/NFC content is a single-use LNURL-auth challenge fetched
+      // from the extension. A known wallet scans it to identify and the relay
+      // is triggered via the existing "<pin>-<duration>" WebSocket path.
+      SETUP_PRINT("[STARTUP] Authy mode - fetching auth LNURL and showing QR");
+      requestAuthLnurl();
+      showQRScreen();
+      multiChannelConfig.btcTickerActive = false;
+      productSelectionState.showTime = 0;
     } else if (multiChannelConfig.btcTickerMode == "always") {
       SETUP_PRINT("[STARTUP] Single mode (ALWAYS) - showing Bitcoin ticker immediately");
       ensureQrForPin(RELAY_CHANNEL_PINS[0]); // pre-generate LNURL so NT3H writes immediately
@@ -2318,6 +2359,25 @@ void loop()
           miniPosState.resetInput();
           btctickerScreen();
           multiChannelConfig.btcTickerActive = true;
+        }
+      }
+    }
+
+    // ── Authy auth-LNURL refresh ─────────────────────────────────────────
+    // The k1 in the displayed auth LNURL is single-use with a ~120 s TTL, so
+    // we fetch a fresh challenge periodically while the QR screen is idle.
+    if (authyConfig.enabled &&
+        deviceState.isInState(DeviceState::READY) &&
+        !pinPadState.active && !extensionConfig.nfcPaymentPending) {
+      static uint32_t lastAuthRefresh = 0;
+      uint32_t aNow = millis();
+      if (lastAuthRefresh == 0) lastAuthRefresh = aNow;
+      bool due = (aNow - lastAuthRefresh >= AUTHY_LNURL_REFRESH_MS);
+      if (authyState.needsRefresh || due) {
+        lastAuthRefresh = aNow;
+        authyState.needsRefresh = false;
+        if (requestAuthLnurl()) {
+          showQRScreen();
         }
       }
     }
@@ -4556,6 +4616,25 @@ void processPaymentEvent(String &payloadStr)
         showPinPadScreen(pinPadState);
         return;
       }
+      // ── Authy (LNURL-auth) WS events ──────────────────────────────────
+      if (event && strcmp(event, "auth_enrolled") == 0) {
+        // A new wallet was registered during the teach session. Keep the
+        // session open and fetch the next register challenge; show a hint.
+        LOG_INFO("Authy", "Wallet enrolled");
+        authyState.enrolledPrompt = true;
+        authyState.infoMsg = "Wallet registered";
+        authyState.infoUntil = millis() + 4000;
+        authyState.needsRefresh = true;
+        return;
+      }
+      if (event && strcmp(event, "teach_ended") == 0) {
+        // Server closed the teach session (timeout). Return to normal Authy
+        // operation: requestAuthLnurl() will now return an "auth" challenge.
+        LOG_INFO("Authy", "Teach session ended (server) - back to normal");
+        authyState.reset();
+        authyState.needsRefresh = true;
+        return;
+      }
     }
   }
 
@@ -4594,5 +4673,11 @@ void processPaymentEvent(String &payloadStr)
 #endif
 
     processNormalPayment(pin, duration);
+
+    // Authy: the challenge that produced this trigger is now spent server-side.
+    // Request a fresh auth LNURL so the idle QR is immediately valid again.
+    if (authyConfig.enabled) {
+      authyState.needsRefresh = true;
+    }
   }
 }

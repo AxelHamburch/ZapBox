@@ -57,4 +57,11 @@ bool requestMiniPosInvoice(const String &amountStr);
  */
 bool fetchMiniPosLastPay(String &amountOut);
 
+/**
+ * Authy (LNURL-auth): request a fresh auth LNURL (single-use k1) from the
+ * zapbox_extension and place it in the QR/NFC buffer. Optionally returns the
+ * expected action ("auth" or "register") via actionOut. Returns false on error.
+ */
+bool requestAuthLnurl(String *actionOut = nullptr);
+
 #endif // API_H
