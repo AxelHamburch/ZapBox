@@ -878,15 +878,27 @@ void readFiles()
           authyConfig.label = String(v);
         }
       }
-      // Authy owns the screen like Mini-PoS: no fixed-amount threshold QR.
+      const JsonObject maRoot91 = doc[91];
+      if (!maRoot91.isNull()) {
+        const char *v = maRoot91["value"];
+        if (v != nullptr) {
+          authyConfig.dualPage = (String(v) == "yes");
+        }
+      }
+      // Authy owns the screen like Mini-PoS: no fixed-amount threshold QR —
+      // except in dual-page mode, where the classic payment page keeps the
+      // normal threshold/product QR for the auth pin.
       if (multiChannelConfig.btcTickerMode != "always") {
         multiChannelConfig.btcTickerMode = "off";
       }
-      lightningConfig.thresholdKey = "";
+      if (!authyConfig.dualPage) {
+        lightningConfig.thresholdKey = "";
+      }
       LOG_INFO("Config", "=== AUTHY CONFIGURATION ===");
       LOG_INFO("Config", String("Auth pin: ") + String(authyConfig.authPin));
       LOG_INFO("Config", String("Activation time: ") + String(authyConfig.authDuration) + "ms");
       LOG_INFO("Config", String("Identity label: ") + authyConfig.label);
+      LOG_INFO("Config", String("Dual page (payment): ") + (authyConfig.dualPage ? "yes" : "no"));
       LOG_INFO("Config", "===========================");
     }
 

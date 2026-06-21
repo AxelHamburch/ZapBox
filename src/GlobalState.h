@@ -711,6 +711,7 @@ struct AuthyConfig {
   int    authPin = 5;          // GPIO triggered on a successful auth (CH01 relay)
   int    authDuration = 3000;  // ms the relay stays on
   String label = "ZAPBOX Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
+  bool   dualPage = false;     // true = also offer a classic payment page (tab switch)
 };
 
 // The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
