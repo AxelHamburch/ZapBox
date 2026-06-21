@@ -931,10 +931,12 @@ void identityTriggerScreen() {
     drawCenter(SCR_W / 2, AT_V_BOX_Y + AT_V_BOX_H + 35, "touch to start..",
                themeForeground, themeBackground, 2);
   } else {
-    drawCenter(SCR_W / 2, 82, "IDENTITY", themeForeground, themeBackground, 5);
-    fillRect(AT_BOX_X, AT_BOX_Y, AT_BOX_W, AT_BOX_H, themeForeground);
-    drawCenter(SCR_W / 2, AT_LABEL_Y, "TRIGGER", themeBackground, themeForeground, 4);
-    drawCenter(SCR_W / 2, AT_BOX_Y + AT_BOX_H + 35, "touch to start..",
+    // Landscape: the block sat a bit high — shift everything down by dy.
+    const int dy = 50;
+    drawCenter(SCR_W / 2, 82 + dy, "IDENTITY", themeForeground, themeBackground, 5);
+    fillRect(AT_BOX_X, AT_BOX_Y + dy, AT_BOX_W, AT_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, AT_LABEL_Y + dy, "TRIGGER", themeBackground, themeForeground, 4);
+    drawCenter(SCR_W / 2, AT_BOX_Y + dy + AT_BOX_H + 35, "touch to start..",
                themeForeground, themeBackground, 2);
   }
   if (authyConfig.dualPage) drawAuthTab("PAY >", themeForeground, themeBackground);
@@ -2024,14 +2026,14 @@ void showMiniPosQRScreen() {
 }
 
 bool miniPosQrCancelHit(uint16_t x, uint16_t y) {
-    if (isPortrait()) {
-        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
-        return x >= (uint16_t)cbx && x <= (uint16_t)(cbx + MP_QRC_W) &&
-               y >= (uint16_t)cby && y <= (uint16_t)(cby + MP_QRC_H);
-    }
-    int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
-    return x >= (uint16_t)cbx && x <= (uint16_t)(cbx + MP_QRC_W) &&
-           y >= (uint16_t)cby && y <= (uint16_t)(cby + MP_QRC_H);
+    // Generous hit zone: the whole bottom-right corner, from a bit above/left of
+    // the drawn button out to the screen edge. The drawn button stays small, but
+    // the touch target is large so a quick tap registers reliably.
+    const int pad = 26;
+    int cbx, cby;
+    if (isPortrait()) { cbx = PANEL_W - MP_QRC_W - 10; cby = PANEL_H - MP_QRC_H - 6; }
+    else              { cbx = SCR_W   - MP_QRC_W - 12; cby = SCR_H   - MP_QRC_H - 8; }
+    return x >= (uint16_t)(cbx - pad) && y >= (uint16_t)(cby - pad);
 }
 
 void miniPosPaidScreen() {
@@ -2275,9 +2277,10 @@ static void drawAuthTab(const char *txt, uint16_t fg, uint16_t bg) {
     drawCenter(tx + AT_TAB_W / 2, ty + AT_TAB_H / 2, txt, fg, bg, 2);
 }
 bool authTabHit(uint16_t x, uint16_t y) {
+    // Generous hit zone: the whole bottom-left corner (see miniPosQrCancelHit).
+    const int pad = 26;
     int tx = 12, ty = SCR_H - AT_TAB_H - 8;
-    return x >= (uint16_t)tx && x <= (uint16_t)(tx + AT_TAB_W) &&
-           y >= (uint16_t)ty && y <= (uint16_t)(ty + AT_TAB_H);
+    return x <= (uint16_t)(tx + AT_TAB_W + pad) && y >= (uint16_t)(ty - pad);
 }
 
 // Authy dual-page payment screen: the classic ZapBox product QR for the auth

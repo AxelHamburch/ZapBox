@@ -56,11 +56,12 @@ bool TouchAXS15231B::begin() {
 bool TouchAXS15231B::readTouchData() {
   if (!_initialized) return false;
 
-  // Cache for ~30 ms — at 30+ Hz that's still ~33 reads/s, plenty for touch
-  // responsiveness while avoiding hammering the bus (earlier 10 ms cache led
-  // to the bus occasionally getting stuck).
+  // Cache window = effective sampling interval (available() reads at most once
+  // per window). 30 ms (~33 Hz) was missing quick taps on small buttons, so use
+  // 18 ms (~55 Hz). The earlier bus-stuck issue at 10 ms is now guarded by the
+  // response draining below, so a faster-but-not-extreme poll is safe.
   unsigned long now = millis();
-  if (now - _lastReadMs < 30) return _points > 0;
+  if (now - _lastReadMs < 18) return _points > 0;
   _lastReadMs = now;
 
   // Send the 11-byte read command

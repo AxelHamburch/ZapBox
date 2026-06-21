@@ -2583,6 +2583,12 @@ void loop()
         uint16_t x = touch.getX();
         uint16_t y = touch.getY();
         bool isTouched = touch.isPressed();
+        // One log line per press (rising edge) so taps are visible for
+        // diagnosing hit-detection issues.
+        if (isTouched && !wasTouched) {
+          LOG_INFO("Touch", String("tap x=") + String(x) + " y=" + String(y) +
+                            " g=" + String(gesture));
+        }
 #else
       // Headless mode - no touch events
       if (false) {
