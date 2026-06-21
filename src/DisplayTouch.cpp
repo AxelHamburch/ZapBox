@@ -2219,6 +2219,46 @@ bool productSelectQrCancelHit(uint16_t x, uint16_t y) {
     return miniPosQrCancelHit(x, y);  // identical button geometry
 }
 
+// Authy teach screen: registration QR (from requestAuthLnurl) with a "Learning
+// Identities" indicator and a dedicated CANCEL button bottom-right (same look as
+// the Mini-PoS invoice screen). Touching anywhere else keeps teaching — only the
+// CANCEL button ends the session. Landscape shows the indicator in the QR label
+// box; portrait shows it top-left so the CANCEL button keeps the bottom-right.
+void showAuthTeachScreen(String label, int pin) {
+    DisplayLock l;
+    if (!_gfx) return;
+    label = sanitizeLabel(label);
+    String words[3];
+    int wordCount;
+    splitLabelWords(label, pin, words, wordCount);
+
+    uint16_t qrFg = themeForeground;
+    uint16_t qrBg = themeBackground;
+    if (themeInvertQr()) { qrFg = themeBackground; qrBg = themeForeground; }
+
+    fillScreen(qrBg);
+    if (isPortrait()) {
+        // "Learning Identities" top-left (two lines), QR + CANCEL below.
+        drawString(10, 12, "Learning", qrFg, qrBg, 2);
+        drawString(10, 34, "Identities", qrFg, qrBg, 2);
+        drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
+        drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
+        drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
+    } else {
+        drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+        drawLabelBox(words, wordCount, qrFg, qrBg);
+        int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
+        drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
+        drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
+    }
+    flushDisplay();
+}
+
+bool authTeachCancelHit(uint16_t x, uint16_t y) {
+    return miniPosQrCancelHit(x, y);  // identical button geometry
+}
+
 void nfcTestScreen(String lnurlw) {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);

@@ -2446,7 +2446,7 @@ void loop()
         } else if (authyState.needsRefresh) {
           // After a wallet enrolled: show the next register challenge.
           authyState.needsRefresh = false;
-          if (requestAuthLnurl()) showProductQRScreen("Learning Identities", authyConfig.authPin);
+          if (requestAuthLnurl()) showAuthTeachScreen("Learning Identities", authyConfig.authPin);
         }
       } else if (authyState.qrShown) {
         // Identity-trigger QR idle for PRODUCT_TIMEOUT → back to start screen.
@@ -2617,9 +2617,9 @@ void loop()
                         authyState.teachActive = true;
                         authyState.teachUntil  = millis() + AUTHY_TEACH_TIMEOUT_MS;
                         authyState.infoMsg     = "Teach mode";
-                        // action=register; "Learning Identities" label
+                        // action=register; "Learning Identities" label + CANCEL
                         if (requestAuthLnurl())
-                          showProductQRScreen("Learning Identities", authyConfig.authPin);
+                          showAuthTeachScreen("Learning Identities", authyConfig.authPin);
                         LOG_INFO("Teach", "Teach active - showing register QR");
                       } else {
                         showPinPadScreen(pinPadState); // error set by submitTeachPin
@@ -2659,12 +2659,14 @@ void loop()
         }
         #endif // ENABLE_NFC
 
-        // ── Authy teach mode: touch the register-QR screen to end teaching ──
+        // ── Authy teach mode: only the CANCEL button ends teaching ──────────
         if (authyConfig.enabled && authyState.teachActive) {
           if (isTouched && !wasTouched) {
-            LOG_INFO("Teach", "Touch on teach screen - ending teach session");
-            endAuthTeach();
             activityTracking.lastActivityTime = millis();
+            if (authTeachCancelHit(x, y)) {
+              LOG_INFO("Teach", "CANCEL pressed - ending teach session");
+              endAuthTeach();
+            }
           }
           wasTouched = isTouched;
           goto skip_product_touch_processing;
