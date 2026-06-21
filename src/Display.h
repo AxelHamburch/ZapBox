@@ -27,6 +27,7 @@ void stepTwoScreen();
 void stepThreeScreen();
 void actionTimeScreen();
 void updateActionTimeCountdown(int remainingSecs);
+void identityTriggerScreen();
 void nfcPendingScreen();
 void nfcNoLuckScreen();
 void nfcNotSupportedScreen();
@@ -109,6 +110,7 @@ inline void stepOneScreen() {}
 inline void stepTwoScreen() {}
 inline void stepThreeScreen() {}
 inline void actionTimeScreen() {}
+inline void identityTriggerScreen() {}
 inline void updateActionTimeCountdown(int) {}
 inline void nfcPendingScreen() {}
 inline void nfcNoLuckScreen() {}

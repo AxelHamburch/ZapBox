@@ -22,6 +22,7 @@ void stepOneScreen() {}
 void stepTwoScreen() {}
 void stepThreeScreen() {}
 void actionTimeScreen() {}
+void identityTriggerScreen() {}
 void updateActionTimeCountdown(int) {}
 void nfcPendingScreen() {}
 void nfcNoLuckScreen() {}

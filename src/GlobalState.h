@@ -710,6 +710,7 @@ struct AuthyConfig {
   bool   enabled = false;      // multiControl == "authy"
   int    authPin = 5;          // GPIO triggered on a successful auth (CH01 relay)
   int    authDuration = 3000;  // ms the relay stays on
+  String label = "Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
 };
 
 // The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
@@ -728,6 +729,8 @@ struct AuthyState {
   uint32_t teachUntil = 0;           // millis() backup 5-min timeout for the session
   bool   enrolledPrompt = false;     // "Wallet registered — one more / cancel" shown
   bool   needsRefresh = false;       // request a fresh auth/register LNURL on next loop
+  bool   qrShown = false;            // identity-trigger QR is on screen (else: start screen)
+  uint32_t qrShownAt = 0;            // millis() the QR screen was opened (idle timeout)
   String infoMsg;                    // transient message (errors, status)
   uint32_t infoUntil = 0;            // millis() when infoMsg expires
 
@@ -736,6 +739,8 @@ struct AuthyState {
     teachUntil = 0;
     enrolledPrompt = false;
     needsRefresh = false;
+    qrShown = false;
+    qrShownAt = 0;
     infoMsg = "";
     infoUntil = 0;
   }

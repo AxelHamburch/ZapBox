@@ -913,6 +913,24 @@ void actionTimeScreen() {
   flushDisplay();
 }
 
+// IDENTITY TRIGGER — Authy idle/start screen. Same look as ACTION TIME
+// ("IDENTITY" big at top, "TRIGGER" in the inverted box), but no countdown.
+// Shown while no auth QR is requested, so the NT3H tag is not rewritten.
+void identityTriggerScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  if (isPortrait()) {
+    drawCenter(SCR_W / 2, 160, "IDENTITY", themeForeground, themeBackground, 4);
+    fillRect(AT_V_BOX_X, AT_V_BOX_Y, AT_V_BOX_W, AT_V_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, AT_V_LABEL_Y, "TRIGGER", themeBackground, themeForeground, 4);
+  } else {
+    drawCenter(SCR_W / 2, 82, "IDENTITY", themeForeground, themeBackground, 5);
+    fillRect(AT_BOX_X, AT_BOX_Y, AT_BOX_W, AT_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, AT_LABEL_Y, "TRIGGER", themeBackground, themeForeground, 4);
+  }
+  flushDisplay();
+}
+
 void updateActionTimeCountdown(int remainingSecs) {
   DisplayLock l; if (!_gfx) return;
   if (remainingSecs < 0) remainingSecs = 0;

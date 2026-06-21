@@ -880,6 +880,31 @@ void actionTimeScreen()
   }
 }
 
+// IDENTITY TRIGGER — Authy idle screen (touch 3.5 feature; defined here so
+// non-touch display builds still link). Mirrors the ACTION TIME layout.
+void identityTriggerScreen()
+{
+  DisplayLock lock;
+  safeFillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    tft.setTextSize(2);
+    tft.drawString("IDENTITY", x + 3, y - 30, GFXFF);
+    tft.fillRect(37, y - 5, 100, 43, themeForeground);
+    tft.setTextColor(themeBackground);
+    tft.setTextSize(2);
+    tft.drawString("TRIGGER", x + 3, y + 17, GFXFF);
+  } else {
+    tft.setTextSize(4);
+    tft.drawString("IDENTITY", x + 5, y - 25, GFXFF);
+    tft.fillRect(83, y + 6, 158, 52, themeForeground);
+    tft.setTextColor(themeBackground);
+    tft.setTextSize(3);
+    tft.drawString("TRIGGER", x + 3, y + 33, GFXFF);
+  }
+}
+
 // Update countdown timer on ACTION TIME screen (partial redraw - only timer area)
 void updateActionTimeCountdown(int remainingSecs)
 {

@@ -166,6 +166,8 @@ void reportMode();
 void configMode();
 void showHelp();
 void startAuthTeachEntry();  // Authy: open 6-digit teach PIN pad (called from Navigation.cpp)
+static void authyShowStart(); // Authy: IDENTITY TRIGGER idle screen
+static void authyShowQR();     // Authy: open the identity-trigger QR
 
 //////////////////HELPERS///////////////////
 
@@ -1838,13 +1840,11 @@ void setup()
       }
       productSelectionState.showTime = 0;
     } else if (authyConfig.enabled) {
-      // Authy: the QR/NFC content is a single-use LNURL-auth challenge fetched
-      // from the extension. A known wallet scans it to identify and the relay
-      // is triggered via the existing "<pin>-<duration>" WebSocket path.
-      SETUP_PRINT("[STARTUP] Authy mode - fetching auth LNURL and showing QR");
-      requestAuthLnurl();
-      showQRScreen();
-      multiChannelConfig.btcTickerActive = false;
+      // Authy: idle on the IDENTITY TRIGGER start screen (or BTC ticker). The
+      // single-use auth LNURL is only fetched when the user opens the QR screen
+      // by touch — this keeps the NT3H tag from being rewritten every ~120 s.
+      SETUP_PRINT("[STARTUP] Authy mode - showing IDENTITY TRIGGER start screen");
+      authyShowStart();
       productSelectionState.showTime = 0;
     } else if (multiChannelConfig.btcTickerMode == "always") {
       SETUP_PRINT("[STARTUP] Single mode (ALWAYS) - showing Bitcoin ticker immediately");
@@ -1915,6 +1915,38 @@ static void miniPosShowInfo(const String &msg) {
 }
 
 // ============================================================================
+// AUTHY SCREEN FLOW (Touch 3.5 — LNURL-auth identity trigger)
+// ============================================================================
+
+// Idle/start screen: "IDENTITY TRIGGER" (or the BTC ticker if preselected).
+// No auth LNURL is fetched here and the NT3H tag carries the project URL, so
+// the tag is NOT rewritten every ~120 s — only when the QR screen is opened.
+static void authyShowStart() {
+  authyState.qrShown   = false;
+  authyState.qrShownAt = 0;
+  miniPosIdleNfcTag();   // idle NFC: project URL, not a (soon-stale) auth k1
+  if (multiChannelConfig.btcTickerMode == "always") {
+    btctickerScreen();
+    multiChannelConfig.btcTickerActive = true;
+  } else {
+    identityTriggerScreen();
+    multiChannelConfig.btcTickerActive = false;
+  }
+}
+
+// Open the identity-trigger QR: fetch a fresh single-use auth LNURL (this also
+// updates the NT3H tag) and show it with the configured label. Idle for
+// PRODUCT_TIMEOUT returns to authyShowStart().
+static void authyShowQR() {
+  if (requestAuthLnurl()) {
+    showProductQRScreen(authyConfig.label, authyConfig.authPin);
+    authyState.qrShown   = true;
+    authyState.qrShownAt = millis();
+    multiChannelConfig.btcTickerActive = false;
+  }
+}
+
+// ============================================================================
 // AUTHY TEACH HELPERS (Touch 3.5 — LNURL-auth identity enrolment)
 // ============================================================================
 
@@ -1937,8 +1969,8 @@ void startAuthTeachEntry() {
 static void endAuthTeach() {
   stopTeachSession();
   authyState.reset();
-  if (requestAuthLnurl()) showQRScreen();
-  LOG_INFO("Teach", "Teach session ended - back to auth screen");
+  authyShowStart();   // back to the IDENTITY TRIGGER idle screen
+  LOG_INFO("Teach", "Teach session ended - back to start screen");
 }
 
 #ifdef BOARD_JC3248W535C
@@ -2391,27 +2423,31 @@ void loop()
       }
     }
 
-    // ── Authy auth-LNURL refresh ─────────────────────────────────────────
-    // The k1 in the displayed auth LNURL is single-use with a ~120 s TTL, so
-    // we fetch a fresh challenge periodically while the QR screen is idle.
+    // ── Authy timers ─────────────────────────────────────────────────────
     if (authyConfig.enabled &&
         deviceState.isInState(DeviceState::READY) &&
         !pinPadState.active && !extensionConfig.nfcPaymentPending) {
-      // Device-side backup for the teach session (in case the server's
-      // teach_ended WS event is missed): fall back to normal Authy operation.
-      if (authyState.teachActive && (int32_t)(millis() - authyState.teachUntil) >= 0) {
-        LOG_INFO("Teach", "Teach backup timeout - ending session");
-        endAuthTeach();
-      }
-      static uint32_t lastAuthRefresh = 0;
       uint32_t aNow = millis();
-      if (lastAuthRefresh == 0) lastAuthRefresh = aNow;
-      bool due = (aNow - lastAuthRefresh >= AUTHY_LNURL_REFRESH_MS);
-      if (authyState.needsRefresh || due) {
-        lastAuthRefresh = aNow;
-        authyState.needsRefresh = false;
-        if (requestAuthLnurl()) {
-          showQRScreen();
+      // Teach session 5-min backup timeout (server also sends teach_ended). The
+      // teach screen must NOT fall back to the ticker — only this ends it.
+      if (authyState.teachActive) {
+        if ((int32_t)(aNow - authyState.teachUntil) >= 0) {
+          LOG_INFO("Teach", "Teach backup timeout - ending session");
+          endAuthTeach();
+        } else if (authyState.needsRefresh) {
+          // After a wallet enrolled: show the next register challenge.
+          authyState.needsRefresh = false;
+          if (requestAuthLnurl()) showProductQRScreen("Learning Identities", authyConfig.authPin);
+        }
+      } else if (authyState.qrShown) {
+        // Identity-trigger QR idle for PRODUCT_TIMEOUT → back to start screen.
+        // The QR is fetched fresh on each open, so it never outlives its k1.
+        if (aNow - authyState.qrShownAt >= (uint32_t)PRODUCT_TIMEOUT) {
+          LOG_INFO("Authy", "Identity QR idle - back to start screen");
+          authyShowStart();
+        } else if (authyState.needsRefresh) {
+          authyState.needsRefresh = false;
+          authyShowQR();   // re-open with a fresh challenge (e.g. after enroll)
         }
       }
     }
@@ -2572,7 +2608,9 @@ void loop()
                         authyState.teachActive = true;
                         authyState.teachUntil  = millis() + AUTHY_TEACH_TIMEOUT_MS;
                         authyState.infoMsg     = "Teach mode";
-                        if (requestAuthLnurl()) showQRScreen(); // action=register
+                        // action=register; "Learning Identities" label
+                        if (requestAuthLnurl())
+                          showProductQRScreen("Learning Identities", authyConfig.authPin);
                         LOG_INFO("Teach", "Teach active - showing register QR");
                       } else {
                         showPinPadScreen(pinPadState); // error set by submitTeachPin
@@ -2618,6 +2656,23 @@ void loop()
             LOG_INFO("Teach", "Touch on teach screen - ending teach session");
             endAuthTeach();
             activityTracking.lastActivityTime = millis();
+          }
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
+
+        // ── Authy identity trigger: touch the start screen to open the QR ──
+        // (Separates the IDENTITY TRIGGER idle screen from the actual auth QR
+        // so it's always clear which one is shown.)
+        if (authyConfig.enabled) {
+          if (isTouched && !wasTouched) {
+            activityTracking.lastActivityTime = millis();
+            if (!authyState.qrShown) {
+              LOG_INFO("Authy", "Touch on start screen - opening identity QR");
+              authyShowQR();
+            } else {
+              authyState.qrShownAt = millis();   // keep the QR alive
+            }
           }
           wasTouched = isTouched;
           goto skip_product_touch_processing;
@@ -4688,11 +4743,10 @@ void processPaymentEvent(String &payloadStr)
         return;
       }
       if (event && strcmp(event, "teach_ended") == 0) {
-        // Server closed the teach session (timeout). Return to normal Authy
-        // operation: requestAuthLnurl() will now return an "auth" challenge.
-        LOG_INFO("Authy", "Teach session ended (server) - back to normal");
+        // Server closed the teach session (timeout) → back to the start screen.
+        LOG_INFO("Authy", "Teach session ended (server) - back to start screen");
         authyState.reset();
-        authyState.needsRefresh = true;
+        authyShowStart();
         return;
       }
     }
@@ -4734,10 +4788,10 @@ void processPaymentEvent(String &payloadStr)
 
     processNormalPayment(pin, duration);
 
-    // Authy: the challenge that produced this trigger is now spent server-side.
-    // Request a fresh auth LNURL so the idle QR is immediately valid again.
-    if (authyConfig.enabled) {
-      authyState.needsRefresh = true;
+    // Authy: a successful identification fired the relay and spent the k1 —
+    // return to the IDENTITY TRIGGER start screen (unless teaching).
+    if (authyConfig.enabled && !authyState.teachActive) {
+      authyShowStart();
     }
   }
 }
