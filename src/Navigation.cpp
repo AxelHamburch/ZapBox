@@ -47,6 +47,7 @@ extern unsigned long TOUCH_DOUBLE_CLICK_MS;
 // External function declarations from main.cpp
 extern void showHelp();
 extern void configMode();
+extern void startAuthTeachEntry();  // Authy: open 6-digit teach PIN pad
 extern void reportMode();
 extern void showQRScreen();
 extern void showProductQRScreen(String label, int displayPin);
@@ -330,11 +331,19 @@ void handleTouchButton()
     } else if (tapNow && waitingFor5Hold) {
       // Finger still held — check if 2 s elapsed
       if (millis() - tap5HoldStart >= 2000) {
+        uint8_t finalCount = tapCount;
         tapCount        = 0;
         waitingFor5Hold = false;
-        Serial.println("[CONFIG_TAP] 2 s hold confirmed -> Config Mode");
-        configMode();
-        tapLastPressed = tapNow;
+        tapLastPressed  = tapNow;
+        // Authy: 6 taps + hold → Teach Mode (6-digit PIN). Exactly 5 taps + hold
+        // stays Config Mode. Without Authy, any ≥5 taps + hold → Config Mode.
+        if (authyConfig.enabled && finalCount >= 6) {
+          Serial.println("[TEACH_TAP] 6-tap hold confirmed -> Teach Mode");
+          startAuthTeachEntry();
+        } else {
+          Serial.println("[CONFIG_TAP] 2 s hold confirmed -> Config Mode");
+          configMode();
+        }
         return;
       }
     }

@@ -1643,12 +1643,13 @@ void showPinPadScreen(const PinPadState &state) {
         // Horizontal divider
         fillRect(0, PP_V_TOP_H - 1, PANEL_W, 1, themeForeground);
 
-        // "Enter PIN"
-        drawCenter(PANEL_W / 2, 28, "Enter PIN", themeForeground, themeBackground, 3);
+        // "Enter PIN" / "Teach PIN"
+        drawCenter(PANEL_W / 2, 28, state.teachMode ? "Teach PIN" : "Enter PIN",
+                   themeForeground, themeBackground, 3);
 
-        // 4 PIN dots centered in top panel
-        int firstDotX = PANEL_W / 2 - 3 * PP_V_DOT_GAP / 2;
-        for (int i = 0; i < 4; i++) {
+        // PIN dots (4 for payment, 6 for teach) centered in top panel
+        int firstDotX = PANEL_W / 2 - (state.maxDigits - 1) * PP_V_DOT_GAP / 2;
+        for (int i = 0; i < state.maxDigits; i++) {
             drawPinDot(firstDotX + i * PP_V_DOT_GAP, PP_V_DOT_Y,
                        i < state.numDigits, themeForeground, themeBackground);
         }
@@ -1699,12 +1700,13 @@ void showPinPadScreen(const PinPadState &state) {
         // Vertical divider
         fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
 
-        // "Enter PIN"
-        drawCenter(PP_LEFT_CX, 38, "Enter PIN", themeForeground, themeBackground, 3);
+        // "Enter PIN" / "Teach PIN"
+        drawCenter(PP_LEFT_CX, 38, state.teachMode ? "Teach PIN" : "Enter PIN",
+                   themeForeground, themeBackground, 3);
 
-        // 4 PIN dots
-        int firstDotX = PP_LEFT_CX - 3 * PP_DOT_GAP / 2;
-        for (int i = 0; i < 4; i++) {
+        // PIN dots (4 for payment, 6 for teach)
+        int firstDotX = PP_LEFT_CX - (state.maxDigits - 1) * PP_DOT_GAP / 2;
+        for (int i = 0; i < state.maxDigits; i++) {
             drawPinDot(firstDotX + i * PP_DOT_GAP, PP_DOT_Y,
                        i < state.numDigits, themeForeground, themeBackground);
         }

@@ -165,6 +165,7 @@ WebSocketsClient webSocket;
 void reportMode();
 void configMode();
 void showHelp();
+void startAuthTeachEntry();  // Authy: open 6-digit teach PIN pad (called from Navigation.cpp)
 
 //////////////////HELPERS///////////////////
 
@@ -1913,6 +1914,33 @@ static void miniPosShowInfo(const String &msg) {
   showMiniPosInputScreen();
 }
 
+// ============================================================================
+// AUTHY TEACH HELPERS (Touch 3.5 — LNURL-auth identity enrolment)
+// ============================================================================
+
+// Open the 6-digit teach PIN pad. Triggered by the 6-tap + hold gesture
+// (Navigation.cpp). The entered PIN is verified server-side by submitTeachPin().
+void startAuthTeachEntry() {
+  pinPadState = PinPadState();      // reset to defaults
+  pinPadState.active      = true;
+  pinPadState.teachMode   = true;
+  pinPadState.maxDigits   = 6;
+  pinPadState.maxAttempts = 3;
+  pinPadState.activatedAt = millis();
+  extensionConfig.nfcPaymentPending = false;
+  showPinPadScreen(pinPadState);
+  LOG_INFO("Teach", "Teach PIN entry opened (6 digits)");
+}
+
+// End an active teach session (user cancel / done) and return to the normal
+// Authy auth screen. requestAuthLnurl() now yields an "auth" challenge again.
+static void endAuthTeach() {
+  stopTeachSession();
+  authyState.reset();
+  if (requestAuthLnurl()) showQRScreen();
+  LOG_INFO("Teach", "Teach session ended - back to auth screen");
+}
+
 #ifdef BOARD_JC3248W535C
 // ============================================================================
 // NUMERICAL PRODUCT SELECTION HELPERS (Touch 3.5 multi-channel)
@@ -2369,6 +2397,12 @@ void loop()
     if (authyConfig.enabled &&
         deviceState.isInState(DeviceState::READY) &&
         !pinPadState.active && !extensionConfig.nfcPaymentPending) {
+      // Device-side backup for the teach session (in case the server's
+      // teach_ended WS event is missed): fall back to normal Authy operation.
+      if (authyState.teachActive && (int32_t)(millis() - authyState.teachUntil) >= 0) {
+        LOG_INFO("Teach", "Teach backup timeout - ending session");
+        endAuthTeach();
+      }
       static uint32_t lastAuthRefresh = 0;
       uint32_t aNow = millis();
       if (lastAuthRefresh == 0) lastAuthRefresh = aNow;
@@ -2525,15 +2559,30 @@ void loop()
             } else if (!pinPadState.showError) {
               // Normal input — only when no error is displayed
               if (hit >= 0 && hit <= 9) {
-                if (pinPadState.numDigits < 4) {
+                if (pinPadState.numDigits < pinPadState.maxDigits) {
                   pinPadState.digits[pinPadState.numDigits++] = '0' + hit;
                   pinPadState.digits[pinPadState.numDigits]   = '\0';
                   showPinPadScreen(pinPadState);
-                  if (pinPadState.numDigits == 4) {
-                    sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
-                    pinPadState.submitted    = true;
-                    pinPadState.submittedAt  = millis();
-                    pinPadState.pendingShown = false;
+                  if (pinPadState.numDigits == pinPadState.maxDigits) {
+                    if (pinPadState.teachMode) {
+                      // Authy: verify the teach PIN synchronously. On success,
+                      // open the teach session and show the register QR.
+                      if (submitTeachPin(String(pinPadState.digits))) {
+                        pinPadState.active     = false;
+                        authyState.teachActive = true;
+                        authyState.teachUntil  = millis() + AUTHY_TEACH_TIMEOUT_MS;
+                        authyState.infoMsg     = "Teach mode";
+                        if (requestAuthLnurl()) showQRScreen(); // action=register
+                        LOG_INFO("Teach", "Teach active - showing register QR");
+                      } else {
+                        showPinPadScreen(pinPadState); // error set by submitTeachPin
+                      }
+                    } else {
+                      sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
+                      pinPadState.submitted    = true;
+                      pinPadState.submittedAt  = millis();
+                      pinPadState.pendingShown = false;
+                    }
                   }
                 }
               } else if (hit == 10) {  // backspace
@@ -2562,6 +2611,17 @@ void loop()
           goto skip_product_touch_processing;
         }
         #endif // ENABLE_NFC
+
+        // ── Authy teach mode: touch the register-QR screen to end teaching ──
+        if (authyConfig.enabled && authyState.teachActive) {
+          if (isTouched && !wasTouched) {
+            LOG_INFO("Teach", "Touch on teach screen - ending teach session");
+            endAuthTeach();
+            activityTracking.lastActivityTime = millis();
+          }
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
 
         // ── Mini-PoS BTC ticker (screensaver in "always" mode) ──────────
         // One touch anywhere on the ticker returns to the amount entry screen.

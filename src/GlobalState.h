@@ -626,8 +626,10 @@ extern const char* BECH32_CHARSET;
 
 struct PinPadState {
     bool     active      = false;  // PIN pad screen is currently shown
-    char     digits[5]   = {0};   // entered digits, null-terminated
-    int      numDigits   = 0;     // 0–4
+    char     digits[7]   = {0};   // entered digits, null-terminated (max 6)
+    int      numDigits   = 0;     // 0–maxDigits
+    int      maxDigits   = 4;     // 4 = payment PIN, 6 = LNURL-auth teach PIN
+    bool     teachMode   = false; // true: submit to /auth/teach/start (Authy)
     int      attemptNum  = 0;     // failed attempts so far (shown from 1)
     int      maxAttempts = 3;
     long     amountSat   = 0;
@@ -713,6 +715,11 @@ struct AuthyConfig {
 // The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
 // it well before expiry so an idle QR screen always shows a valid challenge.
 constexpr uint32_t AUTHY_LNURL_REFRESH_MS = 90000;
+
+// Device-side backup for the teach session (server enforces the same 5 min and
+// also sends a teach_ended WS event). If the event is missed, the device falls
+// back to normal Authy operation after this timeout.
+constexpr uint32_t AUTHY_TEACH_TIMEOUT_MS = 300000;
 
 extern AuthyConfig authyConfig;
 
