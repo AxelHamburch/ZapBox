@@ -376,6 +376,16 @@ void readFiles()
       LOG_INFO("Config", "Mini-PoS mode ENABLED (single-channel behavior, amount entry screen)");
     }
 
+    // Authy mode (LNURL-auth) is transported via multiControl ("authy"). The
+    // device shows an auth QR and triggers the relay when a known wallet
+    // identifies itself. Like Mini-PoS, it behaves single-channel, so normalize
+    // mode back to "off" and set the dedicated flag instead.
+    if (multiChannelConfig.mode == "authy") {
+      authyConfig.enabled = true;
+      multiChannelConfig.mode = "off";
+      LOG_INFO("Config", "Authy mode ENABLED (LNURL-auth identification, relay trigger)");
+    }
+
     // Read BTC-Ticker configuration (index 18)
     const JsonObject maRoot18 = doc[18];
     if (!maRoot18.isNull()) {

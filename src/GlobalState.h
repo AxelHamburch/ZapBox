@@ -696,6 +696,41 @@ struct MiniPosState {
 extern MiniPosState miniPosState;
 
 // ============================================================================
+// AUTHY MODE — LNURL-auth (LUD-04) identification (Touch 3.5)
+// A known wallet identifies itself via LNURL-auth and the device triggers its
+// relay — like a payment, but nothing is paid. The public HTTPS service lives
+// in the zapbox_extension; the device only shows the auth QR and waits for the
+// existing "<pin>-<duration>" WebSocket trigger. New identities are enrolled in
+// a PIN-protected teach mode (6 taps + hold). See temp/lnurlauth/lnurlauth-plan.md.
+// ============================================================================
+
+struct AuthyConfig {
+  bool   enabled = false;      // multiControl == "authy"
+  int    authPin = 5;          // GPIO triggered on a successful auth (CH01 relay)
+  int    authDuration = 3000;  // ms the relay stays on
+};
+
+extern AuthyConfig authyConfig;
+
+struct AuthyState {
+  bool   teachActive = false;        // teach session open (register QR shown)
+  uint32_t teachUntil = 0;           // millis() backup 5-min timeout for the session
+  bool   enrolledPrompt = false;     // "Wallet registered — one more / cancel" shown
+  String infoMsg;                    // transient message (errors, status)
+  uint32_t infoUntil = 0;            // millis() when infoMsg expires
+
+  void reset() {
+    teachActive = false;
+    teachUntil = 0;
+    enrolledPrompt = false;
+    infoMsg = "";
+    infoUntil = 0;
+  }
+};
+
+extern AuthyState authyState;
+
+// ============================================================================
 // NUMERICAL PRODUCT SELECTION (Touch 3.5 multi-channel only)
 // Keypad panel where the customer types the GPIO number of a product
 // (5-16 direct GPIOs, 200-207 PCF8574) and gets its LNURL QR code.
