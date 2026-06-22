@@ -938,6 +938,17 @@ void identityTriggerScreen() {
   flushDisplay();
 }
 
+// Shown when the device tries to open the identity login but the server reports
+// Identities disabled (HTTP 403). Red message (error → colour exception OK).
+void authIdentityDisabledScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  int cy = SCR_H / 2;
+  drawCenter(SCR_W / 2, cy - 18, "IDENTITY LOGIN", TFT_RED, themeBackground, isPortrait() ? 2 : 3);
+  drawCenter(SCR_W / 2, cy + 22, "DISABLED",       TFT_RED, themeBackground, isPortrait() ? 3 : 4);
+  flushDisplay();
+}
+
 void updateActionTimeCountdown(int remainingSecs) {
   DisplayLock l; if (!_gfx) return;
   if (remainingSecs < 0) remainingSecs = 0;

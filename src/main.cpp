@@ -1972,7 +1972,8 @@ void authyShowStart() {
 // updates the NT3H tag) and show it with the configured label. Idle for
 // PRODUCT_TIMEOUT returns to authyShowStart().
 static void authyShowQR() {
-  if (requestAuthLnurl()) {
+  int httpCode = 0;
+  if (requestAuthLnurl(nullptr, &httpCode)) {
     // Dual-page: identity QR carries a "pay login >" tab to the payment page.
     if (authyConfig.dualPage)
       showAuthIdentityScreen(authyConfig.label, authyConfig.authPin);
@@ -1981,6 +1982,15 @@ static void authyShowQR() {
     authyState.qrShown   = true;
     authyState.qrShownAt = millis();
     authyState.payPage   = false;
+    multiChannelConfig.btcTickerActive = false;
+  } else if (httpCode == 403) {
+    // Identities disabled server-side: show a red hint instead of silently
+    // ignoring the touch, then auto-return to the start screen.
+    LOG_WARN("Authy", "Identity login disabled (HTTP 403) - showing hint");
+    authIdentityDisabledScreen();
+    authyState.qrShown   = false;
+    authyState.payPage   = false;
+    authyState.infoUntil = millis() + 4000;
     multiChannelConfig.btcTickerActive = false;
   }
 }
@@ -2487,6 +2497,12 @@ void loop()
         } else if (authyState.needsRefresh) {
           authyState.needsRefresh = false;
           authyShowQR();   // re-open with a fresh challenge (e.g. after enroll)
+        }
+      } else if (authyState.infoUntil > 0) {
+        // Transient hint (e.g. "IDENTITY LOGIN DISABLED") → back to start.
+        if (aNow >= authyState.infoUntil) {
+          authyState.infoUntil = 0;
+          authyShowStart();
         }
       }
     }

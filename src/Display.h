@@ -84,6 +84,8 @@ bool authTeachCancelHit(uint16_t x, uint16_t y);
 void showAuthIdentityScreen(String label, int pin);
 void showAuthPayScreen(String label, int pin);
 bool authTabHit(uint16_t x, uint16_t y);
+// Red hint shown when the server reports Identities disabled (HTTP 403)
+void authIdentityDisabledScreen();
 #else
 inline void showMiniPosInputScreen() {}
 inline int  miniPosHitTest(uint16_t, uint16_t) { return -1; }
@@ -100,6 +102,7 @@ inline bool authTeachCancelHit(uint16_t, uint16_t) { return false; }
 inline void showAuthIdentityScreen(String, int) {}
 inline void showAuthPayScreen(String, int) {}
 inline bool authTabHit(uint16_t, uint16_t) { return false; }
+inline void authIdentityDisabledScreen() {}
 #endif
 
 #else
@@ -162,5 +165,6 @@ inline bool authTeachCancelHit(uint16_t, uint16_t) { return false; }
 inline void showAuthIdentityScreen(String, int) {}
 inline void showAuthPayScreen(String, int) {}
 inline bool authTabHit(uint16_t, uint16_t) { return false; }
+inline void authIdentityDisabledScreen() {}
 
 #endif // ENABLE_DISPLAY

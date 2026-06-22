@@ -559,9 +559,10 @@ bool fetchMiniPosLastPay(String &amountOut)
  * periodically. No API key needed — the endpoint only hands out a challenge.
  * Response: {"lnurl": "lnurl1...", "k1": "<hex>", "action": "auth|register"}
  */
-bool requestAuthLnurl(String *actionOut)
+bool requestAuthLnurl(String *actionOut, int *httpOut)
 {
   if (actionOut) *actionOut = "";
+  if (httpOut) *httpOut = 0;
   if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
     LOG_WARN("Authy", "Cannot fetch auth LNURL - server or deviceId not configured");
     return false;
@@ -577,6 +578,7 @@ bool requestAuthLnurl(String *actionOut)
   http.setTimeout(10000);
 
   int httpCode = http.GET();
+  if (httpOut) *httpOut = httpCode;
   if (httpCode != 200) {
     http.end();
     LOG_ERROR("Authy", String("Auth LNURL HTTP ") + String(httpCode));
