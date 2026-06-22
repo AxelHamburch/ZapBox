@@ -80,7 +80,8 @@ bool productSelectQrCancelHit(uint16_t x, uint16_t y);
 // Authy teach screen: registration QR + "Learning Identities" + CANCEL button
 void showAuthTeachScreen(String label, int pin);
 bool authTeachCancelHit(uint16_t x, uint16_t y);
-// Authy dual-page: classic payment page + bottom-left tab to switch pages
+// Authy dual-page: identity QR + payment page, bottom-left tab to switch pages
+void showAuthIdentityScreen(String label, int pin);
 void showAuthPayScreen(String label, int pin);
 bool authTabHit(uint16_t x, uint16_t y);
 #else
@@ -96,6 +97,7 @@ inline void showProductSelectQRScreen(String, int) {}
 inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
 inline void showAuthTeachScreen(String, int) {}
 inline bool authTeachCancelHit(uint16_t, uint16_t) { return false; }
+inline void showAuthIdentityScreen(String, int) {}
 inline void showAuthPayScreen(String, int) {}
 inline bool authTabHit(uint16_t, uint16_t) { return false; }
 #endif
@@ -157,6 +159,7 @@ inline void showProductSelectQRScreen(String, int) {}
 inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
 inline void showAuthTeachScreen(String, int) {}
 inline bool authTeachCancelHit(uint16_t, uint16_t) { return false; }
+inline void showAuthIdentityScreen(String, int) {}
 inline void showAuthPayScreen(String, int) {}
 inline bool authTabHit(uint16_t, uint16_t) { return false; }
 

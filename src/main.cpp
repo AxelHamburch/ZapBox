@@ -1973,9 +1973,14 @@ void authyShowStart() {
 // PRODUCT_TIMEOUT returns to authyShowStart().
 static void authyShowQR() {
   if (requestAuthLnurl()) {
-    showProductQRScreen(authyConfig.label, authyConfig.authPin);
+    // Dual-page: identity QR carries a "pay login >" tab to the payment page.
+    if (authyConfig.dualPage)
+      showAuthIdentityScreen(authyConfig.label, authyConfig.authPin);
+    else
+      showProductQRScreen(authyConfig.label, authyConfig.authPin);
     authyState.qrShown   = true;
     authyState.qrShownAt = millis();
+    authyState.payPage   = false;
     multiChannelConfig.btcTickerActive = false;
   }
 }
@@ -2709,22 +2714,28 @@ void loop()
         if (authyConfig.enabled) {
           if (isTouched && !wasTouched) {
             activityTracking.lastActivityTime = millis();
-            // Dual-page: the bottom-left tab flips between identity and payment.
-            if (authyConfig.dualPage && authTabHit(x, y)) {
-              authyState.payPage = !authyState.payPage;
-              authyState.qrShown = false;
-              LOG_INFO("Authy", String("Tab pressed - page = ") +
-                       (authyState.payPage ? "PAYMENT" : "IDENTITY"));
-              authyShowStart();
-            } else if (authyState.payPage) {
-              // Payment page: the QR is always shown and scannable/NFC-payable;
-              // a touch elsewhere does nothing (no idle timeout, like classic).
-            } else if (!authyState.qrShown) {
+            if (!authyState.qrShown && !authyState.payPage) {
+              // Idle IDENTITY TRIGGER start screen (no tab): a touch anywhere
+              // opens the identity-trigger login QR.
               LOG_INFO("Authy", "Touch on start screen - opening identity QR");
               authyShowQR();
-            } else {
-              authyState.qrShownAt = millis();   // keep the QR alive
+            } else if (authyConfig.dualPage && authTabHit(x, y)) {
+              // The bottom-left tab flips between the identity QR and the
+              // payment page (only present on the QR pages, not on idle).
+              if (authyState.payPage) {
+                LOG_INFO("Authy", "Tab pressed - back to IDENTITY login QR");
+                authyState.payPage = false;
+                authyShowQR();
+              } else {
+                LOG_INFO("Authy", "Tab pressed - to PAYMENT page");
+                authyState.payPage = true;
+                authyState.qrShown = false;
+                authyShowStart();   // renders the payment page (payPage=true)
+              }
+            } else if (authyState.qrShown) {
+              authyState.qrShownAt = millis();   // identity QR: keep it alive
             }
+            // Payment page, non-tab touch: nothing (QR is scannable/NFC-payable).
           }
           wasTouched = isTouched;
           goto skip_product_touch_processing;

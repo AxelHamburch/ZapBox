@@ -913,14 +913,10 @@ void actionTimeScreen() {
   flushDisplay();
 }
 
-// Dual-page tab button (bottom-left). Defined later (needs drawRectBorder);
-// forward-declared so the start screen can draw it.
-static void drawAuthTab(const char *txt, uint16_t fg, uint16_t bg);
-
 // IDENTITY TRIGGER — Authy idle/start screen. Same look as ACTION TIME
 // ("IDENTITY" big at top, "TRIGGER" in the inverted box), but no countdown.
-// Shown while no auth QR is requested, so the NT3H tag is not rewritten.
-// In dual-page mode a "PAY >" tab (bottom-left) switches to the payment page.
+// Shown while no auth QR is requested, so the NT3H tag is not rewritten. No tab
+// here: the dual-page switch lives on the QR pages, not on the idle screen.
 void identityTriggerScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
@@ -931,15 +927,14 @@ void identityTriggerScreen() {
     drawCenter(SCR_W / 2, AT_V_BOX_Y + AT_V_BOX_H + 35, "touch to start..",
                themeForeground, themeBackground, 2);
   } else {
-    // Landscape: the block sat a bit high — shift everything down by dy.
-    const int dy = 50;
+    // Landscape: nudge the whole block down just a little.
+    const int dy = 12;
     drawCenter(SCR_W / 2, 82 + dy, "IDENTITY", themeForeground, themeBackground, 5);
     fillRect(AT_BOX_X, AT_BOX_Y + dy, AT_BOX_W, AT_BOX_H, themeForeground);
     drawCenter(SCR_W / 2, AT_LABEL_Y + dy, "TRIGGER", themeBackground, themeForeground, 4);
     drawCenter(SCR_W / 2, AT_BOX_Y + dy + AT_BOX_H + 35, "touch to start..",
                themeForeground, themeBackground, 2);
   }
-  if (authyConfig.dualPage) drawAuthTab("PAY >", themeForeground, themeBackground);
   flushDisplay();
 }
 
@@ -2269,8 +2264,9 @@ bool authTeachCancelHit(uint16_t x, uint16_t y) {
 
 // ── Authy dual-page tab button (bottom-left corner) ─────────────────────────
 // Mirrors the CANCEL button geometry but on the opposite (left) corner, so it
-// never collides with a CANCEL/INVOICE button on the right.
-static const int AT_TAB_W = 96, AT_TAB_H = 34;
+// never collides with a CANCEL/INVOICE button on the right. Wide enough for the
+// "pay login >" / "< ID login" labels.
+static const int AT_TAB_W = 150, AT_TAB_H = 34;
 static void drawAuthTab(const char *txt, uint16_t fg, uint16_t bg) {
     int tx = 12, ty = SCR_H - AT_TAB_H - 8;
     drawRectBorder(tx, ty, AT_TAB_W, AT_TAB_H, 2, fg);
@@ -2283,12 +2279,10 @@ bool authTabHit(uint16_t x, uint16_t y) {
     return x <= (uint16_t)(tx + AT_TAB_W + pad) && y >= (uint16_t)(ty - pad);
 }
 
-// Authy dual-page payment screen: the classic ZapBox product QR for the auth
-// pin (content from lightningConfig.lightning via ensureQrForPin), plus a
-// "< ID" tab (bottom-left) that switches back to the identity-trigger page.
-void showAuthPayScreen(String label, int pin) {
-    DisplayLock l;
-    if (!_gfx) return;
+// Shared: QR (from lightningConfig.lightning) + label box + a bottom-left tab.
+// Used by both dual-page QR pages. In portrait the label box is shortened so it
+// does not collide with the tab.
+static void drawAuthQrWithTab(String label, int pin, const char *tabTxt) {
     label = sanitizeLabel(label);
     String words[3];
     int wordCount;
@@ -2301,13 +2295,29 @@ void showAuthPayScreen(String label, int pin) {
     fillScreen(qrBg);
     if (isPortrait()) {
         drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
-        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
+        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 44, words, wordCount, qrFg, qrBg);
     } else {
         drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
         drawLabelBox(words, wordCount, qrFg, qrBg);
     }
-    drawAuthTab("< ID", qrFg, qrBg);
+    drawAuthTab(tabTxt, qrFg, qrBg);
     flushDisplay();
+}
+
+// Dual-page identity-trigger QR: the auth login QR plus a "pay login >" tab
+// (bottom-left) that switches to the classic payment page.
+void showAuthIdentityScreen(String label, int pin) {
+    DisplayLock l;
+    if (!_gfx) return;
+    drawAuthQrWithTab(label, pin, "pay login >");
+}
+
+// Dual-page payment screen: the classic ZapBox product QR for the auth pin plus
+// a "< ID login" tab (bottom-left) that switches back to the identity QR.
+void showAuthPayScreen(String label, int pin) {
+    DisplayLock l;
+    if (!_gfx) return;
+    drawAuthQrWithTab(label, pin, "< ID login");
 }
 
 void nfcTestScreen(String lnurlw) {
