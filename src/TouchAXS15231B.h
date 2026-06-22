@@ -58,6 +58,7 @@ private:
   uint8_t  _points;
   uint8_t  _gesture;
   unsigned long _lastReadMs;
+  unsigned long _lastTouchMs;  // millis() of the last read that saw a real touch
   unsigned long _errCount;
   bool _wasPressed;          // edge-detection state for available()
   bool _releaseEdgePending;  // set true when a press→release transition is observed

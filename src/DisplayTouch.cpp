@@ -1845,6 +1845,12 @@ static const int MP_V_BTN_H   = 40;
 
 // Cancel button on the Mini-PoS QR screen (bottom-right corner)
 static const int MP_QRC_W = 90, MP_QRC_H = 34;
+// Corner margin for on-screen edge buttons (CANCEL, dual-page tab). Must be
+// >= the 14 px physical-button reservation at each screen edge (see the
+// inButtonArea check in the touch loop), otherwise the bottom/side of the
+// button falls into that strip and its taps get swallowed before reaching the
+// button handler.
+static const int MP_QRC_M = 20;
 
 static void drawMiniPosAmountBox(int bx, int by, int bw, int bh) {
     drawRectBorder(bx, by, bw, bh, 2, themeForeground);
@@ -2007,13 +2013,13 @@ void showMiniPosQRScreen() {
     if (isPortrait()) {
         drawQRAt(qrText.c_str(), QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
         drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
-        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     } else {
         drawQRAt(qrText.c_str(), QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
         drawLabelBox(words, wordCount, qrFg, qrBg);
-        int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     }
@@ -2025,9 +2031,7 @@ bool miniPosQrCancelHit(uint16_t x, uint16_t y) {
     // the drawn button out to the screen edge. The drawn button stays small, but
     // the touch target is large so a quick tap registers reliably.
     const int pad = 26;
-    int cbx, cby;
-    if (isPortrait()) { cbx = PANEL_W - MP_QRC_W - 10; cby = PANEL_H - MP_QRC_H - 6; }
-    else              { cbx = SCR_W   - MP_QRC_W - 12; cby = SCR_H   - MP_QRC_H - 8; }
+    int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
     return x >= (uint16_t)(cbx - pad) && y >= (uint16_t)(cby - pad);
 }
 
@@ -2205,13 +2209,13 @@ void showProductSelectQRScreen(String label, int pin) {
     if (isPortrait()) {
         drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
         drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
-        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     } else {
         drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
         drawLabelBox(words, wordCount, qrFg, qrBg);
-        int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     }
@@ -2245,13 +2249,13 @@ void showAuthTeachScreen(String label, int pin) {
         drawString(10, 12, "Learning", qrFg, qrBg, 2);
         drawString(10, 34, "Identities", qrFg, qrBg, 2);
         drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
-        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     } else {
         drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
         drawLabelBox(words, wordCount, qrFg, qrBg);
-        int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     }
@@ -2268,14 +2272,15 @@ bool authTeachCancelHit(uint16_t x, uint16_t y) {
 // "pay login >" / "< ID login" labels.
 static const int AT_TAB_W = 150, AT_TAB_H = 34;
 static void drawAuthTab(const char *txt, uint16_t fg, uint16_t bg) {
-    int tx = 12, ty = SCR_H - AT_TAB_H - 8;
+    int tx = MP_QRC_M, ty = SCR_H - AT_TAB_H - MP_QRC_M;
     drawRectBorder(tx, ty, AT_TAB_W, AT_TAB_H, 2, fg);
     drawCenter(tx + AT_TAB_W / 2, ty + AT_TAB_H / 2, txt, fg, bg, 2);
 }
 bool authTabHit(uint16_t x, uint16_t y) {
-    // Generous hit zone: the whole bottom-left corner (see miniPosQrCancelHit).
+    // Generous hit zone: the whole bottom-left corner (see miniPosQrCancelHit),
+    // but kept clear of the physical-button edge strip via MP_QRC_M.
     const int pad = 26;
-    int tx = 12, ty = SCR_H - AT_TAB_H - 8;
+    int tx = MP_QRC_M, ty = SCR_H - AT_TAB_H - MP_QRC_M;
     return x <= (uint16_t)(tx + AT_TAB_W + pad) && y >= (uint16_t)(ty - pad);
 }
 
