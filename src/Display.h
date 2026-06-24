@@ -77,6 +77,10 @@ int  productSelectHitTest(uint16_t x, uint16_t y);
 void showProductSelectQRScreen(String label, int pin);
 // True when the touch hits the small Cancel button on the product QR screen
 bool productSelectQrCancelHit(uint16_t x, uint16_t y);
+// Mode selection screen shown on boot when mode == "modeselect"
+void showModeSelectionScreen();
+// Returns: 1=Single, 2=Multi-channel, 3=Mini-PoS, 4=Authy, -1=no hit
+int  modeSelectHitTest(uint16_t x, uint16_t y);
 // Authy teach screen: registration QR + "Learning Identities" + CANCEL button
 void showAuthTeachScreen(String label, int pin);
 bool authTeachCancelHit(uint16_t x, uint16_t y);
@@ -87,6 +91,8 @@ bool authTabHit(uint16_t x, uint16_t y);
 // Red hint shown when the server reports Identities disabled (HTTP 403)
 void authIdentityDisabledScreen();
 #else
+inline void showModeSelectionScreen() {}
+inline int  modeSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showMiniPosInputScreen() {}
 inline int  miniPosHitTest(uint16_t, uint16_t) { return -1; }
 inline void showMiniPosQRScreen() {}
@@ -150,6 +156,8 @@ inline bool isDeepSleepActive() { return false; }
 inline void nfcTestScreen(String) {}
 inline void showPinPadScreen(const PinPadState &) {}
 inline int  pinPadHitTest(uint16_t, uint16_t) { return -1; }
+inline void showModeSelectionScreen() {}
+inline int  modeSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showMiniPosInputScreen() {}
 inline int  miniPosHitTest(uint16_t, uint16_t) { return -1; }
 inline void showMiniPosQRScreen() {}

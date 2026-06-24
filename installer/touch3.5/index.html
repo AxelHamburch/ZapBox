@@ -269,6 +269,7 @@
                         <option value="duo">Multi-channel — CH01 to CH06</option>
                         <option value="minipos">Mini-PoS — amount entry on display (CH01)</option>
                         <option value="authy">Authy — LNURL-auth identification (CH01)</option>
+                        <option value="modeselect">Mode selection at startup</option>
                     </select>
                 </div>
             </div>
@@ -276,6 +277,11 @@
             <!-- Single channel info: visible only in single mode -->
             <div id="singleChannelInfo" style="margin-top: 10px;">
                 <p style="color: #888; margin: 0;"><i>CH01 is wired to <strong>GPIO pin 5</strong> and operates as a relay output (on / off). <br> In LNbits, declare <strong>pin 5</strong> for this channel.</i></p>
+            </div>
+
+            <!-- Mode-select info: visible only in mode-select -->
+            <div id="modeSelectInfo" style="display: none; margin-top: 10px;">
+                <p style="color: #888; margin: 0 0 10px 0;"><i><strong>Mode selection at startup</strong> shows a screen on the device after every boot so the user can choose one of the four ZapBox modes by touch — without needing to re-flash. <strong>Each mode must be fully configured below before flashing.</strong> The user is responsible for setting the correct parameters for each mode they want to use.</i></p>
             </div>
 
             <!-- Mini-PoS configuration: visible only in Mini-PoS mode -->
@@ -1566,18 +1572,22 @@
             const singleInfo = document.getElementById('singleChannelInfo');
             const miniPos = document.getElementById('miniPosFields');
             const authy = document.getElementById('authyFields');
+            const modeSelectInfo = document.getElementById('modeSelectInfo');
             const mode = multi ? multi.value : 'off';
             const activation = document.getElementById('activationOptionsDiv');
             const activationHint = document.getElementById('activationOptionsMiniPosHint');
             const numericSelect = document.getElementById('numericSelectDiv');
-            if (fields) fields.style.display = (mode === 'duo') ? 'block' : 'none';
+            // In mode-select, show all per-mode sections so the user can pre-configure each one
+            const isMs = (mode === 'modeselect');
+            if (fields) fields.style.display = (mode === 'duo' || isMs) ? 'block' : 'none';
             if (singleInfo) singleInfo.style.display = (mode === 'off') ? 'block' : 'none';
-            if (miniPos) miniPos.style.display = (mode === 'minipos') ? 'block' : 'none';
-            if (authy) authy.style.display = (mode === 'authy') ? 'block' : 'none';
-            // Activation Options (One for All) apply to Multi-channel and Mini-PoS
-            if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos') ? 'block' : 'none';
+            if (modeSelectInfo) modeSelectInfo.style.display = isMs ? 'block' : 'none';
+            if (miniPos) miniPos.style.display = (mode === 'minipos' || isMs) ? 'block' : 'none';
+            if (authy) authy.style.display = (mode === 'authy' || isMs) ? 'block' : 'none';
+            // Activation Options (One for All) apply to Multi-channel, Mini-PoS, and mode-select
+            if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos' || isMs) ? 'block' : 'none';
             if (activationHint) activationHint.style.display = (mode === 'minipos') ? 'block' : 'none';
-            // Numerical product selection applies to Multi-channel only
+            // Numerical product selection applies to Multi-channel only (not mode-select to keep things simple)
             if (numericSelect) numericSelect.style.display = (mode === 'duo') ? 'block' : 'none';
             updateNumericSelectState();
         }
@@ -1694,7 +1704,7 @@
             sections += section('ZapBox Mode', row('ZapBox Mode', selText('multiControl')));
 
             // Multi-channel — CH01–CH06 with per-channel servo parameters
-            if (zbMode === 'duo') {
+            if (zbMode === 'duo' || zbMode === 'modeselect') {
                 const chans = [['CH01', 'gpio5'], ['CH02', 'gpio6'], ['CH03', 'gpio7'],
                                ['CH04', 'gpio14'], ['CH05', 'gpio15'], ['CH06', 'gpio16']];
                 let mcRows = '';
@@ -1711,22 +1721,22 @@
                             row('&#8226; Spin duration (ms)', inputVal(g + 'Servo360Duration'));
                     }
                 });
-                mcRows += row('Activation Options', selText('t35ActivationMode')) +
-                    row('Numerical Product Selection', selText('t35NumericSelect'));
+                mcRows += row('Activation Options', selText('t35ActivationMode'));
+                if (zbMode === 'duo') mcRows += row('Numerical Product Selection', selText('t35NumericSelect'));
                 sections += section('Multi-channel (CH01–CH06)', mcRows);
             }
 
             // Mini-PoS
-            if (zbMode === 'minipos') {
+            if (zbMode === 'minipos' || zbMode === 'modeselect') {
                 sections += section('Mini-PoS',
                     row('Currency', inputVal('miniPosCurrency')) +
                     row('Decimal separator', selText('miniPosDecimal')) +
                     row('Wallet Invoice Key', inputVal('miniPosInvoiceKey')) +
-                    row('Activation Options', selText('t35ActivationMode')));
+                    (zbMode === 'minipos' ? row('Activation Options', selText('t35ActivationMode')) : ''));
             }
 
             // Authy (LNURL-auth)
-            if (zbMode === 'authy') {
+            if (zbMode === 'authy' || zbMode === 'modeselect') {
                 sections += section('Authy (LNURL-auth)',
                     row('Auth Pin', selText('authPin')) +
                     row('Activation time (ms)', inputVal('authDuration')) +
