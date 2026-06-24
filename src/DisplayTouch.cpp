@@ -1413,54 +1413,47 @@ void showModeSelectionScreen() {
   fillScreen(themeBackground);
 
   if (isPortrait()) {
-    drawCenter(SCR_W / 2,  30, "ZapBox",     themeForeground, themeBackground, 4);
-    drawCenter(SCR_W / 2,  70, "Select Mode",themeForeground, themeBackground, 2);
+    drawCenter(SCR_W / 2, 55, "Mode Selection", themeForeground, themeBackground, 3);
 
-    // Button 1 — Single channel
+    // Button 1 — Single channel (two lines)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW1_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 26, "SINGLE CHANNEL", themeForeground, themeBackground, 2);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 52, "fixed QR — CH01", themeForeground, themeBackground, 1);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 16, "SINGLE",   themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 46, "CHANNEL",  themeForeground, themeBackground, 3);
 
-    // Button 2 — Multi-channel
+    // Button 2 — Multi-channel (two lines)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW2_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 26, "MULTI-CHANNEL",  themeForeground, themeBackground, 2);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 52, "CH01 to CH06",   themeForeground, themeBackground, 1);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 16, "MULTI",    themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 46, "CHANNEL",  themeForeground, themeBackground, 3);
 
-    // Button 3 — Mini-PoS
+    // Button 3 — Mini-PoS (single line centered)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW3_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW3_Y + 26, "MINI-POS",       themeForeground, themeBackground, 2);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW3_Y + 52, "amount entry",   themeForeground, themeBackground, 1);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW3_Y + 31, "MINI-POS", themeForeground, themeBackground, 3);
 
-    // Button 4 — Authy
+    // Button 4 — Authy (single line centered)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW4_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW4_Y + 26, "AUTHY",          themeForeground, themeBackground, 2);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW4_Y + 52, "LNURL-auth ID",  themeForeground, themeBackground, 1);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW4_Y + 31, "AUTHY",    themeForeground, themeBackground, 3);
 
   } else {
     // Landscape
-    drawCenter(SCR_W / 2, 22, "ZapBox — Select Mode", themeForeground, themeBackground, 2);
-    drawCenter(SCR_W / 2, 56, "Configure each mode first, then tap to start.",
-               themeForeground, themeBackground, 1);
+    drawCenter(SCR_W / 2, 42, "Mode Selection", themeForeground, themeBackground, 3);
 
-    // Button 1 — Single channel  (top-left)
+    // Button 1 — Single channel  (top-left, two lines)
     drawRectBorder(MS_L_LEFT_X, MS_L_ROW1_Y, MS_L_BTN_W, MS_L_BTN_H, 2, themeForeground);
-    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW1_Y + 34, "SINGLE CHANNEL", themeForeground, themeBackground, 2);
-    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW1_Y + 62, "fixed QR / CH01", themeForeground, themeBackground, 1);
+    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW1_Y + 36, "SINGLE",   themeForeground, themeBackground, 3);
+    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW1_Y + 68, "CHANNEL",  themeForeground, themeBackground, 3);
 
-    // Button 2 — Multi-channel  (top-right)
+    // Button 2 — Multi-channel  (top-right, two lines)
     drawRectBorder(MS_L_RIGHT_X, MS_L_ROW1_Y, MS_L_BTN_W, MS_L_BTN_H, 2, themeForeground);
-    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW1_Y + 34, "MULTI-CHANNEL",  themeForeground, themeBackground, 2);
-    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW1_Y + 62, "CH01 to CH06",   themeForeground, themeBackground, 1);
+    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW1_Y + 36, "MULTI",    themeForeground, themeBackground, 3);
+    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW1_Y + 68, "CHANNEL",  themeForeground, themeBackground, 3);
 
-    // Button 3 — Mini-PoS  (bottom-left)
+    // Button 3 — Mini-PoS  (bottom-left, single line centered)
     drawRectBorder(MS_L_LEFT_X, MS_L_ROW2_Y, MS_L_BTN_W, MS_L_BTN_H, 2, themeForeground);
-    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW2_Y + 34, "MINI-POS",       themeForeground, themeBackground, 2);
-    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW2_Y + 62, "amount entry",   themeForeground, themeBackground, 1);
+    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW2_Y + 52, "MINI-POS", themeForeground, themeBackground, 3);
 
-    // Button 4 — Authy  (bottom-right)
+    // Button 4 — Authy  (bottom-right, single line centered)
     drawRectBorder(MS_L_RIGHT_X, MS_L_ROW2_Y, MS_L_BTN_W, MS_L_BTN_H, 2, themeForeground);
-    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW2_Y + 34, "AUTHY",          themeForeground, themeBackground, 2);
-    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW2_Y + 62, "LNURL-auth ID",  themeForeground, themeBackground, 1);
+    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW2_Y + 52, "AUTHY",    themeForeground, themeBackground, 3);
   }
 
   flushDisplay();
