@@ -395,6 +395,43 @@ installer/firmware/
   └── manifest.json
 ```
 
+## Release History
+
+### v955197 / v955197h / v955197t — 2026-06-24
+
+```markdown
+## 🎯 Release v955197 / v955197h / v955197t — LNURL-Auth Identity Login
+
+### ✨ Features
+- **LNURL-Auth identity login** (LNURL-04): the ZapBox can now display a login QR that authenticates users via their Lightning wallet — no payment required
+- **Dual-page mode** (Touch 3.5): swappable tabs between Identity login and classic Payment QR on the same screen
+- **IDENTITY TRIGGER start screen** with "touch to start" hint; QR appears on touch
+- **Teach mode**: 6-tap gesture on the screen opens a 6-digit PIN pad to protect the identity trigger
+- Dedicated CANCEL button on teach screen; configurable QR label via web installer
+- Red "IDENTITY LOGIN DISABLED" hint when server returns 403
+
+### 🖥️ Touch 3.5" Version (v955197t)
+- Numeric Product Selection panel for multi-channel mode
+- Live block height on the product selection screen
+- Per-channel servo parameters for multi-channel mode (configurable in web installer)
+- Higher-quality Bitcoin logo in BTC ticker; 6-row landscape layout
+- Reject WebSocket payments addressed to the wrong PIN
+- Sleep wake sources corrected (touch cannot wake device; LED button added)
+- Corner button tap targets fixed for the physical-button edge strip
+- Portrait/landscape layout fix for error box and ACTION TIME
+
+### 📦 Standard (v955197) + 💡 Headless (v955197h)
+- Installer config-mode fix: config-mode detection lost to mixed CDC chunks — fixed for T-Display-S3 and headless
+- Config wipe on interrupted write prevented
+- I/O-Expander shown in Print Config (T-Display-S3 installer)
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 955197
+- Merged branch `feature/lnurlauth`
+```
+
+---
+
 ## GitHub Release Template
 
 Use this template for GitHub releases:
