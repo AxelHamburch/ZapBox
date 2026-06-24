@@ -626,8 +626,10 @@ extern const char* BECH32_CHARSET;
 
 struct PinPadState {
     bool     active      = false;  // PIN pad screen is currently shown
-    char     digits[5]   = {0};   // entered digits, null-terminated
-    int      numDigits   = 0;     // 0–4
+    char     digits[7]   = {0};   // entered digits, null-terminated (max 6)
+    int      numDigits   = 0;     // 0–maxDigits
+    int      maxDigits   = 4;     // 4 = payment PIN, 6 = LNURL-auth teach PIN
+    bool     teachMode   = false; // true: submit to /auth/teach/start (Authy)
     int      attemptNum  = 0;     // failed attempts so far (shown from 1)
     int      maxAttempts = 3;
     long     amountSat   = 0;
@@ -694,6 +696,60 @@ struct MiniPosState {
 };
 
 extern MiniPosState miniPosState;
+
+// ============================================================================
+// AUTHY MODE — LNURL-auth (LUD-04) identification (Touch 3.5)
+// A known wallet identifies itself via LNURL-auth and the device triggers its
+// relay — like a payment, but nothing is paid. The public HTTPS service lives
+// in the zapbox_extension; the device only shows the auth QR and waits for the
+// existing "<pin>-<duration>" WebSocket trigger. New identities are enrolled in
+// a PIN-protected teach mode (6 taps + hold). See temp/lnurlauth/lnurlauth-plan.md.
+// ============================================================================
+
+struct AuthyConfig {
+  bool   enabled = false;      // multiControl == "authy"
+  int    authPin = 5;          // GPIO triggered on a successful auth (CH01 relay)
+  int    authDuration = 3000;  // ms the relay stays on
+  String label = "ZAPBOX Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
+  bool   dualPage = false;     // true = also offer a classic payment page (tab switch)
+};
+
+// The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
+// it well before expiry so an idle QR screen always shows a valid challenge.
+constexpr uint32_t AUTHY_LNURL_REFRESH_MS = 90000;
+
+// Device-side backup for the teach session (server enforces the same 5 min and
+// also sends a teach_ended WS event). If the event is missed, the device falls
+// back to normal Authy operation after this timeout.
+constexpr uint32_t AUTHY_TEACH_TIMEOUT_MS = 300000;
+
+extern AuthyConfig authyConfig;
+
+struct AuthyState {
+  bool   teachActive = false;        // teach session open (register QR shown)
+  uint32_t teachUntil = 0;           // millis() backup 5-min timeout for the session
+  bool   enrolledPrompt = false;     // "Wallet registered — one more / cancel" shown
+  bool   needsRefresh = false;       // request a fresh auth/register LNURL on next loop
+  bool   qrShown = false;            // identity-trigger QR is on screen (else: start screen)
+  uint32_t qrShownAt = 0;            // millis() the QR screen was opened (idle timeout)
+  bool   payPage = false;            // dual-page mode: classic payment page active (else identity)
+  String infoMsg;                    // transient message (errors, status)
+  uint32_t infoUntil = 0;            // millis() when infoMsg expires
+
+  void reset() {
+    teachActive = false;
+    teachUntil = 0;
+    enrolledPrompt = false;
+    needsRefresh = false;
+    qrShown = false;
+    qrShownAt = 0;
+    payPage = false;
+    infoMsg = "";
+    infoUntil = 0;
+  }
+};
+
+extern AuthyState authyState;
 
 // ============================================================================
 // NUMERICAL PRODUCT SELECTION (Touch 3.5 multi-channel only)

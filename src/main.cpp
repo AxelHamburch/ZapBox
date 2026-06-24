@@ -165,6 +165,9 @@ WebSocketsClient webSocket;
 void reportMode();
 void configMode();
 void showHelp();
+void startAuthTeachEntry();  // Authy: open 6-digit teach PIN pad (called from Navigation.cpp)
+void authyShowStart();        // Authy: IDENTITY TRIGGER idle screen (also called from UI.cpp)
+static void authyShowQR();     // Authy: open the identity-trigger QR
 
 //////////////////HELPERS///////////////////
 
@@ -374,6 +377,16 @@ void readFiles()
       miniPosConfig.enabled = true;
       multiChannelConfig.mode = "off";
       LOG_INFO("Config", "Mini-PoS mode ENABLED (single-channel behavior, amount entry screen)");
+    }
+
+    // Authy mode (LNURL-auth) is transported via multiControl ("authy"). The
+    // device shows an auth QR and triggers the relay when a known wallet
+    // identifies itself. Like Mini-PoS, it behaves single-channel, so normalize
+    // mode back to "off" and set the dedicated flag instead.
+    if (multiChannelConfig.mode == "authy") {
+      authyConfig.enabled = true;
+      multiChannelConfig.mode = "off";
+      LOG_INFO("Config", "Authy mode ENABLED (LNURL-auth identification, relay trigger)");
     }
 
     // Read BTC-Ticker configuration (index 18)
@@ -834,6 +847,59 @@ void readFiles()
       LOG_INFO("Config", String("Invoice key: ") + (miniPosConfig.invoiceKey.length() > 0 ? "set (" + String(miniPosConfig.invoiceKey.length()) + " chars)" : "MISSING!"));
       LOG_INFO("Config", String("BTC-Ticker screensaver: ") + (multiChannelConfig.btcTickerMode == "always" ? "ON (always)" : "off"));
       LOG_INFO("Config", "==============================");
+    }
+
+    // Read Authy configuration (indices 88-90, Touch 3.5 only)
+    // 88=authPin (GPIO triggered on success)  89=authDuration (ms)
+    // 90=authLabel (text next to the identity-trigger QR, split into 3 lines)
+    if (authyConfig.enabled) {
+      const JsonObject maRoot88 = doc[88];
+      if (!maRoot88.isNull()) {
+        const char *v = maRoot88["value"];
+        if (v != nullptr && strlen(v) > 0) {
+          int p = String(v).toInt();
+          if (p > 0) authyConfig.authPin = p;
+        }
+      }
+      const JsonObject maRoot89 = doc[89];
+      if (!maRoot89.isNull()) {
+        const char *v = maRoot89["value"];
+        if (v != nullptr && strlen(v) > 0) {
+          int d = String(v).toInt();
+          if (d < 100) d = 100;
+          if (d > 60000) d = 60000;
+          authyConfig.authDuration = d;
+        }
+      }
+      const JsonObject maRoot90 = doc[90];
+      if (!maRoot90.isNull()) {
+        const char *v = maRoot90["value"];
+        if (v != nullptr && strlen(v) > 0) {
+          authyConfig.label = String(v);
+        }
+      }
+      const JsonObject maRoot91 = doc[91];
+      if (!maRoot91.isNull()) {
+        const char *v = maRoot91["value"];
+        if (v != nullptr) {
+          authyConfig.dualPage = (String(v) == "yes");
+        }
+      }
+      // Authy owns the screen like Mini-PoS: no fixed-amount threshold QR —
+      // except in dual-page mode, where the classic payment page keeps the
+      // normal threshold/product QR for the auth pin.
+      if (multiChannelConfig.btcTickerMode != "always") {
+        multiChannelConfig.btcTickerMode = "off";
+      }
+      if (!authyConfig.dualPage) {
+        lightningConfig.thresholdKey = "";
+      }
+      LOG_INFO("Config", "=== AUTHY CONFIGURATION ===");
+      LOG_INFO("Config", String("Auth pin: ") + String(authyConfig.authPin));
+      LOG_INFO("Config", String("Activation time: ") + String(authyConfig.authDuration) + "ms");
+      LOG_INFO("Config", String("Identity label: ") + authyConfig.label);
+      LOG_INFO("Config", String("Dual page (payment): ") + (authyConfig.dualPage ? "yes" : "no"));
+      LOG_INFO("Config", "===========================");
     }
 
     // Apply predefined mode settings
@@ -1794,6 +1860,13 @@ void setup()
         multiChannelConfig.btcTickerActive = false;
       }
       productSelectionState.showTime = 0;
+    } else if (authyConfig.enabled) {
+      // Authy: idle on the IDENTITY TRIGGER start screen (or BTC ticker). The
+      // single-use auth LNURL is only fetched when the user opens the QR screen
+      // by touch — this keeps the NT3H tag from being rewritten every ~120 s.
+      SETUP_PRINT("[STARTUP] Authy mode - showing IDENTITY TRIGGER start screen");
+      authyShowStart();
+      productSelectionState.showTime = 0;
     } else if (multiChannelConfig.btcTickerMode == "always") {
       SETUP_PRINT("[STARTUP] Single mode (ALWAYS) - showing Bitcoin ticker immediately");
       ensureQrForPin(RELAY_CHANNEL_PINS[0]); // pre-generate LNURL so NT3H writes immediately
@@ -1860,6 +1933,93 @@ static void miniPosShowInfo(const String &msg) {
   miniPosState.infoMsg = msg;
   miniPosState.infoUntil = millis() + MINIPOS_INFO_MS;
   showMiniPosInputScreen();
+}
+
+// ============================================================================
+// AUTHY SCREEN FLOW (Touch 3.5 — LNURL-auth identity trigger)
+// ============================================================================
+
+// Idle/start screen: "IDENTITY TRIGGER" (or the BTC ticker if preselected).
+// No auth LNURL is fetched here and the NT3H tag carries the project URL, so
+// the tag is NOT rewritten every ~120 s — only when the QR screen is opened.
+void authyShowStart() {
+  authyState.qrShown   = false;
+  authyState.qrShownAt = 0;
+  // Dual-page mode: when the payment page is active, show the classic ZapBox
+  // product QR for the auth pin (LNURL + NFC tag from ensureQrForPin) with a
+  // "< ID" tab back to the identity page.
+  if (authyConfig.dualPage && authyState.payPage) {
+    ensureQrForPin(authyConfig.authPin);   // generates LNURL and writes NT3H tag
+    int idx = getPinIndex(authyConfig.authPin);
+    String lbl = (idx >= 0 && productLabels.labels[idx].length() > 0)
+                   ? productLabels.labels[idx]
+                   : String("Pin ") + String(authyConfig.authPin);
+    showAuthPayScreen(lbl, authyConfig.authPin);
+    multiChannelConfig.btcTickerActive = false;
+    return;
+  }
+  miniPosIdleNfcTag();   // idle NFC: project URL, not a (soon-stale) auth k1
+  if (multiChannelConfig.btcTickerMode == "always") {
+    btctickerScreen();
+    multiChannelConfig.btcTickerActive = true;
+  } else {
+    identityTriggerScreen();
+    multiChannelConfig.btcTickerActive = false;
+  }
+}
+
+// Open the identity-trigger QR: fetch a fresh single-use auth LNURL (this also
+// updates the NT3H tag) and show it with the configured label. Idle for
+// PRODUCT_TIMEOUT returns to authyShowStart().
+static void authyShowQR() {
+  int httpCode = 0;
+  if (requestAuthLnurl(nullptr, &httpCode)) {
+    // Dual-page: identity QR carries a "pay login >" tab to the payment page.
+    if (authyConfig.dualPage)
+      showAuthIdentityScreen(authyConfig.label, authyConfig.authPin);
+    else
+      showProductQRScreen(authyConfig.label, authyConfig.authPin);
+    authyState.qrShown   = true;
+    authyState.qrShownAt = millis();
+    authyState.payPage   = false;
+    multiChannelConfig.btcTickerActive = false;
+  } else if (httpCode == 403) {
+    // Identities disabled server-side: show a red hint instead of silently
+    // ignoring the touch, then auto-return to the start screen.
+    LOG_WARN("Authy", "Identity login disabled (HTTP 403) - showing hint");
+    authIdentityDisabledScreen();
+    authyState.qrShown   = false;
+    authyState.payPage   = false;
+    authyState.infoUntil = millis() + 4000;
+    multiChannelConfig.btcTickerActive = false;
+  }
+}
+
+// ============================================================================
+// AUTHY TEACH HELPERS (Touch 3.5 — LNURL-auth identity enrolment)
+// ============================================================================
+
+// Open the 6-digit teach PIN pad. Triggered by the 6-tap + hold gesture
+// (Navigation.cpp). The entered PIN is verified server-side by submitTeachPin().
+void startAuthTeachEntry() {
+  pinPadState = PinPadState();      // reset to defaults
+  pinPadState.active      = true;
+  pinPadState.teachMode   = true;
+  pinPadState.maxDigits   = 6;
+  pinPadState.maxAttempts = 3;
+  pinPadState.activatedAt = millis();
+  extensionConfig.nfcPaymentPending = false;
+  showPinPadScreen(pinPadState);
+  LOG_INFO("Teach", "Teach PIN entry opened (6 digits)");
+}
+
+// End an active teach session (user cancel / done) and return to the normal
+// Authy auth screen. requestAuthLnurl() now yields an "auth" challenge again.
+static void endAuthTeach() {
+  stopTeachSession();
+  authyState.reset();
+  authyShowStart();   // back to the IDENTITY TRIGGER idle screen
+  LOG_INFO("Teach", "Teach session ended - back to start screen");
 }
 
 #ifdef BOARD_JC3248W535C
@@ -2312,6 +2472,41 @@ void loop()
       }
     }
 
+    // ── Authy timers ─────────────────────────────────────────────────────
+    if (authyConfig.enabled &&
+        deviceState.isInState(DeviceState::READY) &&
+        !pinPadState.active && !extensionConfig.nfcPaymentPending) {
+      uint32_t aNow = millis();
+      // Teach session 5-min backup timeout (server also sends teach_ended). The
+      // teach screen must NOT fall back to the ticker — only this ends it.
+      if (authyState.teachActive) {
+        if ((int32_t)(aNow - authyState.teachUntil) >= 0) {
+          LOG_INFO("Teach", "Teach backup timeout - ending session");
+          endAuthTeach();
+        } else if (authyState.needsRefresh) {
+          // After a wallet enrolled: show the next register challenge.
+          authyState.needsRefresh = false;
+          if (requestAuthLnurl()) showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+        }
+      } else if (authyState.qrShown) {
+        // Identity-trigger QR idle for PRODUCT_TIMEOUT → back to start screen.
+        // The QR is fetched fresh on each open, so it never outlives its k1.
+        if (aNow - authyState.qrShownAt >= (uint32_t)PRODUCT_TIMEOUT) {
+          LOG_INFO("Authy", "Identity QR idle - back to start screen");
+          authyShowStart();
+        } else if (authyState.needsRefresh) {
+          authyState.needsRefresh = false;
+          authyShowQR();   // re-open with a fresh challenge (e.g. after enroll)
+        }
+      } else if (authyState.infoUntil > 0) {
+        // Transient hint (e.g. "IDENTITY LOGIN DISABLED") → back to start.
+        if (aNow >= authyState.infoUntil) {
+          authyState.infoUntil = 0;
+          authyShowStart();
+        }
+      }
+    }
+
     // ── Numerical product selection timers (Touch 3.5 multi-channel) ─────
     #ifdef BOARD_JC3248W535C
     if (t35AmbientConfig.numericSelect &&
@@ -2409,6 +2604,12 @@ void loop()
         uint16_t x = touch.getX();
         uint16_t y = touch.getY();
         bool isTouched = touch.isPressed();
+        // One log line per press (rising edge) so taps are visible for
+        // diagnosing hit-detection issues.
+        if (isTouched && !wasTouched) {
+          LOG_INFO("Touch", String("tap x=") + String(x) + " y=" + String(y) +
+                            " g=" + String(gesture));
+        }
 #else
       // Headless mode - no touch events
       if (false) {
@@ -2455,15 +2656,32 @@ void loop()
             } else if (!pinPadState.showError) {
               // Normal input — only when no error is displayed
               if (hit >= 0 && hit <= 9) {
-                if (pinPadState.numDigits < 4) {
+                if (pinPadState.numDigits < pinPadState.maxDigits) {
                   pinPadState.digits[pinPadState.numDigits++] = '0' + hit;
                   pinPadState.digits[pinPadState.numDigits]   = '\0';
                   showPinPadScreen(pinPadState);
-                  if (pinPadState.numDigits == 4) {
-                    sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
-                    pinPadState.submitted    = true;
-                    pinPadState.submittedAt  = millis();
-                    pinPadState.pendingShown = false;
+                  if (pinPadState.numDigits == pinPadState.maxDigits) {
+                    if (pinPadState.teachMode) {
+                      // Authy: verify the teach PIN synchronously. On success,
+                      // open the teach session and show the register QR.
+                      if (submitTeachPin(String(pinPadState.digits))) {
+                        pinPadState.active     = false;
+                        authyState.teachActive = true;
+                        authyState.teachUntil  = millis() + AUTHY_TEACH_TIMEOUT_MS;
+                        authyState.infoMsg     = "Teach mode";
+                        // action=register; "Learning Identities" label + CANCEL
+                        if (requestAuthLnurl())
+                          showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+                        LOG_INFO("Teach", "Teach active - showing register QR");
+                      } else {
+                        showPinPadScreen(pinPadState); // error set by submitTeachPin
+                      }
+                    } else {
+                      sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
+                      pinPadState.submitted    = true;
+                      pinPadState.submittedAt  = millis();
+                      pinPadState.pendingShown = false;
+                    }
                   }
                 }
               } else if (hit == 10) {  // backspace
@@ -2492,6 +2710,52 @@ void loop()
           goto skip_product_touch_processing;
         }
         #endif // ENABLE_NFC
+
+        // ── Authy teach mode: only the CANCEL button ends teaching ──────────
+        if (authyConfig.enabled && authyState.teachActive) {
+          if (isTouched && !wasTouched) {
+            activityTracking.lastActivityTime = millis();
+            if (authTeachCancelHit(x, y)) {
+              LOG_INFO("Teach", "CANCEL pressed - ending teach session");
+              endAuthTeach();
+            }
+          }
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
+
+        // ── Authy identity trigger: touch the start screen to open the QR ──
+        // (Separates the IDENTITY TRIGGER idle screen from the actual auth QR
+        // so it's always clear which one is shown.)
+        if (authyConfig.enabled) {
+          if (isTouched && !wasTouched) {
+            activityTracking.lastActivityTime = millis();
+            if (!authyState.qrShown && !authyState.payPage) {
+              // Idle IDENTITY TRIGGER start screen (no tab): a touch anywhere
+              // opens the identity-trigger login QR.
+              LOG_INFO("Authy", "Touch on start screen - opening identity QR");
+              authyShowQR();
+            } else if (authyConfig.dualPage && authTabHit(x, y)) {
+              // The bottom-left tab flips between the identity QR and the
+              // payment page (only present on the QR pages, not on idle).
+              if (authyState.payPage) {
+                LOG_INFO("Authy", "Tab pressed - back to IDENTITY login QR");
+                authyState.payPage = false;
+                authyShowQR();
+              } else {
+                LOG_INFO("Authy", "Tab pressed - to PAYMENT page");
+                authyState.payPage = true;
+                authyState.qrShown = false;
+                authyShowStart();   // renders the payment page (payPage=true)
+              }
+            } else if (authyState.qrShown) {
+              authyState.qrShownAt = millis();   // identity QR: keep it alive
+            }
+            // Payment page, non-tab touch: nothing (QR is scannable/NFC-payable).
+          }
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
 
         // ── Mini-PoS BTC ticker (screensaver in "always" mode) ──────────
         // One touch anywhere on the ticker returns to the amount entry screen.
@@ -4546,6 +4810,24 @@ void processPaymentEvent(String &payloadStr)
         showPinPadScreen(pinPadState);
         return;
       }
+      // ── Authy (LNURL-auth) WS events ──────────────────────────────────
+      if (event && strcmp(event, "auth_enrolled") == 0) {
+        // A new wallet was registered during the teach session. Keep the
+        // session open and fetch the next register challenge; show a hint.
+        LOG_INFO("Authy", "Wallet enrolled");
+        authyState.enrolledPrompt = true;
+        authyState.infoMsg = "Wallet registered";
+        authyState.infoUntil = millis() + 4000;
+        authyState.needsRefresh = true;
+        return;
+      }
+      if (event && strcmp(event, "teach_ended") == 0) {
+        // Server closed the teach session (timeout) → back to the start screen.
+        LOG_INFO("Authy", "Teach session ended (server) - back to start screen");
+        authyState.reset();
+        authyShowStart();
+        return;
+      }
     }
   }
 
@@ -4584,5 +4866,11 @@ void processPaymentEvent(String &payloadStr)
 #endif
 
     processNormalPayment(pin, duration);
+
+    // Authy: a successful identification fired the relay and spent the k1 —
+    // return to the IDENTITY TRIGGER start screen (unless teaching).
+    if (authyConfig.enabled && !authyState.teachActive) {
+      authyShowStart();
+    }
   }
 }

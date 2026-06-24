@@ -19,7 +19,7 @@ static const uint8_t kReadCmd[11] = {
 TouchAXS15231B::TouchAXS15231B(TwoWire &wire, int sda, int scl, int rst, int irq)
   : _wire(&wire), _sda(sda), _scl(scl), _rst(rst), _irq(irq),
     _initialized(false), _x(0), _y(0), _points(0), _gesture(0),
-    _lastReadMs(0), _errCount(0),
+    _lastReadMs(0), _lastTouchMs(0), _errCount(0),
     _wasPressed(false), _releaseEdgePending(false) {}
 
 bool TouchAXS15231B::probe() {
@@ -56,11 +56,12 @@ bool TouchAXS15231B::begin() {
 bool TouchAXS15231B::readTouchData() {
   if (!_initialized) return false;
 
-  // Cache for ~30 ms — at 30+ Hz that's still ~33 reads/s, plenty for touch
-  // responsiveness while avoiding hammering the bus (earlier 10 ms cache led
-  // to the bus occasionally getting stuck).
+  // Cache window = effective sampling interval (available() reads at most once
+  // per window). 30 ms (~33 Hz) was missing quick taps on small buttons, so use
+  // 18 ms (~55 Hz). The earlier bus-stuck issue at 10 ms is now guarded by the
+  // response draining below, so a faster-but-not-extreme poll is safe.
   unsigned long now = millis();
-  if (now - _lastReadMs < 30) return _points > 0;
+  if (now - _lastReadMs < 18) return _points > 0;
   _lastReadMs = now;
 
   // Send the 11-byte read command
@@ -108,10 +109,19 @@ bool TouchAXS15231B::readTouchData() {
   // 0xFF is the sensor's idle/no-touch marker (not 0). Treat anything outside
   // [1..2] as "no touch".
   if (numPts == 0 || numPts > 2) {
+    // Release debounce: the AXS15231B intermittently reports no-touch for a
+    // single read in the middle of a held press, which would otherwise split
+    // one touch into many false press/release edges (observed as dozens of
+    // "taps" per second). Keep reporting the last press for a short grace
+    // window so a held finger stays a single, stable press.
+    if (_points > 0 && (now - _lastTouchMs) < 60) {
+      return true;   // keep last _x/_y/_points — still "pressed"
+    }
     _points = 0;
     return false;
   }
   _points = numPts;
+  _lastTouchMs = now;
 
   // Native portrait coords from the sensor (tx: 0..PANEL_W-1, ty: 0..PANEL_H-1)
   uint16_t tx = ((buf[2] & 0x0F) << 8) | buf[3];

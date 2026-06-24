@@ -27,6 +27,7 @@ void stepTwoScreen();
 void stepThreeScreen();
 void actionTimeScreen();
 void updateActionTimeCountdown(int remainingSecs);
+void identityTriggerScreen();
 void nfcPendingScreen();
 void nfcNoLuckScreen();
 void nfcNotSupportedScreen();
@@ -76,6 +77,15 @@ int  productSelectHitTest(uint16_t x, uint16_t y);
 void showProductSelectQRScreen(String label, int pin);
 // True when the touch hits the small Cancel button on the product QR screen
 bool productSelectQrCancelHit(uint16_t x, uint16_t y);
+// Authy teach screen: registration QR + "Learning Identities" + CANCEL button
+void showAuthTeachScreen(String label, int pin);
+bool authTeachCancelHit(uint16_t x, uint16_t y);
+// Authy dual-page: identity QR + payment page, bottom-left tab to switch pages
+void showAuthIdentityScreen(String label, int pin);
+void showAuthPayScreen(String label, int pin);
+bool authTabHit(uint16_t x, uint16_t y);
+// Red hint shown when the server reports Identities disabled (HTTP 403)
+void authIdentityDisabledScreen();
 #else
 inline void showMiniPosInputScreen() {}
 inline int  miniPosHitTest(uint16_t, uint16_t) { return -1; }
@@ -87,6 +97,12 @@ inline void updateProductSelectBlockHeight() {}
 inline int  productSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showProductSelectQRScreen(String, int) {}
 inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
+inline void showAuthTeachScreen(String, int) {}
+inline bool authTeachCancelHit(uint16_t, uint16_t) { return false; }
+inline void showAuthIdentityScreen(String, int) {}
+inline void showAuthPayScreen(String, int) {}
+inline bool authTabHit(uint16_t, uint16_t) { return false; }
+inline void authIdentityDisabledScreen() {}
 #endif
 
 #else
@@ -109,6 +125,7 @@ inline void stepOneScreen() {}
 inline void stepTwoScreen() {}
 inline void stepThreeScreen() {}
 inline void actionTimeScreen() {}
+inline void identityTriggerScreen() {}
 inline void updateActionTimeCountdown(int) {}
 inline void nfcPendingScreen() {}
 inline void nfcNoLuckScreen() {}
@@ -143,5 +160,11 @@ inline void updateProductSelectBlockHeight() {}
 inline int  productSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showProductSelectQRScreen(String, int) {}
 inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
+inline void showAuthTeachScreen(String, int) {}
+inline bool authTeachCancelHit(uint16_t, uint16_t) { return false; }
+inline void showAuthIdentityScreen(String, int) {}
+inline void showAuthPayScreen(String, int) {}
+inline bool authTabHit(uint16_t, uint16_t) { return false; }
+inline void authIdentityDisabledScreen() {}
 
 #endif // ENABLE_DISPLAY

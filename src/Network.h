@@ -30,4 +30,10 @@ void nfcLnurlwReceived(const String &lnurlw);
 void sendPinSubmit(const String &sessionId, const String &pin);
 #endif
 
+// ─── Authy (LNURL-auth) teach session ────────────────────────────────────────
+// Open / close a PIN-protected teach session on the zapbox_extension. The teach
+// endpoint answers synchronously (unlike the WS-relayed payment PIN).
+bool submitTeachPin(const String &pin);
+void stopTeachSession();
+
 #endif // NETWORK_H

@@ -91,6 +91,10 @@ PinPadState pinPadState;
 MiniPosConfig miniPosConfig;
 MiniPosState miniPosState;
 
+// Authy Mode — LNURL-auth (Touch 3.5)
+AuthyConfig authyConfig;
+AuthyState authyState;
+
 // Numerical Product Selection (Touch 3.5 multi-channel)
 #ifdef BOARD_JC3248W535C
 ProductSelectState productSelectState;

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 #include "Network.h"
 #include "PinConfig.h"
 #include "DeviceState.h"
@@ -317,6 +318,92 @@ void sendPinSubmit(const String &sessionId, const String &pin)
     http.end();
 }
 #endif // ENABLE_NFC
+
+// ─── Authy teach PIN submit ─────────────────────────────────────────────────
+/**
+ * Open a PIN-protected LNURL-auth teach session. Unlike the payment PIN
+ * (which is relayed via WebSocket), the teach endpoint answers synchronously:
+ *
+ *   POST /<apiPath>/api/v1/auth/teach/start?device_id=<id>&pin=<xxxxxx>
+ *   → {"status":"OK","ttl":300}
+ *   → {"status":"ERROR","reason":"wrong_pin","remaining":2}
+ *   → {"status":"ERROR","reason":"locked"}  (3 wrong PINs — re-enable in LNbits)
+ *
+ * Returns true when the session opened. On failure the error is written into
+ * pinPadState so the existing PIN pad screen shows the remaining attempts.
+ */
+bool submitTeachPin(const String &pin)
+{
+    LOG_INFO("Teach", "Submitting teach PIN to server");
+    HTTPClient http;
+    String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+                 + "/api/v1/auth/teach/start?device_id=" + deviceId
+                 + "&pin=" + pin;
+    http.begin(url);
+    http.setConnectTimeout(5000);
+    http.setTimeout(7000);
+
+    int httpCode = http.POST("");
+    String resp = http.getString();
+    http.end();
+
+    if (httpCode != 200) {
+        LOG_ERROR("Teach", String("Teach start HTTP ") + String(httpCode));
+        pinPadState.errorMsg   = (httpCode < 0) ? "Connection failed" : "Server error";
+        pinPadState.showError  = true;
+        pinPadState.errorStart = millis();
+        return false;
+    }
+
+    JsonDocument doc;
+    if (deserializeJson(doc, resp)) {
+        pinPadState.errorMsg   = "Bad response";
+        pinPadState.showError   = true;
+        pinPadState.errorStart  = millis();
+        return false;
+    }
+    const char *status = doc["status"] | "ERROR";
+    if (strcmp(status, "OK") == 0) {
+        LOG_INFO("Teach", "Teach session opened");
+        return true;
+    }
+
+    const char *reason = doc["reason"] | "wrong_pin";
+    memset(pinPadState.digits, 0, sizeof(pinPadState.digits));
+    pinPadState.numDigits  = 0;
+    pinPadState.showError  = true;
+    pinPadState.errorStart = millis();
+    if (strcmp(reason, "locked") == 0) {
+        pinPadState.errorMsg = "Teach locked";
+        pinPadState.blocked  = true;
+    } else if (strcmp(reason, "no_teach_pin") == 0) {
+        pinPadState.errorMsg = "No teach PIN set";
+        pinPadState.blocked  = true;
+    } else {
+        int remaining = doc["remaining"] | 0;
+        pinPadState.errorMsg = String(remaining) + " attempt" + (remaining == 1 ? "" : "s") + " left";
+        pinPadState.blocked  = (remaining <= 0);
+    }
+    LOG_WARN("Teach", String("Teach PIN rejected: ") + reason);
+    return false;
+}
+
+/**
+ * Close an open teach session (user cancel / done).
+ *   POST /<apiPath>/api/v1/auth/teach/stop?device_id=<id>
+ */
+void stopTeachSession()
+{
+    HTTPClient http;
+    String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+                 + "/api/v1/auth/teach/stop?device_id=" + deviceId;
+    http.begin(url);
+    http.setConnectTimeout(5000);
+    http.setTimeout(7000);
+    http.POST("");
+    http.end();
+    LOG_INFO("Teach", "Teach session stop requested");
+}
 
 // HTTP-based Internet check (doesn't require WebSocket connection)
 // Tries multiple times to account for DNS/DHCP stabilization delays

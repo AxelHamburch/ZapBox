@@ -47,6 +47,7 @@ extern unsigned long TOUCH_DOUBLE_CLICK_MS;
 // External function declarations from main.cpp
 extern void showHelp();
 extern void configMode();
+extern void startAuthTeachEntry();  // Authy: open 6-digit teach PIN pad
 extern void reportMode();
 extern void showQRScreen();
 extern void showProductQRScreen(String label, int displayPin);
@@ -298,48 +299,61 @@ void handleTouchButton()
   // On the 5th tap the finger must be held for at least 2 s without releasing;
   // releasing early resets the sequence so accidental multi-taps are ignored.
   {
-    static bool     tapLastPressed  = false;
-    static uint8_t  tapCount        = 0;
-    static unsigned long tapFirstTime  = 0;
-    static unsigned long tap5HoldStart = 0;
-    static bool     waitingFor5Hold = false;
+    static bool          tapLastPressed = false;
+    static uint8_t       tapCount       = 0;
+    static unsigned long tapLastTime    = 0;   // millis() of the last tap (rising edge)
+    static unsigned long holdStart      = 0;   // millis() the current touch began
+    static bool          gestureFired   = false; // one trigger per continuous hold
 
     bool tapNow = touch.isPressed();
+    unsigned long now = millis();
 
-    if (tapNow && !tapLastPressed) {           // rising edge = new tap
-      unsigned long now = millis();
-      if (tapCount == 0 || (now - tapFirstTime) > 3000) {
-        tapCount = 1;
-        tapFirstTime = now;
-        waitingFor5Hold = false;
-      } else {
-        tapCount++;
+    // While the PIN pad or an open teach session is showing, taps belong to
+    // those screens — don't let them re-arm the config/teach gesture.
+    if (pinPadState.active || authyState.teachActive) {
+      tapCount       = 0;
+      gestureFired   = false;
+      tapLastPressed = tapNow;
+    } else {
+      if (tapNow && !tapLastPressed) {           // rising edge = new tap
+        // Start a fresh sequence on the first tap or after a long gap. Crucially,
+        // RELEASING between taps does NOT reset the count — that is what lets a
+        // 6th tap follow the 5th (6 taps + hold = Teach Mode). The previous
+        // "released too early" reset made 6 taps impossible.
+        if (tapCount == 0 || (now - tapLastTime) > 1500) {
+          tapCount = 1;
+        } else if (tapCount < 250) {
+          tapCount++;
+        }
+        tapLastTime  = now;
+        holdStart    = now;            // hold timer measures THIS press
+        gestureFired = false;
+        Serial.printf("[CONFIG_TAP] tap %u\n", tapCount);
+        if (tapCount == 5)
+          Serial.println("[CONFIG_TAP] 5 taps — keep holding 2 s for Config Mode");
+        if (authyConfig.enabled && tapCount == 6)
+          Serial.println("[TEACH_TAP] 6 taps — keep holding 2 s for Teach Mode");
+      } else if (tapNow && !gestureFired && tapCount >= 5) {
+        // Finger still down after the 5th/6th tap — fire after a 2 s hold.
+        if (now - holdStart >= 2000) {
+          gestureFired       = true;
+          uint8_t finalCount = tapCount;
+          tapCount           = 0;
+          tapLastPressed     = tapNow;
+          // Authy: exactly 5 taps + hold = Config; 6 (or more) taps + hold =
+          // Teach. Without Authy, any >=5 taps + hold = Config (unchanged).
+          if (authyConfig.enabled && finalCount >= 6) {
+            Serial.println("[TEACH_TAP] 6-tap hold confirmed -> Teach Mode");
+            startAuthTeachEntry();
+          } else {
+            Serial.println("[CONFIG_TAP] hold confirmed -> Config Mode");
+            configMode();
+          }
+          return;
+        }
       }
-      Serial.printf("[CONFIG_TAP] tap %u/5 (%lu ms)\n", tapCount, now - tapFirstTime);
-      if (tapCount >= 5) {
-        // Don't trigger yet — wait for hold
-        tap5HoldStart   = now;
-        waitingFor5Hold = true;
-        Serial.println("[CONFIG_TAP] 5th tap detected - hold for 2 s to enter Config Mode");
-      }
-    } else if (!tapNow && tapLastPressed && waitingFor5Hold) {
-      // Finger lifted before 2 s hold → abort
-      Serial.println("[CONFIG_TAP] Released too early - Config Mode aborted, resetting");
-      tapCount        = 0;
-      waitingFor5Hold = false;
-    } else if (tapNow && waitingFor5Hold) {
-      // Finger still held — check if 2 s elapsed
-      if (millis() - tap5HoldStart >= 2000) {
-        tapCount        = 0;
-        waitingFor5Hold = false;
-        Serial.println("[CONFIG_TAP] 2 s hold confirmed -> Config Mode");
-        configMode();
-        tapLastPressed = tapNow;
-        return;
-      }
+      tapLastPressed = tapNow;
     }
-
-    tapLastPressed = tapNow;
   }
 
   // 3 taps on physical button + hold on 3rd tap (≥ 1 s) → Report mode

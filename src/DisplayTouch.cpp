@@ -913,6 +913,42 @@ void actionTimeScreen() {
   flushDisplay();
 }
 
+// IDENTITY TRIGGER — Authy idle/start screen. Same look as ACTION TIME
+// ("IDENTITY" big at top, "TRIGGER" in the inverted box), but no countdown.
+// Shown while no auth QR is requested, so the NT3H tag is not rewritten. No tab
+// here: the dual-page switch lives on the QR pages, not on the idle screen.
+void identityTriggerScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  if (isPortrait()) {
+    drawCenter(SCR_W / 2, 160, "IDENTITY", themeForeground, themeBackground, 4);
+    fillRect(AT_V_BOX_X, AT_V_BOX_Y, AT_V_BOX_W, AT_V_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, AT_V_LABEL_Y, "TRIGGER", themeBackground, themeForeground, 4);
+    drawCenter(SCR_W / 2, AT_V_BOX_Y + AT_V_BOX_H + 35, "touch to start..",
+               themeForeground, themeBackground, 2);
+  } else {
+    // Landscape: nudge the whole block down just a little.
+    const int dy = 12;
+    drawCenter(SCR_W / 2, 82 + dy, "IDENTITY", themeForeground, themeBackground, 5);
+    fillRect(AT_BOX_X, AT_BOX_Y + dy, AT_BOX_W, AT_BOX_H, themeForeground);
+    drawCenter(SCR_W / 2, AT_LABEL_Y + dy, "TRIGGER", themeBackground, themeForeground, 4);
+    drawCenter(SCR_W / 2, AT_BOX_Y + dy + AT_BOX_H + 35, "touch to start..",
+               themeForeground, themeBackground, 2);
+  }
+  flushDisplay();
+}
+
+// Shown when the device tries to open the identity login but the server reports
+// Identities disabled (HTTP 403). Red message (error → colour exception OK).
+void authIdentityDisabledScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+  int cy = SCR_H / 2;
+  drawCenter(SCR_W / 2, cy - 18, "IDENTITY LOGIN", TFT_RED, themeBackground, isPortrait() ? 2 : 3);
+  drawCenter(SCR_W / 2, cy + 22, "DISABLED",       TFT_RED, themeBackground, isPortrait() ? 3 : 4);
+  flushDisplay();
+}
+
 void updateActionTimeCountdown(int remainingSecs) {
   DisplayLock l; if (!_gfx) return;
   if (remainingSecs < 0) remainingSecs = 0;
@@ -1643,12 +1679,13 @@ void showPinPadScreen(const PinPadState &state) {
         // Horizontal divider
         fillRect(0, PP_V_TOP_H - 1, PANEL_W, 1, themeForeground);
 
-        // "Enter PIN"
-        drawCenter(PANEL_W / 2, 28, "Enter PIN", themeForeground, themeBackground, 3);
+        // "Enter PIN" / "Teach PIN"
+        drawCenter(PANEL_W / 2, 28, state.teachMode ? "Teach PIN" : "Enter PIN",
+                   themeForeground, themeBackground, 3);
 
-        // 4 PIN dots centered in top panel
-        int firstDotX = PANEL_W / 2 - 3 * PP_V_DOT_GAP / 2;
-        for (int i = 0; i < 4; i++) {
+        // PIN dots (4 for payment, 6 for teach) centered in top panel
+        int firstDotX = PANEL_W / 2 - (state.maxDigits - 1) * PP_V_DOT_GAP / 2;
+        for (int i = 0; i < state.maxDigits; i++) {
             drawPinDot(firstDotX + i * PP_V_DOT_GAP, PP_V_DOT_Y,
                        i < state.numDigits, themeForeground, themeBackground);
         }
@@ -1699,13 +1736,20 @@ void showPinPadScreen(const PinPadState &state) {
         // Vertical divider
         fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
 
-        // "Enter PIN"
-        drawCenter(PP_LEFT_CX, 38, "Enter PIN", themeForeground, themeBackground, 3);
+        // "Enter PIN" / "Teach PIN"
+        drawCenter(PP_LEFT_CX, 38, state.teachMode ? "Teach PIN" : "Enter PIN",
+                   themeForeground, themeBackground, 3);
 
-        // 4 PIN dots
-        int firstDotX = PP_LEFT_CX - 3 * PP_DOT_GAP / 2;
-        for (int i = 0; i < 4; i++) {
-            drawPinDot(firstDotX + i * PP_DOT_GAP, PP_DOT_Y,
+        // PIN dots (4 for payment, 6 for teach). Shrink the spacing if the row
+        // would otherwise collide with the left edge and the numpad divider —
+        // 6 dots at the 4-digit gap overflow the narrow left panel.
+        int dotGap = PP_DOT_GAP;
+        const int maxSpan = PP_NP_X - 40;      // ~20px margin each side
+        if ((state.maxDigits - 1) * dotGap > maxSpan)
+            dotGap = maxSpan / (state.maxDigits - 1);
+        int firstDotX = PP_LEFT_CX - (state.maxDigits - 1) * dotGap / 2;
+        for (int i = 0; i < state.maxDigits; i++) {
+            drawPinDot(firstDotX + i * dotGap, PP_DOT_Y,
                        i < state.numDigits, themeForeground, themeBackground);
         }
 
@@ -1812,6 +1856,12 @@ static const int MP_V_BTN_H   = 40;
 
 // Cancel button on the Mini-PoS QR screen (bottom-right corner)
 static const int MP_QRC_W = 90, MP_QRC_H = 34;
+// Corner margin for on-screen edge buttons (CANCEL, dual-page tab). Must be
+// >= the 14 px physical-button reservation at each screen edge (see the
+// inButtonArea check in the touch loop), otherwise the bottom/side of the
+// button falls into that strip and its taps get swallowed before reaching the
+// button handler.
+static const int MP_QRC_M = 20;
 
 static void drawMiniPosAmountBox(int bx, int by, int bw, int bh) {
     drawRectBorder(bx, by, bw, bh, 2, themeForeground);
@@ -1974,13 +2024,13 @@ void showMiniPosQRScreen() {
     if (isPortrait()) {
         drawQRAt(qrText.c_str(), QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
         drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
-        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     } else {
         drawQRAt(qrText.c_str(), QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
         drawLabelBox(words, wordCount, qrFg, qrBg);
-        int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     }
@@ -1988,14 +2038,12 @@ void showMiniPosQRScreen() {
 }
 
 bool miniPosQrCancelHit(uint16_t x, uint16_t y) {
-    if (isPortrait()) {
-        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
-        return x >= (uint16_t)cbx && x <= (uint16_t)(cbx + MP_QRC_W) &&
-               y >= (uint16_t)cby && y <= (uint16_t)(cby + MP_QRC_H);
-    }
-    int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
-    return x >= (uint16_t)cbx && x <= (uint16_t)(cbx + MP_QRC_W) &&
-           y >= (uint16_t)cby && y <= (uint16_t)(cby + MP_QRC_H);
+    // Generous hit zone: the whole bottom-right corner, from a bit above/left of
+    // the drawn button out to the screen edge. The drawn button stays small, but
+    // the touch target is large so a quick tap registers reliably.
+    const int pad = 26;
+    int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
+    return x >= (uint16_t)(cbx - pad) && y >= (uint16_t)(cby - pad);
 }
 
 void miniPosPaidScreen() {
@@ -2172,13 +2220,13 @@ void showProductSelectQRScreen(String label, int pin) {
     if (isPortrait()) {
         drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
         drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
-        int cbx = PANEL_W - MP_QRC_W - 10, cby = PANEL_H - MP_QRC_H - 6;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     } else {
         drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
         drawLabelBox(words, wordCount, qrFg, qrBg);
-        int cbx = SCR_W - MP_QRC_W - 12, cby = SCR_H - MP_QRC_H - 8;
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
     }
@@ -2187,6 +2235,105 @@ void showProductSelectQRScreen(String label, int pin) {
 
 bool productSelectQrCancelHit(uint16_t x, uint16_t y) {
     return miniPosQrCancelHit(x, y);  // identical button geometry
+}
+
+// Authy teach screen: registration QR (from requestAuthLnurl) with a "Learning
+// Identities" indicator and a dedicated CANCEL button bottom-right (same look as
+// the Mini-PoS invoice screen). Touching anywhere else keeps teaching — only the
+// CANCEL button ends the session. Landscape shows the indicator in the QR label
+// box; portrait shows it top-left so the CANCEL button keeps the bottom-right.
+void showAuthTeachScreen(String label, int pin) {
+    DisplayLock l;
+    if (!_gfx) return;
+    label = sanitizeLabel(label);
+    String words[3];
+    int wordCount;
+    splitLabelWords(label, pin, words, wordCount);
+
+    uint16_t qrFg = themeForeground;
+    uint16_t qrBg = themeBackground;
+    if (themeInvertQr()) { qrFg = themeBackground; qrBg = themeForeground; }
+
+    fillScreen(qrBg);
+    if (isPortrait()) {
+        // "Learning Identities" top-left (two lines), QR + CANCEL below.
+        drawString(10, 12, "Learning", qrFg, qrBg, 2);
+        drawString(10, 34, "Identities", qrFg, qrBg, 2);
+        drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
+        drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
+        drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
+    } else {
+        drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+        drawLabelBox(words, wordCount, qrFg, qrBg);
+        int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
+        drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
+        drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
+    }
+    flushDisplay();
+}
+
+bool authTeachCancelHit(uint16_t x, uint16_t y) {
+    return miniPosQrCancelHit(x, y);  // identical button geometry
+}
+
+// ── Authy dual-page tab button (bottom-left corner) ─────────────────────────
+// Mirrors the CANCEL button geometry but on the opposite (left) corner, so it
+// never collides with a CANCEL/INVOICE button on the right. Wide enough for the
+// "pay login >" / "< ID login" labels.
+static const int AT_TAB_W = 150, AT_TAB_H = 34;
+static void drawAuthTab(const char *txt, uint16_t fg, uint16_t bg) {
+    int tx = MP_QRC_M, ty = SCR_H - AT_TAB_H - MP_QRC_M;
+    drawRectBorder(tx, ty, AT_TAB_W, AT_TAB_H, 2, fg);
+    drawCenter(tx + AT_TAB_W / 2, ty + AT_TAB_H / 2, txt, fg, bg, 2);
+}
+bool authTabHit(uint16_t x, uint16_t y) {
+    // Generous hit zone: the whole bottom-left corner (see miniPosQrCancelHit),
+    // but kept clear of the physical-button edge strip via MP_QRC_M.
+    const int pad = 26;
+    int tx = MP_QRC_M, ty = SCR_H - AT_TAB_H - MP_QRC_M;
+    return x <= (uint16_t)(tx + AT_TAB_W + pad) && y >= (uint16_t)(ty - pad);
+}
+
+// Shared: QR (from lightningConfig.lightning) + label box + a bottom-left tab.
+// Used by both dual-page QR pages. In portrait the label box is shortened so it
+// does not collide with the tab.
+static void drawAuthQrWithTab(String label, int pin, const char *tabTxt) {
+    label = sanitizeLabel(label);
+    String words[3];
+    int wordCount;
+    splitLabelWords(label, pin, words, wordCount);
+
+    uint16_t qrFg = themeForeground;
+    uint16_t qrBg = themeBackground;
+    if (themeInvertQr()) { qrFg = themeBackground; qrBg = themeForeground; }
+
+    fillScreen(qrBg);
+    if (isPortrait()) {
+        drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 44, words, wordCount, qrFg, qrBg);
+    } else {
+        drawQRAt(lightningConfig.lightning, QR_X, QR_Y, QR_MOD_SIZE, qrFg, qrBg);
+        drawLabelBox(words, wordCount, qrFg, qrBg);
+    }
+    drawAuthTab(tabTxt, qrFg, qrBg);
+    flushDisplay();
+}
+
+// Dual-page identity-trigger QR: the auth login QR plus a "pay login >" tab
+// (bottom-left) that switches to the classic payment page.
+void showAuthIdentityScreen(String label, int pin) {
+    DisplayLock l;
+    if (!_gfx) return;
+    drawAuthQrWithTab(label, pin, "pay login >");
+}
+
+// Dual-page payment screen: the classic ZapBox product QR for the auth pin plus
+// a "< ID login" tab (bottom-left) that switches back to the identity QR.
+void showAuthPayScreen(String label, int pin) {
+    DisplayLock l;
+    if (!_gfx) return;
+    drawAuthQrWithTab(label, pin, "< ID login");
 }
 
 void nfcTestScreen(String lnurlw) {

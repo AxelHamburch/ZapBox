@@ -549,3 +549,58 @@ bool fetchMiniPosLastPay(String &amountOut)
   LOG_INFO("MiniPoS", "Last paid amount: " + amountOut);
   return true;
 }
+
+/**
+ * Authy (LNURL-auth): GET /<apiPath>/api/v1/auth/<deviceId>?pin=&duration=
+ * The extension creates a fresh single-use k1 and returns the bech32 auth
+ * LNURL plus the action it expects ("auth" in normal operation, "register"
+ * while a teach session is open). On success the LNURL is placed in the QR/NFC
+ * buffer. The k1 is single-use with a short TTL, so the caller refreshes it
+ * periodically. No API key needed — the endpoint only hands out a challenge.
+ * Response: {"lnurl": "lnurl1...", "k1": "<hex>", "action": "auth|register"}
+ */
+bool requestAuthLnurl(String *actionOut, int *httpOut)
+{
+  if (actionOut) *actionOut = "";
+  if (httpOut) *httpOut = 0;
+  if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
+    LOG_WARN("Authy", "Cannot fetch auth LNURL - server or deviceId not configured");
+    return false;
+  }
+
+  HTTPClient http;
+  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+             + "/api/v1/auth/" + deviceId
+             + "?pin=" + String(authyConfig.authPin)
+             + "&duration=" + String(authyConfig.authDuration);
+  http.begin(url);
+  http.setConnectTimeout(5000);
+  http.setTimeout(10000);
+
+  int httpCode = http.GET();
+  if (httpOut) *httpOut = httpCode;
+  if (httpCode != 200) {
+    http.end();
+    LOG_ERROR("Authy", String("Auth LNURL HTTP ") + String(httpCode));
+    return false;
+  }
+  String resp = http.getString();
+  http.end();
+
+  JsonDocument doc;
+  if (deserializeJson(doc, resp)) {
+    LOG_ERROR("Authy", "Auth LNURL JSON parse error");
+    return false;
+  }
+  const char *lnurl = doc["lnurl"];
+  if (!lnurl || strlen(lnurl) == 0) {
+    LOG_ERROR("Authy", "Auth LNURL response missing lnurl");
+    return false;
+  }
+  const char *action = doc["action"];
+  if (actionOut && action) *actionOut = String(action);
+
+  updateLightningQR(String(lnurl));
+  LOG_INFO("Authy", String("Auth LNURL ready (action=") + String(action ? action : "?") + ")");
+  return true;
+}
