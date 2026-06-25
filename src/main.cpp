@@ -795,7 +795,7 @@ void readFiles()
       // Index 57: numerical product selection ("no" | "yes") — multi-channel only,
       // mutually exclusive with One for All (the installer enforces this too)
       String numSel = readGpioMode(57);
-      t35AmbientConfig.numericSelect = (numSel == "yes" && multiChannelConfig.mode == "duo");
+      t35AmbientConfig.numericSelect = (numSel == "yes" && (multiChannelConfig.mode == "duo" || multiChannelConfig.mode == "modeselect"));
       if (t35AmbientConfig.numericSelect && t35AmbientConfig.oneForAll) {
         t35AmbientConfig.numericSelect = false;
         LOG_INFO("Config", "T35: Numeric product selection disabled (One for All active)");
