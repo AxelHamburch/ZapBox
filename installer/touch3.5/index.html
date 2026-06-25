@@ -1616,7 +1616,7 @@
             if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos' || isMs) ? 'block' : 'none';
             if (activationHint) activationHint.style.display = (mode === 'minipos') ? 'block' : 'none';
             // Numerical product selection applies to Multi-channel only (not mode-select to keep things simple)
-            if (numericSelect) numericSelect.style.display = (mode === 'duo') ? 'block' : 'none';
+            if (numericSelect) numericSelect.style.display = (mode === 'duo' || isMs) ? 'block' : 'none';
             updateNumericSelectState();
         }
 
