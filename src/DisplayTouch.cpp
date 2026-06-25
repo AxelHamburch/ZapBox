@@ -1387,6 +1387,103 @@ void updateProductSelectBlockHeight() {
   flushDisplay();
 }
 
+// ============================================================================
+// MODE SELECTION SCREEN (Touch 3.5 — "modeselect" startup)
+// ============================================================================
+static void drawRectBorder(int x, int y, int w, int h, int t, uint16_t color); // defined below
+// Layout constants — landscape (480×320)
+static const int MS_L_BTN_W   = 219;
+static const int MS_L_BTN_H   = 100;
+static const int MS_L_LEFT_X  =  15;
+static const int MS_L_RIGHT_X = 246;
+static const int MS_L_ROW1_Y  =  80;
+static const int MS_L_ROW2_Y  = 192;
+
+// Layout constants — portrait (320×480)
+static const int MS_P_BTN_W  = 280;
+static const int MS_P_BTN_H  =  78;
+static const int MS_P_BTN_X  =  20;
+static const int MS_P_ROW1_Y = 105;
+static const int MS_P_ROW2_Y = 193;
+static const int MS_P_ROW3_Y = 281;
+static const int MS_P_ROW4_Y = 369;
+
+void showModeSelectionScreen() {
+  DisplayLock l; if (!_gfx) return;
+  fillScreen(themeBackground);
+
+  if (isPortrait()) {
+    drawCenter(SCR_W / 2, 55, "Mode Selection", themeForeground, themeBackground, 3);
+
+    // Button 1 — Single channel (two lines)
+    drawRectBorder(MS_P_BTN_X, MS_P_ROW1_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 16, "SINGLE",   themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 46, "CHANNEL",  themeForeground, themeBackground, 3);
+
+    // Button 2 — Multi-channel (two lines)
+    drawRectBorder(MS_P_BTN_X, MS_P_ROW2_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 16, "MULTI",    themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 46, "CHANNEL",  themeForeground, themeBackground, 3);
+
+    // Button 3 — Mini-PoS (single line centered)
+    drawRectBorder(MS_P_BTN_X, MS_P_ROW3_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW3_Y + 31, "MINI-POS", themeForeground, themeBackground, 3);
+
+    // Button 4 — Authy (single line centered)
+    drawRectBorder(MS_P_BTN_X, MS_P_ROW4_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW4_Y + 31, "AUTHY",    themeForeground, themeBackground, 3);
+
+  } else {
+    // Landscape
+    drawCenter(SCR_W / 2, 42, "Mode Selection", themeForeground, themeBackground, 3);
+
+    // Button 1 — Single channel  (top-left, two lines)
+    drawRectBorder(MS_L_LEFT_X, MS_L_ROW1_Y, MS_L_BTN_W, MS_L_BTN_H, 2, themeForeground);
+    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW1_Y + 36, "SINGLE",   themeForeground, themeBackground, 3);
+    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW1_Y + 68, "CHANNEL",  themeForeground, themeBackground, 3);
+
+    // Button 2 — Multi-channel  (top-right, two lines)
+    drawRectBorder(MS_L_RIGHT_X, MS_L_ROW1_Y, MS_L_BTN_W, MS_L_BTN_H, 2, themeForeground);
+    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW1_Y + 36, "MULTI",    themeForeground, themeBackground, 3);
+    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW1_Y + 68, "CHANNEL",  themeForeground, themeBackground, 3);
+
+    // Button 3 — Mini-PoS  (bottom-left, single line centered)
+    drawRectBorder(MS_L_LEFT_X, MS_L_ROW2_Y, MS_L_BTN_W, MS_L_BTN_H, 2, themeForeground);
+    drawCenter(MS_L_LEFT_X  + MS_L_BTN_W/2, MS_L_ROW2_Y + 52, "MINI-POS", themeForeground, themeBackground, 3);
+
+    // Button 4 — Authy  (bottom-right, single line centered)
+    drawRectBorder(MS_L_RIGHT_X, MS_L_ROW2_Y, MS_L_BTN_W, MS_L_BTN_H, 2, themeForeground);
+    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW2_Y + 52, "AUTHY",    themeForeground, themeBackground, 3);
+  }
+
+  flushDisplay();
+}
+
+// Returns: 1=Single, 2=Multi-channel, 3=Mini-PoS, 4=Authy, -1=no hit
+int modeSelectHitTest(uint16_t x, uint16_t y) {
+  if (isPortrait()) {
+    const uint16_t bx = MS_P_BTN_X, bw = MS_P_BTN_W;
+    if (x < bx || x > bx + bw) return -1;
+    if (y >= MS_P_ROW1_Y && y < MS_P_ROW1_Y + MS_P_BTN_H) return 1;
+    if (y >= MS_P_ROW2_Y && y < MS_P_ROW2_Y + MS_P_BTN_H) return 2;
+    if (y >= MS_P_ROW3_Y && y < MS_P_ROW3_Y + MS_P_BTN_H) return 3;
+    if (y >= MS_P_ROW4_Y && y < MS_P_ROW4_Y + MS_P_BTN_H) return 4;
+    return -1;
+  } else {
+    // Top row
+    if (y >= MS_L_ROW1_Y && y < MS_L_ROW1_Y + MS_L_BTN_H) {
+      if (x >= MS_L_LEFT_X  && x < MS_L_LEFT_X  + MS_L_BTN_W) return 1;
+      if (x >= MS_L_RIGHT_X && x < MS_L_RIGHT_X + MS_L_BTN_W) return 2;
+    }
+    // Bottom row
+    if (y >= MS_L_ROW2_Y && y < MS_L_ROW2_Y + MS_L_BTN_H) {
+      if (x >= MS_L_LEFT_X  && x < MS_L_LEFT_X  + MS_L_BTN_W) return 3;
+      if (x >= MS_L_RIGHT_X && x < MS_L_RIGHT_X + MS_L_BTN_W) return 4;
+    }
+    return -1;
+  }
+}
+
 void productSelectionScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);

@@ -269,8 +269,19 @@
                         <option value="duo">Multi-channel — CH01 to CH06</option>
                         <option value="minipos">Mini-PoS — amount entry on display (CH01)</option>
                         <option value="authy">Authy — LNURL-auth identification (CH01)</option>
+                        <option value="modeselect">Mode selection at startup</option>
                     </select>
                 </div>
+            </div>
+
+            <!-- Mode-select info: visible only in mode-select -->
+            <div id="modeSelectInfo" style="display: none; margin-top: 10px;">
+                <p style="color: #888; margin: 0 0 10px 0;"><i><strong>Mode selection at startup</strong> shows a screen on the device after every boot so the user can choose one of the four ZapBox modes by touch — without needing to re-flash. <strong>Each mode must be fully configured below before flashing.</strong> The user is responsible for setting the correct parameters for each mode they want to use.</i></p>
+            </div>
+
+            <!-- Section header for mode-select: SINGLE CHANNEL -->
+            <div id="msSingleHeader" style="display: none; margin: 20px 0 0 0; border-top: 1px solid #555; padding-top: 14px;">
+                <p style="margin: 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 1px;">SINGLE CHANNEL Settings</p>
             </div>
 
             <!-- Single channel info: visible only in single mode -->
@@ -278,65 +289,9 @@
                 <p style="color: #888; margin: 0;"><i>CH01 is wired to <strong>GPIO pin 5</strong> and operates as a relay output (on / off). <br> In LNbits, declare <strong>pin 5</strong> for this channel.</i></p>
             </div>
 
-            <!-- Mini-PoS configuration: visible only in Mini-PoS mode -->
-            <div id="miniPosFields" style="display: none; margin-top: 10px;">
-                <p style="color: #888; margin: 0 0 14px 0;"><i>Mini-PoS works like single channel and switches <strong>GPIO pin 5</strong> — but instead of a fixed QR code, the user enters an amount on the touch display. The ZapBox then requests a Lightning invoice from your LNbits server (zapbox_extension required) and shows it as QR code. It can be paid by scanning, by Bolt Card (PN532) or by mobile phone NFC (NFC Tag 2). After payment, pin 5 is activated with the duration configured for pin 5 in LNbits (fallback: 3000&nbsp;ms).</i></p>
-                <div class="input-wrapper">
-                    <div>
-                        <label for="miniPosCurrency">Currency (ISO Code) for Payments</label>
-                        <input type="text" name="miniPosCurrency" id="miniPosCurrency" value="EUR" placeholder="EUR" maxlength="3" autocomplete="off">
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">e.g. EUR, USD, GBP — or <strong>Sat</strong> for Satoshi</p>
-                    </div>
-                    <div>
-                        <label for="miniPosDecimal">Decimal separator</label>
-                        <select name="miniPosDecimal" id="miniPosDecimal">
-                            <option value="yes" selected>YES — two decimal places (e.g. 0.50 EUR)</option>
-                            <option value="no">NO — whole numbers only (e.g. 1000 Sat)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="miniPosInvoiceKey">Wallet Invoice Key</label>
-                        <input type="text" name="miniPosInvoiceKey" id="miniPosInvoiceKey" placeholder="e.g. c9e68ab036.." maxlength="32" autocomplete="off">
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">"Invoice/read key" of the LNbits wallet that receives the payments (32 characters)</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Authy configuration: visible only in Authy (LNURL-auth) mode -->
-            <div id="authyFields" style="display: none; margin-top: 10px;">
-                <p style="color: #888; margin: 0 0 14px 0;"><i><strong>Authy</strong> identifies a <strong>known wallet</strong> via LNURL-auth (LUD-04) and triggers a relay — like a payment, but <strong>nothing is paid</strong>. The device shows a login QR; a known wallet scans it and the configured pin is switched. New wallets are enrolled in a PIN-protected <strong>teach mode</strong> on the device (6 taps + hold on the 6th). The <strong>Teach-PIN</strong> and the list of identities are set in the LNbits zapbox_extension (v2.4.0+), not here.</i></p>
-                <div class="input-wrapper">
-                    <div>
-                        <label for="authPin">Auth Pin (GPIO triggered on success)</label>
-                        <select name="authPin" id="authPin">
-                            <option value="5" selected>CH01 — GPIO 5 (default relay)</option>
-                            <option value="6">CH02 — GPIO 6</option>
-                            <option value="7">CH03 — GPIO 7</option>
-                            <option value="14">CH04 — GPIO 14</option>
-                            <option value="15">CH05 — GPIO 15</option>
-                            <option value="16">CH06 — GPIO 16</option>
-                        </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known wallets trigger this pin (v1: same action for every identity).</p>
-                    </div>
-                    <div>
-                        <label for="authDuration">Activation time (ms)</label>
-                        <input type="number" name="authDuration" id="authDuration" min="100" max="60000" value="3000">
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How long the relay stays on after a successful identification.</p>
-                    </div>
-                    <div style="grid-column: span 2;">
-                        <label for="authLabel">Identity trigger label (text next to the QR code)</label>
-                        <input type="text" name="authLabel" id="authLabel" value="ZAPBOX Identity Trigger" maxlength="40" autocomplete="off">
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Shown beside the login QR. The <strong>first word</strong> becomes line&nbsp;1, the <strong>second word</strong> line&nbsp;2, and the <strong>rest</strong> line&nbsp;3 — e.g. <em>ZAPBOX Identity Trigger</em> → <em>ZAPBOX</em> / <em>Identity</em> / <em>Trigger</em>.</p>
-                    </div>
-                    <div style="grid-column: span 2;">
-                        <label for="authDualPage">Identity and payment trigger</label>
-                        <select name="authDualPage" id="authDualPage">
-                            <option value="no" selected>No (default) — identity trigger only</option>
-                            <option value="yes">Yes — add a payment page (uses LNbits settings)</option>
-                        </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">If <strong>"Yes"</strong> is selected, the device displays <strong>two pages</strong>: the <strong>identity trigger</strong> (LNURL-auth) and a <strong>standard payment</strong> page, which may include a password prompt in the comment field. The amount and description are retrieved from LNbits. The GPIO pin should be the same. Successful identification or a payment (with a password, if applicable) triggers the GPIO pin.</p>
-                    </div>
-                </div>
+            <!-- Section header for mode-select: MULTI CHANNEL -->
+            <div id="msMultiHeader" style="display: none; margin: 28px 0 0 0; border-top: 1px solid #555; padding-top: 14px;">
+                <p style="margin: 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 1px;">MULTI CHANNEL Settings</p>
             </div>
 
             <!-- CH01–CH06 + multi-channel description: hidden in single mode -->
@@ -529,6 +484,77 @@
                             <option value="yes">Yes — Product selection panel</option>
                         </select>
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">With the <strong>product selection panel</strong>, customers select a product by typing its <strong>GPIO number</strong> on a touch keypad — e.g. 5, 7, 14, or 200–207 when the I/O expander is used — and get the matching QR code (also served via NFC). The fixed binding to the GPIO number guarantees a unique assignment and maximum flexibility: simply configure and label each pin as a switch in your LNbits extension. Numbers without an LNbits switch show <strong>"Product not available"</strong>. Cannot be combined with <strong>One for All</strong>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section header for mode-select: MINI-POS -->
+            <div id="msMiniPosHeader" style="display: none; margin: 28px 0 0 0; border-top: 1px solid #555; padding-top: 14px;">
+                <p style="margin: 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 1px;">MINI-POS Settings</p>
+            </div>
+
+            <!-- Mini-PoS configuration: visible only in Mini-PoS mode -->
+            <div id="miniPosFields" style="display: none; margin-top: 10px;">
+                <p style="color: #888; margin: 0 0 14px 0;"><i>Mini-PoS works like single channel and switches <strong>GPIO pin 5</strong> — but instead of a fixed QR code, the user enters an amount on the touch display. The ZapBox then requests a Lightning invoice from your LNbits server (zapbox_extension required) and shows it as QR code. It can be paid by scanning, by Bolt Card (PN532) or by mobile phone NFC (NFC Tag 2). After payment, pin 5 is activated with the duration configured for pin 5 in LNbits (fallback: 3000&nbsp;ms).</i></p>
+                <div class="input-wrapper">
+                    <div>
+                        <label for="miniPosCurrency">Currency (ISO Code) for Payments</label>
+                        <input type="text" name="miniPosCurrency" id="miniPosCurrency" value="EUR" placeholder="EUR" maxlength="3" autocomplete="off">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">e.g. EUR, USD, GBP — or <strong>Sat</strong> for Satoshi</p>
+                    </div>
+                    <div>
+                        <label for="miniPosDecimal">Decimal separator</label>
+                        <select name="miniPosDecimal" id="miniPosDecimal">
+                            <option value="yes" selected>YES — two decimal places (e.g. 0.50 EUR)</option>
+                            <option value="no">NO — whole numbers only (e.g. 1000 Sat)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="miniPosInvoiceKey">Wallet Invoice Key</label>
+                        <input type="text" name="miniPosInvoiceKey" id="miniPosInvoiceKey" placeholder="e.g. c9e68ab036.." maxlength="32" autocomplete="off">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">"Invoice/read key" of the LNbits wallet that receives the payments (32 characters)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section header for mode-select: AUTHY -->
+            <div id="msAuthyHeader" style="display: none; margin: 28px 0 0 0; border-top: 1px solid #555; padding-top: 14px;">
+                <p style="margin: 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 1px;">AUTHY Settings</p>
+            </div>
+
+            <!-- Authy configuration: visible only in Authy (LNURL-auth) mode -->
+            <div id="authyFields" style="display: none; margin-top: 10px;">
+                <p style="color: #888; margin: 0 0 14px 0;"><i><strong>Authy</strong> identifies a <strong>known wallet</strong> via LNURL-auth (LUD-04) and triggers a relay — like a payment, but <strong>nothing is paid</strong>. The device shows a login QR; a known wallet scans it and the configured pin is switched. New wallets are enrolled in a PIN-protected <strong>teach mode</strong> on the device (6 taps + hold on the 6th). The <strong>Teach-PIN</strong> and the list of identities are set in the LNbits zapbox_extension (v2.4.0+), not here.</i></p>
+                <div class="input-wrapper">
+                    <div>
+                        <label for="authPin">Auth Pin (GPIO triggered on success)</label>
+                        <select name="authPin" id="authPin">
+                            <option value="5" selected>CH01 — GPIO 5 (default relay)</option>
+                            <option value="6">CH02 — GPIO 6</option>
+                            <option value="7">CH03 — GPIO 7</option>
+                            <option value="14">CH04 — GPIO 14</option>
+                            <option value="15">CH05 — GPIO 15</option>
+                            <option value="16">CH06 — GPIO 16</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known wallets trigger this pin (v1: same action for every identity).</p>
+                    </div>
+                    <div>
+                        <label for="authDuration">Activation time (ms)</label>
+                        <input type="number" name="authDuration" id="authDuration" min="100" max="60000" value="3000">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How long the relay stays on after a successful identification.</p>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label for="authLabel">Identity trigger label (text next to the QR code)</label>
+                        <input type="text" name="authLabel" id="authLabel" value="ZAPBOX Identity Trigger" maxlength="40" autocomplete="off">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Shown beside the login QR. The <strong>first word</strong> becomes line&nbsp;1, the <strong>second word</strong> line&nbsp;2, and the <strong>rest</strong> line&nbsp;3 — e.g. <em>ZAPBOX Identity Trigger</em> → <em>ZAPBOX</em> / <em>Identity</em> / <em>Trigger</em>.</p>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label for="authDualPage">Identity and payment trigger</label>
+                        <select name="authDualPage" id="authDualPage">
+                            <option value="no" selected>No (default) — identity trigger only</option>
+                            <option value="yes">Yes — add a payment page (uses LNbits settings)</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">If <strong>"Yes"</strong> is selected, the device displays <strong>two pages</strong>: the <strong>identity trigger</strong> (LNURL-auth) and a <strong>standard payment</strong> page, which may include a password prompt in the comment field. The amount and description are retrieved from LNbits. The GPIO pin should be the same. Successful identification or a payment (with a password, if applicable) triggers the GPIO pin.</p>
                     </div>
                 </div>
             </div>
@@ -1566,19 +1592,31 @@
             const singleInfo = document.getElementById('singleChannelInfo');
             const miniPos = document.getElementById('miniPosFields');
             const authy = document.getElementById('authyFields');
+            const modeSelectInfo = document.getElementById('modeSelectInfo');
             const mode = multi ? multi.value : 'off';
             const activation = document.getElementById('activationOptionsDiv');
             const activationHint = document.getElementById('activationOptionsMiniPosHint');
             const numericSelect = document.getElementById('numericSelectDiv');
-            if (fields) fields.style.display = (mode === 'duo') ? 'block' : 'none';
-            if (singleInfo) singleInfo.style.display = (mode === 'off') ? 'block' : 'none';
-            if (miniPos) miniPos.style.display = (mode === 'minipos') ? 'block' : 'none';
-            if (authy) authy.style.display = (mode === 'authy') ? 'block' : 'none';
-            // Activation Options (One for All) apply to Multi-channel and Mini-PoS
-            if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos') ? 'block' : 'none';
+            // In mode-select, show all per-mode sections so the user can pre-configure each one
+            const isMs = (mode === 'modeselect');
+            if (fields) fields.style.display = (mode === 'duo' || isMs) ? 'block' : 'none';
+            if (singleInfo) singleInfo.style.display = (mode === 'off' || isMs) ? 'block' : 'none';
+            const msSingleHeader = document.getElementById('msSingleHeader');
+            if (msSingleHeader) msSingleHeader.style.display = isMs ? 'block' : 'none';
+            if (modeSelectInfo) modeSelectInfo.style.display = isMs ? 'block' : 'none';
+            if (miniPos) miniPos.style.display = (mode === 'minipos' || isMs) ? 'block' : 'none';
+            if (authy) authy.style.display = (mode === 'authy' || isMs) ? 'block' : 'none';
+            const msMiniPosHeader = document.getElementById('msMiniPosHeader');
+            const msAuthyHeader   = document.getElementById('msAuthyHeader');
+            const msMultiHeader   = document.getElementById('msMultiHeader');
+            if (msMiniPosHeader) msMiniPosHeader.style.display = isMs ? 'block' : 'none';
+            if (msAuthyHeader)   msAuthyHeader.style.display   = isMs ? 'block' : 'none';
+            if (msMultiHeader)   msMultiHeader.style.display   = isMs ? 'block' : 'none';
+            // Activation Options (One for All) apply to Multi-channel, Mini-PoS, and mode-select
+            if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos' || isMs) ? 'block' : 'none';
             if (activationHint) activationHint.style.display = (mode === 'minipos') ? 'block' : 'none';
-            // Numerical product selection applies to Multi-channel only
-            if (numericSelect) numericSelect.style.display = (mode === 'duo') ? 'block' : 'none';
+            // Numerical product selection applies to Multi-channel only (not mode-select to keep things simple)
+            if (numericSelect) numericSelect.style.display = (mode === 'duo' || isMs) ? 'block' : 'none';
             updateNumericSelectState();
         }
 
@@ -1694,7 +1732,7 @@
             sections += section('ZapBox Mode', row('ZapBox Mode', selText('multiControl')));
 
             // Multi-channel — CH01–CH06 with per-channel servo parameters
-            if (zbMode === 'duo') {
+            if (zbMode === 'duo' || zbMode === 'modeselect') {
                 const chans = [['CH01', 'gpio5'], ['CH02', 'gpio6'], ['CH03', 'gpio7'],
                                ['CH04', 'gpio14'], ['CH05', 'gpio15'], ['CH06', 'gpio16']];
                 let mcRows = '';
@@ -1711,22 +1749,22 @@
                             row('&#8226; Spin duration (ms)', inputVal(g + 'Servo360Duration'));
                     }
                 });
-                mcRows += row('Activation Options', selText('t35ActivationMode')) +
-                    row('Numerical Product Selection', selText('t35NumericSelect'));
+                mcRows += row('Activation Options', selText('t35ActivationMode'));
+                if (zbMode === 'duo') mcRows += row('Numerical Product Selection', selText('t35NumericSelect'));
                 sections += section('Multi-channel (CH01–CH06)', mcRows);
             }
 
             // Mini-PoS
-            if (zbMode === 'minipos') {
+            if (zbMode === 'minipos' || zbMode === 'modeselect') {
                 sections += section('Mini-PoS',
                     row('Currency', inputVal('miniPosCurrency')) +
                     row('Decimal separator', selText('miniPosDecimal')) +
                     row('Wallet Invoice Key', inputVal('miniPosInvoiceKey')) +
-                    row('Activation Options', selText('t35ActivationMode')));
+                    (zbMode === 'minipos' ? row('Activation Options', selText('t35ActivationMode')) : ''));
             }
 
             // Authy (LNURL-auth)
-            if (zbMode === 'authy') {
+            if (zbMode === 'authy' || zbMode === 'modeselect') {
                 sections += section('Authy (LNURL-auth)',
                     row('Auth Pin', selText('authPin')) +
                     row('Activation time (ms)', inputVal('authDuration')) +

@@ -369,6 +369,13 @@ void redrawQRScreen() {
 
   LOG_DEBUG("Display", "Redrawing QR screen...");
 
+  // Mode selection pending: keep the selection screen visible
+  if (multiChannelConfig.mode == "modeselect") {
+    showModeSelectionScreen();
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
   // Mini-PoS mode: amount entry screen, or invoice QR while one is pending
   if (miniPosConfig.enabled) {
     if (miniPosState.invoicePending) {
@@ -547,6 +554,13 @@ void redrawQRScreen() {
  * Handles threshold mode, multi-channel (duo/quattro) and single mode including special mode.
  */
 void showInitialScreenAfterConnections() {
+  // Mode selection pending: WiFi is ready but user hasn't picked a mode yet —
+  // keep the selection screen visible; the loop() touch handler will handle the rest.
+  if (multiChannelConfig.mode == "modeselect") {
+    deviceState.transition(DeviceState::READY);
+    return;
+  }
+
   // Mini-PoS mode: start on the amount entry screen — or on the BTC ticker
   // when ticker mode "always" is configured (ticker acts as screensaver).
   if (miniPosConfig.enabled) {

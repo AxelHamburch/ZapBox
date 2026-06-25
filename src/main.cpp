@@ -131,6 +131,8 @@ static const uint32_t MINIPOS_INFO_MS         = 2000;  // transient info message
 
 // Mini-PoS helpers (defined before loop(), used from setup() as well)
 static void miniPosIdleNfcTag();
+// Mode-select helper: called when the user taps a mode button on the selection screen
+static void applyModeSelection(int selected);
 
 const unsigned long PRODUCT_SELECTION_DELAY = PRODUCT_TIMEOUT; // Time to return to product selection
 const unsigned long BTC_TICKER_TIMEOUT_DELAY = BTCTICKER_TIMEOUT; // Time to hide ticker in selecting mode
@@ -793,7 +795,7 @@ void readFiles()
       // Index 57: numerical product selection ("no" | "yes") — multi-channel only,
       // mutually exclusive with One for All (the installer enforces this too)
       String numSel = readGpioMode(57);
-      t35AmbientConfig.numericSelect = (numSel == "yes" && multiChannelConfig.mode == "duo");
+      t35AmbientConfig.numericSelect = (numSel == "yes" && (multiChannelConfig.mode == "duo" || multiChannelConfig.mode == "modeselect"));
       if (t35AmbientConfig.numericSelect && t35AmbientConfig.oneForAll) {
         t35AmbientConfig.numericSelect = false;
         LOG_INFO("Config", "T35: Numeric product selection disabled (One for All active)");
@@ -1882,8 +1884,14 @@ void setup()
       productSelectionState.showTime = 0; // No ticker timeout active
     }
     deviceState.transition(DeviceState::READY);
+  } else if (multiChannelConfig.mode == "modeselect") {
+    // Mode selection at startup: show the selection screen and let loop() handle
+    // the button tap. WiFi connects in the background while the user chooses.
+    SETUP_PRINT("[STARTUP] Mode-select screen — waiting for user to pick a mode");
+    showModeSelectionScreen();
+    deviceState.transition(DeviceState::READY);
   }
-  
+
   // Setup complete - device state already set appropriately above
   #undef SETUP_PRINT
   #undef SETUP_PRINTF
@@ -1993,6 +2001,71 @@ static void authyShowQR() {
     authyState.infoUntil = millis() + 4000;
     multiChannelConfig.btcTickerActive = false;
   }
+}
+
+// ============================================================================
+// MODE SELECTION HELPER
+// ============================================================================
+// Called when the user taps a button on the mode selection screen.
+// Applies the chosen mode in memory (no flash write) and shows its startup
+// screen. No restart needed — all configs were loaded from flash at boot.
+// selected: 1=Single, 2=Multi-channel, 3=Mini-PoS, 4=Authy
+static void applyModeSelection(int selected) {
+  LOG_INFO("ModeSelect", "Mode selected: " + String(selected));
+  miniPosConfig.enabled  = false;
+  authyConfig.enabled    = false;
+
+  switch (selected) {
+    case 1: // Single channel
+      multiChannelConfig.mode = "off";
+      maxProducts = 1;
+      multiChannelConfig.currentProduct = 0;
+      ensureQrForPin(RELAY_CHANNEL_PINS[0]);
+      showQRScreen();
+      productSelectionState.showTime = 0;
+      LOG_INFO("ModeSelect", "Single channel started");
+      break;
+
+    case 2: // Multi-channel
+      multiChannelConfig.mode = "duo";
+      #ifdef BOARD_JC3248W535C
+      maxProducts = t35AmbientConfig.oneForAll ? 1 : t35AmbientConfig.paymentChannelCount;
+      #else
+      maxProducts = 2;
+      #endif
+      multiChannelConfig.currentProduct = 0;
+      productSelectionScreen();
+      productSelectionState.showTime = millis();
+      LOG_INFO("ModeSelect", "Multi-channel started — " + String(maxProducts) + " product(s)");
+      break;
+
+    case 3: // Mini-PoS
+      multiChannelConfig.mode = "off";
+      miniPosConfig.enabled   = true;
+      maxProducts = 1;
+      miniPosIdleNfcTag();
+      miniPosState.resetInput();
+      miniPosState.inputActive = true;
+      miniPosState.lastInputActivity = millis();
+      showMiniPosInputScreen();
+      productSelectionState.showTime = 0;
+      LOG_INFO("ModeSelect", "Mini-PoS started");
+      break;
+
+    case 4: // Authy
+      multiChannelConfig.mode = "off";
+      authyConfig.enabled     = true;
+      maxProducts = 1;
+      authyShowStart();
+      productSelectionState.showTime = 0;
+      LOG_INFO("ModeSelect", "Authy started");
+      break;
+
+    default:
+      return;
+  }
+
+  deviceState.transition(DeviceState::READY);
 }
 
 // ============================================================================
@@ -2710,6 +2783,19 @@ void loop()
           goto skip_product_touch_processing;
         }
         #endif // ENABLE_NFC
+
+        // ── Mode selection screen: user picks a mode at startup ─────────────
+        if (multiChannelConfig.mode == "modeselect") {
+          if (isTouched && !wasTouched) {
+            activityTracking.lastActivityTime = millis();
+            int hit = modeSelectHitTest(x, y);
+            if (hit >= 1 && hit <= 4) {
+              applyModeSelection(hit);
+            }
+          }
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
 
         // ── Authy teach mode: only the CANCEL button ends teaching ──────────
         if (authyConfig.enabled && authyState.teachActive) {
