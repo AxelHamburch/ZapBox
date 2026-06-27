@@ -2563,6 +2563,50 @@ void loop()
       }
     }
 
+    // ── Ring-Login: NTAG 424 SUN tap received from NFC task ─────────────
+    if (authyConfig.enabled && authyState.nfcSunTapPending &&
+        !pinPadState.active) {
+      authyState.nfcSunTapPending = false;
+      String extId = String(authyState.nfcSunExternalId);
+      String sunP  = String(authyState.nfcSunP);
+      String sunC  = String(authyState.nfcSunC);
+
+      if (authyState.nfcSunIsTeach) {
+        // Teach mode: enrol the card on the server
+        if (requestNfcTeach(extId, sunP, sunC)) {
+          authyState.infoMsg   = "NFC card enrolled";
+          authyState.infoUntil = millis() + 3000;
+          LOG_INFO("NFC-Teach", "Card enrolled OK");
+        } else {
+          authyState.infoMsg   = "Card not enrolled";
+          authyState.infoUntil = millis() + 3000;
+          LOG_WARN("NFC-Teach", "Enrol failed (card not in tagid or session closed)");
+        }
+      } else if (authyConfig.ntag424Pin) {
+        // PIN required: show 4-digit PIN pad
+        pinPadState              = PinPadState();
+        pinPadState.active       = true;
+        pinPadState.nfcRingLogin = true;
+        pinPadState.maxDigits    = 4;
+        pinPadState.maxAttempts  = 3;
+        pinPadState.activatedAt  = millis();
+        showPinPadScreen(pinPadState);
+        LOG_INFO("NFC-Auth", "Showing PIN pad for Ring-Login");
+      } else {
+        // No PIN required: verify immediately
+        String errMsg;
+        if (requestNfcAuth(extId, sunP, sunC, "", &errMsg)) {
+          authyState.infoMsg   = "NFC Identity OK";
+          authyState.infoUntil = millis() + 2000;
+          LOG_INFO("NFC-Auth", "Auth OK (no PIN)");
+        } else {
+          authyState.infoMsg   = errMsg.isEmpty() ? "NFC Identity Failed" : errMsg;
+          authyState.infoUntil = millis() + 3000;
+          LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
+        }
+      }
+    }
+
     // ── Authy timers ─────────────────────────────────────────────────────
     if (authyConfig.enabled &&
         deviceState.isInState(DeviceState::READY) &&
@@ -2738,11 +2782,13 @@ void loop()
           if (isTouched && !wasTouched && !pinPadState.submitted) {
             int hit = pinPadHitTest(x, y);
             if (hit == 12) {  // cancel — always allowed, even during error display
+              bool wasNfcRingLogin = pinPadState.nfcRingLogin;
               pinPadState.active                = false;
               extensionConfig.nfcPaymentPending = false;
               nfcPendingScreenShown             = false;
               needsQRRedraw                     = true;
               productSelectionState.showTime    = millis();
+              if (wasNfcRingLogin) authyShowStart();
               LOG_INFO("PIN", "PIN entry cancelled by user");
             } else if (!pinPadState.showError) {
               // Normal input — only when no error is displayed
@@ -2766,6 +2812,33 @@ void loop()
                         LOG_INFO("Teach", "Teach active - showing register QR");
                       } else {
                         showPinPadScreen(pinPadState); // error set by submitTeachPin
+                      }
+                    } else if (pinPadState.nfcRingLogin) {
+                      // Ring-Login: verify PIN + SUN params against zapbox_extension
+                      String errMsg;
+                      String extId = String(authyState.nfcSunExternalId);
+                      String sunP  = String(authyState.nfcSunP);
+                      String sunC  = String(authyState.nfcSunC);
+                      if (requestNfcAuth(extId, sunP, sunC, String(pinPadState.digits), &errMsg)) {
+                        pinPadState.active   = false;
+                        authyState.infoMsg   = "NFC Identity OK";
+                        authyState.infoUntil = millis() + 2000;
+                        authyShowStart();
+                        LOG_INFO("NFC-Auth", "Auth OK with PIN");
+                      } else {
+                        pinPadState.attemptNum++;
+                        if (pinPadState.attemptNum >= pinPadState.maxAttempts) {
+                          pinPadState.blocked    = true;
+                          pinPadState.errorMsg   = "Card locked";
+                        } else {
+                          int rem = pinPadState.maxAttempts - pinPadState.attemptNum;
+                          pinPadState.errorMsg = errMsg.isEmpty() ? "Wrong PIN" : errMsg;
+                          pinPadState.errorMsg += " (" + String(rem) + " left)";
+                        }
+                        pinPadState.showError  = true;
+                        pinPadState.errorStart = millis();
+                        LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
+                        showPinPadScreen(pinPadState);
                       }
                     } else {
                       sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
