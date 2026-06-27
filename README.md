@@ -1452,10 +1452,11 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
 - [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
 - [E-Layout-ZapBox-esp32-c3-21-1.png](assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png)
-- [E-Layout-ZapBox-ZapSave.png](assets/electric/E-Layout-ZapBox-ZapSave.png)
+
 
 Miscellaneous:
 
+- [E-Layout-ZapBox-ZapSave.png](assets/electric/E-Layout-ZapBox-ZapSave.png)
 - [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
 
 ### Quality Assurance
