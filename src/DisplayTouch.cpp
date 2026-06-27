@@ -913,8 +913,8 @@ void actionTimeScreen() {
   flushDisplay();
 }
 
-// IDENTITY TRIGGER — Authy idle/start screen. Same look as ACTION TIME
-// ("IDENTITY" big at top, "TRIGGER" in the inverted box), but no countdown.
+// IDENTITY LOGIN-TRIGGER — Authy idle/start screen. Same look as ACTION TIME
+// ("IDENTITY" big at top, "LOGIN-TRIGGER" in the inverted box), but no countdown.
 // Shown while no auth QR is requested, so the NT3H tag is not rewritten. No tab
 // here: the dual-page switch lives on the QR pages, not on the idle screen.
 void identityTriggerScreen() {
@@ -923,16 +923,16 @@ void identityTriggerScreen() {
   if (isPortrait()) {
     drawCenter(SCR_W / 2, 160, "IDENTITY", themeForeground, themeBackground, 4);
     fillRect(AT_V_BOX_X, AT_V_BOX_Y, AT_V_BOX_W, AT_V_BOX_H, themeForeground);
-    drawCenter(SCR_W / 2, AT_V_LABEL_Y, "TRIGGER", themeBackground, themeForeground, 4);
-    drawCenter(SCR_W / 2, AT_V_BOX_Y + AT_V_BOX_H + 35, "touch to start..",
+    drawCenter(SCR_W / 2, AT_V_LABEL_Y, "LOGIN-TRIGGER", themeBackground, themeForeground, 3);
+    drawCenter(SCR_W / 2, AT_V_BOX_Y + AT_V_BOX_H + 35, "Touch screen to start login.",
                themeForeground, themeBackground, 2);
   } else {
     // Landscape: nudge the whole block down just a little.
     const int dy = 12;
     drawCenter(SCR_W / 2, 82 + dy, "IDENTITY", themeForeground, themeBackground, 5);
     fillRect(AT_BOX_X, AT_BOX_Y + dy, AT_BOX_W, AT_BOX_H, themeForeground);
-    drawCenter(SCR_W / 2, AT_LABEL_Y + dy, "TRIGGER", themeBackground, themeForeground, 4);
-    drawCenter(SCR_W / 2, AT_BOX_Y + dy + AT_BOX_H + 35, "touch to start..",
+    drawCenter(SCR_W / 2, AT_LABEL_Y + dy, "LOGIN-TRIGGER", themeBackground, themeForeground, 3);
+    drawCenter(SCR_W / 2, AT_BOX_Y + dy + AT_BOX_H + 35, "Touch screen to start login.",
                themeForeground, themeBackground, 2);
   }
   flushDisplay();
@@ -1417,13 +1417,13 @@ void showModeSelectionScreen() {
 
     // Button 1 — Single channel (two lines)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW1_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 16, "SINGLE",   themeForeground, themeBackground, 3);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 46, "CHANNEL",  themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 21, "SINGLE",   themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 51, "CHANNEL",  themeForeground, themeBackground, 3);
 
     // Button 2 — Multi-channel (two lines)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW2_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 16, "MULTI",    themeForeground, themeBackground, 3);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 46, "CHANNEL",  themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 21, "MULTI",    themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 51, "CHANNEL",  themeForeground, themeBackground, 3);
 
     // Button 3 — Mini-PoS (single line centered)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW3_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
@@ -2374,22 +2374,21 @@ bool authTeachCancelHit(uint16_t x, uint16_t y) {
     return miniPosQrCancelHit(x, y);  // identical button geometry
 }
 
-// ── Authy dual-page tab button (bottom-left corner) ─────────────────────────
-// Mirrors the CANCEL button geometry but on the opposite (left) corner, so it
-// never collides with a CANCEL/INVOICE button on the right. Wide enough for the
-// "pay login >" / "< ID login" labels.
+// ── Authy dual-page tab button (bottom-right corner) ────────────────────────
+// Mirrors the CANCEL button geometry in the same (right) corner. Wide enough
+// for the "pay login >" / "< ID login" labels.
 static const int AT_TAB_W = 150, AT_TAB_H = 34;
 static void drawAuthTab(const char *txt, uint16_t fg, uint16_t bg) {
-    int tx = MP_QRC_M, ty = SCR_H - AT_TAB_H - MP_QRC_M;
+    int tx = SCR_W - AT_TAB_W - MP_QRC_M, ty = SCR_H - AT_TAB_H - MP_QRC_M;
     drawRectBorder(tx, ty, AT_TAB_W, AT_TAB_H, 2, fg);
     drawCenter(tx + AT_TAB_W / 2, ty + AT_TAB_H / 2, txt, fg, bg, 2);
 }
 bool authTabHit(uint16_t x, uint16_t y) {
-    // Generous hit zone: the whole bottom-left corner (see miniPosQrCancelHit),
-    // but kept clear of the physical-button edge strip via MP_QRC_M.
+    // Generous hit zone: the whole bottom-right corner, kept clear of the
+    // physical-button edge strip via MP_QRC_M.
     const int pad = 26;
-    int tx = MP_QRC_M, ty = SCR_H - AT_TAB_H - MP_QRC_M;
-    return x <= (uint16_t)(tx + AT_TAB_W + pad) && y >= (uint16_t)(ty - pad);
+    int tx = SCR_W - AT_TAB_W - MP_QRC_M, ty = SCR_H - AT_TAB_H - MP_QRC_M;
+    return x >= (uint16_t)(tx - pad) && y >= (uint16_t)(ty - pad);
 }
 
 // Shared: QR (from lightningConfig.lightning) + label box + a bottom-left tab.

@@ -495,7 +495,7 @@
 
             <!-- Mini-PoS configuration: visible only in Mini-PoS mode -->
             <div id="miniPosFields" style="display: none; margin-top: 10px;">
-                <p style="color: #888; margin: 0 0 14px 0;"><i>Mini-PoS works like single channel and switches <strong>GPIO pin 5</strong> — but instead of a fixed QR code, the user enters an amount on the touch display. The ZapBox then requests a Lightning invoice from your LNbits server (zapbox_extension required) and shows it as QR code. It can be paid by scanning, by Bolt Card (PN532) or by mobile phone NFC (NFC Tag 2). After payment, pin 5 is activated with the duration configured for pin 5 in LNbits (fallback: 3000&nbsp;ms).</i></p>
+                <p style="color: #888; margin: 0 0 14px 0;"><i>Mini-PoS works like single channel and switches <strong>GPIO pin 5</strong> — but instead of a fixed QR code, the user enters an amount on the touch display. The ZapBox then requests a Lightning invoice from your LNbits server (zapbox_extension required) and shows it as QR code. It can be paid by scanning, by Bolt Card (PN532) or by mobile phone NFC (NFC Tag 2). After payment, pin 5 is activated with the duration configured for pin 5 in LNbits (fallback: 3000&nbsp;ms). <strong>Note:</strong> <em>Activation Options — One for All</em> is not available in Mini-PoS when <em>Numerical Product Selection</em> is set to <em>Yes</em> in Multi-channel mode — switch it to <em>No</em> first.</i></p>
                 <div class="input-wrapper">
                     <div>
                         <label for="miniPosCurrency">Currency (ISO Code) for Payments</label>
