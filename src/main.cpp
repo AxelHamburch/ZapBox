@@ -851,10 +851,10 @@ void readFiles()
       LOG_INFO("Config", "==============================");
     }
 
-    // Read Authy configuration (indices 88-90, Touch 3.5 only)
-    // 88=authPin (GPIO triggered on success)  89=authDuration (ms)
-    // 90=authLabel (text next to the identity-trigger QR, split into 3 lines)
-    if (authyConfig.enabled) {
+    // Read Authy configuration (indices 88-92, Touch 3.5 only).
+    // 88=authPin  89=authDuration(ms)  90=authLabel  91=authNtag424Pin  92=authDualPage
+    // Parsed unconditionally so mode-select → Authy gets the correct values.
+    {
       const JsonObject maRoot88 = doc[88];
       if (!maRoot88.isNull()) {
         const char *v = maRoot88["value"];
@@ -884,9 +884,20 @@ void readFiles()
       if (!maRoot91.isNull()) {
         const char *v = maRoot91["value"];
         if (v != nullptr) {
+          authyConfig.ntag424Pin = (String(v) != "no");
+        }
+      }
+      const JsonObject maRoot92 = doc[92];
+      if (!maRoot92.isNull()) {
+        const char *v = maRoot92["value"];
+        if (v != nullptr) {
           authyConfig.dualPage = (String(v) == "yes");
         }
       }
+    }
+    // Authy mode-specific side effects (only when booting directly into Authy).
+    // When entering via mode-select, applyModeSelection() applies these instead.
+    if (authyConfig.enabled) {
       // Authy owns the screen like Mini-PoS: no fixed-amount threshold QR —
       // except in dual-page mode, where the classic payment page keeps the
       // normal threshold/product QR for the auth pin.
@@ -900,6 +911,7 @@ void readFiles()
       LOG_INFO("Config", String("Auth pin: ") + String(authyConfig.authPin));
       LOG_INFO("Config", String("Activation time: ") + String(authyConfig.authDuration) + "ms");
       LOG_INFO("Config", String("Identity label: ") + authyConfig.label);
+      LOG_INFO("Config", String("NTAG 424 PIN: ") + (authyConfig.ntag424Pin ? "yes" : "no"));
       LOG_INFO("Config", String("Dual page (payment): ") + (authyConfig.dualPage ? "yes" : "no"));
       LOG_INFO("Config", "===========================");
     }
@@ -2056,6 +2068,12 @@ static void applyModeSelection(int selected) {
       multiChannelConfig.mode = "off";
       authyConfig.enabled     = true;
       maxProducts = 1;
+      if (multiChannelConfig.btcTickerMode != "always") {
+        multiChannelConfig.btcTickerMode = "off";
+      }
+      if (!authyConfig.dualPage) {
+        lightningConfig.thresholdKey = "";
+      }
       authyShowStart();
       productSelectionState.showTime = 0;
       LOG_INFO("ModeSelect", "Authy started");
@@ -4937,7 +4955,12 @@ void processPaymentEvent(String &payloadStr)
     // product QR currently on screen.  A payment for a different pin (e.g.
     // an old invoice still pending in the payer's wallet) must be rejected
     // so the wrong relay is not triggered.
-    if (t35AmbientConfig.numericSelect) {
+    // Numeric product selection guard: only active in multi-channel mode.
+    // When mode-select at startup switches to Single/Mini-PoS/Authy,
+    // multiChannelConfig.mode is "off" and the guard must not fire — otherwise
+    // every payment would be silently dropped because productSelectState.qrActive
+    // is never set in those modes.
+    if (t35AmbientConfig.numericSelect && multiChannelConfig.mode == "duo") {
       if (!productSelectState.qrActive || productSelectState.qrPin <= 0) {
         LOG_WARN("NumSel", "Payment received but no product QR active — ignoring");
         return;
