@@ -811,7 +811,7 @@ void readFiles()
 
     // Read Mini-PoS configuration (indices 54-56, Touch 3.5 only)
     // 54=miniPosCurrency  55=miniPosDecimal(yes/no)  56=miniPosInvoiceKey
-    if (miniPosConfig.enabled) {
+    if (miniPosConfig.enabled || multiChannelConfig.mode == "modeselect") {
       const JsonObject maRoot54 = doc[54];
       if (!maRoot54.isNull()) {
         const char *v = maRoot54["value"];
