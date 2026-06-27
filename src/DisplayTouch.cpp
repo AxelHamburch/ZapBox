@@ -1417,13 +1417,13 @@ void showModeSelectionScreen() {
 
     // Button 1 — Single channel (two lines)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW1_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 21, "SINGLE",   themeForeground, themeBackground, 3);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 51, "CHANNEL",  themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 26, "SINGLE",   themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW1_Y + 56, "CHANNEL",  themeForeground, themeBackground, 3);
 
     // Button 2 — Multi-channel (two lines)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW2_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 21, "MULTI",    themeForeground, themeBackground, 3);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 51, "CHANNEL",  themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 26, "MULTI",    themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW2_Y + 56, "CHANNEL",  themeForeground, themeBackground, 3);
 
     // Button 3 — Mini-PoS (single line centered)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW3_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
