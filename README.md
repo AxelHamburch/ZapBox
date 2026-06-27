@@ -1382,6 +1382,7 @@ Electrical design and housing variants, see table.
 | b949639 | Servo | Add NFC Tag 2 module | 
 | b950530 | Compact | Add NFC Tag 2 module | 
 | b950711 | Touch 3.5 |ESP32-S Touch3.5 (JC3248W535C) - No.1 - Prototyp |
+| b955706 | ZapSave | ZapSave – Sample Box |
 
 -> Find all versions here: [./assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
@@ -1415,6 +1416,7 @@ Electrical design and housing variants, see table.
 | e949674 | Servo | Add NFC Tag 2 module & minor redesign | 
 | e950677 | Compact | Add NFC Tag 2 module | 
 | e950939 | Touch3.5 | ESP32-S Touch3.5 (JC3248W535C) - Prototyp | 
+| e955640 | ZapSave | ZapSave – Sample Connection |
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
@@ -1450,6 +1452,7 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
 - [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
 - [E-Layout-ZapBox-esp32-c3-21-1.png](assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png)
+- [E-Layout-ZapBox-ZapSave.png](assets/electric/E-Layout-ZapBox-ZapSave.png)
 
 Miscellaneous:
 
