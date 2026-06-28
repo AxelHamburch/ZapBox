@@ -2756,6 +2756,16 @@ void loop()
           LOG_INFO("Touch", String("tap x=") + String(x) + " y=" + String(y) +
                             " g=" + String(gesture));
         }
+
+        // First touch after screensaver wake must only wake — not trigger any action.
+        // Swallow the rising edge for 300 ms after the backlight came on.
+        if (isTouched && !wasTouched &&
+            powerConfig.lastWakeUpTime > 0 &&
+            millis() - powerConfig.lastWakeUpTime < 300) {
+          Serial.println("[TOUCH] Swallowed (screensaver wake protection)");
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
 #else
       // Headless mode - no touch events
       if (false) {
@@ -2839,7 +2849,7 @@ void loop()
                         // replay detection. Close PIN pad and require a fresh NFC tap.
                         pinPadState.active = false;
                         // Split server message into 2–3 display lines (size 3, centered)
-                        String l1, l2, l3 = "Tap card again";
+                        String l1, l2, l3;
                         int attIdx = errMsg.indexOf(" attempt");
                         if (attIdx > 0) {
                           // "Invalid PIN. N attempt(s) remaining." → extract N
@@ -2849,8 +2859,13 @@ void loop()
                             numStart--;
                           l1 = "Wrong PIN";
                           l2 = errMsg.substring(numStart, numEnd) + " tries left";
+                          l3 = "Tap card again";
                         } else {
-                          l1 = errMsg.isEmpty() ? "Wrong PIN" : errMsg;
+                          // Unknown card or other server error — show user-friendly message
+                          if (errMsg.indexOf("404") >= 0)
+                            l1 = "NFC tag unknown";
+                          else
+                            l1 = errMsg.isEmpty() ? "Wrong PIN" : errMsg;
                         }
                         authyState.infoMsg   = l1;
                         authyState.infoUntil = millis() + 5000;

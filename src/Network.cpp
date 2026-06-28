@@ -151,8 +151,13 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     // Numeric selection: a Bolt Card can only pay the product QR currently
     // shown. On the keypad/select/ticker screens the tap is silently ignored.
+    // Only applies in multi-channel mode — Single channel and Mini-PoS handle
+    // their own guards and must not be blocked here.
     #ifdef BOARD_JC3248W535C
-    if (t35AmbientConfig.numericSelect && !productSelectState.qrActive) {
+    if (t35AmbientConfig.numericSelect &&
+        multiChannelConfig.mode != "off" &&
+        !miniPosState.invoicePending &&
+        !productSelectState.qrActive) {
         LOG_INFO("NFC", "Numeric selection: no product QR shown – Bolt Card tap ignored");
         return;
     }

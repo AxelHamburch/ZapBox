@@ -524,47 +524,100 @@
 
             <!-- Identity configuration: visible only in Identity (LNURL-auth & TagID) mode -->
             <div id="authyFields" style="display: none; margin-top: 10px;">
-                <p style="color: #888; margin: 0 0 14px 0;"><i><strong>Identity</strong> identifies a <strong>known wallet or NFC card</strong> and triggers a relay — like a payment, but <strong>nothing is paid</strong>. Wallets are identified via LNURL-auth (LUD-04); Bolt&nbsp;Cards and Bolt&nbsp;Rings via NTAG&nbsp;424&nbsp;DNA (TagID🔐). Both run in parallel — the login QR is always shown for wallets, the PN532 reader listens for NFC taps simultaneously. New identities are enrolled in a PIN-protected <strong>teach mode</strong> on the device (6 taps + hold on the 6th). Settings are managed in the LNbits zapbox_extension (v2.5.0+).</i></p>
-                <div class="input-wrapper">
-                    <div>
-                        <label for="authPin">Auth Pin (GPIO triggered on success)</label>
-                        <select name="authPin" id="authPin">
-                            <option value="5" selected>CH01 — GPIO 5 (default relay)</option>
-                            <option value="6">CH02 — GPIO 6</option>
-                            <option value="7">CH03 — GPIO 7</option>
-                            <option value="14">CH04 — GPIO 14</option>
-                            <option value="15">CH05 — GPIO 15</option>
-                            <option value="16">CH06 — GPIO 16</option>
-                        </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known wallets trigger this pin (v1: same action for every identity).</p>
-                    </div>
-                    <div>
-                        <label for="authDuration">Activation time (ms)</label>
-                        <input type="number" name="authDuration" id="authDuration" min="100" max="60000" value="1000">
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How long the relay stays on after a successful identification.</p>
-                    </div>
+
+                <!-- Top-level ENABLE / DISABLE toggle -->
+                <div class="input-wrapper" style="margin-bottom: 4px;">
                     <div style="grid-column: span 2;">
-                        <label for="authLabel">Identity trigger label (text next to the QR code)</label>
-                        <input type="text" name="authLabel" id="authLabel" value="ZAPBOX Identity Trigger" maxlength="40" autocomplete="off">
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Shown beside the login QR. The <strong>first word</strong> becomes line&nbsp;1, the <strong>second word</strong> line&nbsp;2, and the <strong>rest</strong> line&nbsp;3 — e.g. <em>ZAPBOX Identity Trigger</em> → <em>ZAPBOX</em> / <em>Identity</em> / <em>Trigger</em>.</p>
-                    </div>
-                    <div style="grid-column: span 2;">
-                        <label for="authNtag424Pin">NTAG 424 DNA PIN</label>
-                        <select name="authNtag424Pin" id="authNtag424Pin">
-                            <option value="yes" selected>Yes (default, maximum security)</option>
-                            <option value="no">No (vulnerable to duplication)</option>
+                        <label for="authyEnabled">Identity Login (LNURL-auth or NTAG424)</label>
+                        <select id="authyEnabled" onchange="toggleAuthyContent(this.value)">
+                            <option value="no" selected>DISABLE</option>
+                            <option value="yes">ENABLE</option>
                         </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Bei Verifizierung per NTAG&nbsp;424&nbsp;DNA (z.&nbsp;B. Bolt&nbsp;Card oder Bolt&nbsp;Ring) wird die zusätzliche Sicherheit einer 4-stelligen PIN&#8209;Abfrage empfohlen. Die PIN ist dieselbe, die auch für Abhebungen ab einem bestimmten Schwellwert erforderlich ist, und wird in der <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a> verwaltet.</p>
-                    </div>
-                    <div style="grid-column: span 2;">
-                        <label for="authDualPage">Identity and payment trigger</label>
-                        <select name="authDualPage" id="authDualPage">
-                            <option value="no" selected>No (default) — identity trigger only</option>
-                            <option value="yes">Yes — add a payment page (uses LNbits settings)</option>
-                        </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">If <strong>"Yes"</strong> is selected, the device displays <strong>two pages</strong>: the <strong>identity trigger</strong> (LNURL-auth) and a <strong>standard payment</strong> page, which may include a password prompt in the comment field. The amount and description are retrieved from LNbits. The GPIO pin should be the same. Successful identification or a payment (with a password, if applicable) triggers the GPIO pin.</p>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
+                            <strong>Identity</strong> recognises a known wallet or NFC card and triggers a relay — <strong>nothing is paid</strong>. Select <em>ENABLE</em> to configure.
+                        </p>
                     </div>
                 </div>
+
+                <!-- Expanded identity settings — hidden until ENABLE is chosen -->
+                <div id="authyContent" style="display: none; margin-top: 14px;">
+
+                    <!-- General trigger settings -->
+                    <div class="input-wrapper">
+                        <div>
+                            <label for="authPin">Auth Pin (GPIO triggered on success)</label>
+                            <select name="authPin" id="authPin">
+                                <option value="5" selected>CH01 — GPIO 5 (default relay)</option>
+                                <option value="6">CH02 — GPIO 6</option>
+                                <option value="7">CH03 — GPIO 7</option>
+                                <option value="14">CH04 — GPIO 14</option>
+                                <option value="15">CH05 — GPIO 15</option>
+                                <option value="16">CH06 — GPIO 16</option>
+                            </select>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known identities trigger this pin (v1: same action for every identity).</p>
+                        </div>
+                        <div>
+                            <label for="authDuration">Activation time (ms)</label>
+                            <input type="number" name="authDuration" id="authDuration" min="100" max="60000" value="1000">
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How long the relay stays on after a successful identification.</p>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label for="authLabel">Identity trigger label (text next to the QR code)</label>
+                            <input type="text" name="authLabel" id="authLabel" value="ZAPBOX Identity Trigger" maxlength="40" autocomplete="off">
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Shown beside the login QR. The <strong>first word</strong> becomes line&nbsp;1, the <strong>second word</strong> line&nbsp;2, and the <strong>rest</strong> line&nbsp;3 — e.g. <em>ZAPBOX Identity Trigger</em> → <em>ZAPBOX</em> / <em>Identity</em> / <em>Trigger</em>.</p>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label for="authDualPage">Identity and payment trigger</label>
+                            <select name="authDualPage" id="authDualPage">
+                                <option value="no" selected>No (default) — identity trigger only</option>
+                                <option value="yes">Yes — add a payment page (uses LNbits settings)</option>
+                            </select>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">If <strong>"Yes"</strong> is selected, the device displays <strong>two pages</strong>: the <strong>identity trigger</strong> (LNURL-auth) and a <strong>standard payment</strong> page. Successful identification or a payment triggers the GPIO pin.</p>
+                        </div>
+                    </div>
+
+                    <!-- ── Teach mode ────────────────────────────────────────── -->
+                    <div style="margin-top: 18px; border-top: 1px solid #444; padding-top: 14px;">
+                        <div class="input-wrapper">
+                            <div>
+                                <label for="authTeachEnabled">Teach mode</label>
+                                <select name="authTeachEnabled" id="authTeachEnabled">
+                                    <option value="yes" selected>ENABLE</option>
+                                    <option value="no">DISABLE</option>
+                                </select>
+                                <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Allow enrolling new identities on the device (6-tap + hold gesture).</p>
+                            </div>
+                            <div>
+                                <label for="authTeachPinHint">Teach-PIN (6 digits)</label>
+                                <input type="text" id="authTeachPinHint" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="e.g. 123456" autocomplete="off">
+                                <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Note your teach PIN here for reference — it is set and verified server-side in the <a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" style="color: #888;">zapbox_extension</a>.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── LNURL-auth Identities ─────────────────────────────── -->
+                    <div style="margin-top: 18px; border-top: 1px solid #444; padding-top: 14px;">
+                        <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 0.5px;">LNURL-auth Identities <span style="font-weight: normal; color: #888;">(Lightning Wallets)</span></p>
+                        <p style="margin: 0 0 10px 0; font-size: 12px; color: #888; font-style: italic;">Users scan the on-screen QR with a Lightning wallet (Zeus, Breez …). The wallet signs a one-time challenge — no payment, no seed exposure. Identities are managed in zapbox_extension (v2.5.0+).</p>
+                    </div>
+
+                    <!-- ── NFC Identities ────────────────────────────────────── -->
+                    <div style="margin-top: 18px; border-top: 1px solid #444; padding-top: 14px;">
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 0.5px;">NFC Identities – NTAG424 <span style="font-weight: normal; color: #888;">(Bolt Card, Ring, etc.)</span></p>
+                        <p style="margin: 0 0 10px 0; font-size: 12px; color: #888;">Note: Use with <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a></p>
+                        <div class="input-wrapper">
+                            <div style="grid-column: span 2;">
+                                <label for="authNtag424Pin">NTAG 424 DNA PIN</label>
+                                <select name="authNtag424Pin" id="authNtag424Pin">
+                                    <option value="yes" selected>Yes (default, maximum security)</option>
+                                    <option value="no">No (vulnerable to duplication)</option>
+                                </select>
+                                <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Adds a 4-digit PIN prompt after each NFC tap. The PIN is managed in the <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a>.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /authyContent -->
             </div>
 
         <!-- Section Separator -->
@@ -1633,6 +1686,12 @@
         // One for All and Numerical Product Selection are mutually exclusive:
         // selecting OFA forces numeric selection back to "No" and disables it;
         // selecting numeric "Yes" forces the activation mode back to "Off".
+
+        function toggleAuthyContent(val) {
+            const content = document.getElementById('authyContent');
+            if (content) content.style.display = (val === 'yes') ? 'block' : 'none';
+        }
+
         function updateNumericSelectState() {
             const act = document.getElementById('t35ActivationMode');
             const num = document.getElementById('t35NumericSelect');
