@@ -1433,7 +1433,7 @@ void showModeSelectionScreen() {
 
     // Button 4 — Authy (single line centered)
     drawRectBorder(MS_P_BTN_X, MS_P_ROW4_Y, MS_P_BTN_W, MS_P_BTN_H, 2, themeForeground);
-    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW4_Y + 31, "AUTHY",    themeForeground, themeBackground, 3);
+    drawCenter(MS_P_BTN_X + MS_P_BTN_W/2, MS_P_ROW4_Y + 31, "IDENTITY", themeForeground, themeBackground, 3);
 
   } else {
     // Landscape
@@ -1455,7 +1455,7 @@ void showModeSelectionScreen() {
 
     // Button 4 — Authy  (bottom-right, single line centered)
     drawRectBorder(MS_L_RIGHT_X, MS_L_ROW2_Y, MS_L_BTN_W, MS_L_BTN_H, 2, themeForeground);
-    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW2_Y + 52, "AUTHY",    themeForeground, themeBackground, 3);
+    drawCenter(MS_L_RIGHT_X + MS_L_BTN_W/2, MS_L_ROW2_Y + 52, "IDENTITY", themeForeground, themeBackground, 3);
   }
 
   flushDisplay();
