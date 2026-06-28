@@ -922,15 +922,17 @@ void identityTriggerScreen() {
   fillScreen(themeBackground);
   if (isPortrait()) {
     drawCenter(SCR_W / 2, 160, "IDENTITY", themeForeground, themeBackground, 4);
-    fillRect(AT_V_BOX_X, AT_V_BOX_Y, AT_V_BOX_W, AT_V_BOX_H, themeForeground);
+    fillRect(25, AT_V_BOX_Y, 270, AT_V_BOX_H, themeForeground);
     drawCenter(SCR_W / 2, AT_V_LABEL_Y, "LOGIN-TRIGGER", themeBackground, themeForeground, 3);
-    drawCenter(SCR_W / 2, AT_V_BOX_Y + AT_V_BOX_H + 35, "Touch screen to start login.",
+    drawCenter(SCR_W / 2, AT_V_BOX_Y + AT_V_BOX_H + 28, "Touch screen",
+               themeForeground, themeBackground, 2);
+    drawCenter(SCR_W / 2, AT_V_BOX_Y + AT_V_BOX_H + 50, "to start login.",
                themeForeground, themeBackground, 2);
   } else {
     // Landscape: nudge the whole block down just a little.
     const int dy = 12;
     drawCenter(SCR_W / 2, 82 + dy, "IDENTITY", themeForeground, themeBackground, 5);
-    fillRect(AT_BOX_X, AT_BOX_Y + dy, AT_BOX_W, AT_BOX_H, themeForeground);
+    fillRect(100, AT_BOX_Y + dy, 280, AT_BOX_H, themeForeground);
     drawCenter(SCR_W / 2, AT_LABEL_Y + dy, "LOGIN-TRIGGER", themeBackground, themeForeground, 3);
     drawCenter(SCR_W / 2, AT_BOX_Y + dy + AT_BOX_H + 35, "Touch screen to start login.",
                themeForeground, themeBackground, 2);
