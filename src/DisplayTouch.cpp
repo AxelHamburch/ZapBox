@@ -2122,7 +2122,7 @@ void showMiniPosQRScreen() {
     fillScreen(qrBg);
     if (isPortrait()) {
         drawQRAt(qrText.c_str(), QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
-        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
+        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 44, words, wordCount, qrFg, qrBg);
         int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
@@ -2318,7 +2318,7 @@ void showProductSelectQRScreen(String label, int pin) {
     fillScreen(qrBg);
     if (isPortrait()) {
         drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
-        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 10, words, wordCount, qrFg, qrBg);
+        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 44, words, wordCount, qrFg, qrBg);
         int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
