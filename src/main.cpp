@@ -2598,9 +2598,6 @@ void loop()
         // No PIN required: verify immediately
         String errMsg;
         if (requestNfcAuth(extId, sunP, sunC, "", &errMsg)) {
-          authyState.infoMsg   = "NFC Identity OK";
-          authyState.infoUntil = millis() + 2000;
-          showAuthToast(authyState.infoMsg, false);
           LOG_INFO("NFC-Auth", "Auth OK (no PIN)");
         } else {
           authyState.infoMsg   = errMsg.isEmpty() ? "NFC Identity Failed" : errMsg;
@@ -2834,25 +2831,20 @@ void loop()
                       String sunP  = String(authyState.nfcSunP);
                       String sunC  = String(authyState.nfcSunC);
                       if (requestNfcAuth(extId, sunP, sunC, String(pinPadState.digits), &errMsg)) {
-                        pinPadState.active   = false;
-                        authyState.infoMsg   = "NFC Identity OK";
-                        authyState.infoUntil = millis() + 2000;
+                        pinPadState.active = false;
                         authyShowStart();
                         LOG_INFO("NFC-Auth", "Auth OK with PIN");
                       } else {
-                        pinPadState.attemptNum++;
-                        if (pinPadState.attemptNum >= pinPadState.maxAttempts) {
-                          pinPadState.blocked    = true;
-                          pinPadState.errorMsg   = "Card locked";
-                        } else {
-                          int rem = pinPadState.maxAttempts - pinPadState.attemptNum;
-                          pinPadState.errorMsg = errMsg.isEmpty() ? "Wrong PIN" : errMsg;
-                          pinPadState.errorMsg += " (" + String(rem) + " left)";
-                        }
-                        pinPadState.showError  = true;
-                        pinPadState.errorStart = millis();
+                        // SUN parameters (p/c) are one-time tokens — reusing them triggers
+                        // replay detection. Close PIN pad and require a fresh NFC tap.
+                        pinPadState.active = false;
+                        String toastMsg = errMsg.isEmpty() ? "Wrong PIN" : errMsg;
+                        toastMsg += " — tap again";
+                        authyState.infoMsg   = toastMsg;
+                        authyState.infoUntil = millis() + 3000;
+                        authyShowQR();
+                        showAuthToast(toastMsg, true);
                         LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
-                        showPinPadScreen(pinPadState);
                       }
                     } else {
                       sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
