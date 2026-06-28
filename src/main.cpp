@@ -2838,12 +2838,24 @@ void loop()
                         // SUN parameters (p/c) are one-time tokens — reusing them triggers
                         // replay detection. Close PIN pad and require a fresh NFC tap.
                         pinPadState.active = false;
-                        String toastMsg = errMsg.isEmpty() ? "Wrong PIN" : errMsg;
-                        toastMsg += " — tap again";
-                        authyState.infoMsg   = toastMsg;
+                        // Split server message into 2–3 display lines (size 3, centered)
+                        String l1, l2, l3 = "Tap card again";
+                        int attIdx = errMsg.indexOf(" attempt");
+                        if (attIdx > 0) {
+                          // "Invalid PIN. N attempt(s) remaining." → extract N
+                          int numEnd = attIdx;
+                          int numStart = numEnd - 1;
+                          while (numStart > 0 && isdigit((unsigned char)errMsg[numStart - 1]))
+                            numStart--;
+                          l1 = "Wrong PIN";
+                          l2 = errMsg.substring(numStart, numEnd) + " tries left";
+                        } else {
+                          l1 = errMsg.isEmpty() ? "Wrong PIN" : errMsg;
+                        }
+                        authyState.infoMsg   = l1;
                         authyState.infoUntil = millis() + 3000;
                         authyShowQR();
-                        showAuthToast(toastMsg, true);
+                        showAuthPinError(l1, l2, l3);
                         LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
                       }
                     } else {
