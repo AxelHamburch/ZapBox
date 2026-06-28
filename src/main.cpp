@@ -2576,10 +2576,12 @@ void loop()
         if (requestNfcTeach(extId, sunP, sunC)) {
           authyState.infoMsg   = "NFC card enrolled";
           authyState.infoUntil = millis() + 3000;
+          showAuthTeachToast(authyState.infoMsg, false);
           LOG_INFO("NFC-Teach", "Card enrolled OK");
         } else {
           authyState.infoMsg   = "Card not enrolled";
           authyState.infoUntil = millis() + 3000;
+          showAuthTeachToast(authyState.infoMsg, true);
           LOG_WARN("NFC-Teach", "Enrol failed (card not in tagid or session closed)");
         }
       } else if (authyConfig.ntag424Pin) {
@@ -2621,7 +2623,13 @@ void loop()
         } else if (authyState.needsRefresh) {
           // After a wallet enrolled: show the next register challenge.
           authyState.needsRefresh = false;
+          authyState.infoMsg   = "";
+          authyState.infoUntil = 0;
           if (requestAuthLnurl()) showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+        } else if (authyState.infoUntil > 0 && aNow >= authyState.infoUntil) {
+          authyState.infoMsg   = "";
+          authyState.infoUntil = 0;
+          showAuthTeachScreen("Learning Identities", authyConfig.authPin);
         }
       } else if (authyState.qrShown) {
         // Identity-trigger QR idle for PRODUCT_TIMEOUT → back to start screen.

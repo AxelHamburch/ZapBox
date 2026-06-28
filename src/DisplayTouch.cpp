@@ -2376,6 +2376,19 @@ bool authTeachCancelHit(uint16_t x, uint16_t y) {
     return miniPosQrCancelHit(x, y);  // identical button geometry
 }
 
+void showAuthTeachToast(const String &msg, bool isError) {
+    DisplayLock l;
+    if (!_gfx) return;
+    uint16_t fg = isError ? TFT_RED : TFT_GREEN;
+    uint16_t bg = themeBackground;
+    // Draw toast strip above the CANCEL button (which sits MP_QRC_M from the bottom).
+    int toastH = 30;
+    int toastY = SCR_H - MP_QRC_H - MP_QRC_M - toastH - 4;
+    fillRect(0, toastY, SCR_W, toastH, bg);
+    drawCenter(SCR_W / 2, toastY + toastH / 2, msg.c_str(), fg, bg, 2);
+    flushDisplay();
+}
+
 // ── Authy dual-page tab button (bottom-right corner) ────────────────────────
 // Mirrors the CANCEL button geometry in the same (right) corner. Wide enough
 // for the "pay login >" / "< ID login" labels.
