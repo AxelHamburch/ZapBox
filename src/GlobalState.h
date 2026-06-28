@@ -710,7 +710,7 @@ extern MiniPosState miniPosState;
 struct AuthyConfig {
   bool   enabled = false;      // multiControl == "authy"
   int    authPin = 5;          // GPIO triggered on a successful auth (CH01 relay)
-  int    authDuration = 3000;  // ms the relay stays on
+  int    authDuration = 1000;  // ms the relay stays on
   String label = "ZAPBOX Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
   bool   ntag424Pin = true;    // require PIN pad after NTAG 424 DNA tap (Ring-Login)
   bool   dualPage = false;     // true = also offer a classic payment page (tab switch)
