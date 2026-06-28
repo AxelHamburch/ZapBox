@@ -811,7 +811,7 @@ void readFiles()
 
     // Read Mini-PoS configuration (indices 54-56, Touch 3.5 only)
     // 54=miniPosCurrency  55=miniPosDecimal(yes/no)  56=miniPosInvoiceKey
-    if (miniPosConfig.enabled) {
+    if (miniPosConfig.enabled || multiChannelConfig.mode == "modeselect") {
       const JsonObject maRoot54 = doc[54];
       if (!maRoot54.isNull()) {
         const char *v = maRoot54["value"];
@@ -851,10 +851,10 @@ void readFiles()
       LOG_INFO("Config", "==============================");
     }
 
-    // Read Authy configuration (indices 88-90, Touch 3.5 only)
-    // 88=authPin (GPIO triggered on success)  89=authDuration (ms)
-    // 90=authLabel (text next to the identity-trigger QR, split into 3 lines)
-    if (authyConfig.enabled) {
+    // Read Authy configuration (indices 88-92, Touch 3.5 only).
+    // 88=authPin  89=authDuration(ms)  90=authLabel  91=authNtag424Pin  92=authDualPage
+    // Parsed unconditionally so mode-select → Authy gets the correct values.
+    {
       const JsonObject maRoot88 = doc[88];
       if (!maRoot88.isNull()) {
         const char *v = maRoot88["value"];
@@ -884,9 +884,20 @@ void readFiles()
       if (!maRoot91.isNull()) {
         const char *v = maRoot91["value"];
         if (v != nullptr) {
+          authyConfig.ntag424Pin = (String(v) != "no");
+        }
+      }
+      const JsonObject maRoot92 = doc[92];
+      if (!maRoot92.isNull()) {
+        const char *v = maRoot92["value"];
+        if (v != nullptr) {
           authyConfig.dualPage = (String(v) == "yes");
         }
       }
+    }
+    // Authy mode-specific side effects (only when booting directly into Authy).
+    // When entering via mode-select, applyModeSelection() applies these instead.
+    if (authyConfig.enabled) {
       // Authy owns the screen like Mini-PoS: no fixed-amount threshold QR —
       // except in dual-page mode, where the classic payment page keeps the
       // normal threshold/product QR for the auth pin.
@@ -900,6 +911,7 @@ void readFiles()
       LOG_INFO("Config", String("Auth pin: ") + String(authyConfig.authPin));
       LOG_INFO("Config", String("Activation time: ") + String(authyConfig.authDuration) + "ms");
       LOG_INFO("Config", String("Identity label: ") + authyConfig.label);
+      LOG_INFO("Config", String("NTAG 424 PIN: ") + (authyConfig.ntag424Pin ? "yes" : "no"));
       LOG_INFO("Config", String("Dual page (payment): ") + (authyConfig.dualPage ? "yes" : "no"));
       LOG_INFO("Config", "===========================");
     }
@@ -2056,6 +2068,12 @@ static void applyModeSelection(int selected) {
       multiChannelConfig.mode = "off";
       authyConfig.enabled     = true;
       maxProducts = 1;
+      if (multiChannelConfig.btcTickerMode != "always") {
+        multiChannelConfig.btcTickerMode = "off";
+      }
+      if (!authyConfig.dualPage) {
+        lightningConfig.thresholdKey = "";
+      }
       authyShowStart();
       productSelectionState.showTime = 0;
       LOG_INFO("ModeSelect", "Authy started");
@@ -2545,6 +2563,51 @@ void loop()
       }
     }
 
+    // ── Ring-Login: NTAG 424 SUN tap received from NFC task ─────────────
+    if (authyConfig.enabled && authyState.nfcSunTapPending &&
+        !pinPadState.active) {
+      authyState.nfcSunTapPending = false;
+      String extId = String(authyState.nfcSunExternalId);
+      String sunP  = String(authyState.nfcSunP);
+      String sunC  = String(authyState.nfcSunC);
+
+      if (authyState.nfcSunIsTeach) {
+        // Teach mode: enrol the card on the server
+        if (requestNfcTeach(extId, sunP, sunC)) {
+          authyState.infoMsg   = "NFC card enrolled";
+          authyState.infoUntil = millis() + 3000;
+          showAuthToast(authyState.infoMsg, false);
+          LOG_INFO("NFC-Teach", "Card enrolled OK");
+        } else {
+          authyState.infoMsg   = "Card not enrolled";
+          authyState.infoUntil = millis() + 3000;
+          showAuthToast(authyState.infoMsg, true);
+          LOG_WARN("NFC-Teach", "Enrol failed (card not in tagid or session closed)");
+        }
+      } else if (authyConfig.ntag424Pin) {
+        // PIN required: show 4-digit PIN pad
+        pinPadState              = PinPadState();
+        pinPadState.active       = true;
+        pinPadState.nfcRingLogin = true;
+        pinPadState.maxDigits    = 4;
+        pinPadState.maxAttempts  = 3;
+        pinPadState.activatedAt  = millis();
+        showPinPadScreen(pinPadState);
+        LOG_INFO("NFC-Auth", "Showing PIN pad for Ring-Login");
+      } else {
+        // No PIN required: verify immediately
+        String errMsg;
+        if (requestNfcAuth(extId, sunP, sunC, "", &errMsg)) {
+          LOG_INFO("NFC-Auth", "Auth OK (no PIN)");
+        } else {
+          authyState.infoMsg   = errMsg.isEmpty() ? "NFC Identity Failed" : errMsg;
+          authyState.infoUntil = millis() + 3000;
+          showAuthToast(authyState.infoMsg, true);
+          LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
+        }
+      }
+    }
+
     // ── Authy timers ─────────────────────────────────────────────────────
     if (authyConfig.enabled &&
         deviceState.isInState(DeviceState::READY) &&
@@ -2559,7 +2622,13 @@ void loop()
         } else if (authyState.needsRefresh) {
           // After a wallet enrolled: show the next register challenge.
           authyState.needsRefresh = false;
+          authyState.infoMsg   = "";
+          authyState.infoUntil = 0;
           if (requestAuthLnurl()) showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+        } else if (authyState.infoUntil > 0 && aNow >= authyState.infoUntil) {
+          authyState.infoMsg   = "";
+          authyState.infoUntil = 0;
+          showAuthTeachScreen("Learning Identities", authyConfig.authPin);
         }
       } else if (authyState.qrShown) {
         // Identity-trigger QR idle for PRODUCT_TIMEOUT → back to start screen.
@@ -2569,7 +2638,11 @@ void loop()
           authyShowStart();
         } else if (authyState.needsRefresh) {
           authyState.needsRefresh = false;
-          authyShowQR();   // re-open with a fresh challenge (e.g. after enroll)
+          authyShowQR();
+        } else if (authyState.infoUntil > 0 && aNow >= authyState.infoUntil) {
+          authyState.infoMsg   = "";
+          authyState.infoUntil = 0;
+          authyShowQR();   // redraw QR cleanly without toast
         }
       } else if (authyState.infoUntil > 0) {
         // Transient hint (e.g. "IDENTITY LOGIN DISABLED") → back to start.
@@ -2683,6 +2756,16 @@ void loop()
           LOG_INFO("Touch", String("tap x=") + String(x) + " y=" + String(y) +
                             " g=" + String(gesture));
         }
+
+        // First touch after screensaver wake must only wake — not trigger any action.
+        // Swallow the rising edge for 300 ms after the backlight came on.
+        if (isTouched && !wasTouched &&
+            powerConfig.lastWakeUpTime > 0 &&
+            millis() - powerConfig.lastWakeUpTime < 300) {
+          Serial.println("[TOUCH] Swallowed (screensaver wake protection)");
+          wasTouched = isTouched;
+          goto skip_product_touch_processing;
+        }
 #else
       // Headless mode - no touch events
       if (false) {
@@ -2720,11 +2803,13 @@ void loop()
           if (isTouched && !wasTouched && !pinPadState.submitted) {
             int hit = pinPadHitTest(x, y);
             if (hit == 12) {  // cancel — always allowed, even during error display
+              bool wasNfcRingLogin = pinPadState.nfcRingLogin;
               pinPadState.active                = false;
               extensionConfig.nfcPaymentPending = false;
               nfcPendingScreenShown             = false;
               needsQRRedraw                     = true;
               productSelectionState.showTime    = millis();
+              if (wasNfcRingLogin) authyShowStart();
               LOG_INFO("PIN", "PIN entry cancelled by user");
             } else if (!pinPadState.showError) {
               // Normal input — only when no error is displayed
@@ -2748,6 +2833,45 @@ void loop()
                         LOG_INFO("Teach", "Teach active - showing register QR");
                       } else {
                         showPinPadScreen(pinPadState); // error set by submitTeachPin
+                      }
+                    } else if (pinPadState.nfcRingLogin) {
+                      // Ring-Login: verify PIN + SUN params against zapbox_extension
+                      String errMsg;
+                      String extId = String(authyState.nfcSunExternalId);
+                      String sunP  = String(authyState.nfcSunP);
+                      String sunC  = String(authyState.nfcSunC);
+                      if (requestNfcAuth(extId, sunP, sunC, String(pinPadState.digits), &errMsg)) {
+                        pinPadState.active = false;
+                        authyShowStart();
+                        LOG_INFO("NFC-Auth", "Auth OK with PIN");
+                      } else {
+                        // SUN parameters (p/c) are one-time tokens — reusing them triggers
+                        // replay detection. Close PIN pad and require a fresh NFC tap.
+                        pinPadState.active = false;
+                        // Split server message into 2–3 display lines (size 3, centered)
+                        String l1, l2, l3;
+                        int attIdx = errMsg.indexOf(" attempt");
+                        if (attIdx > 0) {
+                          // "Invalid PIN. N attempt(s) remaining." → extract N
+                          int numEnd = attIdx;
+                          int numStart = numEnd - 1;
+                          while (numStart > 0 && isdigit((unsigned char)errMsg[numStart - 1]))
+                            numStart--;
+                          l1 = "Wrong PIN";
+                          l2 = errMsg.substring(numStart, numEnd) + " tries left";
+                          l3 = "Tap card again";
+                        } else {
+                          // Unknown card or other server error — show user-friendly message
+                          if (errMsg.indexOf("404") >= 0)
+                            l1 = "NFC tag unknown";
+                          else
+                            l1 = errMsg.isEmpty() ? "Wrong PIN" : errMsg;
+                        }
+                        authyState.infoMsg   = l1;
+                        authyState.infoUntil = millis() + 5000;
+                        authyShowQR();
+                        showAuthPinError(l1, l2, l3);
+                        LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
                       }
                     } else {
                       sendPinSubmit(pinPadState.sessionId, String(pinPadState.digits));
@@ -4902,8 +5026,9 @@ void processPaymentEvent(String &payloadStr)
         // session open and fetch the next register challenge; show a hint.
         LOG_INFO("Authy", "Wallet enrolled");
         authyState.enrolledPrompt = true;
-        authyState.infoMsg = "Wallet registered";
+        authyState.infoMsg   = "Wallet registered";
         authyState.infoUntil = millis() + 4000;
+        showAuthToast(authyState.infoMsg, false);
         authyState.needsRefresh = true;
         return;
       }
@@ -4937,7 +5062,12 @@ void processPaymentEvent(String &payloadStr)
     // product QR currently on screen.  A payment for a different pin (e.g.
     // an old invoice still pending in the payer's wallet) must be rejected
     // so the wrong relay is not triggered.
-    if (t35AmbientConfig.numericSelect) {
+    // Numeric product selection guard: only active in multi-channel mode.
+    // When mode-select at startup switches to Single/Mini-PoS/Authy,
+    // multiChannelConfig.mode is "off" and the guard must not fire — otherwise
+    // every payment would be silently dropped because productSelectState.qrActive
+    // is never set in those modes.
+    if (t35AmbientConfig.numericSelect && multiChannelConfig.mode == "duo") {
       if (!productSelectState.qrActive || productSelectState.qrPin <= 0) {
         LOG_WARN("NumSel", "Payment received but no product QR active — ignoring");
         return;

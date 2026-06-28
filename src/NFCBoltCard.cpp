@@ -547,10 +547,47 @@ static void nfc_task_code(void *pvParams)
 
         fileBuf[bytesRead] = '\0'; // Null-terminate for safe String conversion.
 
+        // Ring-Login: check BEFORE the lnurlw:// payment path so that both
+        // https:// and lnurlw:// TagID SUN URLs are handled here in Authy mode.
+        if (authyConfig.enabled) {
+            String tapUrl = String((char *)fileBuf);
+            int scanIdx = tapUrl.indexOf("/api/v1/scan/");
+            if (scanIdx >= 0) {
+                int extStart = scanIdx + 13; // skip "/api/v1/scan/"
+                int qPos = tapUrl.indexOf('?', extStart);
+                if (qPos > extStart) {
+                    String extId = tapUrl.substring(extStart, qPos);
+                    String query = tapUrl.substring(qPos + 1);
+                    String pVal, cVal;
+                    int pos = 0;
+                    while (pos < (int)query.length()) {
+                        int eq = query.indexOf('=', pos);
+                        if (eq < 0) break;
+                        int amp = query.indexOf('&', eq);
+                        if (amp < 0) amp = query.length();
+                        String key = query.substring(pos, eq);
+                        String val = query.substring(eq + 1, amp);
+                        if (key == "p" || key == "P") pVal = val;
+                        else if (key == "c" || key == "C") cVal = val;
+                        pos = amp + 1;
+                    }
+                    if (extId.length() > 0 && pVal.length() > 0 && cVal.length() > 0) {
+                        LOG_INFO("NFC", String("Ring-Login SUN tap: ext=") + extId + " p=" + pVal.substring(0,8) + "...");
+                        authyState.nfcSunIsTeach = authyState.teachActive;
+                        strncpy(authyState.nfcSunExternalId, extId.c_str(), sizeof(authyState.nfcSunExternalId) - 1);
+                        strncpy(authyState.nfcSunP, pVal.c_str(), sizeof(authyState.nfcSunP) - 1);
+                        strncpy(authyState.nfcSunC, cVal.c_str(), sizeof(authyState.nfcSunC) - 1);
+                        authyState.nfcSunTapPending = true;
+                        waitForCardRemoval();
+                        continue;
+                    }
+                }
+            }
+        }
+
         // Validate LNURLW prefix – Bolt Cards always start with "lnurlw://".
         // Case-insensitive: some cards return "LNURLW://" in uppercase.
-        if (strncasecmp("lnurlw://", (char *)fileBuf, 9) != 0)
-        {
+        if (strncasecmp("lnurlw://", (char *)fileBuf, 9) != 0) {
             LOG_WARN("NFC", String("Card does not contain LNURLW (got: ") +
                                 String((char *)fileBuf).substring(0, 20) + "...)");
             vTaskDelay(pdMS_TO_TICKS(500));

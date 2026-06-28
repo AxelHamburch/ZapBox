@@ -83,6 +83,10 @@ void showModeSelectionScreen();
 int  modeSelectHitTest(uint16_t x, uint16_t y);
 // Authy teach screen: registration QR + "Learning Identities" + CANCEL button
 void showAuthTeachScreen(String label, int pin);
+// Centered multi-line error overlay after PIN failure (size 3, over the QR area)
+void showAuthPinError(const String &l1, const String &l2, const String &l3);
+// Overlay a transient status toast on any auth screen (green=ok, red=error)
+void showAuthToast(const String &msg, bool isError);
 bool authTeachCancelHit(uint16_t x, uint16_t y);
 // Authy dual-page: identity QR + payment page, bottom-left tab to switch pages
 void showAuthIdentityScreen(String label, int pin);
@@ -104,6 +108,8 @@ inline int  productSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showProductSelectQRScreen(String, int) {}
 inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
 inline void showAuthTeachScreen(String, int) {}
+inline void showAuthPinError(const String &, const String &, const String &) {}
+inline void showAuthToast(const String &, bool) {}
 inline bool authTeachCancelHit(uint16_t, uint16_t) { return false; }
 inline void showAuthIdentityScreen(String, int) {}
 inline void showAuthPayScreen(String, int) {}
@@ -169,6 +175,8 @@ inline int  productSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showProductSelectQRScreen(String, int) {}
 inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
 inline void showAuthTeachScreen(String, int) {}
+inline void showAuthPinError(const String &, const String &, const String &) {}
+inline void showAuthToast(const String &, bool) {}
 inline bool authTeachCancelHit(uint16_t, uint16_t) { return false; }
 inline void showAuthIdentityScreen(String, int) {}
 inline void showAuthPayScreen(String, int) {}

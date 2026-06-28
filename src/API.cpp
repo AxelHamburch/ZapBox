@@ -604,3 +604,78 @@ bool requestAuthLnurl(String *actionOut, int *httpOut)
   LOG_INFO("Authy", String("Auth LNURL ready (action=") + String(action ? action : "?") + ")");
   return true;
 }
+
+// Ring-Login: verify NTAG 424 DNA tap (server does the CMAC check, triggers relay)
+bool requestNfcAuth(const String &externalId, const String &p, const String &c,
+                    const String &pin, String *errorOut)
+{
+  if (errorOut) *errorOut = "";
+  if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
+    if (errorOut) *errorOut = "Not configured";
+    return false;
+  }
+  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+             + "/api/v1/nfc/auth/" + deviceId
+             + "?external_id=" + externalId
+             + "&p=" + p + "&c=" + c
+             + "&auth_pin=" + String(authyConfig.authPin)
+             + "&auth_duration=" + String(authyConfig.authDuration);
+  if (pin.length() > 0) url += "&pin=" + pin;
+
+  HTTPClient http;
+  http.begin(url);
+  http.setConnectTimeout(5000);
+  http.setTimeout(10000);
+  int code = http.GET();
+  String resp = http.getString();
+  http.end();
+
+  LOG_INFO("NFC-Auth", String("HTTP ") + code + " resp=" + resp.substring(0, 60));
+  if (code != 200) {
+    // Try to extract reason from error body
+    JsonDocument edoc;
+    if (!deserializeJson(edoc, resp)) {
+      const char *detail = edoc["detail"];
+      if (detail && errorOut) *errorOut = String(detail);
+    }
+    if (errorOut && errorOut->isEmpty()) *errorOut = "HTTP " + String(code);
+    return false;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, resp)) {
+    if (errorOut) *errorOut = "Parse error";
+    return false;
+  }
+  const char *status = doc["status"];
+  if (!status || String(status) != "OK") {
+    const char *reason = doc["reason"];
+    if (errorOut) *errorOut = reason ? String(reason) : "Unknown error";
+    return false;
+  }
+  return true;
+}
+
+// Ring-Login teach: enrol a card (server validates via tagid, stores in allowlist)
+bool requestNfcTeach(const String &externalId, const String &p, const String &c)
+{
+  if (lnbitsServer.length() == 0 || deviceId.length() == 0) return false;
+  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+             + "/api/v1/nfc/teach/" + deviceId
+             + "?external_id=" + externalId
+             + "&p=" + p + "&c=" + c;
+
+  HTTPClient http;
+  http.begin(url);
+  http.setConnectTimeout(5000);
+  http.setTimeout(10000);
+  int code = http.GET();
+  String resp = http.getString();
+  http.end();
+
+  LOG_INFO("NFC-Teach", String("HTTP ") + code + " resp=" + resp.substring(0, 60));
+  if (code != 200) return false;
+  JsonDocument doc;
+  if (deserializeJson(doc, resp)) return false;
+  const char *status = doc["status"];
+  return status && String(status) == "OK";
+}

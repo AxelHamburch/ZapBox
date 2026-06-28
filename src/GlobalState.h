@@ -630,6 +630,7 @@ struct PinPadState {
     int      numDigits   = 0;     // 0–maxDigits
     int      maxDigits   = 4;     // 4 = payment PIN, 6 = LNURL-auth teach PIN
     bool     teachMode   = false; // true: submit to /auth/teach/start (Authy)
+    bool     nfcRingLogin = false; // true: PIN for NTAG 424 DNA Ring-Login
     int      attemptNum  = 0;     // failed attempts so far (shown from 1)
     int      maxAttempts = 3;
     long     amountSat   = 0;
@@ -709,8 +710,9 @@ extern MiniPosState miniPosState;
 struct AuthyConfig {
   bool   enabled = false;      // multiControl == "authy"
   int    authPin = 5;          // GPIO triggered on a successful auth (CH01 relay)
-  int    authDuration = 3000;  // ms the relay stays on
+  int    authDuration = 1000;  // ms the relay stays on
   String label = "ZAPBOX Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
+  bool   ntag424Pin = true;    // require PIN pad after NTAG 424 DNA tap (Ring-Login)
   bool   dualPage = false;     // true = also offer a classic payment page (tab switch)
 };
 
@@ -736,6 +738,13 @@ struct AuthyState {
   String infoMsg;                    // transient message (errors, status)
   uint32_t infoUntil = 0;            // millis() when infoMsg expires
 
+  // Ring-Login NFC tap (written by NFC task on Core 0, read by loop() on Core 1)
+  volatile bool nfcSunTapPending = false;  // NTAG 424 SUN tap received
+  char nfcSunExternalId[48] = "";          // tagid external_id parsed from URL
+  char nfcSunP[68] = "";                   // SUN p-parameter (hex, uppercase)
+  char nfcSunC[36] = "";                   // SUN c-parameter (hex, uppercase)
+  bool nfcSunIsTeach = false;              // true → teach-enrol, false → auth
+
   void reset() {
     teachActive = false;
     teachUntil = 0;
@@ -746,6 +755,8 @@ struct AuthyState {
     payPage = false;
     infoMsg = "";
     infoUntil = 0;
+    nfcSunTapPending = false;
+    nfcSunIsTeach = false;
   }
 };
 

@@ -57,8 +57,17 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       LOG_DEBUG("WebSocket", String("Received: ") + String((char*)payload));
       payloadStr = (char *)payload;
       LOG_DEBUG("WebSocket", String("PayloadStr set to: ") + payloadStr);
-      
-      // Enqueue payment instead of just setting flag
+
+      // nfc_enrolled is a teach confirmation — do not trigger any relay.
+      if (payloadStr.indexOf("\"nfc_enrolled\"") >= 0) {
+        LOG_INFO("WebSocket", "nfc_enrolled event — card enrolled, no relay");
+        if (authyConfig.enabled) {
+          authyState.infoMsg   = "Card enrolled";
+          authyState.infoUntil = millis() + 2000;
+        }
+        break;
+      }
+
       paymentQueue.enqueue(payloadStr);
       LOG_INFO("WebSocket", String("Payment enqueued. Queue size: ") + String(paymentQueue.size()));
       break;
@@ -142,8 +151,13 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     // Numeric selection: a Bolt Card can only pay the product QR currently
     // shown. On the keypad/select/ticker screens the tap is silently ignored.
+    // Only applies in multi-channel mode — Single channel and Mini-PoS handle
+    // their own guards and must not be blocked here.
     #ifdef BOARD_JC3248W535C
-    if (t35AmbientConfig.numericSelect && !productSelectState.qrActive) {
+    if (t35AmbientConfig.numericSelect &&
+        multiChannelConfig.mode != "off" &&
+        !miniPosState.invoicePending &&
+        !productSelectState.qrActive) {
         LOG_INFO("NFC", "Numeric selection: no product QR shown – Bolt Card tap ignored");
         return;
     }
