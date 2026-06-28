@@ -2379,6 +2379,7 @@ bool authTeachCancelHit(uint16_t x, uint16_t y) {
 void showAuthPinError(const String &l1, const String &l2, const String &l3) {
     DisplayLock lock;
     if (!_gfx) return;
+    const uint16_t errBg = TFT_WHITE;
     const int sz    = 3;
     const int lineH = 8 * sz + 10;   // 24 px text + 10 px gap = 34 px
     int nLines = 1 + (l2.length() > 0 ? 1 : 0) + (l3.length() > 0 ? 1 : 0);
@@ -2386,11 +2387,11 @@ void showAuthPinError(const String &l1, const String &l2, const String &l3) {
     // Landscape: center at SCR_H/2; portrait: upper third so it sits over the QR
     int centerY = isPortrait() ? SCR_H / 3 : SCR_H / 2;
     int startY  = centerY - totalH / 2;
-    fillRect(0, startY - 10, SCR_W, totalH + 20, themeBackground);
+    fillRect(0, startY - 10, SCR_W, totalH + 20, errBg);
     int y = startY + lineH / 2;
-    drawCenter(SCR_W / 2, y, l1.c_str(), TFT_RED, themeBackground, sz);
-    if (l2.length() > 0) { y += lineH; drawCenter(SCR_W / 2, y, l2.c_str(), TFT_RED, themeBackground, sz); }
-    if (l3.length() > 0) { y += lineH; drawCenter(SCR_W / 2, y, l3.c_str(), TFT_RED, themeBackground, sz); }
+    drawCenter(SCR_W / 2, y, l1.c_str(), TFT_RED, errBg, sz);
+    if (l2.length() > 0) { y += lineH; drawCenter(SCR_W / 2, y, l2.c_str(), TFT_RED, errBg, sz); }
+    if (l3.length() > 0) { y += lineH; drawCenter(SCR_W / 2, y, l3.c_str(), TFT_RED, errBg, sz); }
     flushDisplay();
 }
 

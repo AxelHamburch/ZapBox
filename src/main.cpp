@@ -2853,7 +2853,7 @@ void loop()
                           l1 = errMsg.isEmpty() ? "Wrong PIN" : errMsg;
                         }
                         authyState.infoMsg   = l1;
-                        authyState.infoUntil = millis() + 3000;
+                        authyState.infoUntil = millis() + 5000;
                         authyShowQR();
                         showAuthPinError(l1, l2, l3);
                         LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
