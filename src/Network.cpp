@@ -57,8 +57,17 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       LOG_DEBUG("WebSocket", String("Received: ") + String((char*)payload));
       payloadStr = (char *)payload;
       LOG_DEBUG("WebSocket", String("PayloadStr set to: ") + payloadStr);
-      
-      // Enqueue payment instead of just setting flag
+
+      // nfc_enrolled is a teach confirmation — do not trigger any relay.
+      if (payloadStr.indexOf("\"nfc_enrolled\"") >= 0) {
+        LOG_INFO("WebSocket", "nfc_enrolled event — card enrolled, no relay");
+        if (authyConfig.enabled) {
+          authyState.infoMsg   = "Card enrolled";
+          authyState.infoUntil = millis() + 2000;
+        }
+        break;
+      }
+
       paymentQueue.enqueue(payloadStr);
       LOG_INFO("WebSocket", String("Payment enqueued. Queue size: ") + String(paymentQueue.size()));
       break;
