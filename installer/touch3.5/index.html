@@ -525,22 +525,16 @@
             <!-- Identity configuration: visible only in Identity (LNURL-auth & TagID) mode -->
             <div id="authyFields" style="display: none; margin-top: 10px;">
 
-                <!-- Top-level ENABLE / DISABLE toggle -->
-                <div class="input-wrapper" style="margin-bottom: 4px;">
-                    <div style="grid-column: span 2;">
-                        <label for="authyEnabled">Identity Login (LNURL-auth or NTAG424)</label>
-                        <select id="authyEnabled" onchange="toggleAuthyContent(this.value)">
-                            <option value="no" selected>DISABLE</option>
-                            <option value="yes">ENABLE</option>
-                        </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
-                            <strong>Identity</strong> recognises a known wallet or NFC card and triggers a relay — <strong>nothing is paid</strong>. Select <em>ENABLE</em> to configure.
-                        </p>
-                    </div>
+                <!-- Identity section header -->
+                <div style="margin-bottom: 10px;">
+                    <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 0.5px;">Identity Login (LNURL-auth or NFC Tag)</p>
+                    <p style="margin: 0; font-size: 11px; color: #888; font-style: italic;">
+                        <strong>Identity</strong> recognises a known wallet or NFC card and triggers a relay — <strong>nothing is paid</strong>. Enable / disable identities in LNbits.
+                    </p>
                 </div>
 
-                <!-- Expanded identity settings — hidden until ENABLE is chosen -->
-                <div id="authyContent" style="display: none; margin-top: 14px;">
+                <!-- Identity settings -->
+                <div id="authyContent" style="margin-top: 14px;">
 
                     <!-- General trigger settings -->
                     <div class="input-wrapper">
@@ -1687,10 +1681,6 @@
         // selecting OFA forces numeric selection back to "No" and disables it;
         // selecting numeric "Yes" forces the activation mode back to "Off".
 
-        function toggleAuthyContent(val) {
-            const content = document.getElementById('authyContent');
-            if (content) content.style.display = (val === 'yes') ? 'block' : 'none';
-        }
 
         function updateNumericSelectState() {
             const act = document.getElementById('t35ActivationMode');
