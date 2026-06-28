@@ -2576,12 +2576,12 @@ void loop()
         if (requestNfcTeach(extId, sunP, sunC)) {
           authyState.infoMsg   = "NFC card enrolled";
           authyState.infoUntil = millis() + 3000;
-          showAuthTeachToast(authyState.infoMsg, false);
+          showAuthToast(authyState.infoMsg, false);
           LOG_INFO("NFC-Teach", "Card enrolled OK");
         } else {
           authyState.infoMsg   = "Card not enrolled";
           authyState.infoUntil = millis() + 3000;
-          showAuthTeachToast(authyState.infoMsg, true);
+          showAuthToast(authyState.infoMsg, true);
           LOG_WARN("NFC-Teach", "Enrol failed (card not in tagid or session closed)");
         }
       } else if (authyConfig.ntag424Pin) {
@@ -2600,10 +2600,12 @@ void loop()
         if (requestNfcAuth(extId, sunP, sunC, "", &errMsg)) {
           authyState.infoMsg   = "NFC Identity OK";
           authyState.infoUntil = millis() + 2000;
+          showAuthToast(authyState.infoMsg, false);
           LOG_INFO("NFC-Auth", "Auth OK (no PIN)");
         } else {
           authyState.infoMsg   = errMsg.isEmpty() ? "NFC Identity Failed" : errMsg;
           authyState.infoUntil = millis() + 3000;
+          showAuthToast(authyState.infoMsg, true);
           LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
         }
       }
@@ -2639,7 +2641,11 @@ void loop()
           authyShowStart();
         } else if (authyState.needsRefresh) {
           authyState.needsRefresh = false;
-          authyShowQR();   // re-open with a fresh challenge (e.g. after enroll)
+          authyShowQR();
+        } else if (authyState.infoUntil > 0 && aNow >= authyState.infoUntil) {
+          authyState.infoMsg   = "";
+          authyState.infoUntil = 0;
+          authyShowQR();   // redraw QR cleanly without toast
         }
       } else if (authyState.infoUntil > 0) {
         // Transient hint (e.g. "IDENTITY LOGIN DISABLED") → back to start.
@@ -5001,8 +5007,9 @@ void processPaymentEvent(String &payloadStr)
         // session open and fetch the next register challenge; show a hint.
         LOG_INFO("Authy", "Wallet enrolled");
         authyState.enrolledPrompt = true;
-        authyState.infoMsg = "Wallet registered";
+        authyState.infoMsg   = "Wallet registered";
         authyState.infoUntil = millis() + 4000;
+        showAuthToast(authyState.infoMsg, false);
         authyState.needsRefresh = true;
         return;
       }

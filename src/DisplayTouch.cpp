@@ -2376,12 +2376,12 @@ bool authTeachCancelHit(uint16_t x, uint16_t y) {
     return miniPosQrCancelHit(x, y);  // identical button geometry
 }
 
-void showAuthTeachToast(const String &msg, bool isError) {
+void showAuthToast(const String &msg, bool isError) {
     DisplayLock l;
     if (!_gfx) return;
     uint16_t fg = isError ? TFT_RED : TFT_GREEN;
     uint16_t bg = themeBackground;
-    // Draw toast strip above the CANCEL button (which sits MP_QRC_M from the bottom).
+    // Draw toast strip above the bottom button area (CANCEL / tab button).
     int toastH = 30;
     int toastY = SCR_H - MP_QRC_H - MP_QRC_M - toastH - 4;
     fillRect(0, toastY, SCR_W, toastH, bg);
