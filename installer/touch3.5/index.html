@@ -530,7 +530,7 @@
                 <div style="margin-bottom: 10px;">
                     <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 0.5px;">Identity Login (LNURL-auth or NFC Tag)</p>
                     <p style="margin: 0; font-size: 11px; color: #888; font-style: italic;">
-                        <strong>Identity</strong> recognises a known wallet or NFC card and triggers a relay — <strong>nothing is paid</strong>. Enable / disable identities in LNbits.
+                        <strong>Identity</strong> recognises a known wallet or NFC card and triggers a relay — <strong>nothing is paid</strong>. Enrolled identities, the teach PIN, and the teach mode activation are managed in LNbits (<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" style="color: #888;">zapbox_extension</a>) — teach mode must be enabled there before it can be triggered on the device via 6-tap + hold in Identity mode. NFC Tag login requires the <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a> in LNbits.
                     </p>
                 </div>
 
@@ -567,47 +567,20 @@
                                 <option value="no" selected>No (default) — identity trigger only</option>
                                 <option value="yes">Yes — add a payment page (uses LNbits settings)</option>
                             </select>
-                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">If <strong>"Yes"</strong> is selected, the device displays <strong>two pages</strong>: the <strong>identity trigger</strong> (LNURL-auth) and a <strong>standard payment</strong> page. Successful identification or a payment triggers the GPIO pin.</p>
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">If <strong>"Yes"</strong> is selected, the device displays <strong>two pages</strong>: the <strong>identity trigger</strong> (LNURL-auth or NFC Tag) and a <strong>standard payment + password</strong> page. Successful identification or a payment triggers the GPIO pin. For the payment page a <strong>Pay+Password</strong> must be configured in the zapbox_extension — the payer enters the password as a comment in their Lightning wallet.</p>
                         </div>
                     </div>
 
-                    <!-- ── Teach mode ────────────────────────────────────────── -->
-                    <div style="margin-top: 18px; border-top: 1px solid #444; padding-top: 14px;">
-                        <div class="input-wrapper">
-                            <div>
-                                <label for="authTeachEnabled">Teach mode</label>
-                                <select name="authTeachEnabled" id="authTeachEnabled">
-                                    <option value="yes" selected>ENABLE</option>
-                                    <option value="no">DISABLE</option>
-                                </select>
-                                <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Allow enrolling new identities on the device (6-tap + hold gesture).</p>
-                            </div>
-                            <div>
-                                <label for="authTeachPinHint">Teach-PIN (6 digits)</label>
-                                <input type="text" id="authTeachPinHint" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="e.g. 123456" autocomplete="off">
-                                <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Note your teach PIN here for reference — it is set and verified server-side in the <a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" style="color: #888;">zapbox_extension</a>.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ── LNURL-auth Identities ─────────────────────────────── -->
-                    <div style="margin-top: 18px; border-top: 1px solid #444; padding-top: 14px;">
-                        <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 0.5px;">LNURL-auth Identities <span style="font-weight: normal; color: #888;">(Lightning Wallets)</span></p>
-                        <p style="margin: 0 0 10px 0; font-size: 12px; color: #888; font-style: italic;">Users scan the on-screen QR with a Lightning wallet (Zeus, Breez …). The wallet signs a one-time challenge — no payment, no seed exposure. Identities are managed in zapbox_extension (v2.5.0+).</p>
-                    </div>
-
-                    <!-- ── NFC Identities ────────────────────────────────────── -->
-                    <div style="margin-top: 18px; border-top: 1px solid #444; padding-top: 14px;">
-                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 0.5px;">NFC Identities – NTAG424 <span style="font-weight: normal; color: #888;">(Bolt Card, Ring, etc.)</span></p>
-                        <p style="margin: 0 0 10px 0; font-size: 12px; color: #888;">Note: Use with <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a></p>
+                    <!-- ── NFC tap settings ──────────────────────────────────── -->
+                    <div style="margin-top: 18px;">
                         <div class="input-wrapper">
                             <div style="grid-column: span 2;">
-                                <label for="authNtag424Pin">NTAG 424 DNA PIN</label>
+                                <label for="authNtag424Pin">Additional Security Layer — PIN Prompt for NFC Tags</label>
                                 <select name="authNtag424Pin" id="authNtag424Pin">
-                                    <option value="yes" selected>Yes (default, maximum security)</option>
-                                    <option value="no">No (vulnerable to duplication)</option>
+                                    <option value="yes" selected>Yes — require PIN after tap (recommended)</option>
+                                    <option value="no">No — card possession is enough</option>
                                 </select>
-                                <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Adds a 4-digit PIN prompt after each NFC tap. The PIN is managed in the <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a>.</p>
+                                <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Shows a 4-digit PIN prompt on the device after each NFC tap. Applies to NTAG 424 DNA cards such as Bolt Cards and Bolt Rings. The PIN is managed in the <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a> in LNbits.</p>
                             </div>
                         </div>
                     </div>
