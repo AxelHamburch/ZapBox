@@ -397,6 +397,25 @@ installer/firmware/
 
 ## Release History
 
+### v955832t — 2026-06-28
+
+```markdown
+## 🎯 Release v955832t — NTAG 424 DNA Identity Login
+
+### 🖥️ Touch 3.5" Version (v955832t)
+- **NTAG 424 DNA NFC tap** for Identity Login: Bolt Card, Bolt Ring and any NTAG 424 DNA card can now trigger a relay without payment
+- **PIN pad after NFC tap**: optional 4-digit PIN entry after tap (configurable, recommended)
+- **NFC card enrolment in teach mode**: tap an unknown card during teach mode to enrol it; green/red toast confirms success or failure
+- **SUN tap detection** before LNURL-auth payment path — handles both `lnurlw://` and `https://` TagID URLs
+- **"NFC tag unknown"** message when a card is not in the allow list (was silent before)
+- **Wrong PIN overlay**: centred multi-line error with white background shown for 5 s, PIN pad closes, fresh tap required
+- Fixed: IDENTITY/IDENTITY mode screen label (was "AUTHY")
+- Fixed: portrait label box no longer overlaps the CANCEL button in Mini-PoS QR view
+- Fixed: web installer identity section always visible (removed unnecessary ENABLE/DISABLE toggle)
+- Fixed: `miniPosInvoiceKey` loaded correctly when Mini-PoS is not the startup mode
+- Installer: renamed "NTAG424" → "NFC Tag"; added NTAG 424 DNA PIN option
+```
+
 ### v955197 / v955197h / v955197t — 2026-06-24
 
 ```markdown
