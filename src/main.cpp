@@ -895,16 +895,18 @@ void readFiles()
           authyConfig.dualPage = (String(v) == "yes");
         }
       }
-      // index 52: authTeachPin — one-time teach PIN from installer
+      // index 52: authTeachPin — one-time teach PIN from installer.
+      // Consumed immediately: clear the value in doc so it is written back as
+      // empty, preventing re-entry into teach mode on every subsequent boot.
       const JsonObject a52 = doc[52];
       if (!a52.isNull()) {
         const char *v = a52["value"];
         if (v != nullptr && strlen(v) >= 6) {
           authyConfig.teachPin = String(v);
+          doc[52]["value"] = "";   // erase before write-back below
           if (authyConfig.enabled) {
-            // Auto-start teach mode on first main-loop iteration once connected
             authyState.pendingTeachStart = true;
-            LOG_INFO("Teach", String("Teach PIN set — will enter teach mode on connect (PIN: ") + String(v) + ")");
+            LOG_INFO("Teach", "Teach PIN set — will enter teach mode on connect");
           }
         }
       }
@@ -1089,8 +1091,22 @@ void readFiles()
     // Initialize last activity time
     activityTracking.lastActivityTime = millis();
     LOG_DEBUG("Config", "Last Activity Time initialized: " + String(activityTracking.lastActivityTime) + " ms");
-    
+
     LOG_INFO("Config", "===================================");
+
+    // If a one-time teach PIN was consumed, write the config back with the
+    // field cleared so the device does not re-enter teach mode on next boot.
+    if (!authyConfig.teachPin.isEmpty()) {
+      paramFile.close();
+      File wFile = FFat.open(PARAM_FILE, FILE_WRITE);
+      if (wFile) {
+        serializeJson(doc, wFile);
+        wFile.close();
+        LOG_INFO("Teach", "Teach PIN erased from config file (one-time use)");
+      } else {
+        LOG_WARN("Teach", "Could not rewrite config to erase teach PIN");
+      }
+    }
   }
   else
   {
