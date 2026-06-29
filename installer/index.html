@@ -479,6 +479,7 @@
                 </p>
             </div>
 
+            <div id="vendingSpecialSection">
             <div class="input-wrapper">
                 <div>
                     <label for="lightBarrier">Special features for the vending machine</label>
@@ -499,12 +500,13 @@
                     <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Pin 11 is always ON, except in screensaver mode.</p>
                 </div>
             </div>
-            
+
             <p style="margin-top: 10px; color: #888;"><i><strong>Notes:</strong><br>
             <strong>Stop the advance:</strong> A trigger from e.g. a light barrier (NPN) stops the action after 2 seconds at the earliest.<br>
             <strong>Monitoring product blockage:</strong> The (NPN) input (light barrier/limit switch) displays the message "PRODUCT IN THE EJECTOR - Remove the product" and no further payment is possible until the input is free again.<br>
             <strong>Level monitoring:</strong> The (NPN) input monitors the fill level of a magazine or container. As long as Pin 2 is pulled LOW (sensor active), everything is fine. As soon as Pin 2 is HIGH (sensor free), all payment options are blocked and the message "THE SUPPLY BIN IS EMPTY - Please restock it" is displayed. Payments are re-enabled automatically once the sensor is active again.</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Note on "Ambient lighting switch":</strong> With pre-selection enabled, channel 4 is switched depending on the display backlight. Whenever the display is on, channel 4 is activated, thus, for example, the lighting for a vending machine. If the display backlight switches off because the screensaver mode is active, channel 4 is also deactivated.</i></p>
+            </div>
 
             <!-- Identity configuration: visible only in Identity (LNURL-auth & TagID) mode -->
             <div id="authyFields" style="display: none; margin-top: 10px;">
@@ -2250,6 +2252,7 @@
         function updateAuthyFieldState() {
             const isAuthy = multiControl.value === 'authy';
             authyFields.style.display = isAuthy ? 'block' : 'none';
+            document.getElementById('vendingSpecialSection').style.display = isAuthy ? 'none' : 'block';
         }
 
         // Servo config field change listeners
