@@ -600,7 +600,13 @@ bool requestAuthLnurl(String *actionOut, int *httpOut)
   const char *action = doc["action"];
   if (actionOut && action) *actionOut = String(action);
 
-  updateLightningQR(String(lnurl));
+  // Store uppercase bare bech32 (no "lightning:" prefix) so the QR renderer
+  // uses compact alphanumeric mode instead of binary mode.  All LNURL-auth
+  // wallets expect the canonical LNURL1… form; the prefix would break scanning.
+  String lnurlUpper = String(lnurl);
+  lnurlUpper.toUpperCase();
+  strncpy(lightningConfig.lightning, lnurlUpper.c_str(), sizeof(lightningConfig.lightning) - 1);
+  lightningConfig.lightning[sizeof(lightningConfig.lightning) - 1] = '\0';
   LOG_INFO("Authy", String("Auth LNURL ready (action=") + String(action ? action : "?") + ")");
   return true;
 }
