@@ -331,6 +331,7 @@
                         <option value="duo">Duo (2 channels - pin 12/13)</option>
                         <option value="quattro">Quattro & ZapOMat (4 channels - pin 12/13/10/11)</option>
                         <option value="servo">Servo (4 channels - 2x relay (pin 12/11) &amp; 2x servo (pin 13/10))</option>
+                        <option value="authy">Identity — LNURL-auth &amp; TagID</option>
                     </select>
                 </div>
             </div>
@@ -504,6 +505,63 @@
             <strong>Monitoring product blockage:</strong> The (NPN) input (light barrier/limit switch) displays the message "PRODUCT IN THE EJECTOR - Remove the product" and no further payment is possible until the input is free again.<br>
             <strong>Level monitoring:</strong> The (NPN) input monitors the fill level of a magazine or container. As long as Pin 2 is pulled LOW (sensor active), everything is fine. As soon as Pin 2 is HIGH (sensor free), all payment options are blocked and the message "THE SUPPLY BIN IS EMPTY - Please restock it" is displayed. Payments are re-enabled automatically once the sensor is active again.</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Note on "Ambient lighting switch":</strong> With pre-selection enabled, channel 4 is switched depending on the display backlight. Whenever the display is on, channel 4 is activated, thus, for example, the lighting for a vending machine. If the display backlight switches off because the screensaver mode is active, channel 4 is also deactivated.</i></p>
+
+            <!-- Identity configuration: visible only in Identity (LNURL-auth & TagID) mode -->
+            <div id="authyFields" style="display: none; margin-top: 10px;">
+                <div style="margin-bottom: 10px;">
+                    <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 0.5px;">Identity Login (LNURL-auth or NFC Tag)</p>
+                    <p style="margin: 0; font-size: 11px; color: #888; font-style: italic;">
+                        <strong>Identity</strong> recognises a known wallet or NFC card and triggers a relay — <strong>nothing is paid</strong>. Enrolled identities and teach mode are managed in LNbits (<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" style="color: #888;">zapbox_extension</a>). NFC Tag login also requires the <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a>.
+                    </p>
+                </div>
+                <div class="input-wrapper">
+                    <div>
+                        <label for="authPin">Auth Pin (GPIO triggered on success)</label>
+                        <select name="authPin" id="authPin">
+                            <option value="12" selected>CH01 — GPIO 12 (default relay)</option>
+                            <option value="13">CH02 — GPIO 13</option>
+                            <option value="10">CH03 — GPIO 10</option>
+                            <option value="11">CH04 — GPIO 11</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known identities trigger this pin (v1: same action for every identity).</p>
+                    </div>
+                    <div>
+                        <label for="authDuration">Activation time (ms)</label>
+                        <input type="number" name="authDuration" id="authDuration" min="100" max="60000" value="1000">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How long the relay stays on after a successful identification.</p>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label for="authLabel">Identity trigger label (text next to the QR code)</label>
+                        <input type="text" name="authLabel" id="authLabel" value="ZAPBOX Identity Trigger" maxlength="40" autocomplete="off">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Shown beside the login QR. The <strong>first word</strong> becomes line&nbsp;1, the <strong>second word</strong> line&nbsp;2, and the <strong>rest</strong> line&nbsp;3 — e.g. <em>ZAPBOX Identity Trigger</em> → <em>ZAPBOX</em> / <em>Identity</em> / <em>Trigger</em>.</p>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label for="authDualPage">Identity and payment trigger</label>
+                        <select name="authDualPage" id="authDualPage">
+                            <option value="no" selected>No (default) — identity trigger only</option>
+                            <option value="yes">Yes — add a payment page (uses LNbits settings)</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">If <strong>"Yes"</strong> is selected, the device shows two pages: the <strong>identity trigger</strong> and a <strong>payment page</strong>. Press NEXT to switch. For the payment page a <strong>Pay+Password</strong> must be configured in the zapbox_extension.</p>
+                    </div>
+                    <div style="grid-column: span 2; display: flex; gap: 16px; align-items: flex-start; margin-top: 6px; padding-top: 14px; border-top: 1px solid #444;">
+                        <div style="flex: 1;">
+                            <label for="authTeachPin">Teach Mode — One-time PIN</label>
+                            <input type="text" id="authTeachPin" name="authTeachPin"
+                                   maxlength="6" pattern="[0-9]{6}" placeholder="e.g. 123456"
+                                   autocomplete="off" style="letter-spacing: 4px; font-size: 15px;">
+                            <p style="margin: 4px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
+                                6 digits — must match the teach PIN in <em>zapbox_extension</em>. Leave empty for normal operation. <strong>Cleared automatically after writing.</strong>
+                            </p>
+                        </div>
+                        <div style="flex: 1; padding: 12px 14px; background: rgba(255,170,0,0.06); border-left: 3px solid rgba(255,170,0,0.35); font-size: 11px; color: #aaa; line-height: 1.6;">
+                            <strong style="color: #ccc; display: block; margin-bottom: 6px;">How Teach Mode works</strong>
+                            Set the same 6-digit PIN here and in your <em>zapbox_extension</em>. After <strong>Write Config → Restart</strong>, the ZapBox connects and enters teach mode automatically.<br><br>
+                            Scan LNURL-auth QR codes (Lightning wallets) and NFC tags one by one to enrol them. Press <strong>NEXT</strong> to exit — the ZapBox restarts and the PIN is cleared.<br><br>
+                            <span style="color: #ffaa44;">Valid for <strong>one boot cycle</strong> only. This field is cleared after writing so accidental re-entry into teach mode is not possible.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
@@ -916,6 +974,13 @@
         // Servo config elements
         const servoRelayMode = document.getElementById('servoRelayMode');
         const servoConfigSection = document.getElementById('servoConfigSection');
+        // Authy / Identity config elements
+        const authyFields = document.getElementById('authyFields');
+        const authPin = document.getElementById('authPin');
+        const authDuration = document.getElementById('authDuration');
+        const authLabel = document.getElementById('authLabel');
+        const authDualPage = document.getElementById('authDualPage');
+        const authTeachPin = document.getElementById('authTeachPin');
         // Pin 13 mode and config
         const pin13Mode = document.getElementById('pin13Mode');
         const pin13Servo180Section = document.getElementById('pin13Servo180Section');
@@ -1112,7 +1177,14 @@
             { "name": "ch204Mode", "value": "relay" },
             { "name": "ch205Mode", "value": "relay" },
             { "name": "ch206Mode", "value": "relay" },
-            { "name": "ch207Mode", "value": "relay" }
+            { "name": "ch207Mode", "value": "relay" },
+            // indices 47-52 – Identity (authy) configuration
+            { "name": "authPin",       "value": "12"  },
+            { "name": "authDuration",  "value": "1000" },
+            { "name": "authLabel",     "value": "ZAPBOX Identity Trigger" },
+            { "name": "authNtag424Pin","value": "no"  },
+            { "name": "authDualPage",  "value": "no"  },
+            { "name": "authTeachPin",  "value": ""    }
         ]
 
         // Setup Web Serial using serial.js
@@ -1672,6 +1744,31 @@
 
                 // Index 37 (gpio3Function) is always "fd" — no UI, firmware ignores value
 
+                // Authy / Identity fields (indices 47-52)
+                if (configData[47]) {
+                    config[47].value = configData[47]?.value || "12";
+                    authPin.value = config[47].value;
+                }
+                if (configData[48]) {
+                    config[48].value = configData[48]?.value || "1000";
+                    authDuration.value = config[48].value;
+                }
+                if (configData[49]) {
+                    config[49].value = configData[49]?.value || "ZAPBOX Identity Trigger";
+                    authLabel.value = config[49].value;
+                }
+                // index 50: authNtag424Pin — always "no" for T-Display-S3, no UI element
+                if (configData[51]) {
+                    config[51].value = configData[51]?.value || "no";
+                    authDualPage.value = config[51].value;
+                }
+                // index 52: authTeachPin — one-time; show if set, otherwise keep empty
+                if (configData[52]) {
+                    config[52].value = configData[52]?.value || "";
+                    authTeachPin.value = config[52].value;
+                }
+                updateAuthyFieldState();
+
                 // I/O-Expander fields (indices 38-46)
                 if (configData[38]) {
                     if (!config[38]) config[38] = { name: "ioExpander", value: "no" };
@@ -1685,8 +1782,9 @@
                 }
                 updateIOExpanderFieldState();
 
-                // Update servo field enabled/disabled state based on multiControl mode
+                // Update servo/authy field enabled/disabled state based on multiControl mode
                 updateServoFieldState();
+                updateAuthyFieldState();
 
                 // Show/hide custom fields based on loaded special mode
                 if (specialMode.value === 'custom') {
@@ -1891,6 +1989,10 @@
                 config[39 + i].value = "relay"; // PCF8574 channels are relay-only
             }
 
+            // Identity teach PIN (index 52) — one-time use, cleared after write
+            if (!config[52]) config[52] = { name: "authTeachPin", value: "" };
+            config[52].value = authTeachPin.value.trim();
+
             // Validate required fields
             const ssidValue = config[0].value.trim();
             const wifiPasswordValue = config[1].value.trim();
@@ -1956,6 +2058,18 @@
             successMsg.textContent = '✓ Data written\n\n⚠️ To apply changes:\n- Press 🔄 Restart (if in Config Mode), or\n- Press 🔌 Disconnect and reset device manually\n';
             consoleDebug.appendChild(successMsg);
             consoleDebug.scrollTop = consoleDebug.scrollHeight;
+
+            // Teach PIN is one-time use — clear it from UI and config array immediately after writing
+            // so a subsequent "Write Config" cannot accidentally re-enter teach mode.
+            if (authTeachPin.value.trim().length > 0) {
+                authTeachPin.value = "";
+                config[52].value = "";
+                const clearMsg = document.createElement('span');
+                clearMsg.style.color = '#ffaa44';
+                clearMsg.textContent = '⚠ Teach PIN cleared (one-time use).\n';
+                consoleDebug.appendChild(clearMsg);
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            }
         }
 
         async function onSoftResetButtonClick() {
@@ -2130,6 +2244,13 @@
 
         // Set initial visibility of I/O-Expander section
         updateIOExpanderFieldState();
+        updateAuthyFieldState();
+
+        // Authy / Identity field show/hide
+        function updateAuthyFieldState() {
+            const isAuthy = multiControl.value === 'authy';
+            authyFields.style.display = isAuthy ? 'block' : 'none';
+        }
 
         // Servo config field change listeners
         function updateServoFieldState() {
@@ -2166,7 +2287,14 @@
         multiControl.addEventListener("change", (event) => {
             config[17].value = event.target.value;
             updateServoFieldState();
+            updateAuthyFieldState();
         });
+
+        authPin.addEventListener("change", (event) => { config[47].value = event.target.value; });
+        authDuration.addEventListener("input", (event) => { config[48].value = event.target.value || "1000"; });
+        authLabel.addEventListener("input", (event) => { config[49].value = event.target.value || "ZAPBOX Identity Trigger"; });
+        authDualPage.addEventListener("change", (event) => { config[51].value = event.target.value; });
+        authTeachPin.addEventListener("input", (event) => { config[52].value = event.target.value.replace(/\D/g,'').slice(0,6); authTeachPin.value = config[52].value; });
 
         // Pin 13 mode selection
         pin13Mode.addEventListener("change", (event) => {
