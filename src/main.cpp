@@ -2684,7 +2684,7 @@ void loop()
           LOG_INFO("NFC-Teach", "Card enrolled OK");
         } else {
           authyState.infoMsg   = "Card not enrolled";
-          authyState.infoUntil = millis() + 3000;
+          authyState.infoUntil = millis() + 5000;
           showAuthToast(authyState.infoMsg, true);
           LOG_WARN("NFC-Teach", "Enrol failed (card not in tagid or session closed)");
         }
@@ -2705,7 +2705,7 @@ void loop()
           LOG_INFO("NFC-Auth", "Auth OK (no PIN)");
         } else {
           authyState.infoMsg   = errMsg.isEmpty() ? "NFC Identity Failed" : errMsg;
-          authyState.infoUntil = millis() + 3000;
+          authyState.infoUntil = millis() + 5000;
           showAuthToast(authyState.infoMsg, true);
           LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
         }
@@ -2731,7 +2731,7 @@ void loop()
           LOG_INFO("Teach", "T-Display-S3 teach active");
         } else {
           authyState.infoMsg   = "Teach start failed";
-          authyState.infoUntil = aNow + 4000;
+          authyState.infoUntil = aNow + 5000;
           showAuthToast(authyState.infoMsg, true);
           LOG_WARN("Teach", "T-Display-S3 teach start failed (check LNbits teach PIN config)");
         }

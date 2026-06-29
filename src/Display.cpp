@@ -2304,33 +2304,54 @@ void showAuthPayScreen(String label, int pin) {
   drawAuthTabHint("< ID");
 }
 
-// Brief status overlay: green for success, red for error.
-// Shown for a few seconds over the current screen (non-destructive: only
-// overwrites a small banner, main QR remains visible for rescanning).
+// Centered overlay: white box with colored border, size-2 text, word-wrapped.
+// Mirrors showAuthPinError style from Touch 3.5".
 void showAuthToast(const String &msg, bool isError) {
   DisplayLock lock;
   ensureCorrectRotation();
 
   uint16_t fg = isError ? TFT_RED : TFT_GREEN;
-  uint16_t bg = themeBackground;
 
-  // Banner: top strip in portrait, left strip in landscape
-  int bx, by, bw, bh;
-  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
-    // Portrait 170×320: full-width banner at top
-    bx = 0; by = 0; bw = 170; bh = 28;
+  bool portrait = (displayConfig.orientation == "v" || displayConfig.orientation == "vi");
+  int scrW = portrait ? 170 : 320;
+  int scrH = portrait ? 320 : 170;
+
+  // Size-2 GLCD font ≈ 12 px/char wide; derive max chars per line from screen width
+  const int padH = 12;
+  int maxCh = (scrW - 2 * padH) / 12;
+  String l1, l2;
+  if ((int)msg.length() <= maxCh) {
+    l1 = msg;
   } else {
-    // Landscape 320×170: full-width banner at top
-    bx = 0; by = 0; bw = 320; bh = 22;
+    int split = msg.lastIndexOf(' ', maxCh - 1);
+    if (split <= 0) split = maxCh;
+    l1 = msg.substring(0, split);
+    l2 = msg.substring(split + (msg.charAt(split) == ' ' ? 1 : 0));
+    if ((int)l2.length() > maxCh) l2 = l2.substring(0, maxCh);
   }
-  tft.fillRect(bx, by, bw, bh, bg);
+
+  int nLines = l2.length() > 0 ? 2 : 1;
+  const int sz    = 2;
+  const int lineH = 8 * sz + 4;   // 16 px text + 4 px gap
+  const int padV  = 10;
+  int boxW = scrW - 2 * padH;
+  int boxH = nLines * lineH + 2 * padV;
+  int bx   = padH;
+  int by   = (scrH - boxH) / 2;
+
+  tft.fillRect(bx, by, boxW, boxH, TFT_WHITE);
   ensureCorrectRotation();
-  tft.drawRect(bx, by, bw, bh, fg);
+  tft.drawRect(bx, by, boxW, boxH, fg);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(fg);
-  tft.setTextSize(1);
-  String display = msg.length() > 26 ? msg.substring(0, 26) : msg;
-  tft.drawString(display.c_str(), bx + bw / 2, by + bh / 2, GFXFF);
+  tft.setTextColor(fg, TFT_WHITE);
+  tft.setTextSize(sz);
+  int cx = scrW / 2;
+  if (nLines == 1) {
+    tft.drawString(l1.c_str(), cx, by + boxH / 2, GFXFF);
+  } else {
+    tft.drawString(l1.c_str(), cx, by + padV + lineH / 2,          GFXFF);
+    tft.drawString(l2.c_str(), cx, by + padV + lineH + lineH / 2,  GFXFF);
+  }
 }
 
 // Shown when the server reports Identities disabled (HTTP 403).
