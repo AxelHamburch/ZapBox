@@ -2378,24 +2378,10 @@ void authIdentityDisabledScreen() {
 }
 
 // ── Teach mode screen (T-Display-S3) ─────────────────────────────────────────
-// Shows the registration QR + a "Learning..." status label.
-// On Touch 3.5" a CANCEL button is shown; T-Display-S3 uses the 5-min timeout.
+// Shows the registration QR + label ("Learning Identities" passed by caller).
+// No extra overlay needed — the label already signals teach mode.
 void showAuthTeachScreen(String label, int pin) {
   showProductQRScreen(label, pin);
-  DisplayLock lock;
-  ensureCorrectRotation();
-  tft.setTextDatum(ML_DATUM);
-  tft.setTextColor(TFT_GREEN);
-  tft.setTextSize(1);
-  if (displayConfig.orientation == "v") {
-    tft.drawString("TEACH", 128, 55, GFXFF);
-  } else if (displayConfig.orientation == "vi") {
-    tft.drawString("TEACH", 128, 55, GFXFF);
-  } else if (displayConfig.orientation == "hi") {
-    tft.drawString("TEACH", 135, 60, GFXFF);
-  } else {
-    tft.drawString("TEACH", 125, 60, GFXFF);
-  }
 }
 
 #endif // ENABLE_DISPLAY
