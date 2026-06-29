@@ -2257,5 +2257,125 @@ void nfcTestScreen(String lnurlw)
 void showPinPadScreen(const PinPadState &) {}
 int  pinPadHitTest(uint16_t, uint16_t) { return -1; }
 
+// ─── Identity / Authy screens (T-Display-S3) ─────────────────────────────────
+//
+// Layout: identical to showProductQRScreen for QR + label box.
+// When dual-page mode is active a compact hint ("pay >" or "< ID") is placed
+// to the right of the QR code (portrait) or in the gap between QR and label
+// box (landscape). All four orientations are supported.
+//
+// Tab-hint placement (size-1 text = 6×8 px per char):
+//   portrait  v/vi  : right of QR at x≈128, y≈70  (47 px gap to right edge)
+//   landscape h/hi  : between QR and label box at x≈125, y≈65  (40 px gap)
+// ─────────────────────────────────────────────────────────────────────────────
+
+static void drawAuthTabHint(const char *hint) {
+  if (!hint || strlen(hint) == 0) return;
+  ensureCorrectRotation();
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextColor(themeForeground);
+  tft.setTextSize(1);
+  if (displayConfig.orientation == "v") {
+    tft.drawString(hint, 128, 70, GFXFF);
+  } else if (displayConfig.orientation == "vi") {
+    tft.drawString(hint, 128, 70, GFXFF);
+  } else if (displayConfig.orientation == "hi") {
+    // offsetX=20 for hi, QR right edge at 20+111=131
+    tft.drawString(hint, 135, 65, GFXFF);
+  } else {
+    // h: offsetX=12, QR right edge at 123
+    tft.drawString(hint, 125, 65, GFXFF);
+  }
+}
+
+// Identity trigger QR with optional "pay >" dual-page hint.
+void showAuthIdentityScreen(String label, int pin) {
+  showProductQRScreen(label, pin);
+  if (!authyConfig.dualPage) return;
+  DisplayLock lock;
+  drawAuthTabHint("pay >");
+}
+
+// Payment QR with optional "< ID" dual-page hint.
+void showAuthPayScreen(String label, int pin) {
+  showProductQRScreen(label, pin);
+  if (!authyConfig.dualPage) return;
+  DisplayLock lock;
+  drawAuthTabHint("< ID");
+}
+
+// Brief status overlay: green for success, red for error.
+// Shown for a few seconds over the current screen (non-destructive: only
+// overwrites a small banner, main QR remains visible for rescanning).
+void showAuthToast(const String &msg, bool isError) {
+  DisplayLock lock;
+  ensureCorrectRotation();
+
+  uint16_t fg = isError ? TFT_RED : TFT_GREEN;
+  uint16_t bg = themeBackground;
+
+  // Banner: top strip in portrait, left strip in landscape
+  int bx, by, bw, bh;
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    // Portrait 170×320: full-width banner at top
+    bx = 0; by = 0; bw = 170; bh = 28;
+  } else {
+    // Landscape 320×170: full-width banner at top
+    bx = 0; by = 0; bw = 320; bh = 22;
+  }
+  tft.fillRect(bx, by, bw, bh, bg);
+  ensureCorrectRotation();
+  tft.drawRect(bx, by, bw, bh, fg);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(fg);
+  tft.setTextSize(1);
+  String display = msg.length() > 26 ? msg.substring(0, 26) : msg;
+  tft.drawString(display.c_str(), bx + bw / 2, by + bh / 2, GFXFF);
+}
+
+// Shown when the server reports Identities disabled (HTTP 403).
+// Red background with error message — error state, so colour exception is OK.
+void authIdentityDisabledScreen() {
+  DisplayLock lock;
+  ensureCorrectRotation();
+  safeFillScreen(TFT_RED);
+  ensureCorrectRotation();
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    tft.setTextSize(2);
+    tft.drawString("Identity", x, y - 30, GFXFF);
+    tft.drawString("Login", x, y, GFXFF);
+    tft.setTextSize(1);
+    tft.drawString("disabled on server", x, y + 30, GFXFF);
+  } else {
+    tft.setTextSize(2);
+    tft.drawString("Identity Login", x, y - 20, GFXFF);
+    tft.setTextSize(1);
+    tft.drawString("disabled on server", x, y + 16, GFXFF);
+  }
+}
+
+// ── Teach mode screen (T-Display-S3) ─────────────────────────────────────────
+// Shows the registration QR + a "Learning..." status label.
+// On Touch 3.5" a CANCEL button is shown; T-Display-S3 uses the 5-min timeout.
+void showAuthTeachScreen(String label, int pin) {
+  showProductQRScreen(label, pin);
+  DisplayLock lock;
+  ensureCorrectRotation();
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextColor(TFT_GREEN);
+  tft.setTextSize(1);
+  if (displayConfig.orientation == "v") {
+    tft.drawString("TEACH", 128, 55, GFXFF);
+  } else if (displayConfig.orientation == "vi") {
+    tft.drawString("TEACH", 128, 55, GFXFF);
+  } else if (displayConfig.orientation == "hi") {
+    tft.drawString("TEACH", 135, 60, GFXFF);
+  } else {
+    tft.drawString("TEACH", 125, 60, GFXFF);
+  }
+}
+
 #endif // ENABLE_DISPLAY
 

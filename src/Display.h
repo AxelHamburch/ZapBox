@@ -57,46 +57,38 @@ void showPinPadScreen(const PinPadState &state);
 // Returns: 0-9=digit, 10=backspace, 11=clear, 12=cancel, -1=no hit
 int  pinPadHitTest(uint16_t x, uint16_t y);
 
-// Mini-PoS (Touch 3.5 only): amount entry screen, invoice QR with cancel
-// button, paid confirmation. Stubs on all other boards.
-#ifdef BOARD_JC3248W535C
-void showMiniPosInputScreen();
-// Returns: 0-9=digit, 10=backspace, 13=decimal point, 14=Invoice,
-//          15=Last Pay, -1=no hit
-int  miniPosHitTest(uint16_t x, uint16_t y);
-void showMiniPosQRScreen();
-// True when the touch hits the small Cancel button on the Mini-PoS QR screen
-bool miniPosQrCancelHit(uint16_t x, uint16_t y);
-void miniPosPaidScreen();
-// Numerical product selection (Touch 3.5 multi-channel only):
-// keypad panel, product QR with cancel button
-void showProductSelectScreen();
-void updateProductSelectBlockHeight();
-// Returns: 0-9=digit, 10=backspace, 11=OK (confirm), 12=CANCEL, -1=no hit
-int  productSelectHitTest(uint16_t x, uint16_t y);
-void showProductSelectQRScreen(String label, int pin);
-// True when the touch hits the small Cancel button on the product QR screen
-bool productSelectQrCancelHit(uint16_t x, uint16_t y);
-// Mode selection screen shown on boot when mode == "modeselect"
-void showModeSelectionScreen();
-// Returns: 1=Single, 2=Multi-channel, 3=Mini-PoS, 4=Authy, -1=no hit
-int  modeSelectHitTest(uint16_t x, uint16_t y);
-// Authy teach screen: registration QR + "Learning Identities" + CANCEL button
+// Auth / Identity screens: implemented on both T-Display-S3 and Touch 3.5".
+// Touch 3.5": CANCEL button on teach screen; tap-driven tab switch for dual-page.
+// T-Display-S3: simplified teach screen; NEXT button drives dual-page navigation.
 void showAuthTeachScreen(String label, int pin);
-// Centered multi-line error overlay after PIN failure (size 3, over the QR area)
-void showAuthPinError(const String &l1, const String &l2, const String &l3);
-// Overlay a transient status toast on any auth screen (green=ok, red=error)
 void showAuthToast(const String &msg, bool isError);
-bool authTeachCancelHit(uint16_t x, uint16_t y);
-// Authy dual-page: identity QR + payment page, bottom-left tab to switch pages
 void showAuthIdentityScreen(String label, int pin);
 void showAuthPayScreen(String label, int pin);
-bool authTabHit(uint16_t x, uint16_t y);
-// Red hint shown when the server reports Identities disabled (HTTP 403)
 void authIdentityDisabledScreen();
+
+// Board-specific: Touch 3.5" has real implementations; T-Display-S3 uses stubs.
+#ifdef BOARD_JC3248W535C
+// Mini-PoS amount entry, invoice QR, paid confirmation (Touch 3.5 only)
+void showMiniPosInputScreen();
+int  miniPosHitTest(uint16_t x, uint16_t y);
+void showMiniPosQRScreen();
+bool miniPosQrCancelHit(uint16_t x, uint16_t y);
+void miniPosPaidScreen();
+// Numerical product selection (Touch 3.5 multi-channel only)
+void showProductSelectScreen();
+void updateProductSelectBlockHeight();
+int  productSelectHitTest(uint16_t x, uint16_t y);
+void showProductSelectQRScreen(String label, int pin);
+bool productSelectQrCancelHit(uint16_t x, uint16_t y);
+// Mode selection screen (Touch 3.5 only)
+void showModeSelectionScreen();
+int  modeSelectHitTest(uint16_t x, uint16_t y);
+// PIN failure overlay and touch-based cancel/tab hit tests (Touch 3.5 only)
+void showAuthPinError(const String &l1, const String &l2, const String &l3);
+bool authTeachCancelHit(uint16_t x, uint16_t y);
+bool authTabHit(uint16_t x, uint16_t y);
 #else
-inline void showModeSelectionScreen() {}
-inline int  modeSelectHitTest(uint16_t, uint16_t) { return -1; }
+// T-Display-S3: these touch-only functions are not needed
 inline void showMiniPosInputScreen() {}
 inline int  miniPosHitTest(uint16_t, uint16_t) { return -1; }
 inline void showMiniPosQRScreen() {}
@@ -107,17 +99,14 @@ inline void updateProductSelectBlockHeight() {}
 inline int  productSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showProductSelectQRScreen(String, int) {}
 inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
-inline void showAuthTeachScreen(String, int) {}
+inline void showModeSelectionScreen() {}
+inline int  modeSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showAuthPinError(const String &, const String &, const String &) {}
-inline void showAuthToast(const String &, bool) {}
 inline bool authTeachCancelHit(uint16_t, uint16_t) { return false; }
-inline void showAuthIdentityScreen(String, int) {}
-inline void showAuthPayScreen(String, int) {}
-inline bool authTabHit(uint16_t, uint16_t) { return false; }
-inline void authIdentityDisabledScreen() {}
-#endif
+inline bool authTabHit(uint16_t, uint16_t)         { return false; }
+#endif // BOARD_JC3248W535C
 
-#else
+#else // !ENABLE_DISPLAY
 
 // Headless mode - stub implementations (no display)
 inline void initDisplayMutex() {}
