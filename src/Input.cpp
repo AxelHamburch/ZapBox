@@ -172,14 +172,28 @@ void onNextButtonConfigExit() {
 // Wrapper for NEXT button click - handles both navigation and config exit
 void onNextButtonClick() {
   // Check if in config mode first (higher priority)
-  if (deviceState.isInState(DeviceState::CONFIG_MODE) && 
-      configModeStartTime > 0 && 
+  if (deviceState.isInState(DeviceState::CONFIG_MODE) &&
+      configModeStartTime > 0 &&
       (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
     LOG_INFO("Button", "NEXT button pressed -> exit config mode");
     ESP.restart();
     return;
   }
-  
-  // Otherwise handle normal navigation
+
   navigateToNextProduct();
+}
+
+// Long-press callback registered via leftButton.attachLongPressStart().
+// Any long-press → Config Mode (or exit config mode if already in it).
+void onNextButtonLongPress() {
+  if (deviceState.isInState(DeviceState::CONFIG_MODE) &&
+      configModeStartTime > 0 &&
+      (millis() - configModeStartTime) >= ExternalButtonConfig::CONFIG_EXIT_GUARD_MS) {
+    LOG_INFO("Button", "NEXT long-press -> exit config mode");
+    ESP.restart();
+    return;
+  }
+
+  LOG_INFO("Button", "NEXT long-press -> Config Mode");
+  configMode();
 }

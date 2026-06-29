@@ -709,11 +709,17 @@ extern MiniPosState miniPosState;
 
 struct AuthyConfig {
   bool   enabled = false;      // multiControl == "authy"
-  int    authPin = 5;          // GPIO triggered on a successful auth (CH01 relay)
+#ifdef BOARD_JC3248W535C
+  int    authPin = 5;          // Touch 3.5": CH01 = GPIO 5
+  bool   ntag424Pin = true;    // Touch 3.5": PIN pad available
+#else
+  int    authPin = 12;  // T-Display-S3: CH01 = GPIO 12 (= PIN_RELAY_CH01)
+  bool   ntag424Pin = false;   // T-Display-S3: no touch → no PIN pad
+#endif
   int    authDuration = 1000;  // ms the relay stays on
   String label = "ZAPBOX Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
-  bool   ntag424Pin = true;    // require PIN pad after NTAG 424 DNA tap (Ring-Login)
   bool   dualPage = false;     // true = also offer a classic payment page (tab switch)
+  String teachPin = "";        // one-time teach PIN from installer; cleared after teach ends (device restart)
 };
 
 // The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
@@ -735,6 +741,7 @@ struct AuthyState {
   bool   qrShown = false;            // identity-trigger QR is on screen (else: start screen)
   uint32_t qrShownAt = 0;            // millis() the QR screen was opened (idle timeout)
   bool   payPage = false;            // dual-page mode: classic payment page active (else identity)
+  bool   pendingTeachStart = false;  // T-Display-S3: submit teach session with empty PIN on next loop
   String infoMsg;                    // transient message (errors, status)
   uint32_t infoUntil = 0;            // millis() when infoMsg expires
 
@@ -753,6 +760,7 @@ struct AuthyState {
     qrShown = false;
     qrShownAt = 0;
     payPage = false;
+    pendingTeachStart = false;
     infoMsg = "";
     infoUntil = 0;
     nfcSunTapPending = false;

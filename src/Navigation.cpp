@@ -20,6 +20,7 @@
 // External references to main.cpp
 extern StateManager deviceState;
 extern MultiChannelConfig multiChannelConfig;
+extern AuthyConfig authyConfig;
 extern SpecialModeConfig specialModeConfig;
 extern ProductLabels productLabels;
 extern ProductSelectionState productSelectionState;
@@ -48,6 +49,7 @@ extern unsigned long TOUCH_DOUBLE_CLICK_MS;
 extern void showHelp();
 extern void configMode();
 extern void startAuthTeachEntry();  // Authy: open 6-digit teach PIN pad
+extern void authyHandleNextButton(); // Authy: NEXT button navigation in identity mode
 extern void reportMode();
 extern void showQRScreen();
 extern void showProductQRScreen(String label, int displayPin);
@@ -69,7 +71,15 @@ void navigateToNextProduct() {
   }
   
   LOG_INFO("Navigation", "Navigate button pressed");
-  
+
+  // Authy mode (T-Display-S3): NEXT button drives identity / pay page navigation.
+  // Touch 3.5" handles this via tap / authTabHit in main.cpp instead.
+#ifndef BOARD_JC3248W535C
+  if (authyConfig.enabled) {
+    authyHandleNextButton();
+    return;
+  }
+#endif
 
   if (multiChannelConfig.mode == "off") {
     // Single mode behavior depends on multiChannelConfig.btcTickerMode

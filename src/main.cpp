@@ -167,9 +167,11 @@ WebSocketsClient webSocket;
 void reportMode();
 void configMode();
 void showHelp();
-void startAuthTeachEntry();  // Authy: open 6-digit teach PIN pad (called from Navigation.cpp)
+void startAuthTeachEntry();   // Authy: open 6-digit teach PIN pad (Touch 3.5" only)
 void authyShowStart();        // Authy: IDENTITY TRIGGER idle screen (also called from UI.cpp)
-static void authyShowQR();     // Authy: open the identity-trigger QR
+static void authyShowQR();    // Authy: open the identity-trigger QR
+static void endAuthTeach();   // Authy: end teach session (restart on T-Display-S3)
+void onNextButtonLongPress(); // Input.cpp: NEXT long-press handler (Config Mode)
 
 //////////////////HELPERS///////////////////
 
@@ -851,9 +853,65 @@ void readFiles()
       LOG_INFO("Config", "==============================");
     }
 
-    // Read Authy configuration (indices 88-92, Touch 3.5 only).
+    // Read Authy configuration.
+    // Touch 3.5" installer sends indices 88-92.
+    // T-Display-S3 installer sends indices 47-52 (same field order + teach PIN at 52).
+    // Both blocks are parsed so mode-select → Authy gets the correct values.
+#ifndef BOARD_JC3248W535C
+    // T-Display-S3: indices 47-52
+    // 47=authPin  48=authDuration  49=authLabel  50=authNtag424Pin(always "no")  51=authDualPage  52=authTeachPin
+    {
+      const JsonObject a47 = doc[47];
+      if (!a47.isNull()) {
+        const char *v = a47["value"];
+        if (v != nullptr && strlen(v) > 0) {
+          int p = String(v).toInt();
+          if (p > 0) authyConfig.authPin = p;
+        }
+      }
+      const JsonObject a48 = doc[48];
+      if (!a48.isNull()) {
+        const char *v = a48["value"];
+        if (v != nullptr && strlen(v) > 0) {
+          int d = String(v).toInt();
+          if (d < 100) d = 100;
+          if (d > 60000) d = 60000;
+          authyConfig.authDuration = d;
+        }
+      }
+      const JsonObject a49 = doc[49];
+      if (!a49.isNull()) {
+        const char *v = a49["value"];
+        if (v != nullptr && strlen(v) > 0) {
+          authyConfig.label = String(v);
+        }
+      }
+      // index 50: authNtag424Pin — T-Display-S3 has no touch, always false
+      authyConfig.ntag424Pin = false;
+      const JsonObject a51 = doc[51];
+      if (!a51.isNull()) {
+        const char *v = a51["value"];
+        if (v != nullptr) {
+          authyConfig.dualPage = (String(v) == "yes");
+        }
+      }
+      // index 52: authTeachPin — one-time teach PIN from installer
+      const JsonObject a52 = doc[52];
+      if (!a52.isNull()) {
+        const char *v = a52["value"];
+        if (v != nullptr && strlen(v) >= 6) {
+          authyConfig.teachPin = String(v);
+          if (authyConfig.enabled) {
+            // Auto-start teach mode on first main-loop iteration once connected
+            authyState.pendingTeachStart = true;
+            LOG_INFO("Teach", String("Teach PIN set — will enter teach mode on connect (PIN: ") + String(v) + ")");
+          }
+        }
+      }
+    }
+#endif
+    // Touch 3.5": indices 88-92
     // 88=authPin  89=authDuration(ms)  90=authLabel  91=authNtag424Pin  92=authDualPage
-    // Parsed unconditionally so mode-select → Authy gets the correct values.
     {
       const JsonObject maRoot88 = doc[88];
       if (!maRoot88.isNull()) {
@@ -1565,8 +1623,8 @@ void setup()
   // CRITICAL: Start button task BEFORE WiFi setup so config mode works during reconnect!
   leftButton.setPressMs(3000); // 3 s hold triggers config mode internally; WiFi teardown adds ~2.7 s → config screen appears after ~5.7 s total (documented as "hold 5 seconds")
   leftButton.setDebounceMs(50); // 50ms debounce - fast response
-  leftButton.attachClick(onNextButtonClick); // Single click = Navigate products OR exit config mode
-  leftButton.attachLongPressStart(configMode); // Long press = Config mode
+  leftButton.attachClick(onNextButtonClick);        // Single click = Navigate / exit config
+  leftButton.attachLongPressStart(onNextButtonLongPress); // Long press = Config (6-click+hold = Teach in authy mode)
 #if ENABLE_DISPLAY && !defined(BOARD_JC3248W535C)
   // T-Display-S3 only: physical right button on PIN_BUTTON_2 (GPIO14 on esp32dev is unconnected
   // and floats during EN reset, causing ghost presses if ticked on headless version)
@@ -2015,6 +2073,38 @@ static void authyShowQR() {
   }
 }
 
+// Called by navigateToNextProduct() on T-Display-S3 (no touch) when authy mode
+// is active. NEXT button cancels teach mode (if active) or cycles between pages.
+void authyHandleNextButton() {
+  activityTracking.lastActivityTime = millis();
+
+  // NEXT during teach mode = cancel teach session and restart
+  if (authyState.teachActive) {
+    LOG_INFO("Teach", "NEXT during teach mode — canceling teach session");
+    endAuthTeach();
+    return;
+  }
+
+  if (!authyState.qrShown && !authyState.payPage) {
+    LOG_INFO("Authy", "NEXT on start screen — opening identity QR");
+    authyShowQR();
+  } else if (authyConfig.dualPage) {
+    if (authyState.payPage) {
+      LOG_INFO("Authy", "NEXT — back to IDENTITY login QR");
+      authyState.payPage = false;
+      authyShowQR();
+    } else {
+      LOG_INFO("Authy", "NEXT — to PAYMENT page");
+      authyState.payPage = true;
+      authyState.qrShown = false;
+      authyShowStart();
+    }
+  } else {
+    // Single page: keep QR alive (refresh timer)
+    authyState.qrShownAt = millis();
+  }
+}
+
 // ============================================================================
 // MODE SELECTION HELPER
 // ============================================================================
@@ -2090,10 +2180,12 @@ static void applyModeSelection(int selected) {
 // AUTHY TEACH HELPERS (Touch 3.5 — LNURL-auth identity enrolment)
 // ============================================================================
 
-// Open the 6-digit teach PIN pad. Triggered by the 6-tap + hold gesture
-// (Navigation.cpp). The entered PIN is verified server-side by submitTeachPin().
+// Open the 6-digit teach PIN pad. Touch 3.5": triggered by 6-tap+hold gesture.
+// T-Display-S3: called automatically on boot when authyConfig.teachPin is set.
 void startAuthTeachEntry() {
-  pinPadState = PinPadState();      // reset to defaults
+#ifdef BOARD_JC3248W535C
+  // Touch 3.5": show 6-digit PIN pad; submit is triggered when all digits entered.
+  pinPadState = PinPadState();
   pinPadState.active      = true;
   pinPadState.teachMode   = true;
   pinPadState.maxDigits   = 6;
@@ -2102,15 +2194,27 @@ void startAuthTeachEntry() {
   extensionConfig.nfcPaymentPending = false;
   showPinPadScreen(pinPadState);
   LOG_INFO("Teach", "Teach PIN entry opened (6 digits)");
+#else
+  // T-Display-S3: no PIN pad — PIN comes from installer config (authyConfig.teachPin).
+  authyState.pendingTeachStart = true;
+  LOG_INFO("Teach", "T-Display-S3: pending teach start with installer PIN");
+#endif
 }
 
-// End an active teach session (user cancel / done) and return to the normal
-// Authy auth screen. requestAuthLnurl() now yields an "auth" challenge again.
+// End an active teach session (user cancel / timeout).
+// Touch 3.5": returns to the identity start screen.
+// T-Display-S3: restarts the device to clear the one-time teach PIN from RAM.
 static void endAuthTeach() {
   stopTeachSession();
   authyState.reset();
-  authyShowStart();   // back to the IDENTITY TRIGGER idle screen
+#ifdef BOARD_JC3248W535C
+  authyShowStart();
   LOG_INFO("Teach", "Teach session ended - back to start screen");
+#else
+  LOG_INFO("Teach", "Teach session ended — restarting to clear teach PIN");
+  delay(500);
+  ESP.restart();
+#endif
 }
 
 #ifdef BOARD_JC3248W535C
@@ -2615,6 +2719,24 @@ void loop()
       uint32_t aNow = millis();
       // Teach session 5-min backup timeout (server also sends teach_ended). The
       // teach screen must NOT fall back to the ticker — only this ends it.
+#ifndef BOARD_JC3248W535C
+      // T-Display-S3: initiate teach session using the PIN from the installer config.
+      if (authyState.pendingTeachStart && !authyState.teachActive) {
+        authyState.pendingTeachStart = false;
+        if (submitTeachPin(authyConfig.teachPin)) {
+          authyState.teachActive = true;
+          authyState.teachUntil  = millis() + AUTHY_TEACH_TIMEOUT_MS;
+          authyState.infoMsg     = "Teach mode";
+          if (requestAuthLnurl()) showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+          LOG_INFO("Teach", "T-Display-S3 teach active");
+        } else {
+          authyState.infoMsg   = "Teach start failed";
+          authyState.infoUntil = aNow + 4000;
+          showAuthToast(authyState.infoMsg, true);
+          LOG_WARN("Teach", "T-Display-S3 teach start failed (check LNbits teach PIN config)");
+        }
+      }
+#endif
       if (authyState.teachActive) {
         if ((int32_t)(aNow - authyState.teachUntil) >= 0) {
           LOG_INFO("Teach", "Teach backup timeout - ending session");
