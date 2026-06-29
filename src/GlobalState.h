@@ -724,12 +724,12 @@ struct AuthyConfig {
 
 // The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
 // it well before expiry so an idle QR screen always shows a valid challenge.
-constexpr uint32_t AUTHY_LNURL_REFRESH_MS = 90000;
+constexpr uint32_t AUTHY_LNURL_REFRESH_MS = 60000;   // re-fetch k1 every 60 s while QR is shown
 
-// Device-side backup for the teach session (server enforces the same 5 min and
+// Device-side backup for the teach session (server enforces the same limit and
 // also sends a teach_ended WS event). If the event is missed, the device falls
 // back to normal Authy operation after this timeout.
-constexpr uint32_t AUTHY_TEACH_TIMEOUT_MS = 300000;
+constexpr uint32_t AUTHY_TEACH_TIMEOUT_MS = 180000;  // 3 min backup (server also sends teach_ended)
 
 extern AuthyConfig authyConfig;
 
@@ -740,6 +740,7 @@ struct AuthyState {
   bool   needsRefresh = false;       // request a fresh auth/register LNURL on next loop
   bool   qrShown = false;            // identity-trigger QR is on screen (else: start screen)
   uint32_t qrShownAt = 0;            // millis() the QR screen was opened (idle timeout)
+  uint32_t lnurlFetchedAt = 0;       // millis() the last auth LNURL was fetched (refresh timer)
   bool   payPage = false;            // dual-page mode: classic payment page active (else identity)
   bool   pendingTeachStart = false;  // T-Display-S3: submit teach session with empty PIN on next loop
   String infoMsg;                    // transient message (errors, status)
@@ -759,6 +760,7 @@ struct AuthyState {
     needsRefresh = false;
     qrShown = false;
     qrShownAt = 0;
+    lnurlFetchedAt = 0;
     payPage = false;
     pendingTeachStart = false;
     infoMsg = "";

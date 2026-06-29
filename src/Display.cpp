@@ -1248,9 +1248,14 @@ void drawQRCode()
     offsetY = 19;
   }
   
+  // Uppercase before encoding: "LIGHTNING:LNURL1..." uses alphanumeric QR mode
+  // (~511 chars in v8 ECC_LOW) instead of binary mode (~193 bytes).
+  String qrStr = String(lightningConfig.lightning);
+  qrStr.toUpperCase();
+
   QRCode qrcoded;
   uint8_t qrcodeData[qrcode_getBufferSize(20)];
-  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightningConfig.lightning);
+  qrcode_initText(&qrcoded, qrcodeData, 8, 0, qrStr.c_str());
 
   for (uint8_t y = 0; y < qrcoded.size; y++)
   {
@@ -1281,9 +1286,12 @@ void drawQRCodeWithColors(uint16_t fg, uint16_t bg)
     offsetY = 19;
   }
 
+  String qrStr = String(lightningConfig.lightning);
+  qrStr.toUpperCase();
+
   QRCode qrcoded;
   uint8_t qrcodeData[qrcode_getBufferSize(20)];
-  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightningConfig.lightning);
+  qrcode_initText(&qrcoded, qrcodeData, 8, 0, qrStr.c_str());
 
   for (uint8_t y = 0; y < qrcoded.size; y++) {
     for (uint8_t x = 0; x < qrcoded.size; x++) {

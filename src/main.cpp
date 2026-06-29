@@ -2073,9 +2073,10 @@ static void authyShowQR() {
       showAuthIdentityScreen(authyConfig.label, authyConfig.authPin);
     else
       showProductQRScreen(authyConfig.label, authyConfig.authPin);
-    authyState.qrShown   = true;
-    authyState.qrShownAt = millis();
-    authyState.payPage   = false;
+    authyState.qrShown        = true;
+    authyState.qrShownAt      = millis();
+    authyState.lnurlFetchedAt = millis();
+    authyState.payPage        = false;
     multiChannelConfig.btcTickerActive = false;
   } else if (httpCode == 403) {
     // Identities disabled server-side: show a red hint instead of silently
@@ -2769,8 +2770,7 @@ void loop()
           showAuthTeachScreen("Learning Identities", authyConfig.authPin);
         }
       } else if (authyState.qrShown) {
-        // Identity-trigger QR idle for PRODUCT_TIMEOUT → back to start screen.
-        // The QR is fetched fresh on each open, so it never outlives its k1.
+        // Identity-trigger QR: idle for PRODUCT_TIMEOUT → back to start screen.
         if (aNow - authyState.qrShownAt >= (uint32_t)PRODUCT_TIMEOUT) {
           LOG_INFO("Authy", "Identity QR idle - back to start screen");
           authyShowStart();
@@ -2781,6 +2781,9 @@ void loop()
           authyState.infoMsg   = "";
           authyState.infoUntil = 0;
           authyShowQR();   // redraw QR cleanly without toast
+        } else if (aNow - authyState.lnurlFetchedAt >= AUTHY_LNURL_REFRESH_MS) {
+          LOG_INFO("Authy", "k1 refresh — fetching new auth LNURL");
+          authyShowQR();
         }
       } else if (authyState.infoUntil > 0) {
         // Transient hint (e.g. "IDENTITY LOGIN DISABLED") → back to start.
