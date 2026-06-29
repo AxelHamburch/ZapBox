@@ -2782,7 +2782,7 @@ void loop()
           authyState.infoUntil = 0;
           authyShowQR();   // redraw QR cleanly without toast
         } else if (aNow - authyState.lnurlFetchedAt >= AUTHY_LNURL_REFRESH_MS) {
-          LOG_INFO("Authy", "k1 refresh — fetching new auth LNURL");
+          LOG_INFO("Authy", "k1 refresh (90 s) — fetching new auth LNURL");
           authyShowQR();
         }
       } else if (authyState.infoUntil > 0) {

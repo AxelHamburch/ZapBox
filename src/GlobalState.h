@@ -724,7 +724,7 @@ struct AuthyConfig {
 
 // The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
 // it well before expiry so an idle QR screen always shows a valid challenge.
-constexpr uint32_t AUTHY_LNURL_REFRESH_MS = 60000;   // re-fetch k1 every 60 s while QR is shown
+constexpr uint32_t AUTHY_LNURL_REFRESH_MS = 90000;   // re-fetch k1 every 90 s (server TTL = 120 s, 30 s margin)
 
 // Device-side backup for the teach session (server enforces the same limit and
 // also sends a teach_ended WS event). If the event is missed, the device falls
