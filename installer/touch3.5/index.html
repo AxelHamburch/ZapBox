@@ -267,9 +267,9 @@
                     <label for="multiControl">ZapBox Mode</label>
                     <select name="multiControl" id="multiControl">
                         <option value="off" selected>Single channel — CH01 (pin 5 / default)</option>
-                        <option value="duo">Multi-channel — CH01 to CH06</option>
+                        <option value="duo">Multi channel — CH01 to CH06</option>
                         <option value="minipos">Mini-PoS — amount entry on display (CH01)</option>
-                        <option value="authy">Identity — LNURL-auth &amp; TagID (CH01)</option>
+                        <option value="authy">Identity🫆 — LNURL-auth &amp; NFC Tag (TagID🔐) (CH01)</option>
                         <option value="modeselect">Selection - Mode selection at startup</option>
                     </select>
                 </div>
@@ -470,7 +470,7 @@
                             <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 5)</option>
                         </select>
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
-                        <p id="activationOptionsMiniPosHint" style="display: none; margin: 4px 0 0 0; font-size: 11px; color: #888; font-style: italic;"><strong>Mini-PoS:</strong> With One for All, a paid invoice also triggers the channels CH02–CH06 that are configured as relay/servo (configure them in Multi-channel mode first — the values are kept when switching back to Mini-PoS).</p>
+                        <p id="activationOptionsMiniPosHint" style="display: none; margin: 4px 0 0 0; font-size: 11px; color: #888; font-style: italic;"><strong>Mini-PoS:</strong> With One for All, a paid invoice also triggers the channels CH02–CH06 that are configured as relay/servo (configure them in Multi channel mode first — the values are kept when switching back to Mini-PoS).</p>
                     </div>
                 </div>
             </div>
@@ -1784,7 +1784,7 @@
                 });
                 mcRows += row('Activation Options', selText('t35ActivationMode'));
                 if (zbMode === 'duo') mcRows += row('Numerical Product Selection', selText('t35NumericSelect'));
-                sections += section('Multi-channel (CH01–CH06)', mcRows);
+                sections += section('Multi channel (CH01–CH06)', mcRows);
             }
 
             // Mini-PoS
