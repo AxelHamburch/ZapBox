@@ -331,15 +331,16 @@
                         <option value="duo">Duo (2 channels - pin 12/13)</option>
                         <option value="quattro">Quattro & ZapOMat (4 channels - pin 12/13/10/11)</option>
                         <option value="servo">Servo (4 channels - 2x relay (pin 12/11) &amp; 2x servo (pin 13/10))</option>
-                        <option value="authy">Identity🫆 — LNURL-auth &amp; NFC Tag (TagID🔐)</option>
+                        <option value="authy">Identity🫆Login — LNURL-auth &amp; NFC Tag</option>
                     </select>
                 </div>
             </div>
             
+            <div id="modeInfoSection">
             <p style="margin-top: 10px; color: #888;"><i><strong>ZapBox Mode:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use NEXT button, touch gestures (swipe ←→) or external button (if available) to navigate between products. Servo mode requires additional settings. See below.</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> The Threshold function is compatible with the default Compact (1 channel) mode and with Servo mode when using "One for All" activation option.</i></p>
-
             <p style="margin-top: 10px; color: #888;"><i><strong>-> To enable the servo configuration, please select the ZapBox Mode - Servo</strong> </i></p>
+            </div>
 
             <!-- Servo Configuration (visible only in servo mode) -->
             <div id="servoConfigSection" style="margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
@@ -511,9 +512,15 @@
             <!-- Identity configuration: visible only in Identity (LNURL-auth & TagID) mode -->
             <div id="authyFields" style="display: none; margin-top: 10px;">
                 <div style="margin-bottom: 10px;">
-                    <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 0.5px;">Identity Login (LNURL-auth or NFC Tag)</p>
+                    <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold; color: #ccc; letter-spacing: 0.5px;">Identity🫆Login — LNURL-auth &amp; NFC Tag</p>
+                    <p style="margin: 0 0 6px 0; font-size: 11px; color: #888; font-style: italic;">
+                        <strong>Identity</strong> recognises a known wallet or NFC tag and triggers a relay — <strong>nothing is paid</strong>. Enrolled identities and teach mode are managed in LNbits (<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" style="color: #888;">zapbox_extension</a>).
+                    </p>
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #888; font-style: italic;">
+                        <strong>LNURL-auth</strong> works with any Lightning wallet that supports LNURL-auth (LUD-04) — the wallet scans the QR code or taps the NFC tag and signs a challenge to prove identity.
+                    </p>
                     <p style="margin: 0; font-size: 11px; color: #888; font-style: italic;">
-                        <strong>Identity</strong> recognises a known wallet or NFC card and triggers a relay — <strong>nothing is paid</strong>. Enrolled identities and teach mode are managed in LNbits (<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" style="color: #888;">zapbox_extension</a>). NFC Tag login also requires the <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a>.
+                        <strong>NFC Tag</strong> login requires tags of type <strong>NTAG 424 DNA</strong> — for example Bolt Cards, Bolt Rings, or other compatible tag types. It also requires the <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" style="color: #888;">TagID🔐 Extension</a> in LNbits.
                     </p>
                 </div>
                 <div class="input-wrapper">
@@ -2253,6 +2260,7 @@
             const isAuthy = multiControl.value === 'authy';
             authyFields.style.display = isAuthy ? 'block' : 'none';
             document.getElementById('vendingSpecialSection').style.display = isAuthy ? 'none' : 'block';
+            document.getElementById('modeInfoSection').style.display = isAuthy ? 'none' : 'block';
         }
 
         // Servo config field change listeners
