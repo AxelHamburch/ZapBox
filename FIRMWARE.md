@@ -397,6 +397,22 @@ installer/firmware/
 
 ## Release History
 
+### v956101h — 2026-06-30
+
+```markdown
+## 🎯 Release v956101h — Identity🫆Login for Headless ZapBox (NTAG 424 DNA)
+
+### 🔌 Headless Version (v956101h — ESP32 Dev)
+- **Identity🫆Login mode** (NTAG 424 DNA only) for headless ZapBox — no display, no touch, no buttons
+- **LNURL-auth not available** (no screen for QR code) — NFC tap only
+- **GPIO output selector**: Relay / 180° Servo / 360° Servo on GPIO 12
+- **Teach mode via installer PIN** (one-shot, same as T-Display-S3): 6-digit PIN in installer → automatic teach boot → PIN erased from flash
+- **LED teach status**: double-pulse (150ms/100ms/150ms/1.5s) = teach active; 6× rapid flash = enrolled; 3× fast blink = NFC rejected
+- **NT3H2111 FD pin fix**: floating GPIO 34 no longer blocks PN532 when no NT3H is installed (FD polling gated on NT3H I2C probe result)
+- **Pay+Password**: attach LNbits QR code physically; independent of identity trigger (separate endpoints)
+- Web installer: Identity🫆Login section, servo parameter panels, teach mode PIN with LED legend
+```
+
 ### v956086 — 2026-06-30
 
 ```markdown
