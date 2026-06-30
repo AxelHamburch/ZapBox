@@ -2744,7 +2744,10 @@ void loop()
           authyState.teachActive = true;
           authyState.teachUntil  = millis() + AUTHY_TEACH_TIMEOUT_MS;
           authyState.infoMsg     = "Teach mode";
-          if (requestAuthLnurl()) showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+          if (requestAuthLnurl()) {
+            authyState.lnurlFetchedAt = millis();
+            showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+          }
           LOG_INFO("Teach", "T-Display-S3 teach active");
         } else {
           authyState.infoMsg   = "Teach start failed";
@@ -2763,11 +2766,20 @@ void loop()
           authyState.needsRefresh = false;
           authyState.infoMsg   = "";
           authyState.infoUntil = 0;
-          if (requestAuthLnurl()) showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+          if (requestAuthLnurl()) {
+            authyState.lnurlFetchedAt = millis();
+            showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+          }
         } else if (authyState.infoUntil > 0 && aNow >= authyState.infoUntil) {
           authyState.infoMsg   = "";
           authyState.infoUntil = 0;
           showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+        } else if (aNow - authyState.lnurlFetchedAt >= AUTHY_LNURL_REFRESH_MS) {
+          LOG_INFO("Authy", "k1 refresh (90 s, teach) — fetching new auth LNURL");
+          if (requestAuthLnurl()) {
+            authyState.lnurlFetchedAt = millis();
+            showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+          }
         }
       } else if (authyState.qrShown) {
         // Identity-trigger QR: idle for PRODUCT_TIMEOUT → back to start screen.
@@ -2969,8 +2981,10 @@ void loop()
                         authyState.teachUntil  = millis() + AUTHY_TEACH_TIMEOUT_MS;
                         authyState.infoMsg     = "Teach mode";
                         // action=register; "Learning Identities" label + CANCEL
-                        if (requestAuthLnurl())
+                        if (requestAuthLnurl()) {
+                          authyState.lnurlFetchedAt = millis();
                           showAuthTeachScreen("Learning Identities", authyConfig.authPin);
+                        }
                         LOG_INFO("Teach", "Teach active - showing register QR");
                       } else {
                         showPinPadScreen(pinPadState); // error set by submitTeachPin
