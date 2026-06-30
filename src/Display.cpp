@@ -1248,9 +1248,14 @@ void drawQRCode()
     offsetY = 19;
   }
   
+  // Uppercase before encoding: "LIGHTNING:LNURL1..." uses alphanumeric QR mode
+  // (~511 chars in v8 ECC_LOW) instead of binary mode (~193 bytes).
+  String qrStr = String(lightningConfig.lightning);
+  qrStr.toUpperCase();
+
   QRCode qrcoded;
   uint8_t qrcodeData[qrcode_getBufferSize(20)];
-  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightningConfig.lightning);
+  qrcode_initText(&qrcoded, qrcodeData, 8, 0, qrStr.c_str());
 
   for (uint8_t y = 0; y < qrcoded.size; y++)
   {
@@ -1281,9 +1286,12 @@ void drawQRCodeWithColors(uint16_t fg, uint16_t bg)
     offsetY = 19;
   }
 
+  String qrStr = String(lightningConfig.lightning);
+  qrStr.toUpperCase();
+
   QRCode qrcoded;
   uint8_t qrcodeData[qrcode_getBufferSize(20)];
-  qrcode_initText(&qrcoded, qrcodeData, 8, 0, lightningConfig.lightning);
+  qrcode_initText(&qrcoded, qrcodeData, 8, 0, qrStr.c_str());
 
   for (uint8_t y = 0; y < qrcoded.size; y++) {
     for (uint8_t x = 0; x < qrcoded.size; x++) {
@@ -2256,6 +2264,133 @@ void nfcTestScreen(String lnurlw)
 // PIN pad not implemented for T-Display-S3 (screen too small for touch input).
 void showPinPadScreen(const PinPadState &) {}
 int  pinPadHitTest(uint16_t, uint16_t) { return -1; }
+
+// ─── Identity / Authy screens (T-Display-S3) ─────────────────────────────────
+//
+// Layout: identical to showProductQRScreen for QR + label box.
+// When dual-page mode is active a compact hint ("pay >" or "< ID") is placed
+// to the right of the QR code (portrait) or in the gap between QR and label
+// box (landscape). All four orientations are supported.
+//
+// Tab-hint placement (size-1 text = 6×8 px per char):
+//   portrait  v/vi  : right of QR at x≈128, y≈70  (47 px gap to right edge)
+//   landscape h/hi  : between QR and label box at x≈125, y≈65  (40 px gap)
+// ─────────────────────────────────────────────────────────────────────────────
+
+static void drawAuthTabHint(const char *hint) {
+  if (!hint || strlen(hint) == 0) return;
+  ensureCorrectRotation();
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextColor(themeForeground);
+  tft.setTextSize(1);
+  if (displayConfig.orientation == "v") {
+    tft.drawString(hint, 128, 70, GFXFF);
+  } else if (displayConfig.orientation == "vi") {
+    tft.drawString(hint, 128, 70, GFXFF);
+  } else if (displayConfig.orientation == "hi") {
+    // offsetX=20 for hi, QR right edge at 20+111=131
+    tft.drawString(hint, 135, 65, GFXFF);
+  } else {
+    // h: offsetX=12, QR right edge at 123
+    tft.drawString(hint, 125, 65, GFXFF);
+  }
+}
+
+// Identity trigger QR with optional "pay >" dual-page hint.
+void showAuthIdentityScreen(String label, int pin) {
+  showProductQRScreen(label, pin);
+  if (!authyConfig.dualPage) return;
+  DisplayLock lock;
+  drawAuthTabHint("pay >");
+}
+
+// Payment QR with optional "< ID" dual-page hint.
+void showAuthPayScreen(String label, int pin) {
+  showProductQRScreen(label, pin);
+  if (!authyConfig.dualPage) return;
+  DisplayLock lock;
+  drawAuthTabHint("< ID");
+}
+
+// Centered overlay: white box with colored border, size-2 text, word-wrapped.
+// Mirrors showAuthPinError style from Touch 3.5".
+void showAuthToast(const String &msg, bool isError) {
+  DisplayLock lock;
+  ensureCorrectRotation();
+
+  uint16_t fg = isError ? TFT_RED : TFT_GREEN;
+
+  bool portrait = (displayConfig.orientation == "v" || displayConfig.orientation == "vi");
+  int scrW = portrait ? 170 : 320;
+  int scrH = portrait ? 320 : 170;
+
+  // Size-2 GLCD font ≈ 12 px/char wide; derive max chars per line from screen width
+  const int padH = 12;
+  int maxCh = (scrW - 2 * padH) / 12;
+  String l1, l2;
+  if ((int)msg.length() <= maxCh) {
+    l1 = msg;
+  } else {
+    int split = msg.lastIndexOf(' ', maxCh - 1);
+    if (split <= 0) split = maxCh;
+    l1 = msg.substring(0, split);
+    l2 = msg.substring(split + (msg.charAt(split) == ' ' ? 1 : 0));
+    if ((int)l2.length() > maxCh) l2 = l2.substring(0, maxCh);
+  }
+
+  int nLines = l2.length() > 0 ? 2 : 1;
+  const int sz    = 2;
+  const int lineH = 8 * sz + 4;   // 16 px text + 4 px gap
+  const int padV  = 10;
+  int boxW = scrW - 2 * padH;
+  int boxH = nLines * lineH + 2 * padV;
+  int bx   = padH;
+  int by   = (scrH - boxH) / 2;
+
+  tft.fillRect(bx, by, boxW, boxH, TFT_WHITE);
+  ensureCorrectRotation();
+  tft.drawRect(bx, by, boxW, boxH, fg);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(fg, TFT_WHITE);
+  tft.setTextSize(sz);
+  int cx = scrW / 2;
+  if (nLines == 1) {
+    tft.drawString(l1.c_str(), cx, by + boxH / 2, GFXFF);
+  } else {
+    tft.drawString(l1.c_str(), cx, by + padV + lineH / 2,          GFXFF);
+    tft.drawString(l2.c_str(), cx, by + padV + lineH + lineH / 2,  GFXFF);
+  }
+}
+
+// Shown when the server reports Identities disabled (HTTP 403).
+// Red background with error message — error state, so colour exception is OK.
+void authIdentityDisabledScreen() {
+  DisplayLock lock;
+  ensureCorrectRotation();
+  safeFillScreen(TFT_RED);
+  ensureCorrectRotation();
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+  if (displayConfig.orientation == "v" || displayConfig.orientation == "vi") {
+    tft.setTextSize(2);
+    tft.drawString("Identity", x, y - 30, GFXFF);
+    tft.drawString("Login", x, y, GFXFF);
+    tft.setTextSize(1);
+    tft.drawString("disabled on server", x, y + 30, GFXFF);
+  } else {
+    tft.setTextSize(2);
+    tft.drawString("Identity Login", x, y - 20, GFXFF);
+    tft.setTextSize(1);
+    tft.drawString("disabled on server", x, y + 16, GFXFF);
+  }
+}
+
+// ── Teach mode screen (T-Display-S3) ─────────────────────────────────────────
+// Shows the registration QR + label ("Learning Identities" passed by caller).
+// No extra overlay needed — the label already signals teach mode.
+void showAuthTeachScreen(String label, int pin) {
+  showProductQRScreen(label, pin);
+}
 
 #endif // ENABLE_DISPLAY
 

@@ -21,4 +21,7 @@ void onNextButtonConfigExit();
 // Wrapper for NEXT button click - handles both navigation and config exit
 void onNextButtonClick();
 
+// Long-press callback: any long-press → Config Mode (or exit config mode)
+void onNextButtonLongPress();
+
 #endif // INPUT_H

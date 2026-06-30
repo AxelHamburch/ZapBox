@@ -600,7 +600,13 @@ bool requestAuthLnurl(String *actionOut, int *httpOut)
   const char *action = doc["action"];
   if (actionOut && action) *actionOut = String(action);
 
-  updateLightningQR(String(lnurl));
+  // Store as "lightning:<lnurl1...>" — the NT3H2111 NFC tag writes this value
+  // as a Lightning URI so phones can tap-to-open.  The QR renderer uppercases
+  // it locally before calling qrcode_initText(), enabling alphanumeric mode
+  // (fits ~511 chars in v8 ECC_LOW) instead of binary mode (only ~193 bytes).
+  String nfcUri = "lightning:" + String(lnurl);
+  strncpy(lightningConfig.lightning, nfcUri.c_str(), sizeof(lightningConfig.lightning) - 1);
+  lightningConfig.lightning[sizeof(lightningConfig.lightning) - 1] = '\0';
   LOG_INFO("Authy", String("Auth LNURL ready (action=") + String(action ? action : "?") + ")");
   return true;
 }

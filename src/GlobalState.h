@@ -709,21 +709,27 @@ extern MiniPosState miniPosState;
 
 struct AuthyConfig {
   bool   enabled = false;      // multiControl == "authy"
-  int    authPin = 5;          // GPIO triggered on a successful auth (CH01 relay)
+#ifdef BOARD_JC3248W535C
+  int    authPin = 5;          // Touch 3.5": CH01 = GPIO 5
+  bool   ntag424Pin = true;    // Touch 3.5": PIN pad available
+#else
+  int    authPin = 12;  // T-Display-S3: CH01 = GPIO 12 (= PIN_RELAY_CH01)
+  bool   ntag424Pin = false;   // T-Display-S3: no touch → no PIN pad
+#endif
   int    authDuration = 1000;  // ms the relay stays on
   String label = "ZAPBOX Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
-  bool   ntag424Pin = true;    // require PIN pad after NTAG 424 DNA tap (Ring-Login)
   bool   dualPage = false;     // true = also offer a classic payment page (tab switch)
+  String teachPin = "";        // one-time teach PIN from installer; cleared after teach ends (device restart)
 };
 
 // The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
 // it well before expiry so an idle QR screen always shows a valid challenge.
-constexpr uint32_t AUTHY_LNURL_REFRESH_MS = 90000;
+constexpr uint32_t AUTHY_LNURL_REFRESH_MS = 90000;   // re-fetch k1 every 90 s (server TTL = 120 s, 30 s margin)
 
-// Device-side backup for the teach session (server enforces the same 5 min and
+// Device-side backup for the teach session (server enforces the same limit and
 // also sends a teach_ended WS event). If the event is missed, the device falls
 // back to normal Authy operation after this timeout.
-constexpr uint32_t AUTHY_TEACH_TIMEOUT_MS = 300000;
+constexpr uint32_t AUTHY_TEACH_TIMEOUT_MS = 180000;  // 3 min backup (server also sends teach_ended)
 
 extern AuthyConfig authyConfig;
 
@@ -734,7 +740,9 @@ struct AuthyState {
   bool   needsRefresh = false;       // request a fresh auth/register LNURL on next loop
   bool   qrShown = false;            // identity-trigger QR is on screen (else: start screen)
   uint32_t qrShownAt = 0;            // millis() the QR screen was opened (idle timeout)
+  uint32_t lnurlFetchedAt = 0;       // millis() the last auth LNURL was fetched (refresh timer)
   bool   payPage = false;            // dual-page mode: classic payment page active (else identity)
+  bool   pendingTeachStart = false;  // T-Display-S3: submit teach session with empty PIN on next loop
   String infoMsg;                    // transient message (errors, status)
   uint32_t infoUntil = 0;            // millis() when infoMsg expires
 
@@ -752,7 +760,9 @@ struct AuthyState {
     needsRefresh = false;
     qrShown = false;
     qrShownAt = 0;
+    lnurlFetchedAt = 0;
     payPage = false;
+    pendingTeachStart = false;
     infoMsg = "";
     infoUntil = 0;
     nfcSunTapPending = false;
