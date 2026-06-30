@@ -397,6 +397,23 @@ installer/firmware/
 
 ## Release History
 
+### v956086 — 2026-06-30
+
+```markdown
+## 🎯 Release v956086 — Identity Login for T-Display-S3 (LNURL-auth & NFC Tag)
+
+### 🖥️ T-Display-S3 Version (v956086)
+- **Identity🫆Login mode** (LNURL-auth + NT3H2111 NFC Tag) for LilyGo T-Display-S3
+- **NT3H2111 NFC Tag**: stores `lightning:lnurl1…` URI so smartphones can tap-to-open a Lightning wallet directly
+- **QR alphanumeric mode**: uppercase `LIGHTNING:LNURL1…` enables denser QR (v8 ECC_LOW ~511 chars vs 193 binary) for T-Display-S3 fixed-v8 renderer
+- **Auto-refresh k1 every 90 s** (server TTL = 120 s, 30 s safety margin) — minimises NT3H write frequency while preventing "expired k1" errors
+- **Teach mode auto-refresh**: k1 also refreshes every 90 s during teach mode (NFC enrolment session)
+- **Teach mode timeout**: 180 s (reduced from 300 s)
+- **Teach PIN erased on first boot**: PIN written via installer is deleted from flash immediately after teach mode starts (one-shot)
+- **Web installer**: renamed mode to "Identity🫆Login — LNURL-auth & NFC Tag"; Identity section paragraphs hidden when Identity mode selected
+- Fixed: vending / channel4 installer sections hidden in Identity mode
+```
+
 ### v955832t — 2026-06-28
 
 ```markdown
