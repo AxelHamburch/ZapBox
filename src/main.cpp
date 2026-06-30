@@ -910,6 +910,26 @@ void readFiles()
           }
         }
       }
+      // index 53: authGpioMode (headless only) — output type for identity trigger
+      // relay (default) / servo180 / servo360; overrides multiChannelConfig.mode set in authy block
+      #if !ENABLE_DISPLAY
+      {
+        const JsonObject a53 = doc[53];
+        if (!a53.isNull()) {
+          const char *v = a53["value"];
+          if (v != nullptr && strlen(v) > 0) {
+            authyConfig.authGpioMode = String(v);
+          }
+        }
+        if (authyConfig.enabled && authyConfig.authGpioMode == "servo180") {
+          multiChannelConfig.mode = "servo180";
+          LOG_INFO("Config", "Headless identity: output = 180° Servo (GPIO 12)");
+        } else if (authyConfig.enabled && authyConfig.authGpioMode == "servo360") {
+          multiChannelConfig.mode = "servo360";
+          LOG_INFO("Config", "Headless identity: output = 360° Servo (GPIO 12)");
+        }
+      }
+      #endif
     }
 #endif
     // Touch 3.5": indices 88-92
@@ -1625,9 +1645,9 @@ void setup()
 #endif
 
   // GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless ESP32 Dev) — FD (Field Detection) for NT3H2111
+  // Pin is always configured as input; FD polling is only activated after NT3H2111 probe succeeds (nfcConfig.nt3hPresent).
 #ifdef PIN_GPIO3
   pinMode(PIN_GPIO3, PIN_GPIO3_MODE);
-  LOG_INFO("Setup", String("GPIO ") + PIN_GPIO3 + " configured as FD (Field Detection) for NT3H2111");
 #endif
 
   // NFC init is deferred into the startup screen (2 s after WiFi begin) so NFC logs
@@ -2698,6 +2718,7 @@ void loop()
           authyState.infoMsg   = "NFC card enrolled";
           authyState.infoUntil = millis() + 3000;
           showAuthToast(authyState.infoMsg, false);
+          authyState.teachEnrolledFlash = true;
           LOG_INFO("NFC-Teach", "Card enrolled OK");
         } else {
           authyState.infoMsg   = "Card not enrolled";
@@ -2724,6 +2745,7 @@ void loop()
           authyState.infoMsg   = errMsg.isEmpty() ? "NFC Identity Failed" : errMsg;
           authyState.infoUntil = millis() + 5000;
           showAuthToast(authyState.infoMsg, true);
+          authyState.nfcRejectedFlash = true;
           LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
         }
       }
@@ -3026,6 +3048,7 @@ void loop()
                         authyState.infoUntil = millis() + 5000;
                         authyShowQR();
                         showAuthPinError(l1, l2, l3);
+                        if (errMsg.indexOf("404") >= 0) authyState.nfcRejectedFlash = true;
                         LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
                       }
                     } else {
@@ -4258,8 +4281,9 @@ void loop()
     // ── GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless): FD from NT3H2111 ──
     // Open-drain active LOW: phone near → FD LOW; no phone → pull-up → HIGH.
     // Extends PN532 RF pause while the phone field is active.
+    // Only active when NT3H2111 was found on I2C — prevents floating GPIO from blocking PN532.
     #ifdef PIN_GPIO3
-    {
+    if (nfcConfig.nt3hPresent) {
       static bool lastFdState = false;
       bool fdLow = (digitalRead(PIN_GPIO3) == LOW);
       if (fdLow && !lastFdState) {
@@ -5184,6 +5208,7 @@ void processPaymentEvent(String &payloadStr)
         authyState.infoMsg   = "Wallet registered";
         authyState.infoUntil = millis() + 4000;
         showAuthToast(authyState.infoMsg, false);
+        authyState.teachEnrolledFlash = true;
         authyState.needsRefresh = true;
         return;
       }

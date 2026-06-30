@@ -597,6 +597,7 @@ struct NfcConfig {
   volatile bool boltcardActive = false;   // True when bolt card reader task is running
   volatile bool nfcSessionActive = false; // True during active APDU exchange (suppresses internet checks)
   volatile unsigned long pn532PauseUntil = 0; // millis() deadline while PN532 polling is paused (FD phone detection)
+  bool nt3hPresent = false;              // True when NT3H2111 responded on I2C probe — gates FD pin polling
   // NT3H2111 NFC UID (7 bytes from Block 0) — used to filter out self-detection by PN532
   uint8_t nt3hNfcUid[7] = {0};
   bool nt3hNfcUidKnown = false;
@@ -720,6 +721,9 @@ struct AuthyConfig {
   String label = "ZAPBOX Identity Trigger";  // QR-screen label (word1/word2/rest -> 3 lines)
   bool   dualPage = false;     // true = also offer a classic payment page (tab switch)
   String teachPin = "";        // one-time teach PIN from installer; cleared after teach ends (device restart)
+#if !ENABLE_DISPLAY
+  String authGpioMode = "relay"; // headless: output type for identity trigger (relay/servo180/servo360)
+#endif
 };
 
 // The displayed auth LNURL embeds a single-use k1 (~120 s server TTL); refresh
@@ -746,6 +750,11 @@ struct AuthyState {
   String infoMsg;                    // transient message (errors, status)
   uint32_t infoUntil = 0;            // millis() when infoMsg expires
 
+  // Headless: flash LED briefly when NFC card is enrolled in teach mode
+  bool teachEnrolledFlash = false;
+  // Headless: 3× fast blink when NFC card is not recognised or rejected in identity mode
+  bool nfcRejectedFlash = false;
+
   // Ring-Login NFC tap (written by NFC task on Core 0, read by loop() on Core 1)
   volatile bool nfcSunTapPending = false;  // NTAG 424 SUN tap received
   char nfcSunExternalId[48] = "";          // tagid external_id parsed from URL
@@ -767,6 +776,8 @@ struct AuthyState {
     infoUntil = 0;
     nfcSunTapPending = false;
     nfcSunIsTeach = false;
+    teachEnrolledFlash = false;
+    nfcRejectedFlash = false;
   }
 };
 

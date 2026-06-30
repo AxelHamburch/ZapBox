@@ -117,6 +117,17 @@ void updateReadyLed() {
   static bool nfcNoLuckActive = false;
   static unsigned long nfcNoLuckStartTime = 0;
 
+  // Identity mode: NFC card not recognised or rejected (tagid 404) → reuse 3× fast blink.
+  if (authyConfig.enabled && authyState.nfcRejectedFlash) {
+    authyState.nfcRejectedFlash = false;
+    nfcNoLuckActive = true;
+    nfcNoLuckStartTime = millis();
+    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    #ifdef PIN_ONBOARD_LED
+    digitalWrite(PIN_ONBOARD_LED, HIGH);
+    #endif
+  }
+
   // NFC "NO LUCK" blink: 3× fast blink (100ms ON / 100ms OFF) after timeout/error,
   // then return to steady LED.
   if (nfcNoLuckActive) {
@@ -212,10 +223,57 @@ void updateReadyLed() {
   }
   #endif
 
+  // Teach mode LED (headless identity): double-pulse pattern.
+  // When a card is enrolled: 6× rapid flash (50 ms ON/OFF) first, then resume.
+  // Idle teach: 150ms ON / 100ms OFF / 150ms ON / 1500ms pause (total 1900ms).
+  // This pattern is unique — distinguishable from all error/status blink patterns.
+  if (authyConfig.enabled && authyState.teachActive) {
+    static bool teachEnrollFlashActive = false;
+    static unsigned long teachEnrollFlashStart = 0;
+
+    if (authyState.teachEnrolledFlash) {
+      authyState.teachEnrolledFlash = false;
+      teachEnrollFlashActive = true;
+      teachEnrollFlashStart = millis();
+      digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+      #ifdef PIN_ONBOARD_LED
+      digitalWrite(PIN_ONBOARD_LED, HIGH);
+      #endif
+    }
+    if (teachEnrollFlashActive) {
+      unsigned long el = millis() - teachEnrollFlashStart;
+      if (el < 600) { // 6 × 100ms (50 ON + 50 OFF)
+        bool on = ((el / 50) % 2 == 0);
+        static bool lastTeachFlashState = true;
+        if (on != lastTeachFlashState) {
+          lastTeachFlashState = on;
+          digitalWrite(PIN_LED_BUTTON_LED, on ? HIGH : LOW);
+          #ifdef PIN_ONBOARD_LED
+          digitalWrite(PIN_ONBOARD_LED, on ? HIGH : LOW);
+          #endif
+        }
+        return;
+      }
+      teachEnrollFlashActive = false;
+    }
+    // Double-pulse: ON(150) / OFF(100) / ON(150) / PAUSE(1500) = 1900ms cycle
+    unsigned long t = millis() % 1900;
+    bool on = (t < 150) || (t >= 250 && t < 400);
+    static bool lastTeachState = false;
+    if (on != lastTeachState) {
+      lastTeachState = on;
+      digitalWrite(PIN_LED_BUTTON_LED, on ? HIGH : LOW);
+      #ifdef PIN_ONBOARD_LED
+      digitalWrite(PIN_ONBOARD_LED, on ? HIGH : LOW);
+      #endif
+    }
+    return;
+  }
+
   // Headless version: Fast blink during initialization to show progress
   static unsigned long lastInitBlinkTime = 0;
   static bool initBlinkState = false;
-  
+
   // Fast blink during INITIALIZING or CONNECTING_WIFI (5Hz = 200ms period)
   // Also keep fast blink when initializationActive is true, even if the state
   // temporarily jumped to HELP_SCREEN / READY (e.g. button pressed mid-init).
