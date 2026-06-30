@@ -226,6 +226,7 @@
                         <option value="off" selected>Relay function (default)</option>
                         <option value="servo180">180° Servo (0°-180°)</option>
                         <option value="servo360">360° Servo (360° rotation)</option>
+                        <option value="authy">Identity🫆Login — NTAG 424 DNA only</option>
                     </select>
                     <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Select the configuration for GPIO pin 12 / Connector terminal 3</p>
                 </div>
@@ -270,6 +271,97 @@
                     </div>
                 </div>
                 <p style="margin: 8px 0 0 0; font-size: 11px; color: #888; font-style: italic;">The servo become active when their values are non-zero. Special Mode (blink, pulse, etc.) works only for Relay function.</p>
+            </div>
+
+            <!-- Identity Login Configuration (hidden by default, shown when zapboxMode = authy) -->
+            <div id="identityFields" style="display: none; margin-top: 15px;">
+                <div style="margin-bottom: 12px;">
+                    <p style="margin: 0 0 4px 0; font-size: 14px; color: #ccc; letter-spacing: 0.5px;">Identity🫆Login — NTAG 424 DNA</p>
+                    <p style="margin: 0 0 6px 0; color: #888;">
+                        The headless ZapBox has <strong>no display</strong> and cannot show a QR code, so <strong>LNURL-auth (Lightning wallet login) is not available</strong> in this version. Only <strong>NTAG 424 DNA NFC taps</strong> are supported — for example Bolt Cards, Bolt Rings, or other compatible tag types. The <a href="https://github.com/AxelHamburch/tagid_extension" target="_blank" rel="noopener noreferrer" style="color: #888;">TagID🔐 Extension</a> in LNbits is required. Enrolled identities and teach mode are managed in LNbits (<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer" style="color: #888;">zapbox_extension</a>).
+                    </p>
+                </div>
+                <div class="input-wrapper">
+                    <div>
+                        <label for="authGpioMode">Pin (GPIO triggered on success)</label>
+                        <select name="authGpioMode" id="authGpioMode">
+                            <option value="relay" selected>Relay function (Default)</option>
+                            <option value="servo180">180° Servo (0°-180°)</option>
+                            <option value="servo360">360° Servo (360° rotation)</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Select the configuration for GPIO pin 12. In the "Headless Servo" version, it is terminal 3. The switching time is configured in LNbits.</p>
+                    </div>
+                </div>
+
+                <!-- 180° Servo params for Identity mode -->
+                <div id="authServo180Section" style="display: none; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
+                    <div class="input-wrapper">
+                        <div>
+                            <label for="auth_servo1Start">180° Servo - Start angle (°)</label>
+                            <input type="number" id="auth_servo1Start" name="auth_servo1Start" min="0" max="180" value="0">
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Positioning 0°–180° or 180°–0°</p>
+                        </div>
+                        <div>
+                            <label for="auth_servo1End">180° Servo - End angle (°)</label>
+                            <input type="number" id="auth_servo1End" name="auth_servo1End" min="0" max="180" value="0">
+                        </div>
+                        <div>
+                            <label for="auth_servo1Duration">180° Servo - Sweep duration (ms)</label>
+                            <input type="number" id="auth_servo1Duration" name="auth_servo1Duration" min="0" max="10000" value="0">
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = max speed / 1000 = 1 second for start/stop</p>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <p style="margin: 0; font-size: 11px; color: #bbb; font-style: italic;">Please note that the 180° servo always returns to its starting position after completing the switch function.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 360° Servo params for Identity mode -->
+                <div id="authServo360Section" style="display: none; margin-top: 15px; padding: 12px; border: 1px solid #555; border-radius: 6px;">
+                    <div class="input-wrapper">
+                        <div>
+                            <label for="auth_servo2Speed">360° Servo - Speed (0–180)</label>
+                            <input type="number" id="auth_servo2Speed" name="auth_servo2Speed" min="0" max="180" value="0">
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888;">Continuous rotation 360° / 90 = stop / &lt;90 = CCW / &gt;90 = CW</p>
+                        </div>
+                        <div>
+                            <label for="auth_servo2Duration">360° Servo - Spin duration (ms)</label>
+                            <input type="number" id="auth_servo2Duration" name="auth_servo2Duration" min="0" max="10000" value="0">
+                            <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">0 = spin until action time ends</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-wrapper" style="margin-top: 15px;">
+                    <div style="grid-column: span 2;">
+                        <label for="authDualPage">Identity and payment trigger</label>
+                        <select name="authDualPage" id="authDualPage">
+                            <option value="no" selected>No (default) — identity trigger only</option>
+                            <option value="yes">Yes — add a payment option</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">If <strong>"Yes"</strong> is selected, the ZapBox also accepts Lightning payments. Since the headless device has no display, you must <strong>physically attach the LNbits QR code</strong> to the ZapBox and configure a <strong>Pay+Password</strong> in LNbits for the payment trigger.</p>
+                    </div>
+                    <div style="grid-column: span 2; display: flex; gap: 16px; align-items: flex-start; margin-top: 6px; padding-top: 14px; border-top: 1px solid #444;">
+                        <div style="flex: 1;">
+                            <label for="authTeachPin">Teach Mode — One-time PIN</label>
+                            <input type="text" id="authTeachPin" name="authTeachPin"
+                                   maxlength="6" pattern="[0-9]{6}" placeholder="e.g. 123456"
+                                   autocomplete="off" style="letter-spacing: 4px; font-size: 15px;">
+                            <p style="margin: 4px 0 0 0; font-size: 11px; color: #888; font-style: italic;">
+                                6 digits — must match the teach PIN in <em>zapbox_extension</em>. Leave empty for normal operation. <strong>Cleared automatically after writing.</strong>
+                            </p>
+                        </div>
+                        <div style="flex: 1; padding: 12px 14px; background: rgba(255,170,0,0.06); border-left: 3px solid rgba(255,170,0,0.35); font-size: 11px; color: #aaa; line-height: 1.6;">
+                            <strong style="color: #ccc; display: block; margin-bottom: 6px;">How Teach Mode works</strong>
+                            Set the same 6-digit PIN here and in your <em>zapbox_extension</em>. After <strong>Write Config → Restart</strong>, the ZapBox connects and enters teach mode automatically.<br><br>
+                            Hold the Bolt Card or Bolt Ring on the PN532 reader to enrol it. Since the device has <strong>no display</strong>, check the <em>zapbox_extension</em> in LNbits to verify successful enrolment. A page hard refresh (<strong>CTRL+F5</strong>) may be needed.<br><br>
+                            <strong style="color: #ccc;">LED status during teach mode:</strong><br>
+                            <span style="font-family: monospace; color: #f7931a;">● ● &nbsp;&nbsp;&nbsp; ● ● &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> Double pulse — teach mode active (150ms ON / 100ms OFF / 150ms ON / 1.5s pause)<br>
+                            <span style="font-family: monospace; color: #44ff88;">● ● ● ● ● ●</span> 6× rapid flash (50ms ON/OFF) — card enrolled<br><br>
+                            <span style="color: #ffaa44;">Teach mode ends automatically after <strong>180 seconds</strong>. You can also power cycle the ZapBox after enrolling all identities.</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Section Separator -->
@@ -608,16 +700,38 @@
         const servo1Duration = document.getElementById('servo1Duration');
         const servo2Speed = document.getElementById('servo2Speed');
         const servo2Duration = document.getElementById('servo2Duration');
-        
+        const identityFields = document.getElementById('identityFields');
+        const authGpioMode = document.getElementById('authGpioMode');
+        const authServo180Section = document.getElementById('authServo180Section');
+        const authServo360Section = document.getElementById('authServo360Section');
+        const authDualPage = document.getElementById('authDualPage');
+        const authTeachPin = document.getElementById('authTeachPin');
+        const auth_servo1Start = document.getElementById('auth_servo1Start');
+        const auth_servo1End = document.getElementById('auth_servo1End');
+        const auth_servo1Duration = document.getElementById('auth_servo1Duration');
+        const auth_servo2Speed = document.getElementById('auth_servo2Speed');
+        const auth_servo2Duration = document.getElementById('auth_servo2Duration');
+
         // Show/hide servo configuration sections based on ZapBox Mode
         function updateZapboxModeFields() {
             const mode = zapboxMode.value;
-            servo180Section.style.display = (mode === 'servo180') ? 'block' : 'none';
-            servo360Section.style.display = (mode === 'servo360') ? 'block' : 'none';
+            const isIdentity = (mode === 'authy');
+            servo180Section.style.display = (!isIdentity && mode === 'servo180') ? 'block' : 'none';
+            servo360Section.style.display = (!isIdentity && mode === 'servo360') ? 'block' : 'none';
+            identityFields.style.display = isIdentity ? 'block' : 'none';
+        }
+        function updateAuthGpioModeFields() {
+            const m = authGpioMode.value;
+            authServo180Section.style.display = (m === 'servo180') ? 'block' : 'none';
+            authServo360Section.style.display = (m === 'servo360') ? 'block' : 'none';
         }
         zapboxMode.addEventListener('change', function() {
             updateZapboxModeFields();
             config[17].value = zapboxMode.value;
+        });
+        authGpioMode.addEventListener('change', function() {
+            updateAuthGpioModeFields();
+            config[53].value = authGpioMode.value;
         });
         
         // Show/hide custom frequency/duty cycle inputs based on special mode selection
@@ -759,7 +873,29 @@
             {
                 "name": "vendingSensor2",
                 "value": "no"
-            }
+            },
+            { "name": "unused32", "value": "" },
+            { "name": "unused33", "value": "" },
+            { "name": "unused34", "value": "" },
+            { "name": "unused35", "value": "" },
+            { "name": "unused36", "value": "" },
+            { "name": "unused37", "value": "" },
+            { "name": "unused38", "value": "" },
+            { "name": "unused39", "value": "" },
+            { "name": "unused40", "value": "" },
+            { "name": "unused41", "value": "" },
+            { "name": "unused42", "value": "" },
+            { "name": "unused43", "value": "" },
+            { "name": "unused44", "value": "" },
+            { "name": "unused45", "value": "" },
+            { "name": "unused46", "value": "" },
+            { "name": "authPin",       "value": "12"    },
+            { "name": "unused48",      "value": ""      },
+            { "name": "unused49",      "value": ""      },
+            { "name": "unused50",      "value": ""      },
+            { "name": "authDualPage",  "value": "no"    },
+            { "name": "authTeachPin",  "value": ""      },
+            { "name": "authGpioMode",  "value": "relay" }
         ]
 
         // Setup Web Serial using serial.js
@@ -1167,6 +1303,12 @@
                 // Index 31: Vending sensor 2 (GPIO 23)
                 if (config[31]) config[31].value = configData[31]?.value || "no";
 
+                // Identity config (indices 47, 51, 52, 53)
+                if (config[47]) config[47].value = configData[47]?.value || "12";
+                if (config[51]) config[51].value = configData[51]?.value || "no";
+                if (config[52]) config[52].value = configData[52]?.value || "";
+                if (config[53]) config[53].value = configData[53]?.value || "relay";
+
                 // Fill form fields (only supported ones for headless)
                 ssid.value = config[0].value;
                 wifiPassword.value = config[1].value;
@@ -1188,6 +1330,17 @@
                 servo2Speed.value = config[27]?.value || "0";
                 servo2Duration.value = config[28]?.value || "0";
                 updateZapboxModeFields();
+
+                // Identity fields
+                authGpioMode.value = config[53]?.value || "relay";
+                auth_servo1Start.value = config[24]?.value || "0";
+                auth_servo1End.value = config[25]?.value || "0";
+                auth_servo1Duration.value = config[26]?.value || "0";
+                auth_servo2Speed.value = config[27]?.value || "0";
+                auth_servo2Duration.value = config[28]?.value || "0";
+                authDualPage.value = config[51]?.value || "no";
+                // authTeachPin (52) intentionally not pre-filled (one-time PIN, cleared after write)
+                updateAuthGpioModeFields();
 
                 // Vending sensor dropdowns
                 document.getElementById('vendingSensor1').value = config[19].value || "no";
@@ -1327,17 +1480,19 @@
             if (!config[23]) config[23] = { name: "deepSleepTime", value: "30" };
             config[23].value = "30";
 
-            // Servo configuration (indices 24-28) - values from ZapBox Mode servo fields
+            // Servo configuration (indices 24-28)
+            // In Identity mode, use the identity-section servo fields; otherwise standard fields
+            const isIdentityMode = (zapboxMode.value === 'authy');
             if (!config[24]) config[24] = { name: "servo1Start", value: "0" };
-            config[24].value = servo1Start.value || "0";
+            config[24].value = isIdentityMode ? (auth_servo1Start.value || "0") : (servo1Start.value || "0");
             if (!config[25]) config[25] = { name: "servo1End", value: "0" };
-            config[25].value = servo1End.value || "0";
+            config[25].value = isIdentityMode ? (auth_servo1End.value || "0") : (servo1End.value || "0");
             if (!config[26]) config[26] = { name: "servo1Duration", value: "0" };
-            config[26].value = servo1Duration.value || "0";
+            config[26].value = isIdentityMode ? (auth_servo1Duration.value || "0") : (servo1Duration.value || "0");
             if (!config[27]) config[27] = { name: "servo2Speed", value: "0" };
-            config[27].value = servo2Speed.value || "0";
+            config[27].value = isIdentityMode ? (auth_servo2Speed.value || "0") : (servo2Speed.value || "0");
             if (!config[28]) config[28] = { name: "servo2Duration", value: "0" };
-            config[28].value = servo2Duration.value || "0";
+            config[28].value = isIdentityMode ? (auth_servo2Duration.value || "0") : (servo2Duration.value || "0");
 
             // Servo relay mode (index 30) - not used in headless, hardcoded default
             if (!config[30]) config[30] = { name: "servoRelayMode", value: "one-for-all" };
@@ -1346,6 +1501,13 @@
             // Vending sensor 2 (index 31) - GPIO 23
             if (!config[31]) config[31] = { name: "vendingSensor2", value: "no" };
             config[31].value = document.getElementById('vendingSensor2').value || "no";
+
+            // Identity (authy) config (indices 47, 51, 52, 53)
+            config[47].value = isIdentityMode ? "12" : "";  // authPin always GPIO 12 for headless
+            config[51].value = isIdentityMode ? (authDualPage.value || "no") : "";
+            // authTeachPin (index 52): write value once; cleared on device after teach starts
+            config[52].value = isIdentityMode ? (authTeachPin.value || "") : "";
+            config[53].value = isIdentityMode ? (authGpioMode.value || "relay") : "";
 
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -1534,21 +1696,20 @@
             config[10].value = event.target.value;
         });
 
-        servo1Start.addEventListener("input", (event) => {
-            config[24].value = event.target.value || "0";
-        });
-        servo1End.addEventListener("input", (event) => {
-            config[25].value = event.target.value || "0";
-        });
-        servo1Duration.addEventListener("input", (event) => {
-            config[26].value = event.target.value || "0";
-        });
-        servo2Speed.addEventListener("input", (event) => {
-            config[27].value = event.target.value || "0";
-        });
-        servo2Duration.addEventListener("input", (event) => {
-            config[28].value = event.target.value || "0";
-        });
+        servo1Start.addEventListener("input", (event) => { config[24].value = event.target.value || "0"; });
+        servo1End.addEventListener("input", (event) => { config[25].value = event.target.value || "0"; });
+        servo1Duration.addEventListener("input", (event) => { config[26].value = event.target.value || "0"; });
+        servo2Speed.addEventListener("input", (event) => { config[27].value = event.target.value || "0"; });
+        servo2Duration.addEventListener("input", (event) => { config[28].value = event.target.value || "0"; });
+
+        // Identity servo fields (mirror to same config indices — identity and servo are mutually exclusive)
+        auth_servo1Start.addEventListener("input", (event) => { config[24].value = event.target.value || "0"; });
+        auth_servo1End.addEventListener("input", (event) => { config[25].value = event.target.value || "0"; });
+        auth_servo1Duration.addEventListener("input", (event) => { config[26].value = event.target.value || "0"; });
+        auth_servo2Speed.addEventListener("input", (event) => { config[27].value = event.target.value || "0"; });
+        auth_servo2Duration.addEventListener("input", (event) => { config[28].value = event.target.value || "0"; });
+        authDualPage.addEventListener("change", (event) => { config[51].value = event.target.value; });
+        authTeachPin.addEventListener("input", (event) => { config[52].value = event.target.value; });
 
         // Print Config functionality
         function printConfig() {
@@ -1610,6 +1771,19 @@
                     row('Speed (0&ndash;180)', inputVal('servo2Speed')) +
                     row('Spin Duration (ms)', inputVal('servo2Duration'))
                 );
+            } else if (zapboxModeVal === 'authy') {
+                const authGpioModeVal = document.getElementById('authGpioMode').value;
+                let identityRows = row('GPIO output', selText('authGpioMode'));
+                if (authGpioModeVal === 'servo180') {
+                    identityRows += row('Start Angle (&deg;)', inputVal('auth_servo1Start')) +
+                                    row('End Angle (&deg;)', inputVal('auth_servo1End')) +
+                                    row('Sweep Duration (ms)', inputVal('auth_servo1Duration'));
+                } else if (authGpioModeVal === 'servo360') {
+                    identityRows += row('Speed (0&ndash;180)', inputVal('auth_servo2Speed')) +
+                                    row('Spin Duration (ms)', inputVal('auth_servo2Duration'));
+                }
+                identityRows += row('Identity &amp; payment trigger', selText('authDualPage'));
+                sections += section('Identity&#x1FAA8;Login — NTAG 424 DNA', identityRows);
             }
 
             let specialRows = row('Special Mode', selText('specialMode'));

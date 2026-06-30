@@ -910,6 +910,26 @@ void readFiles()
           }
         }
       }
+      // index 53: authGpioMode (headless only) — output type for identity trigger
+      // relay (default) / servo180 / servo360; overrides multiChannelConfig.mode set in authy block
+      #if !ENABLE_DISPLAY
+      {
+        const JsonObject a53 = doc[53];
+        if (!a53.isNull()) {
+          const char *v = a53["value"];
+          if (v != nullptr && strlen(v) > 0) {
+            authyConfig.authGpioMode = String(v);
+          }
+        }
+        if (authyConfig.enabled && authyConfig.authGpioMode == "servo180") {
+          multiChannelConfig.mode = "servo180";
+          LOG_INFO("Config", "Headless identity: output = 180° Servo (GPIO 12)");
+        } else if (authyConfig.enabled && authyConfig.authGpioMode == "servo360") {
+          multiChannelConfig.mode = "servo360";
+          LOG_INFO("Config", "Headless identity: output = 360° Servo (GPIO 12)");
+        }
+      }
+      #endif
     }
 #endif
     // Touch 3.5": indices 88-92
@@ -2698,6 +2718,7 @@ void loop()
           authyState.infoMsg   = "NFC card enrolled";
           authyState.infoUntil = millis() + 3000;
           showAuthToast(authyState.infoMsg, false);
+          authyState.teachEnrolledFlash = true;
           LOG_INFO("NFC-Teach", "Card enrolled OK");
         } else {
           authyState.infoMsg   = "Card not enrolled";
@@ -5184,6 +5205,7 @@ void processPaymentEvent(String &payloadStr)
         authyState.infoMsg   = "Wallet registered";
         authyState.infoUntil = millis() + 4000;
         showAuthToast(authyState.infoMsg, false);
+        authyState.teachEnrolledFlash = true;
         authyState.needsRefresh = true;
         return;
       }

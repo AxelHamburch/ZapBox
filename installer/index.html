@@ -526,14 +526,14 @@
                 </div>
                 <div class="input-wrapper">
                     <div>
-                        <label for="authPin">Auth Pin (GPIO triggered on success)</label>
+                        <label for="authPin">Pin (GPIO triggered on success)</label>
                         <select name="authPin" id="authPin">
                             <option value="12" selected>CH01 — GPIO 12 (default relay)</option>
                             <option value="13">CH02 — GPIO 13</option>
                             <option value="10">CH03 — GPIO 10</option>
                             <option value="11">CH04 — GPIO 11</option>
                         </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known identities trigger this pin (v1: same action for every identity).</p>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known identities will redeem this pin at the time specified in LNbits.</p>
                     </div>
                     <div>
                         <label for="authDuration">Activation time (ms)</label>

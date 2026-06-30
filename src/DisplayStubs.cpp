@@ -46,3 +46,8 @@ void setupDeepSleepWakeup(String) {}
 bool isDeepSleepActive() { return false; }
 void showPinPadScreen(const PinPadState &) {}
 int  pinPadHitTest(uint16_t, uint16_t) { return -1; }
+void showAuthTeachScreen(String, int) {}
+void showAuthToast(const String &, bool) {}
+void showAuthIdentityScreen(String, int) {}
+void showAuthPayScreen(String, int) {}
+void authIdentityDisabledScreen() {}
