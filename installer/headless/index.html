@@ -332,16 +332,12 @@
                     </div>
                 </div>
 
+                <p style="margin: 14px 0 4px 0; font-size: 11px; color: #888; font-style: italic;">
+                    <strong style="color: #bbb;">Optional — Pay+Password:</strong> Physically attach an LNbits QR code to the ZapBox and configure a Pay+Password in LNbits. Classic Lightning payments trigger the same GPIO output independently of identity authentication — both flows use separate LNbits endpoints and do not interfere with each other.
+                </p>
+
                 <div class="input-wrapper" style="margin-top: 15px;">
-                    <div style="grid-column: span 2;">
-                        <label for="authDualPage">Identity and payment trigger</label>
-                        <select name="authDualPage" id="authDualPage">
-                            <option value="no" selected>No (default) — identity trigger only</option>
-                            <option value="yes">Yes — add a payment option</option>
-                        </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">If <strong>"Yes"</strong> is selected, the ZapBox also accepts Lightning payments. Since the headless device has no display, you must <strong>physically attach the LNbits QR code</strong> to the ZapBox and configure a <strong>Pay+Password</strong> in LNbits for the payment trigger.</p>
-                    </div>
-                    <div style="grid-column: span 2; display: flex; gap: 16px; align-items: flex-start; margin-top: 6px; padding-top: 14px; border-top: 1px solid #444;">
+                    <div style="grid-column: span 2; display: flex; gap: 16px; align-items: flex-start;">
                         <div style="flex: 1;">
                             <label for="authTeachPin">Teach Mode — One-time PIN</label>
                             <input type="text" id="authTeachPin" name="authTeachPin"
@@ -565,7 +561,7 @@
         <h3>LED Status Indicators</h3>
 
         <ul>
-            <li><strong>3 fast blinks:</strong> Device boot indicator</li>
+            <li><strong>3 fast blinks:</strong> Device boot indicator / NFC card not recognised or rejected</li>
             <li><strong>Fast blinking:</strong> Initialization in progress</li>
             <li><strong>Slow blinking:</strong> Config mode active</li>
             <li><strong>Solid ON:</strong> ZapBox ready</li>
@@ -574,6 +570,18 @@
             <li><strong>2× fast blink (100ms ON/OFF) + solid ON:</strong> NFC payment confirmed – relay fires</li>
             <li><strong>3× fast blink (100ms ON/OFF) + solid ON:</strong> NFC timeout (60s) or error – returns to ready</li>
         </ul>
+
+        <h3>Identity🫆Login — LED Status Indicators</h3>
+
+        <p>In <strong>Identity Login</strong> mode (NTAG 424 DNA only on headless) the ready LED signals teach and enrolment status:</p>
+
+        <ul>
+            <li><strong>Double-pulse (150ms ON / 100ms OFF / 150ms ON / 1.5s pause, cycle 1.9s):</strong> Teach mode active — ZapBox is waiting for a card or wallet to enrol. Pattern is distinctive and not used in any other mode.</li>
+            <li><strong>6× rapid flash (50ms ON/OFF, 600ms total):</strong> Card or wallet successfully enrolled — brief burst confirms registration, then resumes teach pattern.</li>
+            <li><strong>3× fast blink (100ms ON/OFF) + solid ON:</strong> NFC card not recognised or rejected (server returned 404 / card not in allowlist). Hardware is working — check LNbits zapbox_extension to verify enrolment, or perform CTRL+F5 page refresh.</li>
+        </ul>
+
+        <p><i><strong>Teach mode ends automatically</strong> after 180 seconds or when the power supply is cycled. Check the LNbits zapbox_extension (CTRL+F5 to refresh) to confirm a successful enrolment.</i></p>
 
         <p><i><strong>Note:</strong> The headless version (ESP32 Dev Module without display) does not have a visual Report page. Use the serial terminal to monitor all errors and status messages.</i></p>
 
@@ -704,7 +712,6 @@
         const authGpioMode = document.getElementById('authGpioMode');
         const authServo180Section = document.getElementById('authServo180Section');
         const authServo360Section = document.getElementById('authServo360Section');
-        const authDualPage = document.getElementById('authDualPage');
         const authTeachPin = document.getElementById('authTeachPin');
         const auth_servo1Start = document.getElementById('auth_servo1Start');
         const auth_servo1End = document.getElementById('auth_servo1End');
@@ -1338,7 +1345,6 @@
                 auth_servo1Duration.value = config[26]?.value || "0";
                 auth_servo2Speed.value = config[27]?.value || "0";
                 auth_servo2Duration.value = config[28]?.value || "0";
-                authDualPage.value = config[51]?.value || "no";
                 // authTeachPin (52) intentionally not pre-filled (one-time PIN, cleared after write)
                 updateAuthGpioModeFields();
 
@@ -1504,7 +1510,7 @@
 
             // Identity (authy) config (indices 47, 51, 52, 53)
             config[47].value = isIdentityMode ? "12" : "";  // authPin always GPIO 12 for headless
-            config[51].value = isIdentityMode ? (authDualPage.value || "no") : "";
+            config[51].value = isIdentityMode ? "no" : "";  // dualPage always off for headless (no display)
             // authTeachPin (index 52): write value once; cleared on device after teach starts
             config[52].value = isIdentityMode ? (authTeachPin.value || "") : "";
             config[53].value = isIdentityMode ? (authGpioMode.value || "relay") : "";
@@ -1708,7 +1714,6 @@
         auth_servo1Duration.addEventListener("input", (event) => { config[26].value = event.target.value || "0"; });
         auth_servo2Speed.addEventListener("input", (event) => { config[27].value = event.target.value || "0"; });
         auth_servo2Duration.addEventListener("input", (event) => { config[28].value = event.target.value || "0"; });
-        authDualPage.addEventListener("change", (event) => { config[51].value = event.target.value; });
         authTeachPin.addEventListener("input", (event) => { config[52].value = event.target.value; });
 
         // Print Config functionality
@@ -1782,7 +1787,6 @@
                     identityRows += row('Speed (0&ndash;180)', inputVal('auth_servo2Speed')) +
                                     row('Spin Duration (ms)', inputVal('auth_servo2Duration'));
                 }
-                identityRows += row('Identity &amp; payment trigger', selText('authDualPage'));
                 sections += section('Identity&#x1FAA8;Login — NTAG 424 DNA', identityRows);
             }
 

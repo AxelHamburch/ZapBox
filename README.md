@@ -537,7 +537,7 @@ LED Cathode (-)        →    Resistor (220Ω) →    GND
 - Distinct LED patterns for clear status and error indication
 
 **LED Behavior (ESP32 Dev Headless):**
-- **3x Very Fast Blink on Boot**: Three quick flashes immediately after power-on to indicate device start
+- **3x Very Fast Blink on Boot**: Three quick flashes immediately after power-on to indicate device start. In Identity Login mode also signals NFC card not recognised or rejected (tagid 404) — LED returns to solid ON afterwards
 - **Fast Blink (5Hz, 200ms)**: During startup and initialization (INITIALIZING, CONNECTING_WIFI states)
 - **Slow Blink (1Hz, 1000ms)**: Config mode active - device waiting for configuration
 - **Solid ON**: Device is ready to receive payments
@@ -545,6 +545,8 @@ LED Cathode (-)        →    Resistor (220Ω) →    GND
 - **200ms ON / 800ms OFF blink**: NFC payment pending – waiting for invoice settlement via WebSocket
 - **2× Fast Blink (100ms ON/OFF) + Solid ON**: NFC payment confirmed – 2 quick confirmation flashes, then LED stays ON while relay fires
 - **3× Fast Blink (100ms ON/OFF) + Solid ON**: NFC timeout (60s) or HTTP error – "NO LUCK" visual feedback, then returns to ready state
+- **Double-pulse (150ms ON / 100ms OFF / 150ms ON / 1.5s pause)**: Identity Login teach mode active – ZapBox waiting for a card or wallet to enrol
+- **6× Rapid Flash (50ms ON/OFF, 600ms total)**: Identity teach – card or wallet successfully enrolled; resumes double-pulse pattern after flash
 - **Very Fast Blink (10Hz, 50ms ON/OFF)**: Vending sensor blocking – one or more sensors are triggering a payment block (bin empty, product blocked, or stop active). WebSocket is disconnected.
 - **Error Blink Patterns** (with 2 second pause between sequences):
   - **1 Blink** (500ms on, 500ms off): NO WIFI - WiFi connection lost or not established
@@ -572,7 +574,7 @@ For example: If WiFi is disconnected, the LED will show 1 blink (WiFi error) eve
 
 | Pattern | Timing | Status | Description |
 |---------|--------|--------|-------------|
-| **3 Fast Blinks** | 3x rapid flash on boot | **BOOT** | Device powered on, starting initialization |
+| **3 Fast Blinks** | 3x rapid flash on boot | **BOOT / NFC REJECTED** | Device powered on — also: Identity mode NFC card not recognised or rejected (tagid 404); returns to solid ON |
 | **Fast Continuous** | 200ms on/off (5Hz) | **INITIALIZING** | System startup, WiFi connecting |
 | **Slow Continuous** | 1000ms on/off (1Hz) | **CONFIG MODE** | Configuration interface active, waiting for settings |
 | **Solid ON** | Continuous light | **READY** | All systems operational, ready for payments |
@@ -581,6 +583,8 @@ For example: If WiFi is disconnected, the LED will show 1 blink (WiFi error) eve
 | **2× Fast Blink** | 100ms ON/OFF × 2, then solid | **NFC SUCCESS** | Payment confirmed – 2 quick flashes, relay fires, LED stays ON |
 | **3× Fast Blink** | 100ms ON/OFF × 3, then solid | **NFC NO LUCK** | 60s timeout or HTTP error – returns to ready state |
 | **Very Fast Continuous** | 50ms on/off (10Hz) | **SENSOR BLOCKING** | Vending sensor active – payments blocked, WebSocket disconnected |
+| **Double-pulse** | 150ms ON / 100ms OFF / 150ms ON / 1.5s pause (1.9s cycle) | **IDENTITY TEACH** | Identity Login teach mode active – waiting for card or wallet to enrol |
+| **6× Rapid Flash** | 50ms ON/OFF × 6 (600ms) | **IDENTITY ENROLLED** | NFC card or wallet successfully enrolled in teach mode |
 | **1 Blink + Pause** | 500ms on/off, 2s pause | **NO WIFI** | WiFi connection lost or failed to connect |
 | **2 Blinks + Pause** | 300ms on/off/on/off, 2s pause | **NO INTERNET** | WiFi connected, but no internet gateway access |
 | **3 Blinks + Pause** | 250ms each, 2s pause | **NO SERVER** | Internet connected, LNbits server unreachable |

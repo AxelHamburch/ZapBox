@@ -1645,9 +1645,9 @@ void setup()
 #endif
 
   // GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless ESP32 Dev) — FD (Field Detection) for NT3H2111
+  // Pin is always configured as input; FD polling is only activated after NT3H2111 probe succeeds (nfcConfig.nt3hPresent).
 #ifdef PIN_GPIO3
   pinMode(PIN_GPIO3, PIN_GPIO3_MODE);
-  LOG_INFO("Setup", String("GPIO ") + PIN_GPIO3 + " configured as FD (Field Detection) for NT3H2111");
 #endif
 
   // NFC init is deferred into the startup screen (2 s after WiFi begin) so NFC logs
@@ -2745,6 +2745,7 @@ void loop()
           authyState.infoMsg   = errMsg.isEmpty() ? "NFC Identity Failed" : errMsg;
           authyState.infoUntil = millis() + 5000;
           showAuthToast(authyState.infoMsg, true);
+          authyState.nfcRejectedFlash = true;
           LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
         }
       }
@@ -3047,6 +3048,7 @@ void loop()
                         authyState.infoUntil = millis() + 5000;
                         authyShowQR();
                         showAuthPinError(l1, l2, l3);
+                        if (errMsg.indexOf("404") >= 0) authyState.nfcRejectedFlash = true;
                         LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
                       }
                     } else {
@@ -4279,8 +4281,9 @@ void loop()
     // ── GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless): FD from NT3H2111 ──
     // Open-drain active LOW: phone near → FD LOW; no phone → pull-up → HIGH.
     // Extends PN532 RF pause while the phone field is active.
+    // Only active when NT3H2111 was found on I2C — prevents floating GPIO from blocking PN532.
     #ifdef PIN_GPIO3
-    {
+    if (nfcConfig.nt3hPresent) {
       static bool lastFdState = false;
       bool fdLow = (digitalRead(PIN_GPIO3) == LOW);
       if (fdLow && !lastFdState) {

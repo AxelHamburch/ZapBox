@@ -117,6 +117,17 @@ void updateReadyLed() {
   static bool nfcNoLuckActive = false;
   static unsigned long nfcNoLuckStartTime = 0;
 
+  // Identity mode: NFC card not recognised or rejected (tagid 404) → reuse 3× fast blink.
+  if (authyConfig.enabled && authyState.nfcRejectedFlash) {
+    authyState.nfcRejectedFlash = false;
+    nfcNoLuckActive = true;
+    nfcNoLuckStartTime = millis();
+    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    #ifdef PIN_ONBOARD_LED
+    digitalWrite(PIN_ONBOARD_LED, HIGH);
+    #endif
+  }
+
   // NFC "NO LUCK" blink: 3× fast blink (100ms ON / 100ms OFF) after timeout/error,
   // then return to steady LED.
   if (nfcNoLuckActive) {

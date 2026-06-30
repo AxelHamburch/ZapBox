@@ -225,6 +225,7 @@ bool nfcNT3H2111Init() {
         return false;
     }
     LOG_INFO("NT3H", "NT3H2111 detected at I\xC2\xB2\x43 0x55");
+    nfcConfig.nt3hPresent = true;
 
     // Read block 0: verify Capability Container (bytes 12–15) and log raw bytes
     uint8_t blk0[NT3H_BLOCK_SIZE] = {};

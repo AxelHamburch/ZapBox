@@ -597,6 +597,7 @@ struct NfcConfig {
   volatile bool boltcardActive = false;   // True when bolt card reader task is running
   volatile bool nfcSessionActive = false; // True during active APDU exchange (suppresses internet checks)
   volatile unsigned long pn532PauseUntil = 0; // millis() deadline while PN532 polling is paused (FD phone detection)
+  bool nt3hPresent = false;              // True when NT3H2111 responded on I2C probe — gates FD pin polling
   // NT3H2111 NFC UID (7 bytes from Block 0) — used to filter out self-detection by PN532
   uint8_t nt3hNfcUid[7] = {0};
   bool nt3hNfcUidKnown = false;
@@ -751,6 +752,8 @@ struct AuthyState {
 
   // Headless: flash LED briefly when NFC card is enrolled in teach mode
   bool teachEnrolledFlash = false;
+  // Headless: 3× fast blink when NFC card is not recognised or rejected in identity mode
+  bool nfcRejectedFlash = false;
 
   // Ring-Login NFC tap (written by NFC task on Core 0, read by loop() on Core 1)
   volatile bool nfcSunTapPending = false;  // NTAG 424 SUN tap received
@@ -774,6 +777,7 @@ struct AuthyState {
     nfcSunTapPending = false;
     nfcSunIsTeach = false;
     teachEnrolledFlash = false;
+    nfcRejectedFlash = false;
   }
 };
 
