@@ -2742,9 +2742,14 @@ void loop()
         if (requestNfcAuth(extId, sunP, sunC, "", &errMsg)) {
           LOG_INFO("NFC-Auth", "Auth OK (no PIN)");
         } else {
-          authyState.infoMsg   = errMsg.isEmpty() ? "NFC Identity Failed" : errMsg;
+          // Mirror the PIN-path error UI (showAuthPinError: large text, white
+          // background, centered) so both Ring-Login flows look consistent.
+          String l1 = errMsg.indexOf("404") >= 0
+                          ? "NFC tag unknown"
+                          : (errMsg.isEmpty() ? "NFC Identity Failed" : errMsg);
+          authyState.infoMsg   = l1;
           authyState.infoUntil = millis() + 5000;
-          showAuthToast(authyState.infoMsg, true);
+          showAuthPinError(l1, "", "");
           authyState.nfcRejectedFlash = true;
           LOG_WARN("NFC-Auth", String("Auth failed: ") + errMsg);
         }

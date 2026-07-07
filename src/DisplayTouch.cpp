@@ -2376,22 +2376,66 @@ bool authTeachCancelHit(uint16_t x, uint16_t y) {
     return miniPosQrCancelHit(x, y);  // identical button geometry
 }
 
+// Greedy word-wrap of `s` into `out[]` (up to maxN entries) so each line fits
+// within maxW pixels at the given font size. Returns number of lines written.
+static int wrapWords(const String &s, uint8_t size, int maxW, String out[], int maxN) {
+    int maxChars = maxW / (6 * size);
+    if (maxChars < 1) maxChars = 1;
+    int n = 0;
+    int start = 0;
+    while (start < (int)s.length() && n < maxN) {
+        int remaining = s.length() - start;
+        if (remaining <= maxChars) {
+            out[n++] = s.substring(start);
+            break;
+        }
+        int split = -1;
+        for (int i = start + maxChars; i > start; i--) {
+            if (s[i] == ' ') { split = i; break; }
+        }
+        if (split < 0) split = start + maxChars;
+        out[n++] = s.substring(start, split);
+        start = split + (s[split] == ' ' ? 1 : 0);
+    }
+    return n;
+}
+
 void showAuthPinError(const String &l1, const String &l2, const String &l3) {
     DisplayLock lock;
     if (!_gfx) return;
     const uint16_t errBg = TFT_WHITE;
-    const int sz    = 3;
-    const int lineH = 8 * sz + 10;   // 24 px text + 10 px gap = 34 px
-    int nLines = 1 + (l2.length() > 0 ? 1 : 0) + (l3.length() > 0 ? 1 : 0);
-    int totalH = nLines * lineH;
+    const int maxLines = 4;
+    int sz = 3;
+    int maxW = SCR_W - 20;
+    String lines[maxLines];
+    int n = 0;
+    const String *src[3] = { &l1, &l2, &l3 };
+    for (int i = 0; i < 3 && n < maxLines; i++) {
+        if (src[i]->length() == 0) continue;
+        n += wrapWords(*src[i], sz, maxW, lines + n, maxLines - n);
+    }
+    // Long single-word error strings can still overflow at size 3 — drop to a
+    // smaller size and re-wrap so text never runs off the screen edges.
+    if (n >= maxLines) {
+        sz = 2;
+        n = 0;
+        for (int i = 0; i < 3 && n < maxLines; i++) {
+            if (src[i]->length() == 0) continue;
+            n += wrapWords(*src[i], sz, maxW, lines + n, maxLines - n);
+        }
+    }
+
+    const int lineH = 8 * sz + 10;
+    int totalH = n * lineH;
     // Landscape: center at SCR_H/2; portrait: upper third so it sits over the QR
     int centerY = isPortrait() ? SCR_H / 3 : SCR_H / 2;
     int startY  = centerY - totalH / 2;
     fillRect(0, startY - 10, SCR_W, totalH + 20, errBg);
     int y = startY + lineH / 2;
-    drawCenter(SCR_W / 2, y, l1.c_str(), TFT_RED, errBg, sz);
-    if (l2.length() > 0) { y += lineH; drawCenter(SCR_W / 2, y, l2.c_str(), TFT_RED, errBg, sz); }
-    if (l3.length() > 0) { y += lineH; drawCenter(SCR_W / 2, y, l3.c_str(), TFT_RED, errBg, sz); }
+    for (int i = 0; i < n; i++) {
+        drawCenter(SCR_W / 2, y, lines[i].c_str(), TFT_RED, errBg, sz);
+        y += lineH;
+    }
     flushDisplay();
 }
 
@@ -2400,11 +2444,35 @@ void showAuthToast(const String &msg, bool isError) {
     if (!_gfx) return;
     uint16_t fg = isError ? TFT_RED : TFT_GREEN;
     uint16_t bg = themeBackground;
-    // Draw toast strip above the bottom button area (CANCEL / tab button).
-    int toastH = 30;
+
+    // Server error strings (e.g. "tagid not configured on this device.") can be
+    // wider than the screen at readable sizes — wrap onto a second line rather
+    // than letting drawCenter overflow off both edges.
+    uint8_t size = 2;
+    int maxW = SCR_W - 16;
+    String l1 = msg, l2 = "";
+    if ((int)msg.length() * 6 * size > maxW) {
+        int maxChars = maxW / (6 * size);
+        int split = -1;
+        for (int i = maxChars; i > 0; i--) {
+            if (msg[i] == ' ') { split = i; break; }
+        }
+        if (split < 0) split = maxChars;
+        l1 = msg.substring(0, split);
+        l2 = msg.substring(split + (msg[split] == ' ' ? 1 : 0));
+        if ((int)l2.length() * 6 * size > maxW) l2 = l2.substring(0, maxChars);
+    }
+
+    int lineH = 8 * size;
+    int toastH = l2.length() > 0 ? lineH * 2 + 8 : 30;
     int toastY = SCR_H - MP_QRC_H - MP_QRC_M - toastH - 4;
     fillRect(0, toastY, SCR_W, toastH, bg);
-    drawCenter(SCR_W / 2, toastY + toastH / 2, msg.c_str(), fg, bg, 2);
+    if (l2.length() > 0) {
+        drawCenter(SCR_W / 2, toastY + toastH / 2 - lineH / 2 - 2, l1.c_str(), fg, bg, size);
+        drawCenter(SCR_W / 2, toastY + toastH / 2 + lineH / 2 + 2, l2.c_str(), fg, bg, size);
+    } else {
+        drawCenter(SCR_W / 2, toastY + toastH / 2, l1.c_str(), fg, bg, size);
+    }
     flushDisplay();
 }
 
