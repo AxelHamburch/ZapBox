@@ -255,8 +255,9 @@ extern StateManager deviceState;
  * otherwise keeps the NT3H powered and interferes with the phone's read even
  * when the software task is not actively polling.
  */
-static void pn532SetRFField(bool on) {
-    if (!i2cTake()) return; // skip if I2C bus is busy (rare – NT3H write in progress)
+static bool pn532SetRFField(bool on) {
+    if (!i2cTake()) return false; // bus busy (rare – NT3H write in progress) – caller retries
+    bool ok = false;
     uint8_t cmd[] = { 0x32, 0x01, on ? (uint8_t)0x01 : (uint8_t)0x00 };
     if (s_nfc->sendCommandCheckAck(cmd, 3, 500)) {
         // Wait for PN532 to assert IRQ LOW (response ready, typically <5 ms)
@@ -265,8 +266,10 @@ static void pn532SetRFField(bool on) {
         // Drain response regardless — leaving it fills the PN532 output buffer
         Wire.requestFrom((uint8_t)0x24, (uint8_t)10);
         while (Wire.available()) Wire.read();
+        ok = true;
     }
     i2cGive();
+    return ok;
 }
 
 // ─── FreeRTOS task ───────────────────────────────────────────────────────────
@@ -296,17 +299,30 @@ static void nfc_task_code(void *pvParams)
         static bool pn532WasPaused = false;
         if (nfcConfig.pn532PauseUntil > 0 && millis() < nfcConfig.pn532PauseUntil) {
             if (!pn532WasPaused) {
-                pn532SetRFField(false);
-                LOG_INFO("NFC", "PN532 RF OFF – NT3H phone read window open");
-                pn532WasPaused = true;
+                // Only mark paused once the field is actually off. If the command
+                // failed (bus contention), retry on the next loop iteration.
+                if (pn532SetRFField(false)) {
+                    LOG_INFO("NFC", "PN532 RF OFF – NT3H phone read window open");
+                    pn532WasPaused = true;
+                } else {
+                    LOG_WARN("NFC", "PN532 RF OFF command failed – retrying");
+                }
             }
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
         if (pn532WasPaused) {
-            pn532SetRFField(true);
-            LOG_INFO("NFC", "PN532 RF ON – NT3H phone read window closed");
-            pn532WasPaused = false;
+            // Critical: if RF ON silently fails the reader stays dead – card taps
+            // then return 0 bytes with no I2C error. Keep retrying until the field
+            // is confirmed back on before polling for cards again.
+            if (pn532SetRFField(true)) {
+                LOG_INFO("NFC", "PN532 RF ON – NT3H phone read window closed");
+                pn532WasPaused = false;
+            } else {
+                LOG_WARN("NFC", "PN532 RF ON command failed – retrying before next poll");
+                vTaskDelay(pdMS_TO_TICKS(100));
+                continue;
+            }
         }
 
         // Block until a card is detected (1 s per attempt, short timeout

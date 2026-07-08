@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "GlobalState.h"
+#include "I2CBus.h"
 #include "Log.h"
 #include "PinConfig.h"
 
@@ -27,23 +28,36 @@ static char lastWritten[640] = "";  // last URL written to chip (matches lightni
 
 // ─── I²C helpers ─────────────────────────────────────────────────────────────
 
-/** Write 16 bytes to one NT3H2111 block. */
+// NOTE: The three raw-Wire helpers below share the I²C bus with the PN532
+// Bolt Card FreeRTOS task. They MUST hold i2cBusMutex for the full duration of
+// each transaction, otherwise the PN532 task can interleave Wire access mid-frame
+// and corrupt both transfers (observed as "i2cRead Error -1" and, downstream,
+// silent PN532 RF-command failures). i2cBusMutex is non-recursive, so ONLY these
+// leaf helpers lock — callers above them must never wrap them in i2cTake().
+
+/** Probe whether a device ACKs at the given I2C address. */
 static bool nt3hProbeAddr(uint8_t addr) {
+    if (!i2cTake()) return false;
     Wire.beginTransmission(addr);
-    return Wire.endTransmission() == 0;
+    bool ok = (Wire.endTransmission() == 0);
+    i2cGive();
+    return ok;
 }
 
 /** Write 16 bytes to one NT3H2111 block at a given I2C address. */
 static bool nt3hWriteBlockAtAddr(uint8_t addr, uint8_t block, const uint8_t data[NT3H_BLOCK_SIZE]) {
+    if (!i2cTake()) return false;
     Wire.beginTransmission(addr);
     Wire.write(block);
     Wire.write(data, NT3H_BLOCK_SIZE);
     uint8_t err = Wire.endTransmission();
     if (err != 0) {
+        i2cGive();
         LOG_WARN("NT3H", String("writeBlock addr=0x") + String(addr, HEX) + " b=" + String(block) + " err=" + String(err));
         return false;
     }
-    delay(NT3H_WRITE_DELAY);
+    delay(NT3H_WRITE_DELAY);  // NT3H internal write time – hold the bus so no other master starts mid-write
+    i2cGive();
     return true;
 }
 
@@ -56,15 +70,19 @@ static bool nt3hWriteBlock(uint8_t block, const uint8_t data[NT3H_BLOCK_SIZE]) {
  * Uses two separate I²C transactions (WRITE block addr + STOP, then READ)
  * instead of repeated-start, which is unreliable on some ESP32 Wire builds. */
 static bool nt3hReadBlockAtAddr(uint8_t addr, uint8_t block, uint8_t out[NT3H_BLOCK_SIZE]) {
+    // Both transactions must stay atomic on the bus: the block address set in
+    // transaction 1 is consumed by the read in transaction 2. Lock across both.
+    if (!i2cTake()) return false;
     // Transaction 1: write block address, then STOP
     Wire.beginTransmission(addr);
     Wire.write(block);
-    if (Wire.endTransmission(true) != 0) return false;  // true = STOP
+    if (Wire.endTransmission(true) != 0) { i2cGive(); return false; }  // true = STOP
     delayMicroseconds(200);  // brief settle before re-addressing
     // Transaction 2: read 16 bytes
     uint8_t n = Wire.requestFrom((uint8_t)addr, (uint8_t)NT3H_BLOCK_SIZE);
-    if (n != NT3H_BLOCK_SIZE) return false;
+    if (n != NT3H_BLOCK_SIZE) { i2cGive(); return false; }
     for (uint8_t i = 0; i < NT3H_BLOCK_SIZE; i++) out[i] = Wire.read();
+    i2cGive();
     return true;
 }
 
