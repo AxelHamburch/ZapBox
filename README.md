@@ -1452,7 +1452,7 @@ See the complete wiring diagram:
 - [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
 - [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
 - [E-Layout-ZapBox-Servo.png](assets/electric/E-Layout-ZapBox-Servo.png)
-- [E-Layout-ZapBox-Touch3.5.png](assets/electric/E-Layout-ZapBox-Touch3.5.webp)
+- [E-Layout-ZapBox-Touch3.5.webp](assets/electric/E-Layout-ZapBox-Touch3.5.webp)
 - [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
 - [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
 - [E-Layout-ZapBox-esp32-c3-21-1.png](assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png)
