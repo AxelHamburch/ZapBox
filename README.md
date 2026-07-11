@@ -1421,6 +1421,8 @@ Electrical design and housing variants, see table.
 | e950677 | Compact | Add NFC Tag 2 module | 
 | e950939 | Touch3.5 | ESP32-S Touch3.5 (JC3248W535C) - Prototyp | 
 | e955640 | ZapSave | ZapSave – Sample Connection |
+| e957556 | Touch3.5-FOUR | ZapBox Touch 3.5 with 4 channel |
+| e957575 | Touch3.5-ONE | ZapBox Touch 3.5 with 1 channel |
 
 -> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
