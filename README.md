@@ -1388,6 +1388,7 @@ Electrical design and housing variants, see table.
 | b950711 | Touch 3.5 |ESP32-S Touch3.5 (JC3248W535C) - No.1 - Prototyp |
 | b955706 | ZapSave | ZapSave – Sample Box |
 | b956540 | Touch3.5-FOUR | ZapBox Touch 3.5 with 4 channel |
+| b957183 | Touch3.5-ONE | ZapBox Touch 3.5 with 1 channel |
 
 -> Find all versions here: [./assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
