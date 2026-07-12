@@ -1958,16 +1958,14 @@ static const int MP_QRC_W = 90, MP_QRC_H = 34;
 // button handler.
 static const int MP_QRC_M = 20;
 
-// Battery charge, top-left of the portrait input screen. The header
-// ("Amount in EUR", size 2, centred) starts at x≈82, so x 8..56 is free.
-// Landscape has no free corner there — the numpad owns the full right half —
-// so this is portrait only for now.
-static void drawMiniPosBattery() {
+// Battery charge, right-aligned so it ends at rightX. Text size 2 → 12 px per
+// character, so "100%" is 48 px wide.
+static void drawMiniPosBattery(int rightX, int cy) {
     if (!batteryAvailable()) return;
     char buf[6];
     snprintf(buf, sizeof(buf), "%d%%", batteryPercent());
     int w = strlen(buf) * 6 * 2;   // 6 px per char at size 1, ×2 for size 2
-    drawCenter(8 + w / 2, 22, buf, themeForeground, themeBackground, 2);
+    drawCenter(rightX - w / 2, cy, buf, themeForeground, themeBackground, 2);
 }
 
 static void drawMiniPosAmountBox(int bx, int by, int bw, int bh) {
@@ -1993,9 +1991,11 @@ void showMiniPosInputScreen() {
         // ── Portrait: top panel + numpad below (PIN pad geometry) ───────────
         fillRect(0, PP_V_TOP_H - 1, PANEL_W, 1, themeForeground);
 
+        // "Amount in EUR" is centred (x≈82..238 at size 2), so the battery goes
+        // right-aligned into the free strip at the top-right corner.
         String header = "Amount in " + miniPosConfig.currency;
         drawCenter(PANEL_W / 2, 22, header.c_str(), themeForeground, themeBackground, 2);
-        drawMiniPosBattery();
+        drawMiniPosBattery(PANEL_W - 8, 22);
 
         drawMiniPosAmountBox(40, 45, PANEL_W - 80, 52);
 
@@ -2025,8 +2025,13 @@ void showMiniPosInputScreen() {
         // ── Landscape: left panel + numpad right (PIN pad geometry) ─────────
         fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
 
-        drawCenter(PP_LEFT_CX, 28, "Amount in", themeForeground, themeBackground, 3);
-        drawCenter(PP_LEFT_CX, 64, miniPosConfig.currency.c_str(), themeForeground, themeBackground, 3);
+        // Top row of the left panel: "Amount in" on the left, battery on the right
+        // against the divider to the numpad. "Amount in" drops from size 3 to
+        // size 2 (9 chars = 108 px, x 12..120) to leave room — the battery is
+        // right-aligned at x 200, so 80 px of clear space sit between them.
+        drawCenter(12 + (9 * 6 * 2) / 2, 20, "Amount in", themeForeground, themeBackground, 2);
+        drawMiniPosBattery(PP_LEFT_W - 10, 20);
+        drawCenter(PP_LEFT_CX, 60, miniPosConfig.currency.c_str(), themeForeground, themeBackground, 3);
 
         drawMiniPosAmountBox(10, 95, PP_LEFT_W - 20, 46);
 

@@ -2398,13 +2398,10 @@ void loop()
   // so nudge a redraw when the percentage actually moved. Never redraw while the
   // operator is typing (that would flicker mid-entry).
   batteryLoop();
-  {
-    const bool portrait = (displayConfig.orientation == "v" || displayConfig.orientation == "vi");
-    if (miniPosConfig.enabled && miniPosState.inputActive && portrait
-        && batteryChanged()
-        && millis() - miniPosState.lastInputActivity > 1000) {
-      showMiniPosInputScreen();
-    }
+  if (miniPosConfig.enabled && miniPosState.inputActive
+      && batteryChanged()
+      && millis() - miniPosState.lastInputActivity > 1000) {
+    showMiniPosInputScreen();
   }
   #endif
 

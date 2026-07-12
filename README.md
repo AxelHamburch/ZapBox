@@ -238,7 +238,7 @@ Device String (switchStr)
 
 The JC3248W535C has a **JST connector for a single-cell LiPo** with an on-board charging circuit. The battery rail is wired to **GPIO 5** through a divider (33 kΩ / 100 kΩ, per the vendor schematic), so the pack voltage can be read with the ADC. GPIO 5 is **ADC1_CH4** — and only ADC1 works while WiFi is active, since ADC2 (GPIO 14/15) is claimed by the WiFi driver.
 
-The charge level (0–100 %) is shown **top-left in the Mini-PoS entry screen, in portrait orientation**. Landscape has no free corner there — the numpad occupies the entire right half of the screen.
+The charge level (0–100 %) is shown in the **Mini-PoS entry screen**, in both orientations: top-right of the screen in portrait, and top-right of the left panel (next to the numpad divider) in landscape.
 
 **GPIO 5 has two mutually exclusive roles:**
 
