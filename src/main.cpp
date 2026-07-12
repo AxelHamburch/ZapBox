@@ -741,11 +741,39 @@ void readFiles()
         t35AmbientConfig.flexActor[i]   = isActor(m);
       }
 
+      // Vending sensors on CH02 (GPIO 7) and CH03 (GPIO 5) — the same stop /
+      // monitor / level modes as the T-Display-S3 light barrier. They feed the
+      // existing two-sensor implementation (LightBarrierConfig), so all the
+      // runtime logic is shared; only the pin mapping differs (PinConfig.h).
+      {
+        auto applySensor = [](const String& m, bool& stop, bool& monitor, bool& level, String& modeOut) {
+          stop    = (m == "sensor-stop");
+          monitor = (m == "sensor-monitor");
+          level   = (m == "sensor-level");
+          if (stop || monitor || level) modeOut = m;
+        };
+        const int s1 = t35AmbientConfig.channelIndexForGpio(PIN_SENSOR_1);
+        const int s2 = t35AmbientConfig.channelIndexForGpio(PIN_SENSOR_2);
+        if (s1 >= 0) applySensor(chMode[s1], lightBarrierConfig.enabled,
+                                 lightBarrierConfig.monitoring,
+                                 lightBarrierConfig.levelMonitoring,
+                                 lightBarrierConfig.mode);
+        if (s2 >= 0) applySensor(chMode[s2], lightBarrierConfig.enabled2,
+                                 lightBarrierConfig.monitoring2,
+                                 lightBarrierConfig.levelMonitoring2,
+                                 lightBarrierConfig.mode2);
+        LOG_INFO("Config", String("T35 sensors — GPIO ") + PIN_SENSOR_1 + ":"
+                 + (lightBarrierConfig.isActive() ? lightBarrierConfig.mode : String("off"))
+                 + "  GPIO " + PIN_SENSOR_2 + ":"
+                 + (lightBarrierConfig.isActive2() ? lightBarrierConfig.mode2 : String("off")));
+      }
+
       // One channel sits on GPIO 5, which also carries the battery voltage
       // divider. Leaving that channel off keeps the pin an input and enables the
-      // battery gauge; using it as a channel turns the pin into an output and the
-      // measurement is gone. Look the channel up rather than hard-coding it, so
-      // the next re-ordering of the pin map cannot silently break this.
+      // battery gauge; a relay/servo/ambient turns the pin into an output, and a
+      // sensor claims it as a digital input — either way the measurement is gone.
+      // Look the channel up rather than hard-coding it, so the next re-ordering
+      // of the pin map cannot silently break this.
       const int batCh = t35AmbientConfig.channelIndexForGpio(PIN_BAT_ADC);
       t35AmbientConfig.batteryEnabled = (batCh >= 0) && (chMode[batCh] == "off");
 
@@ -1476,20 +1504,25 @@ void setup()
   }
 
   // Touch 3.5 flex channel init (JC3248W535C): CH02–CH06.
-  // CH06 is GPIO 5, which also carries the battery divider — when it is not
-  // configured as a channel it must stay an INPUT, otherwise driving it as an
-  // output overrides the divider and the battery gauge reads garbage.
+  // CH03 is GPIO 5, which also carries the battery divider — when nothing else
+  // claims it, it must stay an INPUT, otherwise driving it as an output overrides
+  // the divider and the battery gauge reads garbage.
   #ifdef BOARD_JC3248W535C
   {
     for (int i = 0; i < T35AmbientConfig::FLEX_COUNT; i++) {
       const int  gpio    = RELAY_CHANNEL_PINS[i + 1];   // flex slot i == CH02+i
       const bool ambient = t35AmbientConfig.flexAmbient[i];
       const bool actor   = t35AmbientConfig.flexActor[i];
+      const bool sensor  = (gpio == PIN_SENSOR_1 && lightBarrierConfig.isActive())
+                        || (gpio == PIN_SENSOR_2 && lightBarrierConfig.isActive2());
 
       if (ambient) {
         pinMode(gpio, OUTPUT);
         digitalWrite(gpio, HIGH); // Display is on at startup
         Serial.printf("[AMBIENT LIGHT] GPIO %d initialized (synced with display backlight)\n", gpio);
+      } else if (sensor) {
+        pinMode(gpio, INPUT_PULLUP);   // vending sensor, active LOW
+        Serial.printf("[SENSOR] GPIO %d initialized as INPUT_PULLUP (active LOW)\n", gpio);
       } else if (actor) {
         if (t35AmbientConfig.isServoGpio(gpio)) {
           // Servo channel: attached/positioned by initServos(), not driven as a relay GPIO
@@ -1502,7 +1535,7 @@ void setup()
       } else if (gpio == PIN_BAT_ADC) {
         Serial.printf("[FLEX] GPIO %d: off — left as INPUT for the battery gauge\n", gpio);
       } else {
-        Serial.printf("[FLEX] GPIO %d: off/sensor — skipped\n", gpio);
+        Serial.printf("[FLEX] GPIO %d: off — skipped\n", gpio);
       }
     }
   }
@@ -4252,25 +4285,34 @@ void loop()
     #endif
 
     // ── Headless vending sensors: dual-sensor monitoring (GPIO 22 / GPIO 23) ────
+    // On the Touch 3.5 these are the CH02/CH03 sensors (GPIO 7 / GPIO 5) and the
+    // board has a display, so mirror the T-Display-S3 behaviour and show the
+    // warning screens. On the headless board the screens are no-ops.
     #ifdef PIN_SENSOR_1
     if (lightBarrierConfig.levelMonitoring) {
       bool pinIsLow = (digitalRead(PIN_SENSOR_1) == LOW);
       if (!pinIsLow && !lightBarrierConfig.binEmpty) {
         lightBarrierConfig.binEmpty = true;
-        Serial.println("[SENSOR 1] Bin empty detected (GPIO 22) — payments blocked");
+        Serial.printf("[SENSOR 1] Bin empty detected (GPIO %d) — payments blocked\n", PIN_SENSOR_1);
+        #if ENABLE_DISPLAY
+        supplyBinEmptyScreen();
+        #endif
       } else if (pinIsLow && lightBarrierConfig.binEmpty) {
         lightBarrierConfig.binEmpty = false;
-        Serial.println("[SENSOR 1] Bin restocked (GPIO 22) — payments re-enabled");
+        Serial.printf("[SENSOR 1] Bin restocked (GPIO %d) — payments re-enabled\n", PIN_SENSOR_1);
+        #if ENABLE_DISPLAY
+        if (!lightBarrierConfig.isAnyBlocking()) redrawQRScreen();
+        #endif
       }
     }
     if (lightBarrierConfig.monitoring) {
       bool pinIsLow = (digitalRead(PIN_SENSOR_1) == LOW);
       if (pinIsLow && !lightBarrierConfig.blocked) {
         lightBarrierConfig.blocked = true;
-        Serial.println("[SENSOR 1] Product blockage detected (GPIO 22) — payments blocked");
+        Serial.printf("[SENSOR 1] Product blockage detected (GPIO %d) — payments blocked\n", PIN_SENSOR_1);
       } else if (!pinIsLow && lightBarrierConfig.blocked) {
         lightBarrierConfig.blocked = false;
-        Serial.println("[SENSOR 1] Product blockage cleared (GPIO 22) — payments re-enabled");
+        Serial.printf("[SENSOR 1] Product blockage cleared (GPIO %d) — payments re-enabled\n", PIN_SENSOR_1);
       }
     }
     #endif
@@ -4279,20 +4321,26 @@ void loop()
       bool pinIsLow = (digitalRead(PIN_SENSOR_2) == LOW);
       if (!pinIsLow && !lightBarrierConfig.binEmpty2) {
         lightBarrierConfig.binEmpty2 = true;
-        Serial.println("[SENSOR 2] Bin empty detected (GPIO 23) — payments blocked");
+        Serial.printf("[SENSOR 2] Bin empty detected (GPIO %d) — payments blocked\n", PIN_SENSOR_2);
+        #if ENABLE_DISPLAY
+        supplyBinEmptyScreen();
+        #endif
       } else if (pinIsLow && lightBarrierConfig.binEmpty2) {
         lightBarrierConfig.binEmpty2 = false;
-        Serial.println("[SENSOR 2] Bin restocked (GPIO 23) — payments re-enabled");
+        Serial.printf("[SENSOR 2] Bin restocked (GPIO %d) — payments re-enabled\n", PIN_SENSOR_2);
+        #if ENABLE_DISPLAY
+        if (!lightBarrierConfig.isAnyBlocking()) redrawQRScreen();
+        #endif
       }
     }
     if (lightBarrierConfig.monitoring2) {
       bool pinIsLow = (digitalRead(PIN_SENSOR_2) == LOW);
       if (pinIsLow && !lightBarrierConfig.blocked2) {
         lightBarrierConfig.blocked2 = true;
-        Serial.println("[SENSOR 2] Product blockage detected (GPIO 23) — payments blocked");
+        Serial.printf("[SENSOR 2] Product blockage detected (GPIO %d) — payments blocked\n", PIN_SENSOR_2);
       } else if (!pinIsLow && lightBarrierConfig.blocked2) {
         lightBarrierConfig.blocked2 = false;
-        Serial.println("[SENSOR 2] Product blockage cleared (GPIO 23) — payments re-enabled");
+        Serial.printf("[SENSOR 2] Product blockage cleared (GPIO %d) — payments re-enabled\n", PIN_SENSOR_2);
       }
     }
     #endif
@@ -4418,6 +4466,31 @@ static void checkProductBlockage() {
 
   lightBarrierConfig.blocked = false;
   Serial.println("[LIGHT BARRIER] Product blockage cleared — ready for next payment");
+  #endif
+
+  // Touch 3.5: same behaviour on the CH02/CH03 sensors (GPIO 7 / GPIO 5) — this
+  // board has a display, so show the blocked screen and wait for clearance.
+  #ifdef BOARD_JC3248W535C
+  struct { int pin; bool monitoring; bool* blocked; } sensors[] = {
+    { PIN_SENSOR_1, lightBarrierConfig.monitoring,  &lightBarrierConfig.blocked  },
+    { PIN_SENSOR_2, lightBarrierConfig.monitoring2, &lightBarrierConfig.blocked2 },
+  };
+  for (auto& s : sensors) {
+    if (!s.monitoring) continue;
+    if (digitalRead(s.pin) != LOW) continue;   // path is clear
+
+    Serial.printf("[SENSOR] GPIO %d: product blockage — waiting for clearance\n", s.pin);
+    *s.blocked = true;
+    productBlockedScreen();
+
+    while (digitalRead(s.pin) == LOW) {
+      webSocket.loop();
+      vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    *s.blocked = false;
+    Serial.printf("[SENSOR] GPIO %d: blockage cleared — ready for next payment\n", s.pin);
+  }
   #endif
 
   // Headless sensors: blockage is handled in the main loop (continuous monitoring)

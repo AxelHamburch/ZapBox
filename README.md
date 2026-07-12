@@ -202,8 +202,8 @@ Device String (switchStr)
 | 18 | I2C SDA | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
 | **Flex Channels** |
 | 6 | CH01 | Output | - | Default: relay output — Special Mode applies to CH01 only |
-| 7 | CH02 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
-| 5 | CH03 | Output *or* analog input | - | Off (default), Relay, Servo 180°/360°, Ambient Light. 🔋 **While CH03 is off, this pin measures the battery** — see [Battery Monitoring](#battery-monitoring-touch-35) |
+| 7 | CH02 | Output or Input | Pull-up (sensor) | Off (default), Relay, Servo 180°/360°, **Sensor** (stop / blockage / level), Ambient Light |
+| 5 | CH03 | Output / Input / analog | Pull-up (sensor) | Same as CH02. 🔋 **While CH03 is off, this pin measures the battery** — see [Battery Monitoring](#battery-monitoring-touch-35) |
 | 14 | CH04 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
 | 15 | CH05 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
 | 16 | CH06 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
@@ -245,7 +245,7 @@ The charge level (0–100 %) is shown **top-left in the Mini-PoS entry screen, i
 | GPIO 5 used as | Consequence |
 |----------------|-------------|
 | **Battery ADC** (CH03 = `off`, the default) | Battery charge level is measured and displayed. |
-| **Flex channel CH03** (relay / servo / ambient) | The channel switches as configured; the battery display disappears, because a driven output overrides the high-impedance divider. |
+| **Flex channel CH03** (relay / servo / sensor / ambient) | The channel switches as configured; the battery display disappears, because a driven output overrides the high-impedance divider. |
 
 No configuration switch is needed — the firmware derives this from the CH03 mode.
 
@@ -816,11 +816,21 @@ The Touch 3.5" drives **six freely configurable channels** on GPIO 6, 7, 5, 14, 
 | Channel | GPIO | Selectable functions |
 |---------|------|----------------------|
 | CH01 | 6 | Relay *(default)* · Servo 180° · Servo 360° — primary / Special-Mode channel |
-| CH02 | 7 | Off · Relay · Servo 180°/360° · Ambient Light |
-| CH03 | 5 | Off · Relay · Servo 180°/360° · Ambient Light — 🔋 **while off, this pin measures the battery** ([details](#battery-monitoring-touch-35)) |
+| CH02 | 7 | Off · Relay · Servo 180°/360° · **Sensor** (stop / blockage-monitor / level) · Ambient Light |
+| CH03 | 5 | Same as CH02 — 🔋 but **while off, this pin measures the battery** ([details](#battery-monitoring-touch-35)) |
 | CH04–CH06 | 14, 15, 16 | Off · Relay · Servo 180°/360° · Ambient Light |
 
 The channel order groups the three **ADC1-capable** pins (5, 6, 7) first. GPIO 14/15/16 sit on ADC2, which the WiFi driver claims — they can never serve as analog inputs on this device, only as digital outputs or PWM (servo).
+
+**Vending sensors** are available on **CH02 and CH03 only**, with the same three modes as the T-Display-S3 light barrier (see [Special features for the vending machine](#special-features-for-the-vending-machine)). All are digital inputs, active LOW (`INPUT_PULLUP`):
+
+| Mode | Behaviour |
+|------|-----------|
+| **Stop the advance** | Ends the running relay/servo action as soon as the sensor triggers (earliest 2 s after the action started). |
+| **Monitoring product blockage** | After a payment, a still-blocked outlet shows *PRODUCT BLOCKED* and holds further payments until the path is clear. |
+| **Level monitoring** | An empty supply bin shows *SUPPLY BIN IS EMPTY* and blocks payments until it is restocked. |
+
+⚠️ A sensor on **CH03** claims GPIO 5 as a digital input and therefore **disables the battery gauge**.
 
 - **Payment channels**: every channel set to *relay* or *servo* becomes its own payment channel with a unique LNURL/QR code and its own amount and duration from the LNbits switch entry. Channels set to *ambient-light*, *sensor* or *off* are not counted as payment channels.
 - **CH01** is always active as the primary channel and is the only one that supports the **Special Modes** (blink / pulse / strobe); additional channels switch in standard on/off mode.

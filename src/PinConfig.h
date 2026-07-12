@@ -275,6 +275,23 @@ static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
 // therefore only active while CH03 is unconfigured ("off"); see Battery.cpp.
 #define PIN_BAT_ADC  5
 
+// ── Vending machine sensor inputs ────────────────────────────────
+// Same three modes as the T-Display-S3 light barrier (stop / monitor / level),
+// reusing the existing two-sensor implementation (LightBarrierConfig):
+//
+//   Sensor 1 → CH02 (GPIO 7)
+//   Sensor 2 → CH03 (GPIO 5)   ⚠ mutually exclusive with the battery gauge
+//
+// Both are INPUT_PULLUP, active LOW — a sensor is a digital input, so any GPIO
+// would do electrically. These two are the ADC1-capable pins, which keeps an
+// analog sensor possible later without moving the connector.
+//
+// The T-Display-S3 light barrier (GPIO 2) does not exist on this board — GPIO 2
+// is not broken out, so undefine it or its init would touch a floating pin.
+#undef  PIN_LIGHT_BARRIER
+#define PIN_SENSOR_1  PIN_RELAY_CH02   // 7
+#define PIN_SENSOR_2  PIN_RELAY_CH03   // 5
+
 // ── External LED Button (same wiring as T-Display-S3) ─────────────
 // PIN_LED_BUTTON_LED = 43  (inherited from ENABLE_DISPLAY=1 block above)
 // PIN_LED_BUTTON_SW  = 44  (inherited from ENABLE_DISPLAY=1 block above)
