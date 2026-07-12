@@ -33,11 +33,15 @@
 static const float BATT_CAL_A = 2.277f;
 static const float BATT_CAL_B = -1371.0f;
 
-// With USB attached the charger holds the BAT node at ~4.2 V, which puts ~3.16 V
-// on the pin — above the ADC's 12 dB full scale (~3.1 V). The reading then pins
-// at its ceiling (~3107 mV), which makes for a reliable "on USB" detector. No
-// valid cell voltage can be read in that state.
-static const int BATT_ADC_USB_THRESHOLD = 2600;   // mV at the pin
+// A railed reading (~3107 mV, the ceiling of the 12 dB range) means NO BATTERY:
+// with no cell to hold it down, the charger pushes the BAT node above the ADC's
+// full scale. It does NOT mean "charging" — measured on the device, a charging
+// cell reads perfectly normal values around 2300 mV, rising as it fills.
+//
+// Whether USB is attached cannot be detected at all: the divider hangs on the
+// charger's BAT node, so with a cell connected the pin shows the cell voltage
+// either way.
+static const int BATT_ADC_NO_CELL_THRESHOLD = 2600;   // mV at the pin
 
 static const uint32_t BATT_POLL_MS = 10000;
 static const int      BATT_SAMPLES = 15;          // odd -> clean median
@@ -51,7 +55,7 @@ static const SocPoint kSocCurve[] = {
 static const int kSocCount = sizeof(kSocCurve) / sizeof(kSocCurve[0]);
 
 static bool     s_enabled   = false;
-static bool     s_charging  = false;
+static bool     s_noCell    = false;
 static bool     s_haveValue = false;
 static int      s_percent   = 100;
 static int      s_vbatMv    = 0;
@@ -100,7 +104,8 @@ static int socFromMilliVolts(int mv) {
 void initBattery() {
     s_enabled = t35AmbientConfig.batteryEnabled;
     if (!s_enabled) {
-        LOG_INFO("Battery", "Disabled — CH06 (GPIO 5) is configured as a channel");
+        LOG_INFO("Battery", String("Disabled — CH03 (GPIO ") + PIN_BAT_ADC
+                          + ") is in use as a channel, so the divider cannot be read");
         return;
     }
 
@@ -117,14 +122,16 @@ void batteryLoop() {
 
     int adcMv = readAdcMilliVolts();
 
-    if (adcMv > BATT_ADC_USB_THRESHOLD) {
-        // ADC railed: USB is powering the board, the cell voltage is not visible.
-        if (!s_charging) LOG_INFO("Battery", String("USB power (adc=") + adcMv + " mV)");
-        s_charging = true;
-        s_emaMv    = 0.0f;    // restart smoothing when we fall back to battery
+    if (adcMv > BATT_ADC_NO_CELL_THRESHOLD) {
+        // Railed — no cell connected (or the battery switch is off). Nothing to
+        // display; keep the gauge quiet rather than inventing a number.
+        if (!s_noCell) LOG_INFO("Battery", String("No battery detected (adc=") + adcMv + " mV, railed)");
+        s_noCell    = true;
+        s_haveValue = false;
+        s_emaMv     = 0.0f;   // restart smoothing when a cell shows up again
         return;
     }
-    s_charging = false;
+    s_noCell = false;
 
     // Exponential moving average — WiFi transmit bursts briefly sag the rail.
     s_emaMv = (s_emaMv <= 0.0f) ? (float)adcMv : (0.2f * adcMv + 0.8f * s_emaMv);
@@ -151,7 +158,7 @@ void batteryLoop() {
 }
 
 bool batteryAvailable()  { return s_enabled && s_haveValue; }
-bool batteryCharging()   { return s_charging; }
+bool batteryNoCell()     { return s_noCell; }
 int  batteryPercent()    { return s_percent; }
 int  batteryMilliVolts() { return s_vbatMv; }
 
