@@ -2025,13 +2025,13 @@ void showMiniPosInputScreen() {
         // ── Landscape: left panel + numpad right (PIN pad geometry) ─────────
         fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
 
-        // Top row of the left panel: "Amount in" on the left, battery on the right
-        // against the divider to the numpad. "Amount in" drops from size 3 to
-        // size 2 (9 chars = 108 px, x 12..120) to leave room — the battery is
-        // right-aligned at x 200, so 80 px of clear space sit between them.
-        drawCenter(12 + (9 * 6 * 2) / 2, 20, "Amount in", themeForeground, themeBackground, 2);
-        drawMiniPosBattery(PP_LEFT_W - 10, 20);
-        drawCenter(PP_LEFT_CX, 60, miniPosConfig.currency.c_str(), themeForeground, themeBackground, 3);
+        // The left panel is only PP_LEFT_W (210) px wide: "Amount in EUR" needs
+        // 156 px at size 2 and the battery another 48, so they cannot share a
+        // row. Battery gets its own line in the top-right corner, the header sits
+        // centred below it as a single line.
+        drawMiniPosBattery(PP_LEFT_W - 10, 18);
+        String header = "Amount in " + miniPosConfig.currency;
+        drawCenter(PP_LEFT_CX, 55, header.c_str(), themeForeground, themeBackground, 2);
 
         drawMiniPosAmountBox(10, 95, PP_LEFT_W - 20, 46);
 
