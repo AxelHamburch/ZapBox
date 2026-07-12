@@ -346,17 +346,15 @@
                         </div>
                     </div>
                     <div style="margin-top: 10px;">
-                        <label for="ch03Mode">CH03 — GPIO 14</label>
+                        <label for="ch03Mode">CH03 — GPIO 5 <span style="font-weight:normal; color:#888; font-size:12px;">(shared with the battery gauge)</span></label>
                         <select name="ch03Mode" id="ch03Mode">
-                            <option value="off" selected>Off (default)</option>
+                            <option value="off" selected>Off (default) — GPIO 5 measures the battery 🔋</option>
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
-                            <option value="sensor-stop">Sensor — Stop the advance</option>
-                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
+                        <p style="margin-top: 6px; color: #888; font-size: 12px;"><i><strong>🔋 Battery:</strong> GPIO 5 carries the battery voltage divider. While CH03 is <strong>Off</strong>, the charge level is shown in the Mini-PoS entry screen (portrait). Configuring CH03 as relay/servo/ambient turns the pin into an output and <strong>disables the battery display</strong>.</i></p>
                         <div id="ch03Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
                             <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
                             <div><label for="ch03Servo180Start">Start angle (°)</label><input type="number" id="ch03Servo180Start" name="ch03Servo180Start" min="0" max="180" value="0"></div>
@@ -372,15 +370,12 @@
                         </div>
                     </div>
                     <div style="margin-top: 10px;">
-                        <label for="ch04Mode">CH04 — GPIO 15</label>
+                        <label for="ch04Mode">CH04 — GPIO 14</label>
                         <select name="ch04Mode" id="ch04Mode">
                             <option value="off" selected>Off (default)</option>
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
-                            <option value="sensor-stop">Sensor — Stop the advance</option>
-                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
                         <div id="ch04Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
@@ -398,15 +393,12 @@
                         </div>
                     </div>
                     <div style="margin-top: 10px;">
-                        <label for="ch05Mode">CH05 — GPIO 16</label>
+                        <label for="ch05Mode">CH05 — GPIO 15</label>
                         <select name="ch05Mode" id="ch05Mode">
                             <option value="off" selected>Off (default)</option>
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
-                            <option value="sensor-stop">Sensor — Stop the advance</option>
-                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
                         <div id="ch05Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
@@ -424,18 +416,14 @@
                         </div>
                     </div>
                     <div style="margin-top: 10px;">
-                        <label for="ch06Mode">CH06 — GPIO 5 <span style="font-weight:normal; color:#888; font-size:12px;">(shared with the battery gauge)</span></label>
+                        <label for="ch06Mode">CH06 — GPIO 16</label>
                         <select name="ch06Mode" id="ch06Mode">
-                            <option value="off" selected>Off (default) — GPIO 5 measures the battery 🔋</option>
+                            <option value="off" selected>Off (default)</option>
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
-                            <option value="sensor-stop">Sensor — Stop the advance</option>
-                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
-                        <p style="margin-top: 6px; color: #888; font-size: 12px;"><i><strong>🔋 Battery:</strong> GPIO 5 carries the battery voltage divider. While CH06 is <strong>Off</strong>, the charge level is shown in the Mini-PoS entry screen (portrait). Configuring CH06 as relay/servo/sensor/ambient turns the pin into an output and <strong>disables the battery display</strong>.</i></p>
                         <div id="ch06Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
                             <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
                             <div><label for="ch06Servo180Start">Start angle (°)</label><input type="number" id="ch06Servo180Start" name="ch06Servo180Start" min="0" max="180" value="0"></div>
@@ -551,10 +539,10 @@
                             <select name="authPin" id="authPin">
                                 <option value="6" selected>CH01 — GPIO 6 (default relay)</option>
                                 <option value="7">CH02 — GPIO 7</option>
-                                <option value="14">CH03 — GPIO 14</option>
-                                <option value="15">CH04 — GPIO 15</option>
-                                <option value="16">CH05 — GPIO 16</option>
-                                <option value="5">CH06 — GPIO 5 (disables the battery gauge)</option>
+                                <option value="5">CH03 — GPIO 5 (disables the battery gauge)</option>
+                                <option value="14">CH04 — GPIO 14</option>
+                                <option value="15">CH05 — GPIO 15</option>
+                                <option value="16">CH06 — GPIO 16</option>
                             </select>
                             <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known identities will redeem this pin.</p>
                         </div>
@@ -1773,9 +1761,9 @@
 
             // Multi-channel — CH01–CH06 with per-channel servo parameters
             if (zbMode === 'duo' || zbMode === 'modeselect') {
-                // [label, field prefix, GPIO]. CH06 is GPIO 5, which doubles as the battery ADC.
-                const chans = [['CH01', 'ch01', 6], ['CH02', 'ch02', 7],  ['CH03', 'ch03', 14],
-                               ['CH04', 'ch04', 15], ['CH05', 'ch05', 16], ['CH06', 'ch06', 5]];
+                // [label, field prefix, GPIO]. CH03 is GPIO 5, which doubles as the battery ADC.
+                const chans = [['CH01', 'ch01', 6],  ['CH02', 'ch02', 7],  ['CH03', 'ch03', 5],
+                               ['CH04', 'ch04', 14], ['CH05', 'ch05', 15], ['CH06', 'ch06', 16]];
                 let mcRows = '';
                 chans.forEach(function(c) {
                     const label = c[0], g = c[1], gpio = c[2];

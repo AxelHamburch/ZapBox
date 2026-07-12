@@ -222,17 +222,21 @@
 #define PIN_GPIO3_MODE  INPUT_PULLUP   // FD signal: HIGH = no field, LOW = phone detected
 
 // ── Flexible Output/Input Channels ───────────────────────────────
-// GPIOs 6, 7, 14, 15, 16, 5 — each configurable per channel:
+// GPIOs 6, 7, 5, 14, 15, 16 — each configurable per channel:
 //   relay | servo180 | servo360 | ambient-light |
 //   sensor-stop | sensor-blockage | sensor-level
 //
 // Pin assignment:
 //   CH01 → GPIO  6   (relay default; Special Mode applies to CH01 only)
 //   CH02 → GPIO  7
-//   CH03 → GPIO 14
-//   CH04 → GPIO 15
-//   CH05 → GPIO 16
-//   CH06 → GPIO  5   ⚠ shared with the battery ADC — see below
+//   CH03 → GPIO  5   ⚠ shared with the battery ADC — see below
+//   CH04 → GPIO 14
+//   CH05 → GPIO 15
+//   CH06 → GPIO 16
+//
+// The three ADC1-capable pins (5, 6, 7 = ADC1_CH4/5/6) are grouped as the first
+// three channels. GPIO 14/15/16 sit on ADC2, which the WiFi driver claims —
+// they can never be analog inputs on this device, only digital / PWM.
 //
 // ⚠ BREAKING CHANGE (was: CH01=5, CH02=6, CH03=7, CH04=14, CH05=15, CH06=16).
 //   The primary channel moved from GPIO 5 to GPIO 6 to free GPIO 5 for the
@@ -243,10 +247,10 @@
 // ─────────────────────────────────────────────────────────────────
 #define PIN_RELAY_CH01  6
 #define PIN_RELAY_CH02  7
-#define PIN_RELAY_CH03  14
-#define PIN_RELAY_CH04  15
-#define PIN_RELAY_CH05  16
-#define PIN_RELAY_CH06  5
+#define PIN_RELAY_CH03  5
+#define PIN_RELAY_CH04  14
+#define PIN_RELAY_CH05  15
+#define PIN_RELAY_CH06  16
 
 #define RELAY_CHANNEL_MAX 6
 static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
@@ -266,9 +270,9 @@ static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
 //
 // ADC1 is mandatory here: ADC2 (GPIO 14/15) is claimed by the WiFi driver.
 //
-// GPIO 5 is ALSO channel CH06. The two uses are mutually exclusive — driving the
+// GPIO 5 is ALSO channel CH03. The two uses are mutually exclusive — driving the
 // pin as an output overrides the (high-impedance) divider. The battery gauge is
-// therefore only active while CH06 is unconfigured ("off"); see Battery.cpp.
+// therefore only active while CH03 is unconfigured ("off"); see Battery.cpp.
 #define PIN_BAT_ADC  5
 
 // ── External LED Button (same wiring as T-Display-S3) ─────────────

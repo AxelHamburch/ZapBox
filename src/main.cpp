@@ -741,10 +741,13 @@ void readFiles()
         t35AmbientConfig.flexActor[i]   = isActor(m);
       }
 
-      // CH06 is GPIO 5, which also carries the battery voltage divider. Leaving
-      // CH06 off keeps the pin an input and enables the battery gauge; using it
-      // as a channel turns it into an output and the measurement is gone.
-      t35AmbientConfig.batteryEnabled = (chMode[5] == "off");
+      // One channel sits on GPIO 5, which also carries the battery voltage
+      // divider. Leaving that channel off keeps the pin an input and enables the
+      // battery gauge; using it as a channel turns the pin into an output and the
+      // measurement is gone. Look the channel up rather than hard-coding it, so
+      // the next re-ordering of the pin map cannot silently break this.
+      const int batCh = t35AmbientConfig.channelIndexForGpio(PIN_BAT_ADC);
+      t35AmbientConfig.batteryEnabled = (batCh >= 0) && (chMode[batCh] == "off");
 
       t35AmbientConfig.oneForAll = (act == "one-for-all");
 

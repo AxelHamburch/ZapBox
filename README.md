@@ -201,14 +201,14 @@ Device String (switchStr)
 | 17 | I2C SCL | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
 | 18 | I2C SDA | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
 | **Flex Channels** |
-| 6 | CH01 | Output/Input | - | Default: relay output — Special Mode applies to CH01 only |
-| 7 | CH02 | Output/Input | - | Off (default), Relay, Servo 180°/360° |
-| 14 | CH03 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
-| 15 | CH04 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
-| 16 | CH05 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
-| 5 | CH06 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light. 🔋 **While CH06 is off, this pin measures the battery** — see [Battery Monitoring](#battery-monitoring-touch-35) |
+| 6 | CH01 | Output | - | Default: relay output — Special Mode applies to CH01 only |
+| 7 | CH02 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
+| 5 | CH03 | Output *or* analog input | - | Off (default), Relay, Servo 180°/360°, Ambient Light. 🔋 **While CH03 is off, this pin measures the battery** — see [Battery Monitoring](#battery-monitoring-touch-35) |
+| 14 | CH04 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
+| 15 | CH05 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
+| 16 | CH06 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
 | **Battery (JST connector)** |
-| 5 | Battery voltage (ADC1_CH4) | Input (analog) | - | Voltage divider to the LiPo rail. **Same pin as CH06 above** — it can be one or the other, never both. See below. |
+| 5 | Battery voltage (ADC1_CH4) | Input (analog) | - | Voltage divider to the LiPo rail. **Same pin as CH03 above** — it can be one or the other, never both. See below. |
 | **LED Button** |
 | 43 | LED Button (LED) / **TX** | Output | HIGH=ON | Board pin labeled **TX** — External illuminated button LED (3.3V) |
 | 44 | LED Button (SW) / **RX** | Input | Pull-up | Board pin labeled **RX** — External button switch (active LOW); also Light-Sleep wake-up source |
@@ -244,10 +244,10 @@ The charge level (0–100 %) is shown **top-left in the Mini-PoS entry screen, i
 
 | GPIO 5 used as | Consequence |
 |----------------|-------------|
-| **Battery ADC** (CH06 = `off`, the default) | Battery charge level is measured and displayed. |
-| **Flex channel CH06** (relay / servo / sensor / ambient) | The channel switches as configured; the battery display disappears, because a driven output overrides the high-impedance divider. |
+| **Battery ADC** (CH03 = `off`, the default) | Battery charge level is measured and displayed. |
+| **Flex channel CH03** (relay / servo / ambient) | The channel switches as configured; the battery display disappears, because a driven output overrides the high-impedance divider. |
 
-No configuration switch is needed — the firmware derives this from the CH06 mode.
+No configuration switch is needed — the firmware derives this from the CH03 mode.
 
 **Calibration.** The reading is *not* the textbook divider ratio. The divider has a ~25 kΩ source impedance and the module has no bypass capacitor at the pin, so the ADC's sample-and-hold pulls the node down while measuring. The resulting error is linear and stable, so it is calibrated out in software (`Battery.cpp`) rather than fixed in hardware:
 
@@ -307,7 +307,7 @@ Full analysis, measurements and calibration data: [temp/PlanungBatterie.md](temp
 | NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 9, 17, 18) | Yes (GPIO 4, 17, 18) | Yes (GPIO 10, 20, 21) |
 | Power Consumption | ~150-250mA | ~200-350mA | ~100-150mA | ~80-120mA (single-core) |
 | Flash Memory | 16MB | 16MB | 4MB | 4MB |
-| Relay Channels | 4 (GPIO 12,13,10,11) | 6 flex channels (GPIO 6,7,14,15,16,5) | 12 extended channels | 4 base channels |
+| Relay Channels | 4 (GPIO 12,13,10,11) | 6 flex channels (GPIO 6,7,5,14,15,16) | 12 extended channels | 4 base channels |
 | Configuration | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial |
 | Typical Use Case | General retail vending | Large kiosk terminals | Embedded installations | Space-critical, low-power apps |
 
@@ -811,14 +811,16 @@ The *Device settings string* must be configured as usual — it identifies the L
 #### Multi-Channel-Control Mode (Touch 3.5")
 **Available on JC3248W535C Touch 3.5" — up to 6 independent channels**
 
-The Touch 3.5" drives **six freely configurable channels** on GPIO 6, 7, 14, 15, 16 and 5 (CH01–CH06). Each channel's function is set independently in the Web Installer, so one device can mix dispensers, relays, sensors and ambient lighting:
+The Touch 3.5" drives **six freely configurable channels** on GPIO 6, 7, 5, 14, 15 and 16 (CH01–CH06). Each channel's function is set independently in the Web Installer, so one device can mix dispensers, relays and ambient lighting:
 
 | Channel | GPIO | Selectable functions |
 |---------|------|----------------------|
 | CH01 | 6 | Relay *(default)* · Servo 180° · Servo 360° — primary / Special-Mode channel |
 | CH02 | 7 | Off · Relay · Servo 180°/360° · Ambient Light |
-| CH03–CH05 | 14, 15, 16 | Off · Relay · Servo 180°/360° · Sensor (stop / blockage-monitor / level) · Ambient Light |
-| CH06 | 5 | Same as above — but 🔋 **while CH06 is off, GPIO 5 measures the battery** ([details](#battery-monitoring-touch-35)) |
+| CH03 | 5 | Off · Relay · Servo 180°/360° · Ambient Light — 🔋 **while off, this pin measures the battery** ([details](#battery-monitoring-touch-35)) |
+| CH04–CH06 | 14, 15, 16 | Off · Relay · Servo 180°/360° · Ambient Light |
+
+The channel order groups the three **ADC1-capable** pins (5, 6, 7) first. GPIO 14/15/16 sit on ADC2, which the WiFi driver claims — they can never serve as analog inputs on this device, only as digital outputs or PWM (servo).
 
 - **Payment channels**: every channel set to *relay* or *servo* becomes its own payment channel with a unique LNURL/QR code and its own amount and duration from the LNbits switch entry. Channels set to *ambient-light*, *sensor* or *off* are not counted as payment channels.
 - **CH01** is always active as the primary channel and is the only one that supports the **Special Modes** (blink / pulse / strobe); additional channels switch in standard on/off mode.
@@ -840,7 +842,7 @@ Any channel set to **Servo 180°** or **Servo 360°** gets its own parameter box
 
 **Reserved GPIOs** (not available as channels): 17/18 (I²C — NFC reader + NT3H2111), 9 (PN532 IRQ), 46 (NT3H2111 Field Detection).
 
-🔋 **GPIO 5 is shared with the battery voltage divider.** It can be used as a switching channel *or* for battery monitoring, never both — see [Battery Monitoring](#battery-monitoring-touch-35).
+🔋 **GPIO 5 (CH03) is shared with the battery voltage divider.** It can be a switching channel *or* the battery gauge, never both — see [Battery Monitoring](#battery-monitoring-touch-35).
 
 #### Numerical Product Selection (Touch 3.5" only)
 **Available on JC3248W535C Touch 3.5" in Multi-channel mode**
