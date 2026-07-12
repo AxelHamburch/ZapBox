@@ -13,6 +13,7 @@
 #include "Display.h"
 #include "PinConfig.h"
 #include "GlobalState.h"
+#include "Battery.h"
 #include "Log.h"
 
 // ============================================================================
@@ -1521,17 +1522,12 @@ static bool   deepSleepIsActive   = false;
 static String deepSleepMode       = "off";
 
 static void syncAmbientPins(bool on) {
-  const int pins[]    = {6, 7, 14, 15, 16};
-  const bool active[] = {
-    t35AmbientConfig.gpio6Ambient,  t35AmbientConfig.gpio7Ambient,
-    t35AmbientConfig.gpio14Ambient, t35AmbientConfig.gpio15Ambient,
-    t35AmbientConfig.gpio16Ambient
-  };
-  for (int i = 0; i < 5; i++) {
-    if (active[i]) {
-      digitalWrite(pins[i], on ? HIGH : LOW);
-      Serial.printf("[AMBIENT LIGHT] GPIO %d turned %s (display sync)\n", pins[i], on ? "ON" : "OFF");
-    }
+  // Flex slot i is channel CH02+i — never hard-code the GPIO numbers here.
+  for (int i = 0; i < T35AmbientConfig::FLEX_COUNT; i++) {
+    if (!t35AmbientConfig.flexAmbient[i]) continue;
+    const int gpio = RELAY_CHANNEL_PINS[i + 1];
+    digitalWrite(gpio, on ? HIGH : LOW);
+    Serial.printf("[AMBIENT LIGHT] GPIO %d turned %s (display sync)\n", gpio, on ? "ON" : "OFF");
   }
 }
 
@@ -1962,6 +1958,18 @@ static const int MP_QRC_W = 90, MP_QRC_H = 34;
 // button handler.
 static const int MP_QRC_M = 20;
 
+// Battery charge, top-left of the portrait input screen. The header
+// ("Amount in EUR", size 2, centred) starts at x≈82, so x 8..56 is free.
+// Landscape has no free corner there — the numpad owns the full right half —
+// so this is portrait only for now.
+static void drawMiniPosBattery() {
+    if (!batteryAvailable()) return;
+    char buf[6];
+    snprintf(buf, sizeof(buf), "%d%%", batteryPercent());
+    int w = strlen(buf) * 6 * 2;   // 6 px per char at size 1, ×2 for size 2
+    drawCenter(8 + w / 2, 22, buf, themeForeground, themeBackground, 2);
+}
+
 static void drawMiniPosAmountBox(int bx, int by, int bw, int bh) {
     drawRectBorder(bx, by, bw, bh, 2, themeForeground);
     uint16_t txtColor = miniPosState.amountLocked ? TFT_ORANGE : themeForeground;
@@ -1987,6 +1995,7 @@ void showMiniPosInputScreen() {
 
         String header = "Amount in " + miniPosConfig.currency;
         drawCenter(PANEL_W / 2, 22, header.c_str(), themeForeground, themeBackground, 2);
+        drawMiniPosBattery();
 
         drawMiniPosAmountBox(40, 45, PANEL_W - 80, 52);
 

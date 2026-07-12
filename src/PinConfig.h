@@ -222,33 +222,54 @@
 #define PIN_GPIO3_MODE  INPUT_PULLUP   // FD signal: HIGH = no field, LOW = phone detected
 
 // ── Flexible Output/Input Channels ───────────────────────────────
-// GPIOs 5, 6, 7, 14, 15, 16 — each configurable per channel:
+// GPIOs 6, 7, 14, 15, 16, 5 — each configurable per channel:
 //   relay | servo180 | servo360 | ambient-light |
 //   sensor-stop | sensor-blockage | sensor-level
 //
-// Default pin assignment (overridable via Serial config / NVS):
-//   CH01 → GPIO  5   (relay default; Special Mode applies to CH01 only)
-//   CH02 → GPIO  6
-//   CH03 → GPIO  7
-//   CH04 → GPIO 14
-//   CH05 → GPIO 15
-//   CH06 → GPIO 16
+// Pin assignment:
+//   CH01 → GPIO  6   (relay default; Special Mode applies to CH01 only)
+//   CH02 → GPIO  7
+//   CH03 → GPIO 14
+//   CH04 → GPIO 15
+//   CH05 → GPIO 16
+//   CH06 → GPIO  5   ⚠ shared with the battery ADC — see below
 //
-// All 6 GPIOs are RTC-capable → deep-sleep wake-up supported.
+// ⚠ BREAKING CHANGE (was: CH01=5, CH02=6, CH03=7, CH04=14, CH05=15, CH06=16).
+//   The primary channel moved from GPIO 5 to GPIO 6 to free GPIO 5 for the
+//   battery measurement. Existing devices must re-wire the relay AND change the
+//   pin from 5 to 6 in their LNbits switch entry.
+//
 // GPIO 9 is reserved for NFC IRQ — not a flex channel.
 // ─────────────────────────────────────────────────────────────────
-#define PIN_RELAY_CH01  5
-#define PIN_RELAY_CH02  6
-#define PIN_RELAY_CH03  7
-#define PIN_RELAY_CH04  14
-#define PIN_RELAY_CH05  15
-#define PIN_RELAY_CH06  16
+#define PIN_RELAY_CH01  6
+#define PIN_RELAY_CH02  7
+#define PIN_RELAY_CH03  14
+#define PIN_RELAY_CH04  15
+#define PIN_RELAY_CH05  16
+#define PIN_RELAY_CH06  5
 
 #define RELAY_CHANNEL_MAX 6
 static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
     PIN_RELAY_CH01, PIN_RELAY_CH02, PIN_RELAY_CH03,
     PIN_RELAY_CH04, PIN_RELAY_CH05, PIN_RELAY_CH06
 };
+
+// ── Battery voltage measurement (GPIO 5 = ADC1_CH4) ──────────────
+// The module carries a divider from the LiPo rail to GPIO 5 (vendor schematic
+// JC3248W535-1.png, and Guition's own demos define BAT_ADC_PIN 5):
+//
+//     BAT --[R26 33K]--+--[R25 0R]-- IO5
+//                      |
+//                     [R27 100K]
+//                      |
+//                     GND
+//
+// ADC1 is mandatory here: ADC2 (GPIO 14/15) is claimed by the WiFi driver.
+//
+// GPIO 5 is ALSO channel CH06. The two uses are mutually exclusive — driving the
+// pin as an output overrides the (high-impedance) divider. The battery gauge is
+// therefore only active while CH06 is unconfigured ("off"); see Battery.cpp.
+#define PIN_BAT_ADC  5
 
 // ── External LED Button (same wiring as T-Display-S3) ─────────────
 // PIN_LED_BUTTON_LED = 43  (inherited from ENABLE_DISPLAY=1 block above)

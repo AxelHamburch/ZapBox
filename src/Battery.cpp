@@ -1,0 +1,158 @@
+#include "Battery.h"
+
+#ifdef BOARD_JC3248W535C
+
+#include "GlobalState.h"
+#include "PinConfig.h"
+#include "Log.h"
+
+// ============================================================================
+// CALIBRATION
+//
+// The schematic ratio (33K/100K -> 0.752) does NOT hold in practice. The divider
+// has a ~25 kOhm source impedance and the module has no bypass cap at IO5, so the
+// ADC's sample-and-hold drags the node down while measuring: the pin reads about
+// 0.574 * V_BAT instead of 0.752 * V_BAT.
+//
+// That error is linear and stable, so it is calibrated out here rather than
+// fixed in hardware. Values from a 2 h discharge run against a multimeter
+// (2026-07-12, see temp/PlanungBatterie.md):
+//
+//     cell 4.07 V -> ADC 2388 mV      cell 3.93 V -> ADC 2325 mV
+//     cell 4.01 V -> ADC 2367 mV      cell 3.89 V -> ADC 2312 mV
+//     cell 3.96 V -> ADC 2341 mV
+//
+// Linear regression over those points:
+//     V_BAT[mV] = 2.277 * ADC[mV] - 1371
+//
+// ⚠ Fitted between 3.89 V and 4.07 V only — everything below is extrapolated.
+// The percentage table is deliberately conservative because of that. Refine it
+// with the raw values this module logs (LOG_INFO "Battery") once a device has
+// been run down to ~3.5 V.
+// ============================================================================
+static const float BATT_CAL_A = 2.277f;
+static const float BATT_CAL_B = -1371.0f;
+
+// With USB attached the charger holds the BAT node at ~4.2 V, which puts ~3.16 V
+// on the pin — above the ADC's 12 dB full scale (~3.1 V). The reading then pins
+// at its ceiling (~3107 mV), which makes for a reliable "on USB" detector. No
+// valid cell voltage can be read in that state.
+static const int BATT_ADC_USB_THRESHOLD = 2600;   // mV at the pin
+
+static const uint32_t BATT_POLL_MS = 10000;
+static const int      BATT_SAMPLES = 15;          // odd -> clean median
+
+// LiPo discharge curve, conservative below 3.9 V (extrapolated region).
+struct SocPoint { int mv; int pct; };
+static const SocPoint kSocCurve[] = {
+    {4150, 100}, {4050, 90}, {3950, 75}, {3850, 60}, {3800, 50},
+    {3750,  40}, {3700, 30}, {3650, 20}, {3550, 10}, {3400,  5}, {3300, 0}
+};
+static const int kSocCount = sizeof(kSocCurve) / sizeof(kSocCurve[0]);
+
+static bool     s_enabled   = false;
+static bool     s_charging  = false;
+static bool     s_haveValue = false;
+static int      s_percent   = 100;
+static int      s_vbatMv    = 0;
+static float    s_emaMv     = 0.0f;   // smoothed ADC reading
+static bool     s_changed   = false;
+static uint32_t s_nextPoll  = 0;
+
+static int cmpInt(const void *a, const void *b) {
+    return *(const int *)a - *(const int *)b;
+}
+
+// Median of BATT_SAMPLES readings. The first read is discarded: it gives the
+// sample-and-hold cap a chance to settle against the high-impedance divider.
+static int readAdcMilliVolts() {
+    (void)analogReadMilliVolts(PIN_BAT_ADC);
+    delay(2);
+
+    int buf[BATT_SAMPLES];
+    for (int i = 0; i < BATT_SAMPLES; i++) {
+        buf[i] = (int)analogReadMilliVolts(PIN_BAT_ADC);
+        delayMicroseconds(500);
+    }
+    qsort(buf, BATT_SAMPLES, sizeof(int), cmpInt);
+    return buf[BATT_SAMPLES / 2];
+}
+
+static int socFromMilliVolts(int mv) {
+    if (mv >= kSocCurve[0].mv)              return 100;
+    if (mv <= kSocCurve[kSocCount - 1].mv)  return 0;
+    for (int i = 0; i < kSocCount - 1; i++) {
+        int hiMv = kSocCurve[i].mv,     hiPct = kSocCurve[i].pct;
+        int loMv = kSocCurve[i + 1].mv, loPct = kSocCurve[i + 1].pct;
+        if (mv <= hiMv && mv > loMv) {
+            return loPct + (mv - loMv) * (hiPct - loPct) / (hiMv - loMv);
+        }
+    }
+    return 0;
+}
+
+void initBattery() {
+    s_enabled = t35AmbientConfig.batteryEnabled;
+    if (!s_enabled) {
+        LOG_INFO("Battery", "Disabled — CH06 (GPIO 5) is configured as a channel");
+        return;
+    }
+
+    analogReadResolution(12);
+    analogSetPinAttenuation(PIN_BAT_ADC, ADC_11db);   // 12 dB -> usable to ~3.1 V
+    s_nextPoll = 0;                                   // sample immediately
+    LOG_INFO("Battery", String("Enabled on GPIO ") + PIN_BAT_ADC + " (ADC1_CH4)");
+}
+
+void batteryLoop() {
+    if (!s_enabled) return;
+    if (millis() < s_nextPoll) return;
+    s_nextPoll = millis() + BATT_POLL_MS;
+
+    int adcMv = readAdcMilliVolts();
+
+    if (adcMv > BATT_ADC_USB_THRESHOLD) {
+        // ADC railed: USB is powering the board, the cell voltage is not visible.
+        if (!s_charging) LOG_INFO("Battery", String("USB power (adc=") + adcMv + " mV)");
+        s_charging = true;
+        s_emaMv    = 0.0f;    // restart smoothing when we fall back to battery
+        return;
+    }
+    s_charging = false;
+
+    // Exponential moving average — WiFi transmit bursts briefly sag the rail.
+    s_emaMv = (s_emaMv <= 0.0f) ? (float)adcMv : (0.2f * adcMv + 0.8f * s_emaMv);
+
+    int vbat = (int)(BATT_CAL_A * s_emaMv + BATT_CAL_B);
+    int pct  = socFromMilliVolts(vbat);
+
+    // Hysteresis: never move more than one point per poll, so the display cannot
+    // flicker between two values when the load changes.
+    if (!s_haveValue) {
+        s_percent   = pct;
+        s_haveValue = true;
+        s_changed   = true;
+    } else if (pct != s_percent) {
+        s_percent += (pct > s_percent) ? 1 : -1;
+        s_changed  = true;
+    }
+    s_vbatMv = vbat;
+
+    // Raw value stays in the log: this is the data the calibration gets refined
+    // from once a device has been run down into the extrapolated region.
+    LOG_INFO("Battery", String("adc=") + (int)s_emaMv + " mV  vbat=" + vbat
+                      + " mV  soc=" + s_percent + "%");
+}
+
+bool batteryAvailable()  { return s_enabled && s_haveValue; }
+bool batteryCharging()   { return s_charging; }
+int  batteryPercent()    { return s_percent; }
+int  batteryMilliVolts() { return s_vbatMv; }
+
+bool batteryChanged() {
+    bool c = s_changed;
+    s_changed = false;
+    return c;
+}
+
+#endif  // BOARD_JC3248W535C
