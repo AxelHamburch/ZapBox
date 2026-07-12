@@ -727,11 +727,10 @@ extern MiniPosState miniPosState;
 
 struct AuthyConfig {
   bool   enabled = false;      // multiControl == "authy"
+  int    authPin = PIN_RELAY_CH01;   // CH01 — follows the board's pin map
 #ifdef BOARD_JC3248W535C
-  int    authPin = 5;          // Touch 3.5": CH01 = GPIO 5
   bool   ntag424Pin = true;    // Touch 3.5": PIN pad available
 #else
-  int    authPin = 12;  // T-Display-S3: CH01 = GPIO 12 (= PIN_RELAY_CH01)
   bool   ntag424Pin = false;   // T-Display-S3: no touch → no PIN pad
 #endif
   int    authDuration = 1000;  // ms the relay stays on
