@@ -65,14 +65,20 @@ static int cmpInt(const void *a, const void *b) {
 
 // Median of BATT_SAMPLES readings. The first read is discarded: it gives the
 // sample-and-hold cap a chance to settle against the high-impedance divider.
+//
+// ⚠ The delays are part of the calibration, not padding. With a 25 kOhm source
+// and no bypass cap, the node needs time to recover between samples — sampling
+// faster reads systematically LOWER. These values (5 ms settle, 2 ms spacing)
+// are the ones the calibration curve above was measured with; changing them
+// invalidates it.
 static int readAdcMilliVolts() {
     (void)analogReadMilliVolts(PIN_BAT_ADC);
-    delay(2);
+    delay(5);
 
     int buf[BATT_SAMPLES];
     for (int i = 0; i < BATT_SAMPLES; i++) {
         buf[i] = (int)analogReadMilliVolts(PIN_BAT_ADC);
-        delayMicroseconds(500);
+        delay(2);
     }
     qsort(buf, BATT_SAMPLES, sizeof(int), cmpInt);
     return buf[BATT_SAMPLES / 2];
