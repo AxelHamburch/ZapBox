@@ -11,27 +11,27 @@
 //
 // The schematic ratio (33K/100K -> 0.752) does NOT hold in practice. The divider
 // has a ~25 kOhm source impedance and the module has no bypass cap at IO5, so the
-// ADC's sample-and-hold drags the node down while measuring: the pin reads about
-// 0.574 * V_BAT instead of 0.752 * V_BAT.
+// ADC's sample-and-hold drags the node down while measuring. The error is linear
+// and stable, so it is calibrated out here rather than fixed in hardware.
 //
-// That error is linear and stable, so it is calibrated out here rather than
-// fixed in hardware. Values from a 2 h discharge run against a multimeter
-// (2026-07-12, see temp/PlanungBatterie.md):
+// Fitted over two full discharge runs (2026-07-12), a 3000 mAh and a 1000 mAh
+// cell, ADC against a multimeter at the cell — covering the whole usable range:
 //
-//     cell 4.07 V -> ADC 2388 mV      cell 3.93 V -> ADC 2325 mV
-//     cell 4.01 V -> ADC 2367 mV      cell 3.89 V -> ADC 2312 mV
-//     cell 3.96 V -> ADC 2341 mV
+//     cell 4.13 V -> ADC 2487      cell 3.77 V -> ADC 2214
+//     cell 4.12 V -> ADC 2450      cell 3.74 V -> ADC 2196
+//     cell 4.02 V -> ADC 2369      cell 3.69 V -> ADC 2183
+//     cell 3.81 V -> ADC 2264      cell 3.68 V -> ADC 2158
+//                                  cell 3.55 V -> ADC 2083
+//                                  cell 3.47 V -> ADC 2052
 //
-// Linear regression over those points:
-//     V_BAT[mV] = 2.277 * ADC[mV] - 1371
+//     V_BAT[mV] = 1.533 * ADC[mV] + 356      (all points within +/- 40 mV)
 //
-// ⚠ Fitted between 3.89 V and 4.07 V only — everything below is extrapolated.
-// The percentage table is deliberately conservative because of that. Refine it
-// with the raw values this module logs (LOG_INFO "Battery") once a device has
-// been run down to ~3.5 V.
+// The first attempt (2.277 * adc - 1371) was fitted over 3.89..4.07 V only and
+// extrapolated from there: it ran ~170 mV LOW near 3.5 V, which collapsed the
+// percentage long before the cell was actually empty.
 // ============================================================================
-static const float BATT_CAL_A = 2.277f;
-static const float BATT_CAL_B = -1371.0f;
+static const float BATT_CAL_A = 1.533f;
+static const float BATT_CAL_B = 356.0f;
 
 // A railed reading (~3107 mV, the ceiling of the 12 dB range) means NO BATTERY:
 // with no cell to hold it down, the charger pushes the BAT node above the ADC's
@@ -46,11 +46,15 @@ static const int BATT_ADC_NO_CELL_THRESHOLD = 2600;   // mV at the pin
 static const uint32_t BATT_POLL_MS = 10000;
 static const int      BATT_SAMPLES = 15;          // odd -> clean median
 
-// LiPo discharge curve, conservative below 3.9 V (extrapolated region).
+// LiPo discharge curve for the voltage UNDER LOAD — which is what we measure,
+// since the device is running (display + WiFi, roughly 250-300 mA) whenever it
+// reads the cell. A loaded cell sits well below its resting voltage, so this
+// curve is shifted up accordingly: 4.0 V under load is a nearly full cell, not
+// a 90 %-and-falling one.
 struct SocPoint { int mv; int pct; };
 static const SocPoint kSocCurve[] = {
-    {4150, 100}, {4050, 90}, {3950, 75}, {3850, 60}, {3800, 50},
-    {3750,  40}, {3700, 30}, {3650, 20}, {3550, 10}, {3400,  5}, {3300, 0}
+    {4100, 100}, {4000, 90}, {3900, 80}, {3800, 65}, {3750, 55},
+    {3700,  45}, {3650, 35}, {3600, 25}, {3500, 15}, {3400,  5}, {3300, 0}
 };
 static const int kSocCount = sizeof(kSocCurve) / sizeof(kSocCurve[0]);
 
@@ -133,8 +137,12 @@ void batteryLoop() {
     }
     s_noCell = false;
 
-    // Exponential moving average — WiFi transmit bursts briefly sag the rail.
-    s_emaMv = (s_emaMv <= 0.0f) ? (float)adcMv : (0.2f * adcMv + 0.8f * s_emaMv);
+    // Exponential moving average. WiFi transmit bursts and display activity sag
+    // the cell noticeably, and at 15 %/point the curve turns those swings into
+    // visible jumps (a field run wobbled 47 -> 33 -> 39 %). alpha = 0.1 over a
+    // 10 s poll means a time constant of ~100 s — slow enough to ride out the
+    // load, still far faster than a battery actually drains.
+    s_emaMv = (s_emaMv <= 0.0f) ? (float)adcMv : (0.1f * adcMv + 0.9f * s_emaMv);
 
     int vbat = (int)(BATT_CAL_A * s_emaMv + BATT_CAL_B);
     int pct  = socFromMilliVolts(vbat);

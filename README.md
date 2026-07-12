@@ -252,10 +252,14 @@ No configuration switch is needed — the firmware derives this from the CH03 mo
 **Calibration.** The reading is *not* the textbook divider ratio. The divider has a ~25 kΩ source impedance and the module has no bypass capacitor at the pin, so the ADC's sample-and-hold pulls the node down while measuring. The resulting error is linear and stable, so it is calibrated out in software (`Battery.cpp`) rather than fixed in hardware:
 
 ```
-V_BAT[mV] = 2.277 × ADC[mV] − 1371
+V_BAT[mV] = 1.533 × ADC[mV] + 356
 ```
 
-With USB attached, the charger holds the rail high enough that the ADC saturates (~3107 mV). That is used as a reliable "running on USB" detector — no valid cell voltage can be read in that state.
+Fitted over two full discharge runs (3000 mAh and 1000 mAh cells) across the whole usable range, 3.47–4.13 V; every point lands within ±40 mV.
+
+The percentage curve maps the voltage **under load** (display + WiFi, ~250–300 mA) — that is the only condition in which the device ever measures itself, and a loaded cell sits well below its resting voltage. 4.0 V under load is a nearly full cell.
+
+**No battery / USB.** Whether USB is attached cannot be detected: the divider hangs on the charger's BAT node, so with a cell connected the pin shows the cell voltage either way. A *railed* reading (~3107 mV) does mean something though — with no cell to hold the node down, the charger pushes it past the ADC's full scale. That is used to detect a missing battery (or a battery switch left off), and the gauge then shows nothing rather than inventing a number.
 
 > ⚠️ **Breaking change for existing Touch 3.5" devices.** The primary channel moved from GPIO 5 to GPIO 6 to free GPIO 5 for the battery. Affected devices must (1) re-wire the relay to GPIO 6 and (2) change the pin from `5` to `6` in the LNbits switch entry. A firmware-only update leaves the device silent — payments arrive, but nothing switches.
 
