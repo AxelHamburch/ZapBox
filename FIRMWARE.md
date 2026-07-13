@@ -397,6 +397,29 @@ installer/firmware/
 
 ## Release History
 
+### v957859 / v957859h / v957859t — 2026-07-13
+
+```markdown
+## 🎯 Release v957859 / v957859h / v957859t — Battery Gauge, Vending Sensors & NFC Reliability Fix
+
+### 🖥️ Touch 3.5" Version (v957859t)
+- **Battery charge gauge** (0-100%) for devices with a LiPo battery — shown in the Mini-PoS entry screen, both portrait (top-right) and landscape (top-right of the left panel)
+- Reads GPIO 5's on-board voltage divider, calibrated against two full discharge runs (1000 mAh and 3000 mAh cells) across the whole usable range
+- **Vending sensors** on CH02 (GPIO 7) and CH03 (GPIO 5): Stop the advance / Monitor product blockage / Level monitoring — same behaviour as the T-Display-S3 light barrier, including the PRODUCT BLOCKED and SUPPLY BIN IS EMPTY screens
+- Sensor modes that never worked on this board (they required hardware Touch 3.5 doesn't have) removed from the remaining channels
+- ⚠️ **Breaking change:** the primary channel (CH01) moved from GPIO 5 to GPIO 6, freeing GPIO 5 for the battery gauge. Existing devices must re-wire CH01 to GPIO 6 and update the pin in their LNbits switch entry — a firmware-only update leaves the device silent (payments arrive, nothing switches)
+- Channels renumbered: CH01=6, CH02=7, CH03=5, CH04=14, CH05=15, CH06=16
+- Fixed: Identity🫆Login pin followed the old GPIO 5 default instead of the board's actual CH01 pin
+- Fixed: long NFC-Auth error messages now word-wrap instead of overflowing the screen edges
+
+### 📦 Standard (v957859) + 💡 Headless (v957859h) + 🖥️ Touch 3.5" (v957859t)
+- Fixed intermittent "i2cRead Error -1" NTAG 424 DNA reads: NDEF writes from the main loop could interleave a PN532 transaction mid-frame on the shared I²C bus — now serialized with the existing bus mutex
+- Fixed: a failed RF-field command on the PN532 was silently ignored instead of being treated as an error
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 957859
+```
+
 ### v956101h — 2026-06-30
 
 ```markdown
