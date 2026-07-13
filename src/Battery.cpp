@@ -48,13 +48,19 @@ static const int      BATT_SAMPLES = 15;          // odd -> clean median
 
 // LiPo discharge curve for the voltage UNDER LOAD — which is what we measure,
 // since the device is running (display + WiFi, roughly 250-300 mA) whenever it
-// reads the cell. A loaded cell sits well below its resting voltage, so this
-// curve is shifted up accordingly: 4.0 V under load is a nearly full cell, not
-// a 90 %-and-falling one.
+// reads the cell.
+//
+// Both ends are anchored in field runs (1000 mAh and 3000 mAh cells):
+//   - Bottom: the board browns out just under 3.2 V, and 3.33 V measured 0 % —
+//     so 3300 -> 0 is the real empty point, confirmed on both cells.
+//   - Top: a cell straight off the charger sits above 4.0 V under load and must
+//     read ~full. The curve is therefore flat up top (4.00 V -> 95 %) instead of
+//     dropping to 89 % the moment the USB cable comes out.
 struct SocPoint { int mv; int pct; };
 static const SocPoint kSocCurve[] = {
-    {4100, 100}, {4000, 90}, {3900, 80}, {3800, 65}, {3750, 55},
-    {3700,  45}, {3650, 35}, {3600, 25}, {3500, 15}, {3400,  5}, {3300, 0}
+    {4100, 100}, {4050, 98}, {4000, 95}, {3950, 88}, {3900, 80}, {3800, 65},
+    {3750,  55}, {3700, 45}, {3650, 35}, {3600, 25}, {3500, 15}, {3400, 5},
+    {3300,   0}
 };
 static const int kSocCount = sizeof(kSocCurve) / sizeof(kSocCurve[0]);
 
@@ -79,6 +85,12 @@ static int cmpInt(const void *a, const void *b) {
 // faster reads systematically LOWER. These values (5 ms settle, 2 ms spacing)
 // are the ones the calibration curve above was measured with; changing them
 // invalidates it.
+//
+// The same sensitivity shows up while debugging: probing GPIO 5 with a
+// multimeter loads the node enough to pull the reading down, and the EMA then
+// slowly follows it, so the displayed percentage sags for as long as the probe
+// is attached and creeps back afterwards. That is the measurement disturbing the
+// measurement, not a bug — a bypass cap at IO5 would cure both.
 static int readAdcMilliVolts() {
     (void)analogReadMilliVolts(PIN_BAT_ADC);
     delay(5);
