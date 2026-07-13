@@ -1,35 +1,25 @@
 # Lightning - Zap⚡Box
 
-> **Forked from [danielcharrua/satoffee](https://github.com/danielcharrua/satoffee)**  
+> **Forked from [danielcharrua/satoffee](https://github.com/danielcharrua/satoffee)**
 > Expanded with many new features and hardware for many new use cases.
 
-Bitcoin Lightning-controlled switching unit for the LilyGo T-Display-S3 and standard ESP32.
+**A Bitcoin Lightning-controlled switching unit.** Pay an invoice — a relay switches. That's the core idea, and everything else is built on it: vending machines, tip boxes, kiosk terminals, coffee machines, LED signs, servo dispensers.
 
-## What is the ZapBox?
+Ease of use, verifiability and reliability are paramount — all in one package.
 
-The Lightning ZapBox is a compact device that controls a USB output via Bitcoin Lightning payment. Various 5V devices can be operated on the USB output, such as LED lamps, fans, or other USB-powered devices. It features multiple operation modes, customizable display themes, and advanced relay control patterns. 
+📖 Detailed descriptions, images and application examples: [zapbox.space](https://zapbox.space/) · [ereignishorizont.xyz](https://ereignishorizont.xyz/en/zapbox-en/) · [white paper](https://github.com/AxelHamburch/ZapBox/tree/main/assets/white-paper)
 
-Ease of use, verifiability and reliability are paramount – all in one package.
-
-**Supported Hardware:**
-- **LilyGo T-Display-S3**: Full-featured version with integrated 170x320 display (Touch and Non-Touch variants)
-- **JC3248W535C Touch 3.5"**: ESP32-S3 variant with 3.5" QSPI touch display (480×320) for larger interface
-- **ESP32 Dev Module**: Headless version for embedded applications (no display, status LED only)
-- **ESP32-C3-21-1**: Compact headless variant with ultra-low power consumption and minimal footprint
-
-Detailed descriptions, images and application examples can be found at [zapbox.space](https://zapbox.space/), [ereignishorizont.xyz](https://ereignishorizont.xyz/en/zapbox-en/) or in the [white paper](https://github.com/AxelHamburch/ZapBox/tree/main/assets/white-paper).
+---
 
 ## Table of Contents
 
 - [How it Works](#how-it-works)
-- [Hardware](#hardware)
-- [Operation](#operation)
-- [Features](#features)
-- [Web Installer](#web-installer)
-- [PlatformIO Project](#platformio-project)
-- [Compatibility](#compatibility)
-- [Versioning](#versioning)
+- [Which Variant Do I Need?](#which-variant-do-i-need)
+- [Feature Matrix](#feature-matrix)
+- [Quick Start](#quick-start)
 - [Documentation](#documentation)
+- [Development](#development)
+- [Compatibility](#compatibility)
 - [Acknowledgement](#acknowledgement)
 - [Support](#support)
 
@@ -37,1493 +27,173 @@ Detailed descriptions, images and application examples can be found at [zapbox.s
 
 ## How it Works
 
-1. **QR Code Display**: The integrated display of the T-Display-S3 shows a QR code with the LNURL for scanning *(T-Display-S3 only)*
-2. **Lightning Payment**: After scanning and paying the invoice, the payment is sent to the LNbits server — or tap an **NFC Bolt Card / NTAG21x tag** on the PN532 reader for contactless payment — or hold a **smartphone** near the **NT3H2111** (NFC Tag 2) to read the LNURLp via tap
-3. **WebSocket Trigger**: The LNbits server sends a signal via WebSocket to the ESP32 microcontroller
-4. **Relay Switching**: The ESP32 activates the relay, which turns on the USB output for a specified period (with optional special modes like blinking, pulsing, or strobing)
-5. **Confirmation**: The display shows that the payment has been received and the relay has been switched *(T-Display-S3 only)*
-
-### LNURL Generation Flow
-
-```
-Device String (switchStr)
-  ├── lnbitsServer  (host)
-  └── deviceId      (last 22 chars)
-          │
-          ▼
-  GET https://{server}/{ext}/api/v1/public/{deviceId}
-          │
-          ▼
-  Server responds: { title, switches[{pin, label, amount, duration}] }
-          │
-          ▼
-  For each pin:
-  https://{server}/{ext}/api/v1/lnurl/{deviceId}?pin={pin}
-          │
-     ┌────┴────┐
-     │         │
-  LUD17:    Bech32:
-  lnurlp://...  LNURL1DP68GURN...
-     │         │
-     └────┬────┘
-          ▼
-  lightning:{lnurl}  →  QR code on display
-```
-
-## Hardware
-
-### LilyGo T-Display-S3 (Full Version)
-
-- **Microcontroller**: ESP32-S3 with integrated 170x320 LCD display
-  - Available in two versions: **Touch** (with CST816S touch controller) and **Non-Touch**
-  - Software automatically detects touch capability at startup
-- **Display**: 170x320 pixel ST7789 TFT (8-bit parallel interface)
-- **Memory**: 16MB Flash, 8MB PSRAM
-- **Relay Module**: Switches the USB output
-- **USB Output Socket**: Provides 5V for connected devices
-- **Two Physical Buttons**: For navigation and access to features
-- **Touch Display** (Touch version): Virtual touch button for Help/Report/Config modes
-
-### JC3248W535C Touch 3.5" (Large Display Version)
-
-- **Microcontroller**: ESP32-S3-WROOM-1 with integrated 3.5" QSPI touch display
-- **Display**: 480×320 pixel AXS15231B IPS QSPI display with capacitive multi-touch
-  - Higher resolution than T-Display-S3 for expanded UI space
-  - Landscape orientation (480 wide × 320 tall)
-  - Fast QSPI interface via 4-lane parallel data bus
-- **Memory**: 16MB Flash, 8MB OPI PSRAM
-- **Relay Module**: Switches the USB output
-- **USB Output Socket**: Provides 5V for connected devices
-- **Touch Interface**: Multi-touch enabled — 5 rapid taps anywhere on screen + 2-second hold to enter Config mode
-- **Use Cases**: Larger payment terminals, public vending installations, kiosk-style deployments, high-visibility applications
-
-### ESP32-C3-21-1 (Compact Headless Version)
-
-- **Microcontroller**: ESP32-C3-WROOM-02 — Single-core 160 MHz RISC-V processor
-- **Memory**: 4MB Flash, 400KB SRAM
-- **Operation**: Fully functional headless mode - all core features work via serial configuration
-- **Status LED**: GPIO 21 with distinct blink patterns for network and payment status
-- **Compact Footprint**: Smallest ZapBox variant — ideal for tight spaces and minimal housing
-- **Ultra-Low Power**: RISC-V architecture consumes less power than Xtensa-based ESP32
-- **NFC Support**: Optional PN532 reader support for contactless payments (GPIO 17/18 I2C, GPIO 4 IRQ)
-- **Use Cases**: 
-  - Extremely space-constrained installations (embedded relays, pole mounts)
-  - Battery-powered applications
-  - High-volume cost-sensitive deployments
-  - IoT/automation integrations
-- **Configuration**: Serial terminal for WiFi, LNbits, and device settings
-- **Advantages**: Lowest cost, smallest PCB footprint, efficient single-core processor, native Bluetooth support (not currently used)
-
-### ESP32 Dev Module (Headless Version)
-
-- **Microcontroller**: ESP32 (classic) without display
-- **Memory**: 4MB Flash, 512KB SRAM
-- **Operation**: Fully functional headless mode - all core features work via serial configuration
-- **Status LED**: GPIO 21 with distinct blink patterns (3 fast boot blinks, fast blink during startup, slow blink in config mode, solid when ready, 200ms/800ms blink during NFC payment pending, 2× fast confirmation blinks on payment success, 3× fast blinks on NFC timeout/error, error blink patterns 1-4 for network issues)
-- **Use Cases**: Embedded installations, wall-mounted relay control, hidden installations
-- **Configuration**: Serial terminal for WiFi, LNbits, and device settings
-- **Advantages**: Lower cost, smaller footprint, lower power consumption
-
-### Pin Configuration
-
-#### T-Display-S3 GPIO Mapping (ENABLE_DISPLAY=1)
-
-| GPIO | Function | Type | Direction | Description |
-|------|----------|------|-----------|-------------|
-| **User Input** |
-| 0 | BOOT Button | Input | Pull-up | Left physical button - Config mode trigger (5s hold) |
-| 14 | HELP Button | Input | Pull-up | Right physical button - Help/Report mode |
-| 2 | Light Barrier | Input | Pull-up | NPN vending machine light barrier (active LOW) |
-| 4 | Battery Voltage | ADC Input | - | Battery voltage monitoring |
-| **Display Control** |
-| 38 | LCD Backlight | Output | HIGH=ON | Display brightness (PWM capable) |
-| 5 | LCD RES | Output | - | Display reset signal |
-| 6 | LCD CS | Output | - | Display chip select |
-| 7 | LCD DC | Output | - | Display data/command signal |
-| 8 | LCD WR | Output | - | Display write signal |
-| 9 | LCD RD | Output | - | Display read signal |
-| 39-42, 45-48 | LCD Data (D0-D7) | Output | - | 8-bit parallel display data bus |
-| **Touch & NFC** |
-| 17 | I2C SCL | I2C | - | Shared: Touch + NFC |
-| 18 | I2C SDA | I2C | - | Shared: Touch + NFC |
-| 16 | Touch INT | Input | - | Touch controller interrupt |
-| 21 | Touch RES | Output | - | Touch controller reset |
-| 1 | NFC IRQ | Input | - | PN532 interrupt (card detection) |
-| **Power & External Controls** |
-| 15 | Power On | Output | - | Power control pin |
-| 43 | LED Button (LED) | Output | HIGH=ON | External illuminated button LED (3.3V) |
-| 44 | LED Button (SW) | Input | Pull-up | External button switch (active LOW) |
-| **Relay Channels (Multi-Channel-Control)** |
-| 12 | Relay 1 | Output | - | Single mode default, Duo/Quattro/Servo mode 1 |
-| 13 | Relay 2 / Servo 1 | Output | - | Duo/Quattro mode 2, Servo mode PWM output |
-| 10 | Relay 3 / Servo 2 | Output | - | Quattro mode 3, Servo mode PWM output |
-| 11 | Relay 4 / Ambient | Output | - | Quattro mode 4, Servo mode relay 2, or ambient lighting (synced with backlight) |
-| **Fixed-Function Expansion** |
-| 3 | FD (NT3H2111) | Input | INPUT_PULLUP | ℹ️ **Strapping Pin** — permanently configured as FD (Field Detection) input from the NT3H2111 NFC Tag 2. Open-drain active LOW: phone near → LOW, no phone → HIGH. Pauses PN532 RF while a phone field is active. See note below. |
-
-> **ℹ️ GPIO 3 — FD (Field Detection) for NT3H2111, Strapping Pin with low practical risk**
-> GPIO 3 is permanently configured as `INPUT_PULLUP` and used exclusively as the FD (Field Detection) input from the NT3H2111 NFC Tag 2 chip. No Web Installer configuration required.
->
-> On the ESP32-S3, GPIO 3 is a strapping pin that controls the **JTAG signal source**:
-> - HIGH at boot (default) → JTAG routed through GPIO-Matrix (GPIO 39–42)
-> - LOW at boot → JTAG routed through the USB Serial/JTAG controller
->
-> This has **no effect on normal firmware operation**. The device boots and runs identically either way. There is no download-mode risk and no bricking scenario from GPIO 3 being LOW at boot via the open-drain FD signal.
->
-> **Practical guidance:**
-> - A 10 kΩ series resistor between the NT3H2111 FD pin and GPIO 3 is sufficient protection for a clean PCB design
-> - The only real consequence of a LOW at boot is that an attached JTAG debugger may need to connect via USB instead of GPIO 39–42
-
-**I2C Bus Addresses:**
-- Touch CST816S/CST328: `0x15` or `0x5A`
-- PN532 NFC Reader: `0x24`
-- NT3H2111 NFC Tag 2: `0x55`
-- PCF8574 I/O-Expander: `0x20`
-
-#### JC3248W535C Touch 3.5" GPIO Mapping (BOARD_JC3248W535C=1)
-
-| GPIO | Function | Type | Direction | Description |
-|------|----------|------|-----------|-------------|
-| **Display (QSPI)** |
-| 45 | LCD QSPI CS | Output | - | Display chip select |
-| 47 | LCD QSPI CLK | Output | - | Display clock |
-| 21 | LCD QSPI D0 | Output | - | Display data 0 |
-| 48 | LCD QSPI D1 | Output | - | Display data 1 |
-| 40 | LCD QSPI D2 | Output | - | Display data 2 |
-| 39 | LCD QSPI D3 | Output | - | Display data 3 |
-| 1 | LCD Backlight (PWM) | Output | HIGH=ON | Display brightness — managed by firmware (GPIO 21 is QSPI data, not backlight) |
-| **Touch (AXS15231B)** |
-| 4 | I2C SDA | I2C | - | No external GPIO required; polled via I2C |
-| 8 | I2C SCL | I2C | - | No external GPIO required; polled via I2C |
-| **NFC-Modul / PN532** |
-| 9 | NFC IRQ | Input | Pull-up | PN532 interrupt (card detection, active LOW) |
-| **I2C Bus (external)** |
-| 17 | I2C SCL | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
-| 18 | I2C SDA | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
-| **Flex Channels** |
-| 6 | CH01 | Output | - | Default: relay output — Special Mode applies to CH01 only |
-| 7 | CH02 | Output or Input | Pull-up (sensor) | Off (default), Relay, Servo 180°/360°, **Sensor** (stop / blockage / level), Ambient Light |
-| 5 | CH03 | Output / Input / analog | Pull-up (sensor) | Same as CH02. 🔋 **While CH03 is off, this pin measures the battery** — see [Battery Monitoring](#battery-monitoring-touch-35) |
-| 14 | CH04 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
-| 15 | CH05 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
-| 16 | CH06 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
-| **Battery (JST connector)** |
-| 5 | Battery voltage (ADC1_CH4) | Input (analog) | - | Voltage divider to the LiPo rail. **Same pin as CH03 above** — it can be one or the other, never both. See below. |
-| **LED Button** |
-| 43 | LED Button (LED) / **TX** | Output | HIGH=ON | Board pin labeled **TX** — External illuminated button LED (3.3V) |
-| 44 | LED Button (SW) / **RX** | Input | Pull-up | Board pin labeled **RX** — External button switch (active LOW); also Light-Sleep wake-up source |
-| **NFC Tag 2 (FD)** |
-| 46 | FD — NT3H2111 NFC Tag 2 | Input | INPUT_PULLUP | ℹ️ **Strapping Pin** — permanently assigned as FD (Field Detection) for the NT3H2111 NFC Tag 2 module. Open-drain active LOW: smartphone NFC field detected → LOW, no field → HIGH. Pauses PN532 RF automatically. See note below. |
-
-> **ℹ️ GPIO 46 — FD (Field Detection) for NT3H2111, Strapping Pin with low practical risk**
-> GPIO 46 is permanently configured as `INPUT_PULLUP` and used exclusively as the FD (Field Detection) input from the NT3H2111 NFC Tag 2 chip. No Web Installer configuration required.
->
-> On the ESP32-S3, GPIO 46 is a strapping pin that controls **ROM serial output during boot**:
-> - HIGH at boot (default) → ROM log printed to UART
-> - LOW at boot → ROM log suppressed (boot proceeds normally — no download-mode risk, no bricking)
->
-> This has **no effect on normal firmware operation**. The device boots and runs identically either way.
->
-> **Practical guidance:**
-> - A 10 kΩ series resistor between the NT3H2111 FD pin and GPIO 46 is sufficient protection for a clean PCB design
-> - The only real consequence of a LOW at boot is that ROM boot messages are silenced on the serial monitor
-
-**I2C Bus Addresses:**
-- Touch AXS15231B: internal (SDA=4 / SCL=8, not on external I2C bus)
-- PN532 NFC Reader: `0x24`
-- NT3H2111 NFC Tag 2: `0x55`
-- PCF8574 I/O-Expander: `0x20`
-
-#### Battery Monitoring (Touch 3.5")
-
-The JC3248W535C has a **JST connector for a single-cell LiPo** with an on-board charging circuit. The battery rail is wired to **GPIO 5** through a divider (33 kΩ / 100 kΩ, per the vendor schematic), so the pack voltage can be read with the ADC. GPIO 5 is **ADC1_CH4** — and only ADC1 works while WiFi is active, since ADC2 (GPIO 14/15) is claimed by the WiFi driver.
-
-The charge level (0–100 %) is shown in the **Mini-PoS entry screen**, in both orientations: top-right of the screen in portrait, and top-right of the left panel (next to the numpad divider) in landscape.
-
-**GPIO 5 has two mutually exclusive roles:**
-
-| GPIO 5 used as | Consequence |
-|----------------|-------------|
-| **Battery ADC** (CH03 = `off`, the default) | Battery charge level is measured and displayed. |
-| **Flex channel CH03** (relay / servo / sensor / ambient) | The channel switches as configured; the battery display disappears, because a driven output overrides the high-impedance divider. |
-
-No configuration switch is needed — the firmware derives this from the CH03 mode.
-
-**Calibration.** The reading is *not* the textbook divider ratio. The divider has a ~25 kΩ source impedance and the module has no bypass capacitor at the pin, so the ADC's sample-and-hold pulls the node down while measuring. The resulting error is linear and stable, so it is calibrated out in software (`Battery.cpp`) rather than fixed in hardware:
-
-```
-V_BAT[mV] = 1.533 × ADC[mV] + 356
-```
-
-Fitted over two full discharge runs (3000 mAh and 1000 mAh cells) across the whole usable range, 3.47–4.13 V; every point lands within ±40 mV.
-
-The percentage curve maps the voltage **under load** (display + WiFi, ~250–300 mA) — that is the only condition in which the device ever measures itself, and a loaded cell sits well below its resting voltage. 4.0 V under load is a nearly full cell.
-
-**No battery / USB.** Whether USB is attached cannot be detected: the divider hangs on the charger's BAT node, so with a cell connected the pin shows the cell voltage either way. A *railed* reading (~3107 mV) does mean something though — with no cell to hold the node down, the charger pushes it past the ADC's full scale. That is used to detect a missing battery (or a battery switch left off), and the gauge then shows nothing rather than inventing a number.
-
-> ⚠️ **Breaking change for existing Touch 3.5" devices.** The primary channel moved from GPIO 5 to GPIO 6 to free GPIO 5 for the battery. Affected devices must (1) re-wire the relay to GPIO 6 and (2) change the pin from `5` to `6` in the LNbits switch entry. A firmware-only update leaves the device silent — payments arrive, but nothing switches.
-
-Full analysis, measurements and calibration data: [temp/PlanungBatterie.md](temp/PlanungBatterie.md).
-
-#### ESP32 Dev Module GPIO Mapping (ENABLE_DISPLAY=0 - Headless)
-
-| GPIO | Function | Type | Direction | Description |
-|------|----------|------|-----------|-------------|
-| **User Input** |
-| 0 | BOOT Button | Input | Pull-up | Wake from sleep / Config mode |
-| 2 | Onboard LED | Output | HIGH=ON | Additional status LED (not used as sensor on headless) |
-| **Vending Sensors / Relay Output (Optional)** |
-| 22 | Sensor 1 / Relay Out | Input or Output | Pull-up / HIGH | Vending sensor input or relay output synced with Pin 12 (when configured, replaces CH06) |
-| 23 | Sensor 2 / Relay Out | Input or Output | Pull-up / HIGH | Vending sensor input or relay output synced with Pin 12 (when configured, replaces CH07) |
-| 34 | FD (NT3H2111) | Input only | — | Permanently configured as FD (Field Detection) input from the NT3H2111 NFC Tag 2. GPIO 34 is input-only (no internal pull-up) — external pull-up (10 kΩ to 3.3 V) required for the open-drain FD signal. |
-| **LEDs & Status** |
-| 21 | Status LED | Output | HIGH=ON | Status indication (RTC-capable) |
-| **I2C (Optional)** |
-| 17 | I2C SCL | I2C | - | Optional: NFC reader |
-| 18 | I2C SDA | I2C | - | Optional: NFC reader |
-| 4 | NFC IRQ | Input | - | Optional: PN532 interrupt (GPIO 1 = UART0 TX on classic ESP32) |
-| **Power & Control** |
-| 15 | Power On | Output | - | Power control pin |
-| **Relay Channels (Multi-Channel-Control)** |
-| 12 | Relay 1 (CH01) | Output | - | Single/Duo/Quattro mode 1 |
-| 13 | Relay 2 (CH02) | Output | - | Duo/Quattro mode 2 |
-| 14 | Relay 3 (CH03) | Output | - | Quattro mode 3 (⚠️ NOT GPIO 10/11 – internal flash!) |
-| 16 | Relay 4 (CH04) | Output | - | Quattro mode 4 |
-| 19 | Relay 5 (CH05) | Output | - | Headless extended channel |
-| 22 | Relay 6 (CH06) | Output | - | Headless extended channel (⚠️ reserved when Sensor 1 active) |
-| 23 | Relay 7 (CH07) | Output | - | Headless extended channel (⚠️ reserved when Sensor 2 active) |
-| 25 | Relay 8 (CH08) | Output | - | Headless extended channel |
-| 26 | Relay 9 (CH09) | Output | - | Headless extended channel |
-| 27 | Relay 10 (CH10) | Output | - | Headless extended channel |
-| 32 | Relay 11 (CH11) | Output | - | Headless extended channel |
-| 33 | Relay 12 (CH12) | Output | - | Headless extended channel |
-
-#### Key Differences Between Variants
-
-| Feature | T-Display-S3 | JC3248W535C Touch 3.5" | ESP32 Dev | ESP32-C3-21-1 |
-|---------|--------------|------------------------|-----------|--------------|
-| Processor | ESP32-S3 Dual-Core | ESP32-S3 Dual-Core | ESP32 Dual-Core | ESP32-C3 Single-Core RISC-V |
-| Display | LCD (170x320) | QSPI Touch (480x320) | None (Headless) | None (Headless) |
-| Memory | 16MB Flash, 8MB PSRAM | 16MB Flash, 8MB OPI PSRAM | 4MB Flash, 512KB SRAM | 4MB Flash, 400KB SRAM |
-| Touch | CST816S/CST328 | AXS15231B (capacitive) | N/A | N/A |
-| External LED Button | Supported (GPIO 43/44) | Supported (GPIO 43/44) | N/A | N/A |
-| Status Indication | Display + LED | Display + LED | LED only (GPIO 21) | LED only (GPIO 21) |
-| NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 9, 17, 18) | Yes (GPIO 4, 17, 18) | Yes (GPIO 10, 20, 21) |
-| Power Consumption | ~150-250mA | ~200-350mA | ~100-150mA | ~80-120mA (single-core) |
-| Flash Memory | 16MB | 16MB | 4MB | 4MB |
-| Relay Channels | 4 (GPIO 12,13,10,11) | 6 flex channels (GPIO 6,7,5,14,15,16) | 12 extended channels | 4 base channels |
-| Configuration | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial |
-| Typical Use Case | General retail vending | Large kiosk terminals | Embedded installations | Space-critical, low-power apps |
-
-### Vending Machine Light Barrier (Optional)
-
-**Feature:** Optical item detection for vending machines via infrared light barrier.
-
-**Two operating modes:**
-
-- **Stop the advance** (`yes`): The conveying cycle is terminated early as soon as the product falls through the light barrier. This stops the mechanism as soon as the item is detected.
-
-- **Monitoring Product Blockage** (`monitor`): After each payment the device checks whether the product exit path is clear. If the light barrier is still active (product blocked), the display shows a warning screen ("PRODUCT BLOCKED – Remove the product") and all further payments are locked — NFC taps and QR payments are refused — until the path is physically cleared. Once the sensor goes inactive again, payment is re-enabled automatically.
-
-**Hardware:** NPN phototransistor light barrier module (3-wire, active LOW)
-- **Pin Assignment**: GPIO 2 (T-Display-S3 only)
-- **Input Type**: Digital input with internal pull-up
-- **Active State**: LOW (barrier broken / item detected)
-- **Inactive State**: HIGH (barrier intact / no item)
-
-**Wiring:**
-```
-Light Barrier Module    →    T-Display-S3    →    GND
-────────────────────────────────────────────────────
-+5V / +3.3V            →    Power supply
-GND                    →    GND
-Signal (NPN output)    →    GPIO 2
-```
-
-### Vending Machine Sensors — Headless (Optional)
-
-**Feature:** Two independent sensor inputs for headless vending machine operation on GPIO 22 and GPIO 23.
-
-**Four operating modes per sensor:**
-
-- **Stop the advance** (`yes`): Stops the relay action when the sensor detects a product (LOW signal). Minimum 2-second action time before the sensor can trigger.
-
-- **Monitoring product blockage** (`monitor`): Continuously monitors whether the product exit is blocked (sensor LOW = blocked). Blocks further payments until cleared.
-
-- **Level monitoring** (`level`): Continuously monitors the supply bin fill level. When the sensor goes HIGH (no product), the bin is considered empty and payments are blocked until restocked.
-
-- **Relay output** (`relay`): Configures the GPIO as an additional relay output that switches in parallel with Pin 12 (CH01). Works with all ZapBox Modes (Relay, 180° Servo, 360° Servo) and Special Modes. Useful for driving additional relays, indicator lights, or secondary actuators synced with the main output.
-
-**Payment blocking behavior:** When a sensor condition blocks payments, the LED blinks very fast (10 Hz, 50 ms ON/OFF), the WebSocket connection is disconnected (LNbits server rejects static QR payments), and NFC Bolt Card taps are blocked. Once cleared, the WebSocket auto-reconnects and normal operation resumes.
-
-**Pin Assignment**: GPIO 22 (Sensor 1) and GPIO 23 (Sensor 2)
-- ⚠️ When a sensor or relay output function is active on GPIO 22 or 23, those GPIOs are no longer available as relay channels (CH06/CH07).
-
-### Relay Control Pins
-
-**T-Display-S3 (Multi-Channel-Control with display):**
-- **Single Mode (default)**: Pin 12 only
-- **Duo Mode**: Pins 12 and 13
-- **Quattro Mode**: Pins 12, 13, 10, and 11
-  - **Special Option**: Pin 11 can be configured as ambient lighting switch (syncs with display backlight)
-- **Servo Mode**: 2 relay channels (Pins 12 and 11) + 2 servo PWM outputs (Pins 13 and 10)
-  - Pin 12 → Relay 1 (controls power to servo 1 circuit / primary QR trigger)
-  - Pin 13 → Servo 1 PWM signal (180° servo)
-  - Pin 10 → Servo 2 PWM signal (360° servo)
-  - Pin 11 → Relay 2 (controls power to servo 2 circuit / ambient)
-  - **One for All (OFA)**: Single payment on Pin 12 activates all channels concurrently
-
-**ESP32 Dev Module (Headless – up to 12 independent channels):**
-
-> The headless version does not use Single/Duo/Quattro modes for channel selection.
-> Instead, the active GPIO is determined directly by the switch configuration in LNbits.
-> Simply assign the desired GPIO pin to each switch in the LNbits extension.
-
-**ZapBox Mode (Pin 12 / CH01):**
-Pin 12 can be configured to operate in one of three modes:
-- **Relay (default)**: Standard digital relay output (HIGH/LOW)
-- **180° Servo**: Positional servo on Pin 12 — sweeps between configurable start and end angles
-- **360° Servo**: Continuous rotation servo on Pin 12 — runs at configurable speed for set duration
-
-Servo parameters (angle start/end, speed, duration) are configured via the Web Installer.
-When servo mode is active, Pin 12 is reserved for the servo and skipped in the relay channel list.
-
-| Channel | GPIO | Note |
-|---------|------|------|
-| CH01 | 12 | Default / single-mode (or Servo in 180°/360° ZapBox Mode) |
-| CH02 | 13 | |
-| CH03 | 14 | ⚠️ GPIO 10 = internal flash on WROOM-32! |
-| CH04 | 16 | ⚠️ GPIO 11 = internal flash on WROOM-32! |
-| CH05 | 19 | |
-| CH06 | 22 | ⚠️ reserved when Sensor 1 or Relay Output active |
-| CH07 | 23 | ⚠️ reserved when Sensor 2 or Relay Output active |
-| CH08 | 25 | |
-| CH09 | 26 | |
-| CH10 | 27 | |
-| CH11 | 32 | RTC-capable |
-| CH12 | 33 | RTC-capable |
-
-**Output Type:** Digital GPIO outputs (HIGH = relay activated)
-**Max Current per Pin:** ~40mA (requires external relay driver for high-power loads)
-**Typical Usage:** Relay driver IC (ULN2003/ULN2803) or MOSFET for external circuits
-
-### IOExpander — PCF8574 (Optional, both variants)
-
-**Feature:** Adds 8 additional relay/sensor channels (CH05–CH12) via a PCF8574 I2C I/O expander. Both the T-Display-S3 and the headless ESP32 Dev variant are supported, since both share the same I2C bus (SDA=GPIO18, SCL=GPIO17).
-
-This is the recommended solution for the T-Display-S3, which has no free GPIO pins left for additional relays or sensors. The PCF8574 sits on the existing I2C bus alongside the PN532 NFC reader — no additional wiring to the ESP32 is required.
-
-**Virtual Pin Mapping:**
-
-| Virtual Pin (LNbits) | PCF8574 Port | Config Key | Default Mode |
-|----------------------|--------------|------------|--------------|
-| 200 | P0 | ch05 | off |
-| 201 | P1 | ch06 | off |
-| 202 | P2 | ch07 | off |
-| 203 | P3 | ch08 | off |
-| 204 | P4 | ch09 | off |
-| 205 | P5 | ch10 | off |
-| 206 | P6 | ch11 | off |
-| 207 | P7 | ch12 | off |
-
-**Hardware:**
-
-| PCF8574 Pin | Connect to | Notes |
-|-------------|-----------|-------|
-| VCC | 3.3V | |
-| GND | GND | |
-| SDA (A4) | GPIO 18 | Shared with Touch / NFC |
-| SCL (A5) | GPIO 17 | Shared with Touch / NFC |
-| A0, A1, A2 | GND | Sets I2C address to 0x20 |
-| P0–P7 | Relay module IN1–IN8 | Active-LOW (LOW = relay on) |
-
-> **⚠️ Relay logic is active-LOW:** The PCF8574 outputs are active-LOW. Connect relay modules that trigger on LOW (most common opto-coupled relay boards). On startup all pins are set HIGH (all relays off).
-
-**Wiring:**
-```
-PCF8574         →    T-Display-S3 / ESP32 Dev    →    Relay Module
-───────────────────────────────────────────────────────────────────
-VCC             →    3.3V
-GND             →    GND
-SDA             →    GPIO 18 (shared I2C)
-SCL             →    GPIO 17 (shared I2C)
-A0, A1, A2      →    GND                         (address = 0x20)
-P0              →                                →    IN1
-P1              →                                →    IN2
-...
-P7              →                                →    IN8
-```
-
-**Channel Modes (configurable per channel via web installer):**
-
-- **off**: Channel disabled (PCF8574 pin stays HIGH)
-- **relay**: Standard relay output — activated for the payment duration, then deactivated
-- **sensor-stop**: Sensor input — stops an active relay action immediately when triggered (LOW). Reads the PCF8574 hardware directly on every tick for real-time response
-- **sensor-monitor**: Sensor input — blocks the next payment and shows a "Product Blocked" screen when the sensor is LOW. Payments are re-enabled once the sensor returns to HIGH
-- **sensor-level**: Sensor input — inverted logic: LOW = supply OK, HIGH = bin empty. Shows a "Supply Bin Empty" screen and blocks payments when the sensor goes HIGH
-
-**Sensor Mode Behavior Summary:**
-
-| Mode | Trigger | Effect | Screen |
-|------|---------|--------|--------|
-| `sensor-stop` | LOW during active relay | Stops relay immediately | None |
-| `sensor-monitor` | LOW before/after payment | Blocks next payment | "PRODUCT BLOCKED" |
-| `sensor-level` | HIGH (bin empty) | Blocks payments | "SUPPLY BIN EMPTY" |
-
-**I2C Address:** `0x20` (default, A0/A1/A2 all tied to GND). The device is auto-detected at startup. If no PCF8574 is found, the IOExpander feature is silently disabled.
-
-**I2C Bus Sharing:** The PCF8574 shares the I2C bus with the PN532 NFC reader (address `0x24`). An I2C bus mutex prevents simultaneous access from different FreeRTOS tasks.
-
-### NFC Reader Setup (Optional)
-
-**Hardware:** PN532 NFC Module (HW-147, I2C mode)
-
-**Wiring:**
-```
-PN532 HW-147    →    T-Display-S3
-────────────────────────────────
-VCC (3.3V)      →    3.3V
-GND             →    GND
-SDA             →    GPIO 18 (shared with Touch)
-SCL             →    GPIO 17 (shared with Touch)
-IRQ             →    GPIO 1
-```
-
-```
-PN532 HW-147    →    ESP32 Dev Module
-────────────────────────────────────
-VCC (3.3V)      →    3.3V
-GND             →    GND
-SDA             →    GPIO 18
-SCL             →    GPIO 17
-IRQ             →    GPIO 4  (GPIO 1 = UART0 TX on classic ESP32 → not usable)
-```
-
-**Note:** The HW-147 module does not expose a hardware reset pin (RSTPD_N).
-The PN532 chip initializes automatically on power-up.
-
-**Features:**
-- Reads ISO14443A cards (Mifare Classic, Mifare Ultralight, NTAG, etc.)
-- IRQ-based card detection (low power, fast response)
-- Shared I2C bus - no GPIO conflicts with Touch controller
-- Automatic firmware version detection
-
-**Software Integration:**
-- Include `NFCPN532.h` in your code
-- Initialize: `NFCPN532 nfc(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_NFC_IRQ);`
-- Call `nfc.begin()` after Touch initialization
-- Use `nfc.readPassiveTargetID()` to read card UIDs
-
-### External LED Button (Optional)
-
-**Optional Feature:** Connect an external illuminated push button (T-Display-S3) or status LED (ESP32 Dev) for enhanced user interaction and status indication.
-
-#### T-Display-S3 Configuration
-
-**GPIO Assignment:**
-| GPIO | Function | Direction | Configuration |
-|------|----------|-----------|---------------|
-| 43 | LED Control | Output | Sources 3.3V when device is ready |
-| 44 | Button Input | Input | Pull-up to 3.3V, active LOW on press |
-
-**Wiring:**
-```
-External LED Button    →    T-Display-S3    →    GND
-─────────────────────────────────────────────────────
-LED Anode (+)          →    GPIO 43         
-LED Cathode (-)        →                    →    GND
-Button Terminal 1      →    GPIO 44
-Button Terminal 2      →                    →    GND
-```
-
-**3-Wire Connection:**
-- **3.3V (GPIO 43)**: Powers the LED when device is ready
-- **GND (Common)**: Shared ground for LED and button
-- **Input (GPIO 44)**: Button switches GPIO 44 to GND when pressed
-
-**Button Functions:**
-- **Single Press**: Wake from screensaver / Navigate to next product or QR screen
-- **Hold ≥2 seconds**: Open Help page (3 screens with instructions)
-- **Triple-click** (within 2 seconds): Open Report page (error diagnostics)
-- **Double-click, hold 2nd press ≥3 seconds**: Enter Config mode
-- **In Config mode** (after 2s guard time): Press again to exit and restart
-
-**Features:**
-- 50ms hardware debounce for reliable operation
-- Works in all operation modes (Single, Duo, Quattro)
-- Compatible with screensaver wake-up (not with deep sleep)
-- Reuses existing navigation/report/help functions from physical buttons
-
-**Note:** GPIOs 43 and 44 are not RTC-capable and cannot be used for deep sleep wake-up.
-
-**Wiring:**
-```
-Status LED             →    ESP32 Dev       →    GND
-────────────────────────────────────────────────────
-LED Anode (+)          →    GPIO 21         
-LED Cathode (-)        →    Resistor (220Ω) →    GND
-```
-
-**Features:**
-- Status LED only (no button functionality on ESP32 Dev)
-- GPIO 21 is RTC-capable and can be used for deep sleep wake-up
-- Distinct LED patterns for clear status and error indication
-
-**LED Behavior (ESP32 Dev Headless):**
-- **3x Very Fast Blink on Boot**: Three quick flashes immediately after power-on to indicate device start. In Identity Login mode also signals NFC card not recognised or rejected (tagid 404) — LED returns to solid ON afterwards
-- **Fast Blink (5Hz, 200ms)**: During startup and initialization (INITIALIZING, CONNECTING_WIFI states)
-- **Slow Blink (1Hz, 1000ms)**: Config mode active - device waiting for configuration
-- **Solid ON**: Device is ready to receive payments
-- **300ms OFF (brief dip)**: Action started – onboard LED (GPIO 2) briefly goes OFF when the relay/servo fires, then returns to solid ON. Visible confirmation that an action has been triggered.
-- **200ms ON / 800ms OFF blink**: NFC payment pending – waiting for invoice settlement via WebSocket
-- **2× Fast Blink (100ms ON/OFF) + Solid ON**: NFC payment confirmed – 2 quick confirmation flashes, then LED stays ON while relay fires
-- **3× Fast Blink (100ms ON/OFF) + Solid ON**: NFC timeout (60s) or HTTP error – "NO LUCK" visual feedback, then returns to ready state
-- **Double-pulse (150ms ON / 100ms OFF / 150ms ON / 1.5s pause)**: Identity Login teach mode active – ZapBox waiting for a card or wallet to enrol
-- **6× Rapid Flash (50ms ON/OFF, 600ms total)**: Identity teach – card or wallet successfully enrolled; resumes double-pulse pattern after flash
-- **Very Fast Blink (10Hz, 50ms ON/OFF)**: Vending sensor blocking – one or more sensors are triggering a payment block (bin empty, product blocked, or stop active). WebSocket is disconnected.
-- **Error Blink Patterns** (with 2 second pause between sequences):
-  - **1 Blink** (500ms on, 500ms off): NO WIFI - WiFi connection lost or not established
-  - **2 Blinks** (300ms on/off each): NO INTERNET - WiFi connected but no internet access
-  - **3 Blinks** (250ms on/off each): NO SERVER - Internet OK but LNbits server unreachable
-  - **4 Blinks** (200ms on/off each): NO WEBSOCKET - Server OK but WebSocket connection failed
-- **OFF**: Help/Report modes, or deep sleep
-
-**LED Behavior (T-Display-S3 with Display):**
-- **ON**: Device is ready to receive payments (not in initialization, error, Config/Help/Report modes, or deep sleep)
-- **OFF**: During startup, initialization, error states, Config/Help/Report modes, or deep sleep
-
-### Headless Version: LED Status Diagnostics
-
-The headless version (ESP32 Dev) uses the status LED to provide comprehensive visual feedback without a display. This allows for quick system diagnostics by counting LED blinks.
-
-#### Network Error Detection Priority
-
-Error patterns are displayed in priority order - the LED shows the **first unconfirmed network status**:
-1. **WiFi** → 2. **Internet** → 3. **Server** → 4. **WebSocket**
-
-For example: If WiFi is disconnected, the LED will show 1 blink (WiFi error) even if other services are also unavailable. Once WiFi is restored, the LED will show the next error in the chain (if any).
-
-#### LED Pattern Reference Table
-
-| Pattern | Timing | Status | Description |
-|---------|--------|--------|-------------|
-| **3 Fast Blinks** | 3x rapid flash on boot | **BOOT / NFC REJECTED** | Device powered on — also: Identity mode NFC card not recognised or rejected (tagid 404); returns to solid ON |
-| **Fast Continuous** | 200ms on/off (5Hz) | **INITIALIZING** | System startup, WiFi connecting |
-| **Slow Continuous** | 1000ms on/off (1Hz) | **CONFIG MODE** | Configuration interface active, waiting for settings |
-| **Solid ON** | Continuous light | **READY** | All systems operational, ready for payments |
-| **Brief OFF (300ms)** | 300ms OFF then back to solid | **ACTION START** | Relay/servo fired – onboard LED dips briefly to confirm action started |
-| **Asymmetric Blink** | 200ms ON / 800ms OFF | **NFC PENDING** | NFC payment initiated, waiting for invoice settlement |
-| **2× Fast Blink** | 100ms ON/OFF × 2, then solid | **NFC SUCCESS** | Payment confirmed – 2 quick flashes, relay fires, LED stays ON |
-| **3× Fast Blink** | 100ms ON/OFF × 3, then solid | **NFC NO LUCK** | 60s timeout or HTTP error – returns to ready state |
-| **Very Fast Continuous** | 50ms on/off (10Hz) | **SENSOR BLOCKING** | Vending sensor active – payments blocked, WebSocket disconnected |
-| **Double-pulse** | 150ms ON / 100ms OFF / 150ms ON / 1.5s pause (1.9s cycle) | **IDENTITY TEACH** | Identity Login teach mode active – waiting for card or wallet to enrol |
-| **6× Rapid Flash** | 50ms ON/OFF × 6 (600ms) | **IDENTITY ENROLLED** | NFC card or wallet successfully enrolled in teach mode |
-| **1 Blink + Pause** | 500ms on/off, 2s pause | **NO WIFI** | WiFi connection lost or failed to connect |
-| **2 Blinks + Pause** | 300ms on/off/on/off, 2s pause | **NO INTERNET** | WiFi connected, but no internet gateway access |
-| **3 Blinks + Pause** | 250ms each, 2s pause | **NO SERVER** | Internet connected, LNbits server unreachable |
-| **4 Blinks + Pause** | 200ms each, 2s pause | **NO WEBSOCKET** | Server reachable, WebSocket connection failed |
-| **OFF** | No light | **INACTIVE** | Deep sleep, Help/Report modes, or system halted |
-
-#### Troubleshooting with LED Patterns
-
-**1 Blink (NO WIFI)**
-- Check WiFi credentials in configuration
-- Verify WiFi router is powered on and in range
-- Check for MAC address filtering on router
-- Confirm correct WiFi password
-
-**2 Blinks (NO INTERNET)**
-- WiFi credentials are correct, but router has no internet
-- Check router's internet connection (modem/ISP)
-- Verify router's WAN port is connected
-- May occur during ISP outages
-
-**3 Blinks (NO SERVER)**
-- Internet is working, but LNbits server is down or unreachable
-- Check LNbits server URL in configuration
-- Verify LNbits server is running
-- Check firewall rules (port 443/HTTPS)
-- Confirm DNS resolution of server hostname
-
-**4 Blinks (NO WEBSOCKET)**
-- Server is reachable, but WebSocket connection or data validation failed
-- **Most common cause:** Bitcoinswitch instance was deleted on LNbits server (HTTP 404)
-  - Check if the configured device ID still exists in LNbits
-  - Verify the switch configuration in LNbits admin panel
-  - If instance was deleted, create a new one and update device configuration
-- May occur briefly during LNbits service restart
-- Check LNbits WebSocket configuration
-- Verify API key/credentials are valid
-- Should auto-recover when server completes startup or after creating new instance
-
-**Recovery Behavior**
-After network issues are resolved, the LED automatically transitions back to **Solid ON** (READY state). If the LED remains in an error state after confirmed repairs, perform a device reset by pressing the onboard reset button.
-
-
-## Operation
-
-### On-board Button - Reset
-- **System reset**: Restarts the device completely
-
-### On-board Button - HELP (GPIO 14)
-- **Click once**: Open the Help page
-- **Double-click**: Open the Report page
-
-### On-board Button - NEXT (BOOT / GPIO 0)
-- **General**: Wakes up from screensaver and deep sleep
-- **1x click**: Display product page / Change page
-- **Hold for more than 5 seconds**: Start Config mode
-  - ⚠️ **Note**: Clicking again closes the Config page prematurely
-- **Special function**: Hold down the BOOT button, press the reset button once, and then release the BOOT button → Activates reception mode for firmware updates
-
-### Touch display (touch version only)
-- **General**: Wakes up from screensaver (not compatible with deep sleep)
-- **1x click/swipe**: Display product page / Change page
-
-### Touch button (Red circle next to the touch field)
-- **Click once**: Open the help page
-- **Double-click**: Open the report page
-- **Quadruple-click**: Open the Config page
-  - ⚠️ **Note**: A delayed click on the display deactivates the Config page prematurely
-
-### External LED-Button (if available)
-- **LED Indicator**: Active when device is ready (no initialization, error, or special mode active)
-- **General**: Wakes up from screensaver (not compatible with deep sleep)
-- **Press once**: Display product page / Change page
-- **Press and hold for at least 2 seconds**: Open the help page
-- **Press 3x quickly**: Open the report page
-- **Press briefly once, then hold for at least 3 seconds**: Activate Config mode
-  - ⚠️ **Note**: Clicking again closes the Config page prematurely
-
-### Startup & Initialization Sequence
-
-The ZapBox features an optimized startup sequence with parallel connection establishment:
-
-**Phase 1: Startup Screen (6 seconds)**
-- Displays "ZAPBOX" branding with firmware version
-- Shows "Powered by LNbits"
-- WiFi connection starts in background during this phase
-
-**Phase 2: Initialization Screen (up to 20 seconds)**
-- Displays "ZAPBOX" with "Initialization in progress . . ."
-- All connection tests run in parallel:
-  1. WiFi connection (continues from Phase 1)
-  2. Internet connectivity check (once WiFi connected)
-  3. LNbits server reachability test (once Internet confirmed)
-  4. WebSocket connection establishment (once Server confirmed)
-- **Early Exit**: Screen switches to QR code as soon as all connections are successful
-- **Maximum Time**: 25 seconds total (5s startup + 20s init) if connections take longer
-- **Error Display**: After 25 seconds, shows first detected error if any connection failed
-
-**Optimal Scenario**: ~10-15 seconds from power-on to QR code display
-**Error Scenario**: 25 seconds → displays specific error screen
-
-### Error Detection & Priority System
-
-The ZapBox features a hierarchical error detection system with automatic diagnostics:
-
-| Priority | Error Type | Abbreviation | Detection Method | Description |
-|----------|-----------|--------------|------------------|-------------|
-| 1 (Highest) | **NO WIFI** | NW | WiFi connection status | WiFi network not connected<br>-> Wifi data correct?<br>-> WiFi signal too weak? |
-| 2 | **NO INTERNET** | NI | HTTP check to Google | Internet connectivity lost<br>-> Internet accessible? |
-| 3 | **NO SERVER** | NS | TCP port 443 check | LNbits server unreachable<br>-> Server hardware down?<br>-> Device string correct?  |
-| 4 (Lowest) | **NO WEBSOCKET** | NWS | WebSocket connection status | WebSocket protocol/handshake failure<br>-> LNbits down?<br>-> Device string correct?  |
-
-**Error Detection Logic:**
-- Each error level is only checked if all higher priority levels are OK
-- Higher priority errors override lower priority error displays
-- **WiFi down** → All other checks skipped, shows "NO WIFI"
-- **WiFi OK, Internet down** → Server/WebSocket checks skipped, shows "NO INTERNET"
-- **WiFi + Internet OK, Server down** → WebSocket check skipped, shows "NO SERVER"
-- **WiFi + Internet + Server OK, WebSocket down** → Shows "NO WEBSOCKET"
-
-**Monitoring Intervals:**
-- **Internet Check**: Every 30 seconds via HTTP GET to `clients3.google.com/generate_204` (Google's connectivity service)
-- **WiFi/Server/WebSocket Check**: Every 5 seconds with priority-based handling
-- **WebSocket Ping**: Every 60 seconds (when connected) for connection quality monitoring
-
-**Smart Recovery:**
-- When WiFi reconnects, automatically checks Internet and Server status
-- Prevents brief "Ready for Action" flash when higher-priority errors persist
-- Automatically returns to correct error screen based on current system state
-
-**Report Mode**: 
-- **Press HELP button twice** in quick succession to display error counters (0-99) for all four error types with their occurrence counts
-- **Press LED button four times** in quick succession (if external LED button is available)
-
-**Common Wallet Error**: If a wallet scanning the QR code shows an error message "bitcoinswitch ... is disabled", this indicates either:
-- The Bitcoin Switch was actively disabled in LNbits, or
-- The handshake between the wallet and ZapBox failed
-
-## Features
-
-### Basic Configuration
-
-Configuration is done via the [Web Installer](installer/index.html) with browser-based serial connection:
-
-- WiFi SSID and password
-- LNbits server WebSocket URL (supports both `ws://` and `wss://`)
-- LNURL for payments
-- Display orientation (horizontal/vertical)
-- **Display Theme**: Multiple color combinations available (selectable in the web installer)
-
-### Advanced Features
-
-#### Mini-PoS Mode (Touch 3.5" only)
-**Available on JC3248W535C Touch 3.5" — requires the [zapbox_extension](https://github.com/AxelHamburch/zapbox_extension) v2.3.0+ on the LNbits server**
-
-Turns the ZapBox into a small point-of-sale terminal: instead of a fixed QR code, the customer-facing display shows an **amount entry screen**. The operator types an amount, presses **INVOICE**, and the ZapBox requests a Lightning invoice from the LNbits server and shows it as a QR code. After payment, **CH01 (GPIO 6)** switches — like in single-channel mode.
-
-**Payment flow:**
-1. Enter the amount on the touch numpad (e.g. `5` → automatically normalized to `5.00 EUR`)
-2. Press **INVOICE** — the ZapBox requests a BOLT11 invoice via the zapbox_extension
-3. The invoice is shown as QR code; lines 1+2 of the label come from the LNbits pin-5 switch entry, line 3 shows the amount
-4. The customer pays by:
-   - **scanning the QR code** with any Lightning wallet
-   - **tapping their phone** on the NFC Tag 2 (NT3H2111) — the tag carries the invoice
-   - **tapping a Bolt Card** on the PN532 reader — the card pays the pending invoice (PIN protection supported)
-5. On settlement the server pushes the trigger over WebSocket: CH01 (GPIO 6) switches with the duration configured for pin 6 in LNbits (fallback: 3000 ms), the display shows **PAID** for 3 seconds, then returns to the empty entry screen
-
-**Entry screen:**
-- Numpad with decimal point (the `.` key is disabled when *Decimal separator: NO* is configured)
-- Amounts up to 7 characters (`xxxx.xx` or `xxxxxxx`)
-- **INVOICE** — request the invoice for the entered amount
-- **LAST PAY** — recalls the amount of the last settled payment; it is shown orange/locked for 5 seconds, then stays in the field and can be confirmed or edited
-- **CANCEL** button (bottom-right on the QR screen) — aborts the pending invoice; a touch anywhere else does nothing
-- Unpaid invoices expire after `INVOICE_TIMEOUT` (default 3 minutes, build flag) and the device returns to the entry screen
-
-**BTC ticker as screensaver:**
-With *BTC-Ticker Mode: ON - always*, the ticker acts as a screensaver: a single touch on the ticker opens the amount entry screen; after `PRODUCT_TIMEOUT` (default 30 s) of inactivity on the entry screen the device returns to the ticker. With ticker mode *OFF* or *when selecting*, the entry screen is shown permanently.
-
-**NFC Tag idle content:**
-While no invoice is pending, the NFC Tag 2 carries `https://zapbox.space` — a curious phone tap on the idle device opens the project website. As soon as an invoice is created, the tag carries the invoice; after payment/cancel/timeout it returns to the URL.
-
-**Activation Options (One for All):**
-The *Activation Options* dropdown is also available in Mini-PoS mode. With **One for All**, a paid invoice additionally triggers the channels CH02–CH06 that are configured as relay/servo (configure the channel functions in Multi-channel mode first — the values are kept when switching back to Mini-PoS).
-
-**Configuration (Web Installer → ZapBox Mode → Mini-PoS):**
-| Field | Description |
-|-------|-------------|
-| Currency (ISO Code) for Payments | e.g. `EUR`, `USD`, `GBP` — or `Sat` for satoshi (default: `EUR`) |
-| Decimal separator | `YES` = two decimal places (e.g. `0.50 EUR`), `NO` = whole numbers (e.g. `1000 Sat`) |
-| Wallet Invoice Key | the LNbits wallet "Invoice/read key" (32 characters) of the wallet that receives the payments |
-
-The *Device settings string* must be configured as usual — it identifies the LNbits server and the ZapBox device entry (used for label fetch, WebSocket push and Bolt Card payments).
-
-**Use Cases**: Market stalls, flea markets, tip boxes, club bars, small shops — anywhere a fixed-price switch is not enough and a full PoS is too much.
-
-#### Multi-Channel-Control Mode (Touch 3.5")
-**Available on JC3248W535C Touch 3.5" — up to 6 independent channels**
-
-The Touch 3.5" drives **six freely configurable channels** on GPIO 6, 7, 5, 14, 15 and 16 (CH01–CH06). Each channel's function is set independently in the Web Installer, so one device can mix dispensers, relays and ambient lighting:
-
-| Channel | GPIO | Selectable functions |
-|---------|------|----------------------|
-| CH01 | 6 | Relay *(default)* · Servo 180° · Servo 360° — primary / Special-Mode channel |
-| CH02 | 7 | Off · Relay · Servo 180°/360° · **Sensor** (stop / blockage-monitor / level) · Ambient Light |
-| CH03 | 5 | Same as CH02 — 🔋 but **while off, this pin measures the battery** ([details](#battery-monitoring-touch-35)) |
-| CH04–CH06 | 14, 15, 16 | Off · Relay · Servo 180°/360° · Ambient Light |
-
-The channel order groups the three **ADC1-capable** pins (5, 6, 7) first. GPIO 14/15/16 sit on ADC2, which the WiFi driver claims — they can never serve as analog inputs on this device, only as digital outputs or PWM (servo).
-
-**Vending sensors** are available on **CH02 and CH03 only**, with the same three modes as the T-Display-S3 light barrier (see [Special features for the vending machine](#special-features-for-the-vending-machine)). All are digital inputs, active LOW (`INPUT_PULLUP`):
-
-| Mode | Behaviour |
-|------|-----------|
-| **Stop the advance** | Ends the running relay/servo action as soon as the sensor triggers (earliest 2 s after the action started). |
-| **Monitoring product blockage** | After a payment, a still-blocked outlet shows *PRODUCT BLOCKED* and holds further payments until the path is clear. |
-| **Level monitoring** | An empty supply bin shows *SUPPLY BIN IS EMPTY* and blocks payments until it is restocked. |
-
-⚠️ A sensor on **CH03** claims GPIO 5 as a digital input and therefore **disables the battery gauge**.
-
-- **Payment channels**: every channel set to *relay* or *servo* becomes its own payment channel with a unique LNURL/QR code and its own amount and duration from the LNbits switch entry. Channels set to *ambient-light*, *sensor* or *off* are not counted as payment channels.
-- **CH01** is always active as the primary channel and is the only one that supports the **Special Modes** (blink / pulse / strobe); additional channels switch in standard on/off mode.
-- Customers pick a product by **swiping** the selection screen, or by typing its number with [Numerical Product Selection](#numerical-product-selection-touch-35-only).
-
-**Per-channel servo parameters:**
-Any channel set to **Servo 180°** or **Servo 360°** gets its own parameter box directly below that channel in the Web Installer, so every dispenser or barrier is tuned independently:
-
-| Servo type | Parameters | Behaviour |
-|------------|------------|-----------|
-| **180°** (positional) | Start angle (°) · End angle (°) · Sweep duration (ms) | Sweeps Start→End on payment, holds for the action time, then returns to Start. `0 ms` = native (max) speed. |
-| **360°** (continuous) | Speed (0–180) · Spin duration (ms) | Spins at the set speed (`90` = stop, `<90` = CCW, `>90` = CW). `0 ms` = spins until the action time ends. |
-
-**Activation Options (One for All):**
-- **Off** *(default)* — each channel is triggered separately by its own QR/payment.
-- **One for All** — a single payment on **CH01** fires *all* relay/servo channels at once (one QR code). Each channel runs for its own LNbits-configured duration (fallback: CH01's duration). Ambient-light and sensor channels are unaffected. Mutually exclusive with Numerical Product Selection.
-
-**Configuration (Web Installer → ZapBox Mode → Multi-channel):** set each channel's function in the CH01–CH06 dropdowns; the servo parameter box appears automatically when a channel is set to Servo 180°/360°. *Activation Options* and *Numerical Product Selection* live in the same panel.
-
-**Reserved GPIOs** (not available as channels): 17/18 (I²C — NFC reader + NT3H2111), 9 (PN532 IRQ), 46 (NT3H2111 Field Detection).
-
-🔋 **GPIO 5 (CH03) is shared with the battery voltage divider.** It can be a switching channel *or* the battery gauge, never both — see [Battery Monitoring](#battery-monitoring-touch-35).
-
-#### Numerical Product Selection (Touch 3.5" only)
-**Available on JC3248W535C Touch 3.5" in Multi-channel mode**
-
-Instead of swiping through the products one by one, the customer selects a product by typing its **GPIO number** on a touch keypad and gets the matching QR code. The fixed binding to the GPIO number guarantees a unique assignment and maximum flexibility — every relay/servo channel that is configured as a switch in the LNbits extension is directly addressable, including the **I/O expander virtual pins 200–207**.
-
-**Flow:**
-1. Main screen is the *Select your product* screen (or the BTC ticker with *BTC-Ticker Mode: ON - always*) — any touch opens the **product selection panel**
-2. Type the GPIO number of the product (e.g. `5`, `7`, `14` or `200`); `<` deletes the last digit, the small **CANCEL** button returns to the main screen
-3. Press the green **OK** key — the ZapBox validates the number:
-   - the pin must be configured as a **relay/servo channel** on the device (CH01–CH06 or I/O expander enabled), **and**
-   - LNbits must have a switch entry for this pin (fetched from the server)
-   - unknown numbers show **"Product not available"**
-4. The product QR code is shown with the LNbits label; the content is also served via NFC: the **NFC Tag 2** carries the LNURL for phone taps and a **Bolt Card** tap on the PN532 pays this exact product (PIN protection supported)
-5. **CANCEL** (bottom-right) returns to the keypad; after `PRODUCT_TIMEOUT` of inactivity the device falls back to the main screen
-6. After payment the relay/servo switches with the LNbits duration and the device returns to the main screen
-
-While no product QR is shown, the NFC Tag 2 carries `https://zapbox.space` and Bolt Card taps are ignored. A pin triggered by the server (paid QR code from elsewhere) always switches, regardless of the current screen.
-
-**Configuration (Web Installer → ZapBox Mode → Multi-channel → Numerical Product Selection):** `Yes — Product selection panel`. Cannot be combined with *One for All* (the installer enforces this).
-
-#### Multi-Channel-Control Mode (T-Display-S3)
-**Available on T-Display-S3 Touch variant only**
-
-Control multiple relays with automatic product selection and label integration:
-
-- **Single Mode** (default): Traditional single relay control on Pin 12
-- **Duo Mode**: Two products on Pins 12 and 13
-- **Quattro Mode**: Four products on Pins 12, 13, 10, and 11
-
-**Features:**
-- **Touch Navigation**: Swipe left/right (<-→) on product selection screen to choose product
-- **Automatic LNURL Generation**: 
-  - Each pin gets its own unique LNURL with Bech32 encoding
-  - LUD17 format (LNURL as URL) for maximum compatibility
-  - Encoded with HRP "lnurl" and XOR 1 checksum
-- **Backend Product Labels**: 
-  - Labels are fetched automatically from LNbits backend via `/api/v1/public/{deviceId}`
-  - Labels are displayed on all QR screens (Normal, Special, and Multi-Channel-Control modes)
-  - Multi-line display: Up to 3 words separated by spaces
-  - Currency symbols automatically converted to text: €→EUR, $→USD, £→GBP, ¥→YEN, ₿→BTC, ₹→INR, ₽→RUB, ¢→ct
-  - Third line uses smaller font for currency display
-- **x-Second Timeout**: Product selection screen automatically shows after x seconds on QR screen
-- **Loop Navigation**: Navigation wraps around (last→first, first→last)
-
-**Configuration:**
-Set Multi-Channel-Control Mode in Web Installer:
-- `single` (default): Pin 12 only
-- `duo`: Pins 12, 13
-- `quattro`: Pins 12, 13, 10, 11
-- `servo`: Pins 12 (relay 1), 13 (180° servo PWM), 10 (360° servo PWM), 11 (relay 2 / ambient)
-- `one-for-all` *(default in Servo mode)*: Single QR on Pin 12 — all 4 channels fire concurrently on payment
-
-**Use Cases**: Vending machines, multi-product payment terminals, flexible product offerings, servo-controlled dispensers and barriers
-
-##### Special Function Channel 4 - Ambient Lighting Switch
-**Available in Quattro Mode only (T-Display-S3)**
-
-Channel 4 (GPIO 11) can be configured as an ambient lighting switch that synchronizes with the display backlight instead of functioning as a regular payment-controlled relay:
-
-**Features:**
-- **Backlight Synchronization**: GPIO 11 mirrors the state of the display backlight (GPIO 38)
-  - HIGH when display is active and backlight is on
-  - LOW when screensaver is active or device enters deep sleep
-- **Reduced Product Count**: When enabled, only 3 products are shown (channels 1-3) instead of 4
-- **Automatic Control**: No payment needed - GPIO 11 switches automatically based on display state
-- **Use Cases**: 
-  - Ambient LED strip lighting synchronized with display activity
-  - Mood lighting that turns off during screensaver/sleep
-  - Visual power state indicator
-  - External backlight control for custom displays
-
-**Configuration:**
-Set in Web Installer under "Multi-Channel Mode - Quattro":
-- **Special function Channel 4** dropdown:
-  - `Off (default)`: GPIO 11 works as normal payment-controlled channel 4
-  - `Ambient lighting switch`: GPIO 11 synchronized with display backlight
-
-**Technical Details:**
-- GPIO 11 is initialized after configuration is loaded
-- State changes occur in:
-  - `activateScreensaver()`: Sets GPIO 11 LOW
-  - `deactivateScreensaver()`: Sets GPIO 11 HIGH
-  - `prepareDeepSleep()`: Sets GPIO 11 LOW
-- Initial state after boot: HIGH (display active by default)
-
-**Note**: When ambient lighting mode is active, channel 4 cannot be used for payment-controlled switching. The device displays and accepts payments only for channels 1-3.
-
-##### Servo Mode (4-Channel: 2 Relay + 2 Servo)
-**Available on T-Display-S3 only**
-
-Controls up to two servo motors via Bitcoin Lightning payment. Each servo is paired with a relay that can cut power between uses.
-
-**Pin Assignment:**
-| Pin | Function | Description |
-|-----|----------|-------------|
-| 12 | Relay 1 | Primary trigger — QR code shown for this channel |
-| 13 | 180° Servo PWM | Sweeps Start→End, holds for action time, returns |
-| 10 | 360° Servo PWM | Spins for configured duration on payment |
-| 11 | Relay 2 / Ambient | Activates for action time duration |
-
-**Activation Modes:**
-
-**One for All (OFA) — Default**
-- A single QR code (Pin 12) is shown to the customer
-- On payment, all four channels activate simultaneously as concurrent FreeRTOS tasks:
-  - **Pin 12** (Relay 1): fires normally per LNbits action time
-  - **Pin 13** (180° Servo): sweeps to end angle, holds for the full action time, then returns to start
-  - **Pin 10** (360° Servo): spins for the configured duration
-  - **Pin 11** (Relay 2): activates for the full action time
-- Ideal for vending machines and dispensers where one payment triggers the complete mechanism
-
-**Independent Channels**
-- Each channel has its own QR code and can be triggered separately
-- Useful for multi-product setups where each item has a different price
-
-**Servo Configuration (Web Installer):**
-- **Start angle (°)**: Position the servo moves to at startup (0–180°)
-- **End angle (°)**: Position the servo sweeps to on payment trigger (0–180°)
-- **Sweep duration (ms)**: Time for one full sweep; `0` = native servo speed (max speed)
-- **Return to start**: `Yes` — servo always returns after relay-off delay; `No` — toggle mode (alternates direction each trigger)
-
-**Toggle Mode (Return = No):**
-- First trigger: sweeps Start → End, stays at End
-- Next trigger: sweeps End → Start, stays at Start
-- Ideal for latches, barriers, or dispensers where the servo should stay in position
-
-**Servo 2 optional:**
-- If all Servo 2 values are zero, only Servo 1 (Pin 12/13) is active
-- Pin 11 remains available as a regular relay channel (Channel 4)
-
-**Important Notes:**
-- Requires external 5V power supply for the servo (MG996R draws up to 2.5A peak)
-- Special Mode (blink/pulse/strobe) is automatically bypassed in Servo mode — pulsing the relay would interfere with servo timing
-- GPIO 10 and 13 are LEDC-capable on the ESP32-S3 (T-Display-S3 only); not available on headless ESP32 Dev
-
-#### BTC-Ticker with Currency Display
-**Available on all variants**
-
-Real-time Bitcoin price and block height display with configurable visibility modes:
-
-**Features:**
-- **Bitcoin Price**: Live price in configurable currency (e.g., USD, EUR, GBP)
-- **Block Height**: Current blockchain block height from mempool.space
-- **Bitcoin Logo**: 64x64 pixel logo displayed on ticker screen
-- **Currency Selection**: ISO code input (max. 3 characters, automatically uppercase)
-- **Auto-Refresh**: Updates automatically after WiFi/Internet recovery
-- **Touch Support**: Touch display to show/hide ticker in always and selecting modes
-- **Three Display Modes**:
-  - **OFF**: No ticker display
-    - Duo/Quattro: Shows product selection screen instead
-    - Single: Shows only QR code (no ticker, no product selection)
-  - **ON - always**: Ticker overlay with on-demand QR display
-    - Single: Starts with ticker, touch shows QR for 20s, then returns to ticker
-    - Duo/Quattro: Ticker overlays, navigate with NEXT/swipe shows products temporarily, returns to ticker after 20s
-  - **ON - when selecting**: Ticker appears only on demand
-    - Single: Touch/NEXT shows ticker for 10s, then returns to QR
-    - Duo/Quattro: Product selection → products → ticker on touch/swipe (10s timeout)
-
-**Configuration:**
-Set BTC-Ticker mode and currency in Web Installer:
-- Mode: `off`, `always`, or `selecting`
-- Currency: Any 3-letter ISO code (e.g., `USD`, `EUR`, `GBP`, `JPY`, `CHF`)
-
-**Data Sources:**
-- Price API: CoinGecko (supports 50+ currencies)
-- Block Height: mempool.space
-
-**Use Cases**: Bitcoin payment terminals, price information displays, educational demonstrations
-
-#### Special Modes
-Control relay switching patterns beyond simple on/off. **Applies to CH01 only** (GPIO 6 on JC3248W535C / Pin 12 on T-Display-S3). Additional channels always use standard on/off mode.
-- **Standard**: Simple on/off (default)
-- **Blink**: 1 Hz, 1:1 duty cycle
-- **Pulse**: 2 Hz, 1:4 duty cycle (short pulses)
-- **Strobe**: 5 Hz, 1:1 duty cycle (fast blinking)
-- **Custom**: Set your own frequency (0.1-10 Hz) and duty cycle ratio (0.1-10)
-
-**Use Cases**: LED effects, motor speed control, warning signals, custom patterns
-
-#### Threshold Mode
-Monitor a wallet balance and trigger the relay when a threshold is reached:
-- Configure wallet invoice/read key
-- Set threshold amount in satoshi
-- Define GPIO pin and control duration
-- Use static LNURL or Lightning Address for payments
-- Payments accumulate in the wallet until threshold is reached
-
-**Use Cases**: Crowdfunding triggers, donation goals, pay-per-use with accumulated balance
+1. **QR code** — the display shows a QR code containing the LNURL *(display variants)*
+2. **Lightning payment** — the customer scans and pays. Or they tap an **NFC Bolt Card** on the reader, or hold a **smartphone** near the NFC tag — all three routes work
+3. **WebSocket trigger** — the LNbits server pushes the payment confirmation to the ESP32
+4. **Relay switches** — the output is activated for the configured duration (optionally blinking, pulsing or strobing)
+5. **Confirmation** — the display shows the payment was received *(display variants)*
+
+The ZapBox never handles funds itself. It only listens for a confirmation from **your** LNbits server and switches a pin.
 
 ---
 
-#### NFC Payment (Bolt Card / NTAG21x / LNURL Tags)
+## Which Variant Do I Need?
 
-> **Optional feature** — activated via build flag `ENABLE_NFC=1` (default: enabled on T-Display-S3).
+Four hardware variants share the same firmware codebase. Pick by **how the customer interacts** with the device:
 
-The ZapBox supports tap-to-pay via NFC with two card types:
-- **Bolt Cards** (NTAG424 DNA): Authenticated LNURLW read via SUN message
-- **NTAG21x (213/215/216) / LNURL Tags**: Plain NDEF text record containing an `lnurlw://` URL
+### 🖥️ [T-Display-S3](docs/t-display-s3.md) — the classic
 
-A customer simply holds their card or tag near the PN532 reader to trigger a payment.
+Small integrated display (170 × 320), optional touch. The most widely deployed ZapBox and the best starting point for most builds.
+**4 relay channels** · 2 buttons · optional servo mode · ~150–250 mA
 
-**Hardware Requirements**:
-- PN532 NFC module wired on the shared I2C bus (SDA=GPIO18, SCL=GPIO17)
-- IRQ line connected to GPIO1 (`PIN_NFC_IRQ`)
-- Pull-up resistor on IRQ (internal `INPUT_PULLUP` used)
+*→ General retail, vending machines, coffee machines, tip boxes*
 
-**Payment Flow**:
-```
-[Bolt Card / NTAG21x]  →  tap on PN532 reader
-    ↓
-PN532 detects ISO14443A card (IRQ LOW on GPIO1)
-    ↓
-FreeRTOS Task (Core 0) reads card:
-  • NTAG424 DNA: Authenticated file read (SUN message)
-  • NTAG21x (213/215/216): NDEF text record parse
-    ↓
-ZapBox validates "lnurlw://" prefix in returned data
-    ↓
-Display shows "PENDING NFC" screen
-    ↓
-ZapBox sends WebSocket event to zapbox_extension:
-  { "event": "lnurlw", "lnurlw": "lnurlw://...", "pin": <activePin> }
-    ↓
-zapbox_extension resolves LNURLW → Lightning invoice → payment detected
-    ↓
-zapbox_extension sends back WS event → ZapBox activates relay / channel
-    ↓
-Display shows "ACTION TIME" → "THANK YOU" → returns to QR screen
-```
+### 📱 [Touch 3.5"](docs/touch-3.5.md) — the big one
 
-**NFC Timeout & NO LUCK**:
-- After a card tap, the device enters a **pending** state while waiting for payment confirmation
-  - **T-Display-S3**: Shows a **"PENDING NFC"** screen
-  - **Headless (ESP32 Dev)**: LED blinks **200ms ON / 800ms OFF**
-- If no payment is confirmed within **60 seconds**, the device signals **"NO LUCK"**:
-  - **T-Display-S3**: Switches to a **"NO LUCK"** screen (shown for 5 seconds, then returns to QR screen)
-  - **Headless**: LED does **3× fast blinks** (100ms ON/OFF), then returns to solid ON (ready)
-- This prevents the device from being stuck in a pending state indefinitely
-- HTTP errors during the LNURLW request do **not** immediately trigger NO LUCK — the server may still confirm the payment via WebSocket within the timeout period
-- On **successful payment**, the headless version shows **2× fast confirmation blinks** (100ms ON/OFF) before the relay fires
+Large 3.5" capacitive touch display (480 × 320). The only variant with a **Mini-PoS mode** (customer-facing amount entry) and a **battery gauge**.
+**6 flex channels** · vending sensors · LiPo battery support · ~200–350 mA
 
-**Card Removal Detection**:
-- After a successful card read, the NFC task waits for the card to be physically removed
-- Detection requires **2 consecutive absent polls** (~0.8 seconds) to prevent false triggers
-- This prevents **double-trigger** issues where a single tap would fire two payment requests
+*→ Kiosk terminals, market stalls, flea markets, club bars, public vending installations*
 
-**Implementation Notes**:
-- Uses [Adafruit-PN532-NTAG424](https://github.com/bitcoin-ring/Adafruit-PN532-NTAG424) library
-- FreeRTOS task runs on Core 0 with priority 1 (stack 8 KB)
-- IRQ-based detection — no I²C polling, does not interfere with touch sensor on shared bus
-- The active channel (`pin`) is derived from `multiChannelConfig.currentProduct`
-- Cross-core communication via `volatile` flags in GlobalState.h (Core 0 NFC task ↔ Core 1 main loop)
+### 💡 [Headless ESP32](docs/headless-esp32.md) — the workhorse
 
-**Activate in `platformio.ini`**:
-```ini
-build_flags =
-  ...
-  -DENABLE_NFC=1
-  -DENABLE_NFC_TEST=0   ; set to 1 for hardware test (no server needed)
-```
+No display — status is signalled by a single LED with distinct blink patterns. Has by far the **most channels**.
+**12 relay channels** · 2 vending sensors · ~100–150 mA
+
+*→ Embedded and hidden installations, wall-mounted relay control, multi-channel dispensers*
+
+### ⚡ [ESP32-C3](docs/esp32-c3.md) — the small one
+
+Single-core RISC-V, the smallest footprint and the lowest power draw of all variants.
+**1 relay + 2 flex channels** · ~80–120 mA
+
+*→ Extremely tight spaces, battery-powered installs, cost-sensitive volume deployments*
 
 ---
 
-#### NFC Card Emulation (LNURLp via NFC)
+## Feature Matrix
 
-> **Optional feature** — activated via build flag `ENABLE_NFC=1`. Requires a PN532 NFC module.
-
-The ZapBox can act as an **NFC tag** so that smartphones can read the LNURLp payment link by simply tapping their phone on the PN532 module — no QR code scanning needed.
-
-The PN532 switches from Reader Mode (reading Bolt Cards) to **Target Mode** (emulating an ISO 14443-4 Type 4 Tag). The phone's NFC reader detects the ZapBox as a standard NDEF tag containing a `lightning:LNURL...` URI.
-
-**How it Works**:
-```
-Smartphone (Initiator)          ZapBox + PN532 (Target)
-─────────────────────           ──────────────────────────
-NFC field ON          ────►     PN532 Target Mode (passive, no field)
-                                IRQ fires → phone detected
-ISO 14443-4 activation ◄──►     RATS/ATS exchange (handled by PN532)
-SELECT NDEF App       ────►     Response: OK (9000)
-SELECT CC file        ────►     Response: Capability Container
-READ CC               ────►     Response: 15 bytes (NDEF file mapping)
-SELECT NDEF file      ────►     Response: OK (9000)
-READ BINARY (chunks)  ────►     Response: NDEF URI record
-                                  "lightning:LNURL1DP68GURN..."
-Phone opens wallet    ◄────     Payment flow starts automatically
-```
-
-**Key Features**:
-- **Zero interaction required** — customer just taps their phone
-- **Automatic NDEF update** — the LNURL payload updates whenever the QR code changes (product selection, channel switch)
-- **ISO 14443-4 / ISO-DEP** compliant — works with all modern Android and iOS NFC readers
-- **Coexists with Reader Mode** — bolt card reading (PN532) and card emulation run automatically in parallel; no configuration required
-- **No additional hardware** — uses the same PN532 module and wiring as Bolt Card reading
-- **Raw I2C communication** — bypasses the Adafruit library for precise timing control required by ISO-DEP frame deadlines
-
-**NDEF Payload**:
-```
-NDEF URI Record:
-  TNF:     0x01 (Well-known)
-  Type:    "U" (URI)
-  Prefix:  0x00 (no prefix)
-  Payload: "lightning:LNURL1DP68GURN8GHJ7V33..."
-```
-
-**Supported Phones**:
-- Android: Any phone with NFC (Phoenix, Zeus, etc.)
-- iOS: iPhone 7 and later (NFC tag reading via NDEF)
-
-> **Note on Wallet of Satoshi (WoS):** WoS's NFC feature is designed exclusively for Bolt Cards (NTAG424 with LNURLW authentication). It does not process plain LNURLp from NFC tags. WoS users should use the QR code. This is a WoS app limitation — a PN532-based emulation cannot replicate the NTAG424 AES key derivation required for Bolt Card authentication.
-
-**Implementation Notes**:
-- Uses PN532 `TgInitAsTarget` command with SAK=0x20 (ISO-DEP only)
-- IRQ-based phone detection — no I2C polling during idle wait
-- APDU exchange handles the full NFC Forum Type 4 Tag command set (SELECT, READ BINARY)
-- FreeRTOS task on Core 1, priority 5, 8192-byte stack
-- NDEF payload supports URIs up to ~900 bytes (sufficient for all LNURL encodings)
-
-**Why not NTAG21x (Type 2 Tag) emulation?**
-The PN532 cannot emulate an NTAG21x via its TgGetData/TgSetData interface because the `GET_VERSION` command (`0x60`) used by modern NFC readers to fingerprint NTAG chips conflicts with the Mifare `AUTH_A` command (`0x60`). The PN532 intercepts `0x60` internally in Type 2 Tag mode, sends a Mifare authentication response, and the phone — expecting a GET_VERSION reply — immediately deselects the tag (PN532 error `0x25`). ISO-DEP (Type 4 Tag, SAK=0x20) is the only PN532 target mode that provides transparent APDU data exchange.
+| | T-Display-S3 | Touch 3.5" | Headless ESP32 | ESP32-C3 |
+|---|---|---|---|---|
+| **Processor** | ESP32-S3 dual-core | ESP32-S3 dual-core | ESP32 dual-core | ESP32-C3 single-core RISC-V |
+| **Display** | LCD 170×320 | Touch 480×320 | — | — |
+| **Memory** | 16 MB / 8 MB PSRAM | 16 MB / 8 MB PSRAM | 4 MB / 512 KB | 4 MB / 400 KB |
+| **Relay channels** | 4 | 6 | **12** | 1 (+2 flex) |
+| **I/O Expander** (+8 channels) | ✅ | — | ✅ | — |
+| **Servo mode** | ✅ | ✅ per channel | ✅ | ✅ |
+| **Vending sensors** | 1 (light barrier) | 2 | 2 | 2 |
+| **NFC** (Bolt Card, phone tap) | ✅ | ✅ | ✅ | ✅ |
+| **Identity🫆Login** | LNURL-auth + NFC | LNURL-auth + NFC + PIN | NFC only | — |
+| **Mini-PoS** (amount entry) | — | ✅ | — | — |
+| **Battery gauge** | — | ✅ | — | — |
+| **BTC ticker** | ✅ | ✅ | — | — |
+| **Screensaver / Deep Sleep** | ✅ | ✅ | ✅ | ✅ |
+| **Power draw** | ~150–250 mA | ~200–350 mA | ~100–150 mA | ~80–120 mA |
+| **Firmware suffix** | *(none)* | `t` | `h` | `c` |
 
 ---
 
-#### NFC Tag 2 / NT3H2111 (LNURLp via smartphone tap)
+## Quick Start
 
-> **Optional feature** — activated via build flag `ENABLE_NFC=1`. Requires an NT3H2111 NFC Tag 2 module (I²C address `0x55`).
+1. **Build the hardware** — follow the [electrical layout](docs/hardware-assets.md#electrical-layouts) for your variant
+2. **Set up LNbits** — you need a server with the [bitcoinswitch](https://github.com/lnbits/bitcoinswitch) or [zapbox](https://github.com/AxelHamburch/zapbox_extension) extension, and a switch entry per channel
+3. **Flash and configure** — open the Web Installer in Chrome or Edge, flash the firmware, then enter WiFi and LNbits settings over the same serial connection
 
-The ZapBox writes the current LNURLp as an NDEF record to the **NT3H2111 NFC tag chip** via I²C. When a smartphone approaches, the phone's NFC field powers the chip directly — the ESP32 is not involved during the tap. The phone reads the NDEF LNURL and opens it in a compatible Lightning wallet.
+| Variant | Web Installer |
+|---------|---------------|
+| T-Display-S3 | [installer.zapbox.space](https://installer.zapbox.space/) |
+| Touch 3.5" | [installer.zapbox.space/touch3.5/](https://installer.zapbox.space/touch3.5/) |
+| Headless ESP32 | [installer.zapbox.space/headless/](https://installer.zapbox.space/headless/) |
+| ESP32-C3 | [installer.zapbox.space/c3/](https://installer.zapbox.space/c3/) |
 
-Unlike the PN532-based card emulation, the NT3H2111 is a **real NTAG chip**. It passes the `GET_VERSION` fingerprint check that modern phones perform, giving maximum wallet compatibility.
-
-**How it Works**:
-```
-ZapBox (ESP32)                   NT3H2111             Smartphone
-──────────────                   ────────             ──────────
-LNURL changes     ──I²C──►       NDEF updated
-(product switch)                 (chip stores data)
-                                                      NFC field ON
-                                 ◄── powered by phone field ──
-                                 NDEF URI record ──────────►
-                                                      wallet opens
-```
-
-**Key Features**:
-- **True NTAG chip** — passes `GET_VERSION` fingerprint; no emulation artifacts, broad wallet compatibility
-- **ESP32 not involved during tap** — once programmed, the chip answers the phone autonomously
-- **Automatic NDEF update** — LNURL is rewritten via I²C whenever the active product or channel changes
-- **No configuration required** — auto-detected at startup via I²C scan; silently skipped if not present
-- **Coexists with PN532** — both modules run independently in parallel; no mode switching needed
-- **FD pin** — the INT/FD pin is permanently wired to GPIO 3 (T-Display-S3), GPIO 34 (headless ESP32 Dev), or GPIO 46 (JC3248W535C Touch 3.5"); active LOW when a phone's NFC field is detected, pauses PN532 RF automatically — no configuration needed
-- **NFC IRQ (PN532)** — connected to GPIO 1 (T-Display-S3), GPIO 4 (ESP32 Dev), or GPIO 9 (JC3248W535C Touch 3.5")
-
-**Wiring**:
-```
-NT3H2111 Module    →    T-Display-S3 / ESP32 Dev
-─────────────────────────────────────────────────────────────────
-VCC (3.3V)         →    3.3V
-GND                →    GND
-SDA                →    GPIO 18 (shared I²C bus)
-SCL                →    GPIO 17 (shared I²C bus)
-FD / INT           →    GPIO 3  (T-Display-S3)              ← optional
-                   →    GPIO 34 (ESP32 Dev)                 ← optional
-                   →    GPIO 46 (JC3248W535C Touch 3.5")    ← optional
-```
-
-**Supported Wallets**:
-- Phoenix Wallet (Android/iOS) — reads LNURL via NFC NDEF tap
-- Any wallet supporting LNURL-pay via NFC NDEF URI records
-
-**Implementation Notes**:
-- `nfcNT3H2111Init()` scans the I²C bus at startup and writes the initial NDEF record
-- `nfcNT3H2111UpdateIfChanged()` compares the stored LNURL and rewrites only on change (minimises I²C traffic)
-- I²C access protected by the shared bus mutex (same bus as PN532 and PCF8574)
-- I²C address: `0x55` (fixed NT3H2111 default)
+**Entering config mode on an already-flashed device:** hold the BOOT button for 5 seconds.
 
 ---
-
-**Hardware Test Mode (`ENABLE_NFC_TEST=1`)**:
-
-To verify the hardware without a running bitcoinswitch_extension server:
-
-1. Set both flags: `-DENABLE_NFC=1` and `-DENABLE_NFC_TEST=1`
-2. Flash and open Serial Monitor (115200 baud)
-3. Hold a Bolt Card near the PN532 reader
-4. The display shows **"NFC OK!"** and a preview of the LNURLW
-5. The full LNURLW string is printed to Serial — no WebSocket connection required
-
-This allows testing the complete NFC read path (PN532 init → NTAG424 read → LNURLW decode) independently of the payment backend.
-
----
-
-#### Screensaver & Deep Sleep Function
-Automatic power-saving modes that activate after a configurable timeout:
-
-**Power Consumption Comparison**:
-
-| Mode | Backlight | Display | CPU | RAM | WiFi | WebSocket | Payments | Power | Savings | Wake-up |
-|------|-----------|---------|-----|-----|------|-----------|----------|-------|---------|---------|
-| **Normal** | ON | Active | Running | Active | Active | Active | ✅ Yes | ~150-250mA | 0% | - |
-| **Screensaver** | OFF | Active | Running | Active | Active | Active | ✅ Yes | ~40-60mA | ~80-90% | Instant |
-| **Light Sleep** | OFF | Active | Paused | Retained | Reconnect | Reconnect | ❌ No* | ~0.8-2mA | ~99% | ~3-5s |
-| **Deep Sleep (Freeze)** | OFF | Active | OFF | RTC only | Reconnect | Reconnect | ❌ No* | ~0.01-0.15mA | ~99.9% | ~3-5s |
-
-*Deep Sleep / Light Sleep requires wake-up (button press) and WiFi reconnection before payments can be received
-
-**Wake-up Methods**:
-- **Screensaver**: Touch display (Touch version) or press any button → Instant wake-up
-- **Light Sleep**: Press BOOT, HELP or LED button → Device restarts and reconnects (~3-5s)
-- **Deep Sleep (Freeze)**: Press BOOT or HELP button only (touch and LED button disabled for maximum power savings)
-
-**Mode Recommendations**:
-
-- **Screensaver (backlight off)**: ⭐ **Best for payment terminals** - Instant wake-up, 80-90% power saving, payments always work
-  - Use when device should respond immediately to payments
-  - Good for public terminals with frequent use
-  - Battery operation: ~7-10 days with 10000mAh battery
-  
-- **Light Sleep**: ⭐ **Best for devices with external LED button** - 99% power saving, all buttons can wake the device
-  - LED button (GPIO 44) can wake the device — not possible with freeze mode
-  - WiFi reconnects after wake-up (~3-5 seconds)
-  - NO payments received during sleep
-  - Battery operation: months with 10000mAh battery
-
-- **Deep Sleep (freeze)**: ⭐ **Best for long-term installations** - 99.9% power saving, maximum battery life
-  - WiFi reconnects after wake-up (~3-5 seconds)
-  - NO payments received during sleep
-  - Press button to wake and device will restart
-  - ⚠️ LED button (GPIO 44) **cannot** wake from freeze — GPIO 44 is not RTC-capable
-  - Battery operation: 7.5-114 years(!) with 10000mAh battery
-  - Ideal for devices used rarely or for maximum energy savings
-
-**Configuration**:
-
-- **Screensaver Options**:
-  - **OFF**: No power saving (default)
-  - **Backlight Off**: Display backlight turns off - recommended option
-
-- **Deep Sleep Options**:
-  - **OFF**: No deep sleep (default)
-  - **Freeze**: Deep sleep mode - Maximum power saving, NO payments during sleep
-  - **Light Sleep**: Light sleep mode - All buttons can wake, LED button supported
-
-- **Combined Mode**: Screensaver and Deep Sleep can be used together — screensaver activates first (backlight off, payments still work), then deep sleep kicks in later for maximum power saving
-- **Activation Timers**: Separate configurable timeouts for screensaver (default 5 min) and deep sleep (default 30 min), range 1-120 minutes each
-- **Wake-up**: Press BOOT button or IO14 button to wake from sleep (Light Sleep also supports LED button)
-- **Payment Processing**: Only Screensaver mode can receive payments during power saving
-
-**Technical Notes**:
-- **Screensaver - Backlight Power**: The T-Display-S3's backlight consumes most display power (~150-200mA). Turning it off saves 80-90% while keeping the display controller active for instant wake-up. CPU continues running, payments work normally.
-- **Light Sleep - CPU Paused**: CPU is paused but RAM is retained. Any GPIO can wake the device, including GPIO 44 (LED button). Device restarts after wake-up for clean reinitialization.
-- **Deep Sleep - Complete Shutdown**: Only RTC memory active, device performs full restart on wake-up (~3-5s), requires complete WiFi reconnection. NO payment processing during sleep. Maximum battery life. Only RTC-capable GPIOs (0, 14) can wake the device.
-
-**Use Cases**: Energy saving for installations, battery operation, reducing device heat, extending display lifespan in always-on scenarios
-
-## Web Installer
-
-The ZapBox includes a browser-based Web Installer for easy firmware updates and configuration:
-
-1. **Flash Firmware**: Select version and flash via USB (Chrome/Edge required)
-2. **Configure Device**: Set WiFi, LNbits connection, display settings, and advanced features
-3. **Serial Console**: Debug and monitor device in real-time
-4. **Automatic Config Mode Detection**: Press BOOT button for 5 seconds to enter config mode
-
-Access the installer: [https://installer.zapbox.space/](https://installer.zapbox.space/)<br>
-Access the headless installer: [https://installer.zapbox.space/headless/](https://installer.zapbox.space/headless/)
-
-## PlatformIO Project
-
-This project is configured for PlatformIO and based on the Arduino framework for ESP32-S3.
-
-### Required Libraries
-
-- ArduinoJson
-- OneButton
-- WebSockets
-- TFT_eSPI
-- QRCode
-
-### Project Structure
-
-```
-ZapBox/
-├── src/                           # Firmware source code (C++)
-│   ├── main.cpp                   # Entry point and main event loop
-│   ├── API.cpp/h                  # LNbits API & Bitcoin ticker integration
-│   ├── Display.cpp/h              # Display rendering & theme management
-│   ├── GlobalState.cpp/h          # Global state & configuration
-│   ├── Input.cpp/h                # Button & touch input handling
-│   ├── Navigation.cpp/h           # Screen navigation logic
-│   ├── Network.cpp/h              # WiFi & WebSocket connectivity
-│   ├── Payment.cpp/h              # Payment processing & LNURL encoding
-│   ├── UI.cpp/h                   # UI components & rendering
-│   ├── NFCPN532.cpp/h             # PN532 NFC reader driver
-│   ├── NFCBoltCard.cpp/h          # Bolt Card LNURLW authentication
-│   ├── NFCCardEmulation.cpp/h     # NFC Card Emulation (PN532 target mode)
-│   ├── NFCNT3H2111.cpp/h          # NT3H2111 NFC Tag 2 driver (passive phone tap)
-│   ├── IOExpander.h               # PCF8574 I/O-Expander driver (virtual pins 200–207)
-│   ├── I2CBus.h                   # Shared I²C bus mutex (PN532 + NT3H2111 + PCF8574)
-│   ├── ServoControl.cpp/h         # Servo motor control
-│   ├── TouchCST816S.cpp/h         # Touch display driver
-│   ├── SerialConfig.cpp/h         # Serial configuration interface
-│   └── PinConfig.h                # Hardware pin definitions
-├── include/                       # Additional headers
-│   └── Log.h                      # Logging utilities
-├── lib/                           # External library configs
-│   └── TFT_eSPI_Setup/            # TFT_eSPI display driver setup
-├── installer/                     # Web-based installer & configurator
-│   ├── index.html                 # Configuration UI
-│   ├── extensions.json            # Extension manifest
-│   └── firmware/                  # Firmware binaries & manifests
-├── assets/
-│   ├── QA/                        # Quality assurance protocols
-│   │   ├── initial-review-qa945642-*.md  # Initial review templates (DE/EN)
-│   │   └── initial-review-qa945642-*.pdf # Printable PDFs
-│   ├── electric/                  # Electrical schematics (Inkscape)
-│   │   └── e*.* / versions/       # Schematic files by version
-│   ├── housing/                   # 3D models & housing (FreeCAD)
-│   │   ├── b*.*/versions/         # Housing files by version
-│   │   └── fonts/                 # Label fonts
-│   ├── bolt-cards/                # Bolt Card designs & documentation
-│   ├── operating-instructions/    # User manuals (DE/EN)
-│   │   ├── *.md                   # Manual markdown files
-│   │   └── archive/               # Older versions
-│   ├── white-paper/               # Technical documentation
-│   └── *.png / *.jpg              # Reference images & diagrams
-├── platformio.ini                 # Build configuration
-├── partitions_4mb.csv             # ESP32 partition table (4MB)
-├── partitions_16mb.csv            # ESP32 partition table (16MB)
-├── FIRMWARE.md                    # Firmware development guide
-├── LICENSE                        # Open source license
-├── README.md                      # This file
-└── .gitignore                     # Git ignore rules
-```
-
-## Compatibility
-
-- **LNbits**: Compatible with v1.4.x or higher
-- **Bitcoin Switch Extension**: Compatible with v1.2.1 or higher
-- **ZapBox Extension**: NFC Bolt Card functionality
-- **ESP32-S3**: Optimized for LilyGo T-Display-S3
-- **ESP32 classic**: A standard ESP32 can also be used. For installation in the headless case, an unsoldered 30-pin board is recommended.
-
-
-## Versioning
-
-Software versioning, see Releases.
-Electrical design and housing variants, see table.
-
-### Housing / 3D modeling (FreeCAD)
-
-| Version | Type | Comment |
-|---------|------|---------|
-| b926837 | Compact | Prototyp, uses e926834 |
-| b928260 | Compact | Prototyp 2, uses e928304 |
-| b928555 | Compact | Sample device, uses e928556 |
-| b930595 | Compact | Optimization, separate label |
-| b931760 | Duo | Prototyp Duo with two front panels, 90 and 35 degrees  |
-| b932506 | Compact | Add adapter system, 90-degree front, change USB-C position  |
-| b932595 | Duo & Quattro | Prototyp Quattro and update Duo, 90 and 35 degrees front |
-| b932788 | Illuminated Sign | Prototyp ZapBox LED sign for demonstration and testing purposes |
-| b935750 | Headless | Prototyp Headless - ZapBox without display |
-| b937454 | USB-Power-Hub | Prototyp USB-Power-Hub - Just for voltage distribution |
-| b939002 | Compact | Compact 35° now with NFC cap |
-| b939704 | ZapOMat | ZapOMat No.1 |
-| b940298 | Duo | Update & NFC lid |
-| b943400 | Headless | Headless with NFC |
-| b943614 | Servo | The first one with servo control |
-| b944177 | Headless | Mounting plate with snap-fit connection |
-| b944666 | Headless Servo | First powerfull Headless Servo |
-| b945188 | ZapOMat | Add mounting plate and wide-range voltage input | 
-| b946303 | Servo | Add mounting plate and tweak it a bit |
-| b946400 | Compact | Add mounting plate, 90° NFC and option Ext. |
-| b948772 | Headless Servo | Add NFC Tag 2 module |
-| b948929 | Headless | Add NFC Tag 2 module |
-| b949639 | Servo | Add NFC Tag 2 module | 
-| b950530 | Compact | Add NFC Tag 2 module | 
-| b950711 | Touch 3.5 |ESP32-S Touch3.5 (JC3248W535C) - No.1 - Prototyp |
-| b955706 | ZapSave | ZapSave – Sample Box |
-| b956540 | Touch3.5-FOUR | ZapBox Touch 3.5 with 4 channel |
-| b957183 | Touch3.5-ONE | ZapBox Touch 3.5 with 1 channel |
-
--> Find all versions here: [./assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
-
-### Electrical layout / circuit diagram (Inkscape)  
-
-| Version | Type | Comment |
-|---------|------|---------|
-| e926834 | Compact | Prototype |
-| e928304 | Compact | Prototype 2 |
-| e928556 | Compact | Sample device |
-| e931557 | Duo | First Duo |
-| e932547 | Quattro | First Quattro |
-| e932714 | Duo | Duo update |
-| e935776 | Headless | First Headless |
-| e932547 | Quattro | Add update button cable & IR light barrier |
-| e937540 | Duo | Duo Update |
-| e937544 | USB-Power-Hub | First USB-Power-Hub |
-| e938714 | ZapOMat | Firest ZapOMat design |
-| e938889 | Headless | Update Headless with ZapBox picture |
-| e938897 | Compact | Update Compact with ZapBox picture |
-| e939705 | ZapOMat | ZapOMat No.1 | 
-| e940540 | Headless | Update | 
-| e943674 | Servo | Start the Servo Story | 
-| e944644 | Headless Servo | First powerfull Headless Servo |
-| e945370 | ZapOMat | Update with wide-range voltage input | 
-| e946465 | Servo | Update with wide-range voltage input and NFC-plug | 
-| e947689 | Compact-Ext | Special version with external guided switching contact | 
-| e948960 | Headless Servo |  Add NFC Tag 2 module |
-| e948971 | Headless |  Add NFC Tag 2 module |
-| e949393 | esp32-c3-21-1 |  Add special Hans Wurst version |
-| e949674 | Servo | Add NFC Tag 2 module & minor redesign | 
-| e950677 | Compact | Add NFC Tag 2 module | 
-| e950939 | Touch3.5 | ESP32-S Touch3.5 (JC3248W535C) - Prototyp | 
-| e955640 | ZapSave | ZapSave – Sample Connection |
-| e957556 | Touch3.5-FOUR | ZapBox Touch 3.5 with 4 channel |
-| e957575 | Touch3.5-ONE | ZapBox Touch 3.5 with 1 channel |
-
--> Find all versions here: [./assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
 ## Documentation
 
-### Operating Instructions
+### Hardware variants — pin maps, channels, board-specific features
 
-Current user manuals are available in Markdown format for online viewing and as PDFs for download.
+- 🖥️ **[T-Display-S3](docs/t-display-s3.md)** — GPIO map, 4 channels, servo mode, ambient lighting, light barrier
+- 📱 **[Touch 3.5"](docs/touch-3.5.md)** — GPIO map, 6 flex channels, Mini-PoS, battery gauge, vending sensors
+- 💡 **[Headless ESP32](docs/headless-esp32.md)** — GPIO map, 12 channels, LED diagnostics, vending sensors
+- ⚡ **[ESP32-C3](docs/esp32-c3.md)** — GPIO map, relay + flex channels
 
-| | Markdown | PDF |
-|---|----------|-----|
-| **Compact** | [de.md](assets/operating-instructions/Compact-oi-de.md) / [en.md](assets/operating-instructions/Compact-oi-en.md) | [de.pdf](assets/operating-instructions/Compact-oi-de.pdf) / [en.pdf](assets/operating-instructions/Compact-oi-en.pdf) |
-| **Duo** | [de.md](assets/operating-instructions/Duo-oi-de.md) / [en.md](assets/operating-instructions/Duo-oi-en.md) | [de.pdf](assets/operating-instructions/Duo-oi-de.pdf) / [en.pdf](assets/operating-instructions/Duo-oi-en.pdf) |
-| **Quattro** | [de.md](assets/operating-instructions/Quattro-oi-de.md) / [en.md](assets/operating-instructions/Quattro-oi-en.md) | [de.pdf](assets/operating-instructions/Quattro-oi-de.pdf) / [en.pdf](assets/operating-instructions/Quattro-oi-en.pdf) |
-| **ZapOMat** | [de.md](assets/operating-instructions/ZapOMat-oi-de.md) / [en.md](assets/operating-instructions/ZapOMat-oi-en.md) | [de.pdf](assets/operating-instructions/ZapOMat-oi-de.pdf) / [en.pdf](assets/operating-instructions/ZapOMat-oi-en.pdf) |
-| **Servo** | [de.md](assets/operating-instructions/Servo-oi-de.md) / [en.md](assets/operating-instructions/Servo-oi-en.md) | [de.pdf](assets/operating-instructions/Servo-oi-de.pdf) / [en.pdf](assets/operating-instructions/Servo-oi-en.pdf) |
-| **Headless** | [de.md](assets/operating-instructions/Headless-oi-de.md) / [en.md](assets/operating-instructions/Headless-oi-en.md) | [de.pdf](assets/operating-instructions/Headless-oi-de.pdf) / [en.pdf](assets/operating-instructions/Headless-oi-en.pdf) |
-| **Headless Servo** | [de.md](assets/operating-instructions/Headless-Servo-oi944935-de.md) / [en.md](assets/operating-instructions/Headless-Servo-oi944935-en.md) | [de.pdf](assets/operating-instructions/Headless-Servo-oi944935-de.pdf) / [en.pdf](assets/operating-instructions/Headless-Servo-oi944935-en.pdf) |
+### Features across all variants
 
-For the archive and development, see [here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions).
+- 🔧 **[Common Features](docs/common-features.md)** — special modes, BTC ticker, threshold mode, I/O expander, LED button, screensaver & deep sleep, startup & error diagnostics
+- 📡 **[NFC](docs/nfc.md)** — Bolt Card payments, card emulation, NT3H2111 phone tap
+- 🫆 **[Identity🫆Login](docs/identity.md)** — LNURL-auth and NTAG 424 DNA login without payment
 
-### Electrical Layout
+### Hardware & documents
 
-See the complete wiring diagram:
+- 🛠️ **[Housings, Layouts & Manuals](docs/hardware-assets.md)** — 3D models, wiring diagrams, operating instructions, QA protocols
+- 📦 **[Firmware Release Process](FIRMWARE.md)** — how releases are built
 
-- [E-Layout-ZapBox-Compact.png](assets/electric/E-Layout-ZapBox-Compact.png)
-- [E-Layout-ZapBox-Compact-Ext.png](assets/electric/E-Layout-ZapBox-Compact-Ext.png)
-- [E-Layout-ZapBox-Duo.png](assets/electric/E-Layout-ZapBox-Duo.png)
-- [E-Layout-ZapBox-Quattro.png](assets/electric/E-Layout-ZapBox-Quattro.png)
-- [E-Layout-ZapBox-ZapOMat.png](assets/electric/E-Layout-ZapBox-ZapOMat.png)
-- [E-Layout-ZapBox-Servo.png](assets/electric/E-Layout-ZapBox-Servo.png)
-- [E-Layout-ZapBox-Touch3.5-ONE.webp](assets/electric/E-Layout-ZapBox-Touch3.5-ONE.webp)
-- [E-Layout-ZapBox-Touch3.5-FOUR.webp](assets/electric/E-Layout-ZapBox-Touch3.5-FOUR.webp)
-- [E-Layout-ZapBox-Headless.png](assets/electric/E-Layout-ZapBox-Headless.png)
-- [E-Layout-ZapBox-Headless-Servo.png](assets/electric/E-Layout-ZapBox-Headless-Servo.png)
-- [E-Layout-ZapBox-esp32-c3-21-1.png](assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png)
+---
 
+## Development
 
-Miscellaneous:
+PlatformIO project, Arduino framework, ESP32.
 
-- [E-Layout-ZapBox-ZapSave.png](assets/electric/E-Layout-ZapBox-ZapSave.png)
-- [E-Layout-ZapBox-USB-Power-Hub.png](assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
+```bash
+pio run -e lilygo-t-display-s3    # T-Display-S3
+pio run -e Touch3_5               # Touch 3.5"
+pio run -e esp32dev               # Headless
+pio run -e esp32-c3-21-1          # ESP32-C3
+```
 
-### Quality Assurance
+**Libraries:** ArduinoJson · OneButton · WebSockets · TFT_eSPI · QRCode
 
-Templates for quality assurance protocols to ensure ZapBox quality.
+<details>
+<summary><strong>Project structure</strong></summary>
 
-- [Initial Review (German)](assets/QA/initial-review-de.md) — [PDF](assets/QA/initial-review-de.pdf)
-- [Initial Review (English)](assets/QA/initial-review-en.md) — [PDF](assets/QA/initial-review-en.pdf)
+```
+ZapBox/
+├── src/                           # Firmware source (C++)
+│   ├── main.cpp                   # Entry point and main event loop
+│   ├── API.cpp/h                  # LNbits API & Bitcoin ticker
+│   ├── Battery.cpp/h              # Battery gauge (Touch 3.5")
+│   ├── Display.cpp/h              # Display rendering (T-Display-S3)
+│   ├── DisplayTouch.cpp           # Display rendering (Touch 3.5")
+│   ├── DisplayStubs.cpp           # No-op display layer (headless)
+│   ├── GlobalState.cpp/h          # Global state & configuration
+│   ├── Input.cpp/h                # Button & touch input
+│   ├── Navigation.cpp/h           # Screen navigation
+│   ├── Network.cpp/h              # WiFi & WebSocket
+│   ├── Payment.cpp/h              # Payment processing & LNURL encoding
+│   ├── UI.cpp/h                   # UI components
+│   ├── NFCPN532.cpp/h             # PN532 NFC reader driver
+│   ├── NFCBoltCard.cpp/h          # Bolt Card LNURLW authentication
+│   ├── NFCCardEmulation.cpp/h     # PN532 target mode
+│   ├── NFCNT3H2111.cpp/h          # NT3H2111 NFC Tag 2 driver
+│   ├── IOExpander.h               # PCF8574 driver (virtual pins 200–207)
+│   ├── I2CBus.h                   # Shared I²C bus mutex
+│   ├── ServoControl.cpp/h         # Servo motor control
+│   ├── TouchCST816S.cpp/h         # Touch driver (T-Display-S3)
+│   ├── TouchAXS15231B.cpp/h       # Touch driver (Touch 3.5")
+│   ├── SerialConfig.cpp/h         # Serial configuration interface
+│   └── PinConfig.h                # Hardware pin definitions (all boards)
+├── docs/                          # Documentation (you are here)
+├── installer/                     # Web installer & firmware binaries
+├── assets/                        # Housings, layouts, manuals, QA
+└── platformio.ini                 # Build configuration
+```
 
-For the archive and development, [see here](https://github.com/AxelHamburch/ZapBox/tree/main/assets/QA).
+</details>
+
+---
+
+## Compatibility
+
+- **LNbits**: v1.4.x or higher
+- **Bitcoin Switch Extension**: v1.2.1 or higher
+- **ZapBox Extension**: required for NFC Bolt Card payments and Mini-PoS
+- **ESP32 classic**: a standard ESP32 works for the headless build — an **unsoldered 30-pin board** is recommended for the headless housing
+
+Software versioning follows the [Releases](https://github.com/AxelHamburch/ZapBox/releases). Housings (`b…`) and electrical layouts (`e…`) are versioned by Bitcoin block height — see [Hardware & Documents](docs/hardware-assets.md).
+
+---
 
 ## Acknowledgement
 
@@ -1531,7 +201,9 @@ This project is based on Daniel's [SATOFFEE](https://github.com/danielcharrua/sa
 
 A big thank you goes to [Ben Arc](https://njump.to/nprofile1qqsvrlrhw86l5sv06wkyjgs6rrcekskvk7nx8k50qn9m7mqgeqxjpvgpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtctcf224) and the entire LNbits team for their incredible work.
 
-Parts of this project were developed with the assistance of **GitHub Copilot** powered by **Claude Sonnet** (Anthropic) as an AI coding assistant.
+Parts of this project were developed with the assistance of AI coding assistants (**GitHub Copilot** and **Claude**).
+
+---
 
 ## Support
 
@@ -1551,4 +223,4 @@ axelhamburch@ereignishorizont.xyz
 
 ---
 
-**Lightning ZapBox** - Compact, simple, Bitcoin-powered! ⚡
+**Lightning ZapBox** — Compact, simple, Bitcoin-powered! ⚡
