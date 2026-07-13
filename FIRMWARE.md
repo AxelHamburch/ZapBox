@@ -411,6 +411,8 @@ installer/firmware/
 - Channels renumbered: CH01=6, CH02=7, CH03=5, CH04=14, CH05=15, CH06=16
 - Fixed: Identity🫆Login pin followed the old GPIO 5 default instead of the board's actual CH01 pin
 - Fixed: long NFC-Auth error messages now word-wrap instead of overflowing the screen edges
+- **E-Layout diagrams updated** for the new CH01=GPIO6 pin map: `E-Layout-ZapBox-Touch3.5-e950939` (prototype), `E-Layout-ZapBox-Touch3.5-FOUR-e957556`, `E-Layout-ZapBox-Touch3.5-ONE-e957575`
+- **New enclosure/3D-print files**: `b956540-Touch3.5-FOUR` and `b957183-Touch3.5-ONE`, including a battery holder for the LiPo connector
 
 ### 📦 Standard (v957859) + 💡 Headless (v957859h) + 🖥️ Touch 3.5" (v957859t)
 - Fixed intermittent "i2cRead Error -1" NTAG 424 DNA reads: NDEF writes from the main loop could interleave a PN532 transaction mid-frame on the shared I²C bus — now serialized with the existing bus mutex
