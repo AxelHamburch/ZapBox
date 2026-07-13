@@ -201,12 +201,14 @@ Device String (switchStr)
 | 17 | I2C SCL | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
 | 18 | I2C SDA | I2C | - | Shared: PN532 NFC Reader + NT3H2111 + PCF8574 |
 | **Flex Channels** |
-| 5 | CH01 | Output/Input | - | Default: relay output — Special Mode applies to CH01 only |
-| 6 | CH02 | Output/Input | - | Off (default), Relay, Servo 180°/360° |
-| 7 | CH03 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
-| 14 | CH04 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
-| 15 | CH05 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
-| 16 | CH06 | Output/Input | - | Off (default), Relay, Servo 180°/360°, Sensor, Ambient Light |
+| 6 | CH01 | Output | - | Default: relay output — Special Mode applies to CH01 only |
+| 7 | CH02 | Output or Input | Pull-up (sensor) | Off (default), Relay, Servo 180°/360°, **Sensor** (stop / blockage / level), Ambient Light |
+| 5 | CH03 | Output / Input / analog | Pull-up (sensor) | Same as CH02. 🔋 **While CH03 is off, this pin measures the battery** — see [Battery Monitoring](#battery-monitoring-touch-35) |
+| 14 | CH04 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
+| 15 | CH05 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
+| 16 | CH06 | Output | - | Off (default), Relay, Servo 180°/360°, Ambient Light |
+| **Battery (JST connector)** |
+| 5 | Battery voltage (ADC1_CH4) | Input (analog) | - | Voltage divider to the LiPo rail. **Same pin as CH03 above** — it can be one or the other, never both. See below. |
 | **LED Button** |
 | 43 | LED Button (LED) / **TX** | Output | HIGH=ON | Board pin labeled **TX** — External illuminated button LED (3.3V) |
 | 44 | LED Button (SW) / **RX** | Input | Pull-up | Board pin labeled **RX** — External button switch (active LOW); also Light-Sleep wake-up source |
@@ -231,6 +233,37 @@ Device String (switchStr)
 - PN532 NFC Reader: `0x24`
 - NT3H2111 NFC Tag 2: `0x55`
 - PCF8574 I/O-Expander: `0x20`
+
+#### Battery Monitoring (Touch 3.5")
+
+The JC3248W535C has a **JST connector for a single-cell LiPo** with an on-board charging circuit. The battery rail is wired to **GPIO 5** through a divider (33 kΩ / 100 kΩ, per the vendor schematic), so the pack voltage can be read with the ADC. GPIO 5 is **ADC1_CH4** — and only ADC1 works while WiFi is active, since ADC2 (GPIO 14/15) is claimed by the WiFi driver.
+
+The charge level (0–100 %) is shown in the **Mini-PoS entry screen**, in both orientations: top-right of the screen in portrait, and top-right of the left panel (next to the numpad divider) in landscape.
+
+**GPIO 5 has two mutually exclusive roles:**
+
+| GPIO 5 used as | Consequence |
+|----------------|-------------|
+| **Battery ADC** (CH03 = `off`, the default) | Battery charge level is measured and displayed. |
+| **Flex channel CH03** (relay / servo / sensor / ambient) | The channel switches as configured; the battery display disappears, because a driven output overrides the high-impedance divider. |
+
+No configuration switch is needed — the firmware derives this from the CH03 mode.
+
+**Calibration.** The reading is *not* the textbook divider ratio. The divider has a ~25 kΩ source impedance and the module has no bypass capacitor at the pin, so the ADC's sample-and-hold pulls the node down while measuring. The resulting error is linear and stable, so it is calibrated out in software (`Battery.cpp`) rather than fixed in hardware:
+
+```
+V_BAT[mV] = 1.533 × ADC[mV] + 356
+```
+
+Fitted over two full discharge runs (3000 mAh and 1000 mAh cells) across the whole usable range, 3.47–4.13 V; every point lands within ±40 mV.
+
+The percentage curve maps the voltage **under load** (display + WiFi, ~250–300 mA) — that is the only condition in which the device ever measures itself, and a loaded cell sits well below its resting voltage. 4.0 V under load is a nearly full cell.
+
+**No battery / USB.** Whether USB is attached cannot be detected: the divider hangs on the charger's BAT node, so with a cell connected the pin shows the cell voltage either way. A *railed* reading (~3107 mV) does mean something though — with no cell to hold the node down, the charger pushes it past the ADC's full scale. That is used to detect a missing battery (or a battery switch left off), and the gauge then shows nothing rather than inventing a number.
+
+> ⚠️ **Breaking change for existing Touch 3.5" devices.** The primary channel moved from GPIO 5 to GPIO 6 to free GPIO 5 for the battery. Affected devices must (1) re-wire the relay to GPIO 6 and (2) change the pin from `5` to `6` in the LNbits switch entry. A firmware-only update leaves the device silent — payments arrive, but nothing switches.
+
+Full analysis, measurements and calibration data: [temp/PlanungBatterie.md](temp/PlanungBatterie.md).
 
 #### ESP32 Dev Module GPIO Mapping (ENABLE_DISPLAY=0 - Headless)
 
@@ -278,7 +311,7 @@ Device String (switchStr)
 | NFC Support | Yes (GPIO 1, 17, 18) | Yes (GPIO 9, 17, 18) | Yes (GPIO 4, 17, 18) | Yes (GPIO 10, 20, 21) |
 | Power Consumption | ~150-250mA | ~200-350mA | ~100-150mA | ~80-120mA (single-core) |
 | Flash Memory | 16MB | 16MB | 4MB | 4MB |
-| Relay Channels | 4 (GPIO 12,13,10,11) | 6 flex channels (GPIO 5,6,7,14,15,16) | 12 extended channels | 4 base channels |
+| Relay Channels | 4 (GPIO 12,13,10,11) | 6 flex channels (GPIO 6,7,5,14,15,16) | 12 extended channels | 4 base channels |
 | Configuration | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial | Web Installer + Serial |
 | Typical Use Case | General retail vending | Large kiosk terminals | Embedded installations | Space-critical, low-power apps |
 
@@ -739,7 +772,7 @@ Configuration is done via the [Web Installer](installer/index.html) with browser
 #### Mini-PoS Mode (Touch 3.5" only)
 **Available on JC3248W535C Touch 3.5" — requires the [zapbox_extension](https://github.com/AxelHamburch/zapbox_extension) v2.3.0+ on the LNbits server**
 
-Turns the ZapBox into a small point-of-sale terminal: instead of a fixed QR code, the customer-facing display shows an **amount entry screen**. The operator types an amount, presses **INVOICE**, and the ZapBox requests a Lightning invoice from the LNbits server and shows it as a QR code. After payment, **CH01 (GPIO 5)** switches — like in single-channel mode.
+Turns the ZapBox into a small point-of-sale terminal: instead of a fixed QR code, the customer-facing display shows an **amount entry screen**. The operator types an amount, presses **INVOICE**, and the ZapBox requests a Lightning invoice from the LNbits server and shows it as a QR code. After payment, **CH01 (GPIO 6)** switches — like in single-channel mode.
 
 **Payment flow:**
 1. Enter the amount on the touch numpad (e.g. `5` → automatically normalized to `5.00 EUR`)
@@ -749,7 +782,7 @@ Turns the ZapBox into a small point-of-sale terminal: instead of a fixed QR code
    - **scanning the QR code** with any Lightning wallet
    - **tapping their phone** on the NFC Tag 2 (NT3H2111) — the tag carries the invoice
    - **tapping a Bolt Card** on the PN532 reader — the card pays the pending invoice (PIN protection supported)
-5. On settlement the server pushes the trigger over WebSocket: CH01 (GPIO 5) switches with the duration configured for pin 5 in LNbits (fallback: 3000 ms), the display shows **PAID** for 3 seconds, then returns to the empty entry screen
+5. On settlement the server pushes the trigger over WebSocket: CH01 (GPIO 6) switches with the duration configured for pin 6 in LNbits (fallback: 3000 ms), the display shows **PAID** for 3 seconds, then returns to the empty entry screen
 
 **Entry screen:**
 - Numpad with decimal point (the `.` key is disabled when *Decimal separator: NO* is configured)
@@ -782,13 +815,26 @@ The *Device settings string* must be configured as usual — it identifies the L
 #### Multi-Channel-Control Mode (Touch 3.5")
 **Available on JC3248W535C Touch 3.5" — up to 6 independent channels**
 
-The Touch 3.5" drives **six freely configurable channels** on GPIO 5, 6, 7, 14, 15 and 16 (CH01–CH06). Each channel's function is set independently in the Web Installer, so one device can mix dispensers, relays, sensors and ambient lighting:
+The Touch 3.5" drives **six freely configurable channels** on GPIO 6, 7, 5, 14, 15 and 16 (CH01–CH06). Each channel's function is set independently in the Web Installer, so one device can mix dispensers, relays and ambient lighting:
 
 | Channel | GPIO | Selectable functions |
 |---------|------|----------------------|
-| CH01 | 5 | Relay *(default)* · Servo 180° · Servo 360° — primary / Special-Mode channel |
-| CH02 | 6 | Off · Relay · Servo 180°/360° · Ambient Light |
-| CH03–CH06 | 7, 14, 15, 16 | Off · Relay · Servo 180°/360° · Sensor (stop / blockage-monitor / level) · Ambient Light |
+| CH01 | 6 | Relay *(default)* · Servo 180° · Servo 360° — primary / Special-Mode channel |
+| CH02 | 7 | Off · Relay · Servo 180°/360° · **Sensor** (stop / blockage-monitor / level) · Ambient Light |
+| CH03 | 5 | Same as CH02 — 🔋 but **while off, this pin measures the battery** ([details](#battery-monitoring-touch-35)) |
+| CH04–CH06 | 14, 15, 16 | Off · Relay · Servo 180°/360° · Ambient Light |
+
+The channel order groups the three **ADC1-capable** pins (5, 6, 7) first. GPIO 14/15/16 sit on ADC2, which the WiFi driver claims — they can never serve as analog inputs on this device, only as digital outputs or PWM (servo).
+
+**Vending sensors** are available on **CH02 and CH03 only**, with the same three modes as the T-Display-S3 light barrier (see [Special features for the vending machine](#special-features-for-the-vending-machine)). All are digital inputs, active LOW (`INPUT_PULLUP`):
+
+| Mode | Behaviour |
+|------|-----------|
+| **Stop the advance** | Ends the running relay/servo action as soon as the sensor triggers (earliest 2 s after the action started). |
+| **Monitoring product blockage** | After a payment, a still-blocked outlet shows *PRODUCT BLOCKED* and holds further payments until the path is clear. |
+| **Level monitoring** | An empty supply bin shows *SUPPLY BIN IS EMPTY* and blocks payments until it is restocked. |
+
+⚠️ A sensor on **CH03** claims GPIO 5 as a digital input and therefore **disables the battery gauge**.
 
 - **Payment channels**: every channel set to *relay* or *servo* becomes its own payment channel with a unique LNURL/QR code and its own amount and duration from the LNbits switch entry. Channels set to *ambient-light*, *sensor* or *off* are not counted as payment channels.
 - **CH01** is always active as the primary channel and is the only one that supports the **Special Modes** (blink / pulse / strobe); additional channels switch in standard on/off mode.
@@ -809,6 +855,8 @@ Any channel set to **Servo 180°** or **Servo 360°** gets its own parameter box
 **Configuration (Web Installer → ZapBox Mode → Multi-channel):** set each channel's function in the CH01–CH06 dropdowns; the servo parameter box appears automatically when a channel is set to Servo 180°/360°. *Activation Options* and *Numerical Product Selection* live in the same panel.
 
 **Reserved GPIOs** (not available as channels): 17/18 (I²C — NFC reader + NT3H2111), 9 (PN532 IRQ), 46 (NT3H2111 Field Detection).
+
+🔋 **GPIO 5 (CH03) is shared with the battery voltage divider.** It can be a switching channel *or* the battery gauge, never both — see [Battery Monitoring](#battery-monitoring-touch-35).
 
 #### Numerical Product Selection (Touch 3.5" only)
 **Available on JC3248W535C Touch 3.5" in Multi-channel mode**
@@ -980,7 +1028,7 @@ Set BTC-Ticker mode and currency in Web Installer:
 **Use Cases**: Bitcoin payment terminals, price information displays, educational demonstrations
 
 #### Special Modes
-Control relay switching patterns beyond simple on/off. **Applies to CH01 only** (GPIO 5 on JC3248W535C / Pin 12 on T-Display-S3). Additional channels always use standard on/off mode.
+Control relay switching patterns beyond simple on/off. **Applies to CH01 only** (GPIO 6 on JC3248W535C / Pin 12 on T-Display-S3). Additional channels always use standard on/off mode.
 - **Standard**: Simple on/off (default)
 - **Blink**: 1 Hz, 1:1 duty cycle
 - **Pulse**: 2 Hz, 1:4 duty cycle (short pulses)

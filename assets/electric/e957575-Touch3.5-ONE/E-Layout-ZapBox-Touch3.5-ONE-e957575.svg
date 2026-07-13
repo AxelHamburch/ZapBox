@@ -11,8 +11,8 @@
    sodipodi:docname="E-Layout-ZapBox-Touch3.5-ONE-e957575.svg"
    xml:space="preserve"
    inkscape:export-filename="E-Layout-ZapBox-Touch3.5-ONE-e957575.webp"
-   inkscape:export-xdpi="136.83502"
-   inkscape:export-ydpi="136.83502"
+   inkscape:export-xdpi="162.49159"
+   inkscape:export-ydpi="162.49159"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -27,9 +27,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="0.48910324"
-     inkscape:cx="1042.7247"
-     inkscape:cy="512.16181"
+     inkscape:zoom="1.956413"
+     inkscape:cx="724.79584"
+     inkscape:cy="710.7395"
      inkscape:window-width="1920"
      inkscape:window-height="1009"
      inkscape:window-x="1912"
@@ -1357,8 +1357,8 @@
        id="rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-4" /><rect
        x="167.19843"
        y="230.14372"
-       width="106.22018"
-       height="56.060654"
+       width="238.57305"
+       height="22.466668"
        id="rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-4-1" /><rect
        x="167.19843"
        y="230.14372"
@@ -1424,7 +1424,12 @@
          style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.377953;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
          d="m 723.77359,-1498.6611 -3.90839,-610.8427 6.97523,-15.8144 12.77849,-10.2228 13.0779,-3.8773 14.52363,-0.2118 202.59199,0.1807 15.15346,9.531 9.74267,15.8506 0.48012,13.2843 2.04456,601.6112 -7.15595,16.3565 -14.31191,10.2228 -13.70774,2.8861 -208.0028,1.8949 -13.41365,-5.2921 -10.73393,-10.734 z"
          id="path74"
-         sodipodi:nodetypes="cccccccccccccccccc" /></clipPath></defs><g
+         sodipodi:nodetypes="cccccccccccccccccc" /></clipPath><rect
+       x="167.19843"
+       y="230.14372"
+       width="139.89717"
+       height="46.657214"
+       id="rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-1-9-4" /></defs><g
      inkscape:label="Ebene 1"
      inkscape:groupmode="layer"
      id="layer1"><image
@@ -1460,26 +1465,26 @@
        transform="matrix(0.46414628,0,0,0.46414628,897.41443,824.818)"><tspan
          x="177.60282"
          y="246.47789"
-         id="tspan3">Switch
+         id="tspan2">Switch
 </tspan><tspan
          x="192.02667"
          y="269.81127"
-         id="tspan4">I²C
+         id="tspan7">I²C
 </tspan><tspan
          x="176.6868"
          y="293.14464"
-         id="tspan8">1 = ON
+         id="tspan117">1 = ON
 </tspan><tspan
          x="174.13471"
          y="316.47802"
-         id="tspan9">2 = OFF</tspan></text><text
+         id="tspan118">2 = OFF</tspan></text><text
        xml:space="preserve"
        id="text39-6-7"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:18.6667px;font-family:Calibri;-inkscape-font-specification:Calibri;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-5-45);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
        transform="matrix(0.46414628,0,0,0.46414628,985.86693,877.53533)"><tspan
          x="197.15556"
          y="246.47789"
-         id="tspan10">GPIO1</tspan></text><path
+         id="tspan119">GPIO1</tspan></text><path
        style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.829105;stroke-dasharray:none;stroke-opacity:1"
        d="m 1107.4966,942.95093 -20.0921,41.21869"
        id="path45"
@@ -1493,14 +1498,14 @@
        inkscape:export-ydpi="42.016129"><tspan
          x="186.3688"
          y="248.85212"
-         id="tspan11">NFC </tspan><tspan
+         id="tspan120">NFC </tspan><tspan
          x="170.00488"
          y="275.57725"
-         id="tspan12">Module
+         id="tspan121">Module
 </tspan><tspan
          x="175.1098"
          y="302.30238"
-         id="tspan13">PN532</tspan></text><path
+         id="tspan122">PN532</tspan></text><path
        style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.829105;stroke-dasharray:none;stroke-opacity:1"
        d="m 1008.9544,943.26544 c 0,1.52561 35.1616,-53.66377 35.1616,-53.66377"
        id="path44-3-9-5"
@@ -1511,22 +1516,22 @@
        transform="matrix(0.44996619,0,0,0.44996619,879.12553,761.84835)"><tspan
          x="226.4873"
          y="246.47789"
-         id="tspan14">
+         id="tspan123">
 </tspan><tspan
          x="171.56728"
          y="269.81127"
-         id="tspan15">Active Module
+         id="tspan124">Active Module
 </tspan><tspan
          x="184.45533"
          y="293.14464"
-         id="tspan16">For passive </tspan><tspan
+         id="tspan125">For passive </tspan><tspan
          x="187.98268"
          y="316.47802"
-         id="tspan17">Bolt Cards
+         id="tspan126">Bolt Cards
 </tspan><tspan
          x="173.4221"
          y="339.81139"
-         id="tspan18">and NTAG 21x</tspan></text><rect
+         id="tspan127">and NTAG 21x</tspan></text><rect
        style="fill:none;stroke:#666666;stroke-width:0.994918;stroke-dasharray:none"
        id="rect17-0"
        width="55.565117"
@@ -1546,15 +1551,15 @@
        y="0"><tspan
          x="495.30664"
          y="263.88523"
-         id="tspan20"><tspan
+         id="tspan129"><tspan
            style="text-anchor:middle"
-           id="tspan19">
+           id="tspan128">
 </tspan></tspan><tspan
          x="243.5941"
          y="312.08622"
-         id="tspan22"><tspan
+         id="tspan131"><tspan
            style="font-size:33.7407px"
-           id="tspan21">ESP32-S3 Touch 3.5&quot; / JC3248W535C</tspan></tspan></text><text
+           id="tspan130">ESP32-S3 Touch 3.5&quot; / JC3248W535C</tspan></tspan></text><text
        xml:space="preserve"
        id="text39-2"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:49.8684px;font-family:Calibri;-inkscape-font-specification:Calibri;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-4);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -1564,9 +1569,9 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="200.96755"
          y="276.64643"
-         id="tspan24"><tspan
+         id="tspan133"><tspan
            style="font-family:Ubuntu;-inkscape-font-specification:Ubuntu"
-           id="tspan23">Electrical Layout - ZapBox - Touch3.5-ONE - e957575</tspan></tspan></text><text
+           id="tspan132">Electrical Layout - ZapBox - Touch3.5-ONE - e957575</tspan></tspan></text><text
        xml:space="preserve"
        id="text39-2-2"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:49.1541px;font-family:Calibri;-inkscape-font-specification:Calibri;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-4-6);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -1576,9 +1581,9 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="459.08501"
          y="275.98034"
-         id="tspan26"><tspan
+         id="tspan135"><tspan
    style="font-style:italic;font-weight:bold;font-family:Ubuntu;-inkscape-font-specification:'Ubuntu Bold Italic'"
-   id="tspan25">zapbox.space</tspan> </tspan></text><rect
+   id="tspan134">zapbox.space</tspan> </tspan></text><rect
        style="opacity:1;vector-effect:none;fill:none;fill-opacity:1;stroke:#000000;stroke-width:4.05033;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;-inkscape-stroke:none"
        id="rect13"
        width="1555.3419"
@@ -1663,11 +1668,11 @@
        y="0"><tspan
          x="167.19922"
          y="242.79729"
-         id="tspan27">43 : LED output 3,3V
+         id="tspan136">43 : LED output 3,3V
 </tspan><tspan
          x="167.19922"
          y="260.87267"
-         id="tspan28">44 : Button input (pull up)</tspan></text><path
+         id="tspan137">44 : Button input (pull up)</tspan></text><path
        style="fill:none;stroke:#008000;stroke-width:1.88976;stroke-dasharray:none"
        d="m 390.73197,884.12134 c 24.82657,0.006 75.76225,-0.42739 100.58834,-0.56049"
        id="path27-3-8-9"
@@ -1691,7 +1696,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="196.02653"
          y="238.32606"
-         id="tspan29">R = 330 Ohm</tspan></text><path
+         id="tspan138">R = 330 Ohm</tspan></text><path
        style="fill:none;stroke:#4d4d4d;stroke-width:1.81741"
        d="m 431.47301,877.04057 h 23.21267"
        id="path23"
@@ -1724,15 +1729,15 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="191.06423"
          y="243.34741"
-         id="tspan30">Guideline values for LED resistors:
+         id="tspan139">Guideline values for LED resistors:
 </tspan><tspan
          x="187.70826"
          y="262.20866"
-         id="tspan31">Red, Gren, Yellow = 220  - 330 Ohm
+         id="tspan140">Red, Gren, Yellow = 220  - 330 Ohm
 </tspan><tspan
          x="170.66682"
          y="281.06991"
-         id="tspan32">Blue, White, very bright = 330 - 470 Ohm</tspan></text><text
+         id="tspan141">Blue, White, very bright = 330 - 470 Ohm</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-8-3-6"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:10.9087px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-1-7-1-8);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -1742,7 +1747,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="170.38831"
          y="239.68964"
-         id="tspan33">JST SH 1.25</tspan></text><text
+         id="tspan142">JST SH 1.25</tspan></text><text
        xml:space="preserve"
        style="font-size:8px;font-family:Ubuntu;-inkscape-font-specification:Ubuntu;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#ffffff;stroke:#ff7f2a;stroke-width:2.89134"
        x="341.4678"
@@ -1808,14 +1813,14 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="224.20195"
          y="247.80448"
-         id="tspan34">2EDGRK </tspan><tspan
+         id="tspan143">2EDGRK </tspan><tspan
          x="182.18073"
          y="273.03298"
-         id="tspan35">15EDGRK-2,54mm
+         id="tspan144">15EDGRK-2,54mm
 </tspan><tspan
          x="237.22517"
          y="298.26148"
-         id="tspan36">6 pin</tspan></text><path
+         id="tspan145">6 pin</tspan></text><path
        style="fill:none;fill-opacity:1;stroke:#0000ff;stroke-width:1.88426;stroke-dasharray:none;stroke-opacity:1"
        d="m 686.35373,795.29638 111.60901,-135.05546 141.15252,21.25144 197.76574,29.72694 -0.1871,228.92987 -26.9761,0.24076"
        id="path61"
@@ -1846,7 +1851,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="378.17963"
          y="254.20694"
-         id="tspan37">LED Light</tspan></text><text
+         id="tspan146">LED Light</tspan></text><text
        xml:space="preserve"
        style="font-weight:bold;font-size:14.6667px;font-family:Calibri;-inkscape-font-specification:'Calibri, Bold';text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:none;fill-opacity:1;stroke:#000000;stroke-width:2.16189;stroke-dasharray:8.64756, 2.16189;stroke-dashoffset:0;stroke-opacity:1"
        x="941.22876"
@@ -1873,14 +1878,14 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="292.97261"
          y="273.57907"
-         id="tspan38">IN</tspan></text><text
+         id="tspan147">IN</tspan></text><text
        xml:space="preserve"
        id="text39-6-7-4"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:18.6667px;font-family:Calibri;-inkscape-font-specification:Calibri;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-5-7-17);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
        transform="matrix(0.18075272,0.42750466,-0.42750466,0.18075272,1135.6421,703.69299)"><tspan
          x="202.65361"
          y="246.47789"
-         id="tspan39">GND</tspan></text><text
+         id="tspan148">GND</tspan></text><text
        xml:space="preserve"
        id="text39-6-7-4-8"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:18.6667px;font-family:Calibri;-inkscape-font-specification:Calibri;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-5-7-2-11);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -1889,21 +1894,21 @@
        inkscape:transform-center-y="-52.568945"><tspan
          x="203.22328"
          y="246.47789"
-         id="tspan40">3,3V</tspan></text><text
+         id="tspan149">3,3V</tspan></text><text
        xml:space="preserve"
        id="text39-6-7-4-8-2"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:18.6667px;font-family:Calibri;-inkscape-font-specification:Calibri;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-5-7-2-1-5);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
        transform="matrix(0.16910865,0.43224305,-0.43224305,0.16910865,1116.2041,690.28183)"><tspan
          x="214.63211"
          y="246.47789"
-         id="tspan41">GPIO18</tspan></text><text
+         id="tspan150">GPIO18</tspan></text><text
        xml:space="preserve"
        id="text39-6-7-4-8-2-2"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:18.6667px;font-family:Calibri;-inkscape-font-specification:Calibri;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-5-7-2-1-4-2);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
        transform="matrix(0.18335221,0.42639626,-0.42639626,0.18335221,1101.3371,689.94741)"><tspan
          x="214.63211"
          y="246.47789"
-         id="tspan42">GPIO17</tspan></text><path
+         id="tspan151">GPIO17</tspan></text><path
        style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.829105;stroke-dasharray:none;stroke-opacity:1"
        d="m 1051.3144,850.79952 c 0,1.52563 7.8823,20.46846 7.8823,20.46846"
        id="path44"
@@ -1928,9 +1933,9 @@
        transform="matrix(0.94995293,0,0,0.94995293,1630.0735,977.31146)"><tspan
          x="-362.07584"
          y="-21.960762"
-         id="tspan44"><tspan
+         id="tspan153"><tspan
            style="text-align:end;text-anchor:end;fill:#1a1a1a;stroke:none"
-           id="tspan43">T-Display-S3: GPIO 3
+           id="tspan152">T-Display-S3: GPIO 3
 </tspan></tspan></text><text
        xml:space="preserve"
        style="font-weight:bold;font-size:9.12054px;font-family:Calibri;-inkscape-font-specification:'Calibri Bold';text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;white-space:pre;inline-size:112.577;display:inline;fill:none;stroke:#666666;stroke-width:1.4;stroke-dasharray:none"
@@ -1940,9 +1945,9 @@
        transform="matrix(0.94995293,0,0,0.94995293,1719.008,969.07936)"><tspan
          x="-415.09274"
          y="-21.960762"
-         id="tspan46"><tspan
+         id="tspan155"><tspan
            style="fill:#1a1a1a;stroke:none"
-           id="tspan45">FD (Field Detection)</tspan></tspan></text><text
+           id="tspan154">FD (Field Detection)</tspan></tspan></text><text
        xml:space="preserve"
        style="font-weight:bold;font-size:7.76111px;font-family:Calibri;-inkscape-font-specification:'Calibri Bold';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;white-space:pre;inline-size:66.7756;display:inline;fill:none;stroke:#666666;stroke-width:1.4;stroke-dasharray:none"
        x="-360.81424"
@@ -1951,9 +1956,9 @@
        transform="matrix(0.92147278,0.23086463,-0.23086463,0.92147278,1544.0411,1104.4712)"><tspan
          x="-360.81424"
          y="-21.960762"
-         id="tspan48"><tspan
+         id="tspan157"><tspan
            style="fill:#1a1a1a;stroke:none"
-           id="tspan47">GND</tspan></tspan></text><text
+           id="tspan156">GND</tspan></tspan></text><text
        xml:space="preserve"
        style="font-weight:bold;font-size:7.76111px;font-family:Calibri;-inkscape-font-specification:'Calibri Bold';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;white-space:pre;inline-size:66.7756;display:inline;fill:none;stroke:#666666;stroke-width:1.4;stroke-dasharray:none"
        x="-360.81424"
@@ -1962,9 +1967,9 @@
        transform="matrix(0.92217855,0.2280291,-0.2280291,0.92217855,1544.7941,1085.1462)"><tspan
          x="-360.81424"
          y="-21.960762"
-         id="tspan50"><tspan
+         id="tspan159"><tspan
            style="fill:#1a1a1a;stroke:none"
-           id="tspan49">3,3V</tspan></tspan></text><text
+           id="tspan158">3,3V</tspan></tspan></text><text
        xml:space="preserve"
        style="font-weight:bold;font-size:9.12054px;font-family:Calibri;-inkscape-font-specification:'Calibri Bold';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;white-space:pre;inline-size:66.7756;display:inline;fill:none;stroke:#666666;stroke-width:1.4;stroke-dasharray:none"
        x="-383.54807"
@@ -1973,15 +1978,15 @@
        transform="matrix(0.94995293,0,0,0.94995293,1733.4299,995.94202)"><tspan
          x="-383.54807"
          y="-21.960762"
-         id="tspan52"><tspan
+         id="tspan161"><tspan
            style="text-align:start;text-anchor:start;fill:#1a1a1a;stroke:none"
-           id="tspan51">SCL / GPIO 17
+           id="tspan160">SCL / GPIO 17
 </tspan></tspan><tspan
          x="-383.54807"
          y="-10.560088"
-         id="tspan54"><tspan
+         id="tspan163"><tspan
            style="text-align:start;text-anchor:start;fill:#1a1a1a;stroke:none"
-           id="tspan53">SDA / GPIO 18</tspan></tspan></text><rect
+           id="tspan162">SDA / GPIO 18</tspan></tspan></text><rect
        style="fill:none;stroke:#666666;stroke-width:0.937729;stroke-dasharray:3.75094, 0.937729;stroke-dashoffset:0"
        id="rect3"
        width="208.73155"
@@ -1998,15 +2003,15 @@
        transform="matrix(0.94995293,0,0,0.94995293,1688.0117,856.70709)"><tspan
          x="-360.81424"
          y="-21.960762"
-         id="tspan57"><tspan
+         id="tspan165"><tspan
            style="fill:#1a1a1a;stroke:none"
-           id="tspan55">NFC Tag 2
+           id="tspan164">NFC Tag 2
 </tspan></tspan><tspan
          x="-360.81424"
          y="-6.0857614"
-         id="tspan59"><tspan
+         id="tspan167"><tspan
            style="font-size:11.2889px;fill:#000000;stroke:none"
-           id="tspan58">NT3H2111</tspan></tspan></text><text
+           id="tspan166">NT3H2111</tspan></tspan></text><text
        xml:space="preserve"
        style="font-weight:bold;font-size:12.7px;font-family:Calibri;-inkscape-font-specification:'Calibri Bold';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;white-space:pre;inline-size:66.7756;display:inline;fill:none;stroke:#666666;stroke-width:1.4;stroke-dasharray:none"
        x="-360.81424"
@@ -2031,18 +2036,18 @@
        transform="matrix(0.32465299,0,0,0.32465299,1268.0426,777.711)"><tspan
          x="239.41016"
          y="248.46519"
-         id="tspan60">
+         id="tspan168">
 </tspan><tspan
          x="173.33513"
          y="274.63756"
-         id="tspan61">Passive Module </tspan><tspan
+         id="tspan169">Passive Module </tspan><tspan
          x="198.09665"
          y="300.80992"
-         id="tspan62">For active
+         id="tspan170">For active
 </tspan><tspan
          x="176.32042"
          y="326.98228"
-         id="tspan63">mobile phones</tspan></text><rect
+         id="tspan171">mobile phones</tspan></text><rect
        style="fill:none;stroke:#666666;stroke-width:0.73072;stroke-dasharray:none"
        id="rect17-3"
        width="48.911705"
@@ -2093,15 +2098,7 @@
        transform="matrix(0.21358196,0.03329692,-0.03329692,0.21358196,1035.8615,554.20833)" /><text
        xml:space="preserve"
        id="text104"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:9.33333px;font-family:Calibri;-inkscape-font-specification:'Calibri Bold';text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect104);display:inline;fill:none;stroke:#666666;stroke-width:2.16189;stroke-dasharray:none" /><rect
-       style="fill:#ffff00;fill-opacity:0.362369;stroke:none;stroke-width:3.28684"
-       id="rect73"
-       width="16.343164"
-       height="30.252239"
-       x="560.49823"
-       y="865.48065"
-       rx="3.9090557"
-       ry="4.3978558" /><text
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:9.33333px;font-family:Calibri;-inkscape-font-specification:'Calibri Bold';text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect104);display:inline;fill:none;stroke:#666666;stroke-width:2.16189;stroke-dasharray:none" /><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-6-5-3-2"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:9.64019px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-2-4-4-8);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2111,19 +2108,19 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="178.85812"
          y="238.5797"
-         id="tspan64">+5V
+         id="tspan172">+5V
 </tspan><tspan
          x="181.48705"
          y="250.62993"
-         id="tspan65">43
+         id="tspan173">43
 </tspan><tspan
          x="181.48705"
          y="262.68016"
-         id="tspan66">44
+         id="tspan174">44
 </tspan><tspan
          x="177.34714"
          y="274.73039"
-         id="tspan67">GND</tspan></text><circle
+         id="tspan175">GND</tspan></text><circle
        style="fill:#666666;fill-opacity:1;stroke:none;stroke-width:2.19775;-inkscape-stroke:none"
        id="path33-4-8"
        cx="430.83054"
@@ -2141,7 +2138,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="172.39478"
          y="242.79729"
-         id="tspan68">JST SH 1.25</tspan></text><text
+         id="tspan176">JST SH 1.25</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2151,7 +2148,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="188.39136"
          y="241.81117"
-         id="tspan69">GPIO9 / IRQ</tspan></text><text
+         id="tspan177">GPIO9 / IRQ</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-1"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-1);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2161,7 +2158,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="187.4506"
          y="241.81117"
-         id="tspan70">GPIO46 / FD</tspan></text><text
+         id="tspan178">GPIO46 / FD</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-1-2"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-1-6);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2171,7 +2168,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="183.80803"
          y="241.81117"
-         id="tspan71">GPIO18 / SDA</tspan></text><text
+         id="tspan179">GPIO18 / SDA</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-1-2-5"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-1-6-1);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2181,7 +2178,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="185.18498"
          y="241.81117"
-         id="tspan72">GPIO17 / SCL</tspan></text><text
+         id="tspan180">GPIO17 / SCL</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-1-2-5-7"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-1-6-1-8);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2191,7 +2188,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="208.22529"
          y="241.81117"
-         id="tspan73">3.3V</tspan></text><text
+         id="tspan181">3.3V</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-1-2-5-7-3"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-1-6-1-8-3);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2201,7 +2198,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="207.8249"
          y="241.81117"
-         id="tspan74">GND</tspan></text><text
+         id="tspan182">GND</tspan></text><text
        xml:space="preserve"
        id="text6"
        style="font-weight:bold;font-size:16px;font-family:Calibri;-inkscape-font-specification:'Calibri Bold';text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect6);display:inline;fill:none;fill-opacity:0.362369;stroke:#000000;stroke-width:2.16189" /><text
@@ -2214,7 +2211,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="192.04369"
          y="241.81117"
-         id="tspan75"> +5V / DC+</tspan></text><text
+         id="tspan183"> +5V / DC+</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2226,15 +2223,15 @@
        inkscape:transform-center-y="2.0410503"><tspan
          x="192.7403"
          y="241.81117"
-         id="tspan76">GND / DC-</tspan></text><path
+         id="tspan184">GND / DC-</tspan></text><path
        style="fill:none;fill-opacity:0.362369;stroke:#338000;stroke-width:1.88976;stroke-dasharray:none"
-       d="M 718.49878,793.02204 701.93064,614.87238 478.01117,614.52284"
+       d="M 718.49878,793.02204 701.93064,634.80682"
        id="path18"
-       sodipodi:nodetypes="ccc" /><path
-       style="fill:none;fill-opacity:0.362369;stroke:#aad400;stroke-width:1.88976;stroke-dasharray:none"
-       d="M 713.08942,793.5138 686.66217,637.18424"
-       id="path20"
        sodipodi:nodetypes="cc" /><path
+       style="fill:none;fill-opacity:0.362369;stroke:#aad400;stroke-width:1.88976;stroke-dasharray:none"
+       d="M 713.08942,793.5138 683.08419,614.94967 c -2.75746,0.20676 -206.70214,-0.0488 -206.70214,-0.0488"
+       id="path20"
+       sodipodi:nodetypes="ccc" /><path
        style="fill:none;fill-opacity:0.362369;stroke:#5fbcd3;stroke-width:1.88976;stroke-dasharray:none"
        d="M 708.17182,794.49732 668.9751,640.36249"
        id="path22"
@@ -2260,7 +2257,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="180.11013"
          y="241.81117"
-         id="tspan77">GPIO14 / CH04</tspan></text><text
+         id="tspan185">GPIO14 / CH04</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-1"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-7);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2270,67 +2267,67 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="180.11013"
          y="241.81117"
-         id="tspan78">GPIO16 / CH06</tspan></text><text
+         id="tspan186">GPIO16 / CH06</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-0"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-1);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
-       transform="matrix(0.16022544,0.52952954,-0.52952954,0.16022544,758.56555,511.86303)"
+       transform="matrix(0.16022544,0.52952954,-0.52952954,0.16022544,758.82112,511.09632)"
        inkscape:export-filename="C:\007\ZapBox\e941530-Servo\E-Layout-ZapBox-Servo-e941530.webp"
        inkscape:export-xdpi="116.11428"
        inkscape:export-ydpi="116.11428"><tspan
          x="180.11013"
          y="241.81117"
-         id="tspan79">GPIO15 / CH05</tspan></text><text
+         id="tspan187">GPIO15 / CH05</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-5"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
-       transform="matrix(0.13024159,0.5376903,-0.5376903,0.13024159,781.26626,511.32093)"
+       transform="matrix(0.13024159,0.5376903,-0.5376903,0.13024159,781.13848,510.68201)"
        inkscape:export-filename="C:\007\ZapBox\e941530-Servo\E-Layout-ZapBox-Servo-e941530.webp"
        inkscape:export-xdpi="116.11428"
        inkscape:export-ydpi="116.11428"><tspan
          x="183.48903"
          y="241.81117"
-         id="tspan80">GPIO7 / CH03</tspan></text><text
+         id="tspan188">GPIO7 / CH02</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-5-2"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-4);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
-       transform="matrix(0.08970042,0.54591901,-0.54591901,0.08970042,807.90756,516.12774)"
+       transform="matrix(0.08970042,0.54591901,-0.54591901,0.08970042,806.88528,515.74439)"
        inkscape:export-filename="C:\007\ZapBox\e941530-Servo\E-Layout-ZapBox-Servo-e941530.webp"
        inkscape:export-xdpi="116.11428"
        inkscape:export-ydpi="116.11428"><tspan
          x="183.48903"
          y="241.81117"
-         id="tspan81">GPIO6 / CH02</tspan></text><text
+         id="tspan189">GPIO6 / CH01</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-5-2-1"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-4-1);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
-       transform="matrix(0.05958446,0.5500213,-0.5500213,0.05958446,830.87369,519.97369)"
+       transform="matrix(0.05380897,0.55061632,-0.55061632,0.05380897,827.28464,485.14742)"
        inkscape:export-filename="C:\007\ZapBox\e941530-Servo\E-Layout-ZapBox-Servo-e941530.webp"
        inkscape:export-xdpi="116.11428"
        inkscape:export-ydpi="116.11428"><tspan
-         x="183.48903"
+         x="249.66578"
          y="241.81117"
-         id="tspan82">GPIO5 / CH01</tspan></text><text
+         id="tspan190">GPIO5 / CH03 </tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-5-0"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-1);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
-       transform="matrix(0.55323273,0.00269903,-0.00269903,0.55323273,545.98244,503.47167)"
+       transform="matrix(0.55323273,0.00269903,-0.00269903,0.55323273,546.49358,502.70496)"
        inkscape:export-filename="C:\007\ZapBox\e941530-Servo\E-Layout-ZapBox-Servo-e941530.webp"
        inkscape:export-xdpi="116.11428"
        inkscape:export-ydpi="116.11428"><tspan
          x="212.48635"
          y="241.81117"
-         id="tspan83">NC</tspan></text><text
+         id="tspan191">NC</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-5-0-2"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-1-6);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
-       transform="matrix(0.55323273,0.00269903,-0.00269903,0.55323273,530.62263,508.2078)"
+       transform="matrix(0.55323273,0.00269903,-0.00269903,0.55323273,530.11149,507.18552)"
        inkscape:export-filename="C:\007\ZapBox\e941530-Servo\E-Layout-ZapBox-Servo-e941530.webp"
        inkscape:export-xdpi="116.11428"
        inkscape:export-ydpi="116.11428"><tspan
          x="212.48635"
          y="241.81117"
-         id="tspan84">NC</tspan></text><text
+         id="tspan192">NC</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-8-3-6-9-2"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:14.4603px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-1-7-1-8-2-3);display:inline;fill:none;fill-opacity:1;stroke:#e6e6e6"
@@ -2340,11 +2337,11 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="197.85084"
          y="242.79729"
-         id="tspan85">JST SH 1.25
+         id="tspan193">JST SH 1.25
 </tspan><tspan
          x="182.84333"
          y="260.87267"
-         id="tspan86">8 pin     /     4 pin</tspan></text><text
+         id="tspan194">8 pin     /     4 pin</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-8-3-6-9-2-9"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:14.4603px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-1-7-1-8-2-3-6);display:inline;fill:none;fill-opacity:1;stroke:#e6e6e6"
@@ -2354,11 +2351,11 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="210.899"
          y="242.79729"
-         id="tspan87">JST 1.0
+         id="tspan195">JST 1.0
 </tspan><tspan
          x="216.2157"
          y="260.87267"
-         id="tspan88">4 pin</tspan></text><image
+         id="tspan196">4 pin</tspan></text><image
        width="2312"
        height="1736"
        preserveAspectRatio="none"
@@ -2377,9 +2374,9 @@
        inkscape:export-ydpi="42.016129"><tspan
          x="247.19127"
          y="248.96902"
-         id="tspan90"><tspan
+         id="tspan198"><tspan
            style="font-weight:bold;-inkscape-font-specification:'Calibri Bold'"
-           id="tspan89">Option: LED button</tspan></tspan></text><text
+           id="tspan197">Option: LED button</tspan></tspan></text><text
        xml:space="preserve"
        id="text39-6-7-6-1-6"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:21.3801px;font-family:Calibri;-inkscape-font-specification:Calibri;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-5-9-5-1-5);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2389,17 +2386,17 @@
        inkscape:export-ydpi="42.016129"><tspan
          x="168.14975"
          y="248.85212"
-         id="tspan91">BAT-ON/OFF</tspan></text><text
+         id="tspan199">BAT-ON/OFF</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-5-0-9"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-1-9);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
-       transform="matrix(0.55323273,0.00269903,-0.00269903,0.55323273,564.49956,499.72305)"
+       transform="matrix(0.55323273,0.00269903,-0.00269903,0.55323273,580.42689,496.19646)"
        inkscape:export-filename="C:\007\ZapBox\e941530-Servo\E-Layout-ZapBox-Servo-e941530.webp"
        inkscape:export-xdpi="116.11428"
        inkscape:export-ydpi="116.11428"><tspan
          x="212.48635"
          y="241.81117"
-         id="tspan92">NC </tspan></text><image
+         id="tspan200">NC </tspan></text><image
        width="330"
        height="350"
        preserveAspectRatio="none"
@@ -2418,7 +2415,7 @@
        inkscape:export-ydpi="42.016129"><tspan
          x="329.52799"
          y="251.64398"
-         id="tspan93">Motors</tspan></text><image
+         id="tspan201">Motors</tspan></text><image
        width="281"
        height="800"
        preserveAspectRatio="none"
@@ -2452,7 +2449,7 @@
        transform="matrix(0.94995293,0,0,0.94995293,1709.122,823.09235)"><tspan
          x="-360.81424"
          y="-21.960762"
-         id="tspan94">Option: I/O-Expander (PCF8574)</tspan></text><text
+         id="tspan202">Option: I/O-Expander (PCF8574)</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-8-3-9"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:14.4603px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-1-7-1-89);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2464,19 +2461,19 @@
        y="0"><tspan
          x="167.19922"
          y="242.79729"
-         id="tspan95">3,3V
+         id="tspan203">3,3V
 </tspan><tspan
          x="167.19922"
          y="260.87267"
-         id="tspan96">GND
+         id="tspan204">GND
 </tspan><tspan
          x="167.19922"
          y="278.94805"
-         id="tspan97">SDA
+         id="tspan205">SDA
 </tspan><tspan
          x="167.19922"
          y="297.02343"
-         id="tspan99">SCL</tspan></text><text
+         id="tspan206">SCL</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-8-3-9-4"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:14.4603px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-1-7-1-89-2);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2488,39 +2485,39 @@
        y="0"><tspan
          x="167.19922"
          y="242.79729"
-         id="tspan100">INT
+         id="tspan208">INT
 </tspan><tspan
          x="167.19922"
          y="260.87267"
-         id="tspan101">P7
+         id="tspan209">P7
 </tspan><tspan
          x="167.19922"
          y="278.94805"
-         id="tspan102">P6
+         id="tspan210">P6
 </tspan><tspan
          x="167.19922"
          y="297.02343"
-         id="tspan103">P5
+         id="tspan211">P5
 </tspan><tspan
          x="167.19922"
          y="315.09881"
-         id="tspan104">P5
+         id="tspan212">P5
 </tspan><tspan
          x="167.19922"
          y="333.17419"
-         id="tspan105">P3
+         id="tspan213">P3
 </tspan><tspan
          x="167.19922"
          y="351.24956"
-         id="tspan106">P2
+         id="tspan214">P2
 </tspan><tspan
          x="167.19922"
          y="369.32494"
-         id="tspan107">P1
+         id="tspan215">P1
 </tspan><tspan
          x="167.19922"
          y="387.40032"
-         id="tspan108">P0</tspan></text><image
+         id="tspan216">P0</tspan></text><image
        width="322"
        height="600"
        preserveAspectRatio="none"
@@ -2564,7 +2561,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="177.55487"
          y="242.79729"
-         id="tspan109">JST SH 1.25 / 2 pin</tspan></text><text
+         id="tspan217">JST SH 1.25 / 2 pin</tspan></text><text
        xml:space="preserve"
        style="font-weight:bold;font-size:192px;font-family:Calibri;-inkscape-font-specification:'Calibri Bold';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:none;fill-opacity:1;stroke:#ff0000;stroke-width:2.64567;stroke-dasharray:none"
        x="126.57258"
@@ -2583,7 +2580,7 @@
        y="0"><tspan
          x="167.19922"
          y="249.12363"
-         id="tspan110">LiPo Akku 3,7V</tspan></text><text
+         id="tspan218">LiPo Akku 3,7V</tspan></text><text
        xml:space="preserve"
        id="text39-6-7-6-7-9"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:34.4603px;font-family:Calibri;-inkscape-font-specification:Calibri;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-5-9-8-4-4);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2593,7 +2590,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="238.73082"
          y="260.29729"
-         id="tspan111">Sample Actors</tspan></text><rect
+         id="tspan219">Sample Actors</tspan></text><rect
        style="fill:#ffffff;fill-opacity:0.531359;stroke:none;stroke-width:1.52134;stroke-dasharray:1.52134, 1.52134;stroke-dashoffset:0"
        id="rect1"
        width="220.9841"
@@ -2610,7 +2607,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="212.48635"
          y="241.81117"
-         id="tspan112">NC</tspan></text><text
+         id="tspan220">NC</tspan></text><text
        xml:space="preserve"
        id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-5-0-2-3"
        style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13.3333px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-1-6-3);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
@@ -2620,7 +2617,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="212.48635"
          y="241.81117"
-         id="tspan113">NC</tspan></text><image
+         id="tspan221">NC</tspan></text><image
        width="278"
        height="500"
        preserveAspectRatio="none"
@@ -2767,7 +2764,7 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="296.01571"
          y="273.57907"
-         id="tspan114">OUT</tspan></text><path
+         id="tspan222">OUT</tspan></text><path
        style="fill:none;fill-opacity:1;stroke:#ff0000;stroke-width:1.88976;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        d="m 315.31139,633.65804 -13.56648,0.29941 -0.34322,49.55227 181.7374,0.14971 0.51114,-23.56562 -6.29402,-9.68596 14.90634,-0.062 -0.29942,124.3551 -17.07758,8.13217"
        id="path48"
@@ -2800,9 +2797,9 @@
        inkscape:export-ydpi="116.11428"><tspan
          x="286.0814"
          y="278.01821"
-         id="tspan116"><tspan
+         id="tspan224"><tspan
            style="font-weight:bold;-inkscape-font-specification:'Calibri Bold';stroke:none"
-           id="tspan115">CH01</tspan></tspan></text><image
+           id="tspan223">CH01</tspan></tspan></text><image
        width="567"
        height="700"
        preserveAspectRatio="none"
@@ -2830,4 +2827,20 @@
        x="697"
        y="-2157"
        transform="matrix(0.74917724,0.00571076,-0.00571076,0.74917724,659.53938,1755.5453)"
-       clip-path="url(#clipPath73)" /></g></svg>
+       clip-path="url(#clipPath73)" /><text
+       xml:space="preserve"
+       id="text39-6-2-1-2-1-2-5-1-5-2-3-8-1-7-2-9-9-8-2-6-5-0-9-2"
+       style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:12.0502px;font-family:Calibri;-inkscape-font-specification:'Calibri Light';text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect39-1-4-1-4-1-6-1-4-2-1-1-3-0-5-4-6-1-6-7-3-77-1-9-4);display:inline;fill:#000000;fill-opacity:1;stroke:#000000"
+       transform="matrix(0.55323273,0.00269903,-0.00269903,0.55323273,630.21632,480.6224)"
+       inkscape:export-filename="C:\007\ZapBox\e941530-Servo\E-Layout-ZapBox-Servo-e941530.webp"
+       inkscape:export-xdpi="116.11428"
+       inkscape:export-ydpi="116.11428"><tspan
+         x="171.28323"
+         y="240.68846"
+         id="tspan225">Note: GPIO5 is reserved for </tspan><tspan
+         x="171.3656"
+         y="255.7512"
+         id="tspan226">battery monitoring and can </tspan><tspan
+         x="188.84075"
+         y="270.81394"
+         id="tspan227">be used for sensors.</tspan></text></g></svg>

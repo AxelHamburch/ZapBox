@@ -13,6 +13,7 @@
 #include "Display.h"
 #include "PinConfig.h"
 #include "GlobalState.h"
+#include "Battery.h"
 #include "Log.h"
 
 // ============================================================================
@@ -1521,17 +1522,12 @@ static bool   deepSleepIsActive   = false;
 static String deepSleepMode       = "off";
 
 static void syncAmbientPins(bool on) {
-  const int pins[]    = {6, 7, 14, 15, 16};
-  const bool active[] = {
-    t35AmbientConfig.gpio6Ambient,  t35AmbientConfig.gpio7Ambient,
-    t35AmbientConfig.gpio14Ambient, t35AmbientConfig.gpio15Ambient,
-    t35AmbientConfig.gpio16Ambient
-  };
-  for (int i = 0; i < 5; i++) {
-    if (active[i]) {
-      digitalWrite(pins[i], on ? HIGH : LOW);
-      Serial.printf("[AMBIENT LIGHT] GPIO %d turned %s (display sync)\n", pins[i], on ? "ON" : "OFF");
-    }
+  // Flex slot i is channel CH02+i — never hard-code the GPIO numbers here.
+  for (int i = 0; i < T35AmbientConfig::FLEX_COUNT; i++) {
+    if (!t35AmbientConfig.flexAmbient[i]) continue;
+    const int gpio = RELAY_CHANNEL_PINS[i + 1];
+    digitalWrite(gpio, on ? HIGH : LOW);
+    Serial.printf("[AMBIENT LIGHT] GPIO %d turned %s (display sync)\n", gpio, on ? "ON" : "OFF");
   }
 }
 
@@ -1962,6 +1958,16 @@ static const int MP_QRC_W = 90, MP_QRC_H = 34;
 // button handler.
 static const int MP_QRC_M = 20;
 
+// Battery charge, right-aligned so it ends at rightX. Text size 2 → 12 px per
+// character, so "100%" is 48 px wide.
+static void drawMiniPosBattery(int rightX, int cy) {
+    if (!batteryAvailable()) return;
+    char buf[6];
+    snprintf(buf, sizeof(buf), "%d%%", batteryPercent());
+    int w = strlen(buf) * 6 * 2;   // 6 px per char at size 1, ×2 for size 2
+    drawCenter(rightX - w / 2, cy, buf, themeForeground, themeBackground, 2);
+}
+
 static void drawMiniPosAmountBox(int bx, int by, int bw, int bh) {
     drawRectBorder(bx, by, bw, bh, 2, themeForeground);
     uint16_t txtColor = miniPosState.amountLocked ? TFT_ORANGE : themeForeground;
@@ -1985,8 +1991,11 @@ void showMiniPosInputScreen() {
         // ── Portrait: top panel + numpad below (PIN pad geometry) ───────────
         fillRect(0, PP_V_TOP_H - 1, PANEL_W, 1, themeForeground);
 
+        // "Amount in EUR" is centred (x≈82..238 at size 2), so the battery goes
+        // right-aligned into the free strip at the top-right corner.
         String header = "Amount in " + miniPosConfig.currency;
         drawCenter(PANEL_W / 2, 22, header.c_str(), themeForeground, themeBackground, 2);
+        drawMiniPosBattery(PANEL_W - 8, 22);
 
         drawMiniPosAmountBox(40, 45, PANEL_W - 80, 52);
 
@@ -2016,8 +2025,13 @@ void showMiniPosInputScreen() {
         // ── Landscape: left panel + numpad right (PIN pad geometry) ─────────
         fillRect(PP_NP_X - 1, 0, 1, SCR_H, themeForeground);
 
-        drawCenter(PP_LEFT_CX, 28, "Amount in", themeForeground, themeBackground, 3);
-        drawCenter(PP_LEFT_CX, 64, miniPosConfig.currency.c_str(), themeForeground, themeBackground, 3);
+        // The left panel is only PP_LEFT_W (210) px wide: "Amount in EUR" needs
+        // 156 px at size 2 and the battery another 48, so they cannot share a
+        // row. Battery gets its own line in the top-right corner, the header sits
+        // centred below it as a single line.
+        drawMiniPosBattery(PP_LEFT_W - 10, 18);
+        String header = "Amount in " + miniPosConfig.currency;
+        drawCenter(PP_LEFT_CX, 55, header.c_str(), themeForeground, themeBackground, 2);
 
         drawMiniPosAmountBox(10, 95, PP_LEFT_W - 20, 46);
 

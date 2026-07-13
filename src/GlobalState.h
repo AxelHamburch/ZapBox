@@ -2,6 +2,7 @@
 #define GLOBAL_STATE_H
 
 #include <Arduino.h>
+#include "PinConfig.h"   // RELAY_CHANNEL_PINS — flex channels are looked up by channel, not by GPIO
 
 /**
  * @file GlobalState.h
@@ -283,24 +284,24 @@ extern C3FlexChannelConfig c3FlexConfig;
 // ============================================================================
 #ifdef BOARD_JC3248W535C
 struct T35AmbientConfig {
+  // Channel slots are indexed by CHANNEL, never by GPIO number: the GPIO behind
+  // each channel is RELAY_CHANNEL_PINS[i] (PinConfig.h). CH01 is the always-on
+  // primary channel, so only CH02..CH06 carry per-channel flags — those are the
+  // FLEX_COUNT entries below, in channel order (flex[0] = CH02 … flex[4] = CH06).
+  static const int FLEX_COUNT = RELAY_CHANNEL_MAX - 1;   // 5
+
   // Ambient-light flags (backlight sync)
-  bool gpio6Ambient  = false;  // CH02
-  bool gpio7Ambient  = false;  // CH03
-  bool gpio14Ambient = false;  // CH04
-  bool gpio15Ambient = false;  // CH05
-  bool gpio16Ambient = false;  // CH06
+  bool flexAmbient[FLEX_COUNT] = {false, false, false, false, false};
   bool anyEnabled() const {
-    return gpio6Ambient || gpio7Ambient || gpio14Ambient || gpio15Ambient || gpio16Ambient;
+    for (int i = 0; i < FLEX_COUNT; i++) if (flexAmbient[i]) return true;
+    return false;
   }
 
   // Relay/servo actor flags (used for OFA: fire together with CH01)
-  bool gpio6Actor  = false;
-  bool gpio7Actor  = false;
-  bool gpio14Actor = false;
-  bool gpio15Actor = false;
-  bool gpio16Actor = false;
+  bool flexActor[FLEX_COUNT] = {false, false, false, false, false};
   bool anyActor() const {
-    return gpio6Actor || gpio7Actor || gpio14Actor || gpio15Actor || gpio16Actor;
+    for (int i = 0; i < FLEX_COUNT; i++) if (flexActor[i]) return true;
+    return false;
   }
 
   // Activation mode
@@ -313,10 +314,15 @@ struct T35AmbientConfig {
   // Derived: total number of independent payment channels (CH01 + relay/servo CH02-CH06)
   int paymentChannelCount = 1;
 
+  // Derived: CH06 (GPIO 5) is unused, so GPIO 5 stays an input and carries the
+  // battery voltage divider. Any actor/ambient use of CH06 turns the pin into an
+  // output and kills the measurement — see Battery.cpp.
+  bool batteryEnabled = true;
+
   // ── Per-channel servo configuration ──────────────────────────────────
   // A channel set to "servo180"/"servo360" drives a servo (with these
-  // parameters) instead of a relay when paid. Array index 0..5 maps to
-  // RELAY_CHANNEL_PINS = {GPIO 5, 6, 7, 14, 15, 16} = CH01..CH06.
+  // parameters) instead of a relay when paid. Array index 0..5 = CH01..CH06,
+  // i.e. the same order as RELAY_CHANNEL_PINS.
   struct ServoChannel {
     bool servo180 = false;     // mode == "servo180" (positional 0-180°)
     bool servo360 = false;     // mode == "servo360" (continuous rotation)
@@ -327,20 +333,31 @@ struct T35AmbientConfig {
     int  s360Duration = 0;     // 360°: spin duration ms (0 = until action ends)
     bool isServo() const { return servo180 || servo360; }
   };
-  ServoChannel servo[6];
+  ServoChannel servo[RELAY_CHANNEL_MAX];
 
-  // Map a GPIO to its servo[] channel index, or -1 if it is not a flex channel.
-  int servoIndexForGpio(int gpio) const {
-    switch (gpio) {
-      case 5:  return 0;
-      case 6:  return 1;
-      case 7:  return 2;
-      case 14: return 3;
-      case 15: return 4;
-      case 16: return 5;
-      default: return -1;
+  // Map a GPIO to its channel index (0..5 = CH01..CH06), or -1 if it is not a
+  // payment channel GPIO at all.
+  int channelIndexForGpio(int gpio) const {
+    for (int i = 0; i < RELAY_CHANNEL_MAX; i++) {
+      if (RELAY_CHANNEL_PINS[i] == gpio) return i;
     }
+    return -1;
   }
+  // Map a GPIO to its flex slot (0..4 = CH02..CH06), or -1 for CH01 / unknown.
+  int flexIndexForGpio(int gpio) const {
+    int ch = channelIndexForGpio(gpio);
+    return (ch >= 1) ? ch - 1 : -1;
+  }
+  bool ambientForGpio(int gpio) const {
+    int i = flexIndexForGpio(gpio);
+    return i >= 0 && flexAmbient[i];
+  }
+  bool actorForGpio(int gpio) const {
+    int i = flexIndexForGpio(gpio);
+    return i >= 0 && flexActor[i];
+  }
+
+  int servoIndexForGpio(int gpio) const { return channelIndexForGpio(gpio); }
   bool isServoGpio(int gpio) const {
     int i = servoIndexForGpio(gpio);
     return i >= 0 && servo[i].isServo();
@@ -710,11 +727,10 @@ extern MiniPosState miniPosState;
 
 struct AuthyConfig {
   bool   enabled = false;      // multiControl == "authy"
+  int    authPin = PIN_RELAY_CH01;   // CH01 — follows the board's pin map
 #ifdef BOARD_JC3248W535C
-  int    authPin = 5;          // Touch 3.5": CH01 = GPIO 5
   bool   ntag424Pin = true;    // Touch 3.5": PIN pad available
 #else
-  int    authPin = 12;  // T-Display-S3: CH01 = GPIO 12 (= PIN_RELAY_CH01)
   bool   ntag424Pin = false;   // T-Display-S3: no touch → no PIN pad
 #endif
   int    authDuration = 1000;  // ms the relay stays on
