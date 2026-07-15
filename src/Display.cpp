@@ -1222,13 +1222,41 @@ void supplyBinEmptyScreen()
   }
 }
 
+// True once switch labels were successfully fetched from LNbits (main.cpp).
+// Distinguishes "primary pin not configured" from "labels not loaded yet".
+extern bool labelsLoadedSuccessfully;
+
+// Shown in single-channel mode when the primary pin has no LNbits switch entry —
+// the QR would be unpayable, so prompt the operator to configure LNbits.
+// Theme colours (a setup state the operator resolves, not a runtime alert).
+void showLNbitsNotConfiguredScreen()
+{
+  DisplayLock lock;
+  safeFillScreen(themeBackground);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(themeForeground);
+  tft.setTextSize(2);
+  tft.drawString("LNBITS",     x, y - 45, GFXFF);
+  tft.drawString("NOT",        x, y,      GFXFF);
+  tft.drawString("CONFIGURED", x, y + 45, GFXFF);
+}
+
 // Show QR for ZAP action - uses product label from backend if available
 void showQRScreen()
 {
   DisplayLock lock;
   int activePin = (RELAY_CHANNEL_MAX > 0) ? RELAY_CHANNEL_PINS[0] : 12;
   int pinIndex = getPinIndex(activePin);
-  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0) ? productLabels.labels[pinIndex] : "READY 4 ZAP ACTION";
+  bool configured = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0);
+  // No LNbits switch entry for the primary pin (label still empty after a
+  // successful fetch) → the demo fallback QR cannot be paid, so tell the operator
+  // to configure LNbits. Before labels have loaded (boot / offline) keep the
+  // neutral fallback so the message doesn't flash on startup.
+  if (!configured && labelsLoadedSuccessfully) {
+    showLNbitsNotConfiguredScreen();
+    return;
+  }
+  String label = configured ? productLabels.labels[pinIndex] : "READY 4 ZAP ACTION";
   showProductQRScreen(label, activePin);
 }
 

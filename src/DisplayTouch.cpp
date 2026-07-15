@@ -132,6 +132,10 @@ static bool themeInvertQr() {
 // External currency string set from config (defaults to "USD")
 extern String currency;
 
+// True once switch labels were successfully fetched from LNbits (main.cpp).
+// Used to distinguish "primary pin not configured" from "labels not loaded yet".
+extern bool labelsLoadedSuccessfully;
+
 // ============================================================================
 // SHARED LAYOUT CONSTANTS (used by QR / step / NFC screens)
 // ============================================================================
@@ -1294,12 +1298,35 @@ void showProductQRScreen(String label, int pin) {
   flushDisplay();
 }
 
+// Shown in single-channel mode when the primary pin has no LNbits switch entry —
+// the QR would be unpayable, so prompt the operator instead. Theme colours (a
+// setup state the operator resolves, not a runtime alert).
+static void showLNbitsNotConfiguredScreen() {
+  fillScreen(themeBackground);
+  int cy = SCR_H / 2;
+  uint8_t sz = isPortrait() ? 3 : 4;
+  int dy = isPortrait() ? 45 : 58;
+  drawCenter(SCR_W / 2, cy - dy, "LNBITS",     themeForeground, themeBackground, sz);
+  drawCenter(SCR_W / 2, cy,      "NOT",        themeForeground, themeBackground, sz);
+  drawCenter(SCR_W / 2, cy + dy, "CONFIGURED", themeForeground, themeBackground, sz);
+  flushDisplay();
+}
+
 void showQRScreen() {
   int activePin = (RELAY_CHANNEL_MAX > 0) ? RELAY_CHANNEL_PINS[0] : 12;
   int pinIndex = getPinIndex(activePin);
-  String label = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0)
-                  ? productLabels.labels[pinIndex]
-                  : String("READY 4 ZAP ACTION");
+  bool configured = (pinIndex >= 0 && productLabels.labels[pinIndex].length() > 0);
+  // No LNbits switch entry for the primary pin (label still empty after a
+  // successful fetch) → the demo fallback QR cannot be paid, so tell the operator
+  // to configure LNbits. Before labels have loaded (boot / offline) keep the
+  // neutral fallback so the message doesn't flash on startup.
+  if (!configured && labelsLoadedSuccessfully) {
+    DisplayLock l; if (!_gfx) return;
+    showLNbitsNotConfiguredScreen();
+    return;
+  }
+  String label = configured ? productLabels.labels[pinIndex]
+                            : String("READY 4 ZAP ACTION");
   showProductQRScreen(label, activePin);
 }
 
