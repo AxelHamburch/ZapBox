@@ -463,9 +463,14 @@ bool requestMiniPosInvoice(const String &amountStr)
   http.setConnectTimeout(5000);
   http.setTimeout(10000);
 
+  // The device tells the server which relay pin to fire on settlement — its
+  // primary channel CH01 (PIN_RELAY_CH01). This keeps the GPIO mapping entirely
+  // on the device: the extension no longer hard-codes a Mini-PoS pin, so a
+  // re-map of the channel layout needs no server-side change.
   String body = String("{\"amount\":") + amountStr
               + ",\"currency\":\"" + miniPosConfig.currency + "\""
-              + ",\"device_id\":\"" + deviceId + "\"}";
+              + ",\"device_id\":\"" + deviceId + "\""
+              + ",\"pin\":" + String(PIN_RELAY_CH01) + "}";
   int httpCode = http.POST(body);
   if (httpCode != 200) {
     String resp = http.getString();
