@@ -142,11 +142,22 @@ struct LightBarrierConfig {
   bool blocked2 = false;
   bool binEmpty2 = false;
 
+  // Sensor 3 — JC3248W535C only (GPIO 6 / CH05). The Touch 3.5 exposes all three
+  // ADC1-capable pins (GPIO 5/6/7) as sensor-capable channels; this is the third.
+  String mode3 = "no";
+  bool enabled3 = false;
+  bool monitoring3 = false;
+  bool levelMonitoring3 = false;
+  bool relayOutput3 = false;    // true when mode3 == "relay"
+  bool blocked3 = false;
+  bool binEmpty3 = false;
+
   bool isActive() const { return enabled || monitoring || levelMonitoring; }
   bool isActive2() const { return enabled2 || monitoring2 || levelMonitoring2; }
-  bool isAnyActive() const { return isActive() || isActive2(); }
+  bool isActive3() const { return enabled3 || monitoring3 || levelMonitoring3; }
+  bool isAnyActive() const { return isActive() || isActive2() || isActive3(); }
   // True when any sensor condition blocks payments
-  bool isAnyBlocking() const { return blocked || blocked2 || binEmpty || binEmpty2; }
+  bool isAnyBlocking() const { return blocked || blocked2 || blocked3 || binEmpty || binEmpty2 || binEmpty3; }
 };
 
 extern LightBarrierConfig lightBarrierConfig;
@@ -276,7 +287,7 @@ extern C3FlexChannelConfig c3FlexConfig;
 
 // ============================================================================
 // TOUCH 3.5 FLEX CHANNEL CONFIGURATION (JC3248W535C only)
-// CH02–CH06 (GPIO 6, 7, 14, 15, 16) can each be independently configured:
+// CH02–CH06 (GPIO 15, 16, 5, 6, 7) can each be independently configured:
 //   relay / servo180 / servo360  → payment actor (relay HIGH on payment)
 //   ambient-light               → mirrors display backlight state
 //   sensor-stop / -monitor / -level → sensor input (INPUT_PULLUP)
@@ -314,8 +325,8 @@ struct T35AmbientConfig {
   // Derived: total number of independent payment channels (CH01 + relay/servo CH02-CH06)
   int paymentChannelCount = 1;
 
-  // Derived: CH06 (GPIO 5) is unused, so GPIO 5 stays an input and carries the
-  // battery voltage divider. Any actor/ambient use of CH06 turns the pin into an
+  // Derived: CH04 (GPIO 5) is unused, so GPIO 5 stays an input and carries the
+  // battery voltage divider. Any actor/ambient use of CH04 turns the pin into an
   // output and kills the measurement — see Battery.cpp.
   bool batteryEnabled = true;
 
@@ -414,7 +425,7 @@ struct ProductLabels {
   //   index 4=GPIO19(CH05), 5=GPIO22(CH06), 6=GPIO23(CH07), 7=GPIO25(CH08)
   //   index 8=GPIO26(CH09), 9=GPIO27(CH10), 10=GPIO32(CH11), 11=GPIO33(CH12)
   //   indices 4-11 only on esp32dev
-  // JC3248W535C: index 0-5=GPIO 5/6/7/14/15/16 (CH01-CH06),
+  // JC3248W535C: index 0-5=GPIO 14/15/16/5/6/7 (CH01-CH06),
   //   index 6-13=PCF8574 virtual pins 200-207
   String labels[PRODUCT_LABELS_MAX];
   int durations[PRODUCT_LABELS_MAX] = {0}; // Action time per pin in ms (0 = not configured)
@@ -440,14 +451,14 @@ inline int getPinIndex(int pin) {
     case 4:  return 0;  // ESP32-C3-21-1: GPIO4 = primary relay (CH01)
 #endif
 #ifdef BOARD_JC3248W535C
-    case 5:  return 0;  // CH01
-    case 6:  return 1;  // CH02
-    case 7:  return 2;  // CH03
-    case 14: return 3;  // CH04
-    case 15: return 4;  // CH05
-    case 16: return 5;  // CH06
+    case 14: return 0;  // CH01
+    case 15: return 1;  // CH02
+    case 16: return 2;  // CH03
+    case 5:  return 3;  // CH04
+    case 6:  return 4;  // CH05
+    case 7:  return 5;  // CH06
     // Virtual IOExpander pins (PCF8574 P0–P7) get their own slots 6–13 —
-    // indices 4/5 are taken by GPIO 15/16 on this board.
+    // indices 0..5 are taken by GPIO 14/15/16/5/6/7 on this board.
     case 200: return 6;
     case 201: return 7;
     case 202: return 8;

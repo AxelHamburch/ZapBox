@@ -222,35 +222,39 @@
 #define PIN_GPIO3_MODE  INPUT_PULLUP   // FD signal: HIGH = no field, LOW = phone detected
 
 // ── Flexible Output/Input Channels ───────────────────────────────
-// GPIOs 6, 7, 5, 14, 15, 16 — each configurable per channel:
+// GPIOs 14, 15, 16, 5, 6, 7 — each configurable per channel:
 //   relay | servo180 | servo360 | ambient-light |
 //   sensor-stop | sensor-blockage | sensor-level
 //
 // Pin assignment:
-//   CH01 → GPIO  6   (relay default; Special Mode applies to CH01 only)
-//   CH02 → GPIO  7
-//   CH03 → GPIO  5   ⚠ shared with the battery ADC — see below
-//   CH04 → GPIO 14
-//   CH05 → GPIO 15
-//   CH06 → GPIO 16
+//   CH01 → GPIO 14   (relay default; Special Mode applies to CH01 only)
+//   CH02 → GPIO 15
+//   CH03 → GPIO 16
+//   CH04 → GPIO  5   ⚠ shared with the battery ADC — see below
+//   CH05 → GPIO  6
+//   CH06 → GPIO  7   ⚠ vending Sensor 1 input — see below
 //
-// The three ADC1-capable pins (5, 6, 7 = ADC1_CH4/5/6) are grouped as the first
-// three channels. GPIO 14/15/16 sit on ADC2, which the WiFi driver claims —
-// they can never be analog inputs on this device, only digital / PWM.
+// GPIO 14/15/16 sit on ADC2, which the WiFi driver claims — they can never be
+// analog inputs on this device, only digital / PWM. They are grouped as the
+// first three channels so that CH01 (the always-on primary) lands on GPIO 14.
+// The three ADC1-capable pins (5, 6, 7 = ADC1_CH4/5/6) follow as CH04..CH06;
+// GPIO 5 (CH04) additionally carries the battery voltage divider.
 //
-// ⚠ BREAKING CHANGE (was: CH01=5, CH02=6, CH03=7, CH04=14, CH05=15, CH06=16).
-//   The primary channel moved from GPIO 5 to GPIO 6 to free GPIO 5 for the
-//   battery measurement. Existing devices must re-wire the relay AND change the
-//   pin from 5 to 6 in their LNbits switch entry.
+// ⚠ BREAKING CHANGE (was: CH01=6, CH02=7, CH03=5, CH04=14, CH05=15, CH06=16).
+//   The channel numbering was re-ordered so the primary channel (CH01) is now
+//   GPIO 14. Each physical function stayed on its GPIO — only the CHxx label
+//   moved. Existing devices must update the pin number in their LNbits switch
+//   entry to match the new channel they use (e.g. the primary relay is now
+//   pin 14, not pin 6). The wiring itself does not change.
 //
 // GPIO 9 is reserved for NFC IRQ — not a flex channel.
 // ─────────────────────────────────────────────────────────────────
-#define PIN_RELAY_CH01  6
-#define PIN_RELAY_CH02  7
-#define PIN_RELAY_CH03  5
-#define PIN_RELAY_CH04  14
-#define PIN_RELAY_CH05  15
-#define PIN_RELAY_CH06  16
+#define PIN_RELAY_CH01  14
+#define PIN_RELAY_CH02  15
+#define PIN_RELAY_CH03  16
+#define PIN_RELAY_CH04  5
+#define PIN_RELAY_CH05  6
+#define PIN_RELAY_CH06  7
 
 #define RELAY_CHANNEL_MAX 6
 static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
@@ -268,29 +272,32 @@ static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
 //                      |
 //                     GND
 //
-// ADC1 is mandatory here: ADC2 (GPIO 14/15) is claimed by the WiFi driver.
+// ADC1 is mandatory here: ADC2 (GPIO 14/15/16) is claimed by the WiFi driver.
 //
-// GPIO 5 is ALSO channel CH03. The two uses are mutually exclusive — driving the
+// GPIO 5 is ALSO channel CH04. The two uses are mutually exclusive — driving the
 // pin as an output overrides the (high-impedance) divider. The battery gauge is
-// therefore only active while CH03 is unconfigured ("off"); see Battery.cpp.
+// therefore only active while CH04 is unconfigured ("off"); see Battery.cpp.
 #define PIN_BAT_ADC  5
 
 // ── Vending machine sensor inputs ────────────────────────────────
 // Same three modes as the T-Display-S3 light barrier (stop / monitor / level),
 // reusing the existing two-sensor implementation (LightBarrierConfig):
 //
-//   Sensor 1 → CH02 (GPIO 7)
-//   Sensor 2 → CH03 (GPIO 5)   ⚠ mutually exclusive with the battery gauge
+//   Sensor 1 → CH06 (GPIO 7)
+//   Sensor 2 → CH04 (GPIO 5)   ⚠ mutually exclusive with the battery gauge
+//   Sensor 3 → CH05 (GPIO 6)
 //
-// Both are INPUT_PULLUP, active LOW — a sensor is a digital input, so any GPIO
-// would do electrically. These two are the ADC1-capable pins, which keeps an
-// analog sensor possible later without moving the connector.
+// All three ADC1-capable pins (GPIO 5/6/7 = ADC1_CH4/5/6) are sensor-capable, so
+// all of CH04/CH05/CH06 can be parametrised as a sensor. Each is INPUT_PULLUP,
+// active LOW — electrically any GPIO would do; these are the ADC1 pins, which
+// keeps an analog sensor possible later without moving the connector.
 //
 // The T-Display-S3 light barrier (GPIO 2) does not exist on this board — GPIO 2
 // is not broken out, so undefine it or its init would touch a floating pin.
 #undef  PIN_LIGHT_BARRIER
-#define PIN_SENSOR_1  PIN_RELAY_CH02   // 7
-#define PIN_SENSOR_2  PIN_RELAY_CH03   // 5
+#define PIN_SENSOR_1  PIN_RELAY_CH06   // 7
+#define PIN_SENSOR_2  PIN_RELAY_CH04   // 5
+#define PIN_SENSOR_3  PIN_RELAY_CH05   // 6
 
 // ── External LED Button (same wiring as T-Display-S3) ─────────────
 // PIN_LED_BUTTON_LED = 43  (inherited from ENABLE_DISPLAY=1 block above)

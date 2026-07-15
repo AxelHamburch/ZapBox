@@ -120,7 +120,7 @@ static int socFromMilliVolts(int mv) {
 void initBattery() {
     s_enabled = t35AmbientConfig.batteryEnabled;
     if (!s_enabled) {
-        LOG_INFO("Battery", String("Disabled — CH03 (GPIO ") + PIN_BAT_ADC
+        LOG_INFO("Battery", String("Disabled — CH04 (GPIO ") + PIN_BAT_ADC
                           + ") is in use as a channel, so the divider cannot be read");
         return;
     }

@@ -18,8 +18,8 @@ static bool servoFlex7Attached = false;
 
 #ifdef BOARD_JC3248W535C
 // Touch 3.5 multi-channel: one servo per flex channel (CH01..CH06).
-// Index 0..5 maps to GPIO 5, 6, 7, 14, 15, 16 (== RELAY_CHANNEL_PINS).
-static const int T35_SERVO_GPIO[6] = {5, 6, 7, 14, 15, 16};
+// Index 0..5 maps to GPIO 14, 15, 16, 5, 6, 7 (== RELAY_CHANNEL_PINS).
+static const int T35_SERVO_GPIO[6] = {14, 15, 16, 5, 6, 7};
 static Servo t35Servos[6];
 static bool  t35Attached[6] = {false, false, false, false, false, false};
 static int t35ServoIdx(int gpio) {
