@@ -59,12 +59,12 @@ ESP32-S3 with a 3.5" capacitive touch display (480 × 320). The largest ZapBox �
 | 18 | I²C SDA | I²C | - | Shared: PN532 + NT3H2111 + PCF8574 |
 | 9 | NFC IRQ | Input | Pull-up | PN532 interrupt (card detection, active LOW) |
 | **Flex Channels** |
-| 6 | CH01 | Output | - | Primary channel — relay *(default)* / servo. Special Mode applies here only |
-| 7 | CH02 | Output *or* Input | Pull-up (sensor) | Relay / servo / **sensor** / ambient light |
-| 5 | CH03 | Output / Input / analog | Pull-up (sensor) | Same as CH02 — 🔋 **while off, this pin measures the battery** |
-| 14 | CH04 | Output | - | Relay / servo / ambient light |
-| 15 | CH05 | Output | - | Relay / servo / ambient light |
-| 16 | CH06 | Output | - | Relay / servo / ambient light |
+| 14 | CH01 | Output | - | Primary channel — relay *(default)* / servo. Special Mode applies here only |
+| 15 | CH02 | Output | - | Relay / servo / ambient light |
+| 16 | CH03 | Output | - | Relay / servo / ambient light |
+| 5 | CH04 | Output / Input / analog | Pull-up (sensor) | Relay / servo / **sensor** / ambient light — 🔋 **while off, this pin measures the battery** |
+| 6 | CH05 | Output *or* Input | Pull-up (sensor) | Relay / servo / **sensor** / ambient light |
+| 7 | CH06 | Output *or* Input | Pull-up (sensor) | Relay / servo / **sensor** / ambient light |
 | **LED Button** |
 | 43 | LED Button (LED) / **TX** | Output | HIGH=ON | Board pin labeled **TX** — illuminated button LED (3.3 V) |
 | 44 | LED Button (SW) / **RX** | Input | Pull-up | Board pin labeled **RX** — button switch (active LOW); Light-Sleep wake source |
@@ -91,12 +91,13 @@ Six freely configurable channels. Each channel's function is set independently i
 
 | Channel | GPIO | Selectable functions |
 |---------|------|----------------------|
-| CH01 | 6 | Relay *(default)* · Servo 180° · Servo 360° — primary / Special-Mode channel |
-| CH02 | 7 | Off · Relay · Servo 180°/360° · **Sensor** (stop / blockage / level) · Ambient Light |
-| CH03 | 5 | Same as CH02 — 🔋 but **while off, this pin measures the [battery](#battery-gauge)** |
-| CH04–CH06 | 14, 15, 16 | Off · Relay · Servo 180°/360° · Ambient Light |
+| CH01 | 14 | Relay *(default)* · Servo 180° · Servo 360° — primary / Special-Mode channel |
+| CH02–CH03 | 15, 16 | Off · Relay · Servo 180°/360° · Ambient Light |
+| CH04 | 5 | Off · Relay · Servo 180°/360° · **Sensor** (stop / blockage / level) · Ambient Light — 🔋 but **while off, this pin measures the [battery](#battery-gauge)** |
+| CH05 | 6 | Off · Relay · Servo 180°/360° · **Sensor** (stop / blockage / level) · Ambient Light |
+| CH06 | 7 | Off · Relay · Servo 180°/360° · **Sensor** (stop / blockage / level) · Ambient Light |
 
-**Why this order:** the three **ADC1-capable** pins (5, 6, 7) come first. GPIO 14/15/16 sit on ADC2, which the WiFi driver claims — they can never serve as analog inputs on this device, only as digital outputs or PWM (servo).
+**Why the primary is GPIO 14:** GPIO 14/15/16 sit on ADC2, which the WiFi driver claims — they can never serve as analog inputs on this device, only as digital outputs or PWM (servo), so they lead as CH01–CH03. The three **ADC1-capable** pins (5, 6, 7) follow as CH04–CH06; all three are **sensor-capable**, and GPIO 5 (CH04) additionally carries the battery divider.
 
 - **Payment channels:** every channel set to *relay* or *servo* becomes its own payment channel with a unique LNURL/QR code and its own amount and duration from the LNbits switch entry. Channels set to *ambient-light*, *sensor* or *off* are not counted as payment channels.
 - **CH01** is always active as the primary channel and is the only one that supports the **Special Modes** (blink / pulse / strobe); additional channels switch in standard on/off mode.
@@ -115,24 +116,24 @@ Any channel set to **Servo 180°** or **Servo 360°** gets its own parameter box
 - **Off** *(default)* — each channel is triggered separately by its own QR/payment.
 - **One for All** — a single payment on **CH01** fires *all* relay/servo channels at once (one QR code). Each channel runs for its own LNbits-configured duration (fallback: CH01's duration). Ambient-light and sensor channels are unaffected. Mutually exclusive with Numerical Product Selection.
 
-> ⚠️ **Breaking change since v957859t.** The primary channel moved from GPIO 5 to GPIO 6 to free GPIO 5 for the battery gauge. Devices flashed with an older firmware must (1) re-wire the relay from GPIO 5 to GPIO 6 and (2) change the pin from `5` to `6` in the LNbits switch entry. A firmware-only update leaves the device silent — payments arrive, but nothing switches.
+> ⚠️ **Breaking change.** The channel numbering was re-ordered so the primary channel (CH01) is now **GPIO 14** and CH01–CH06 map to GPIO 14/15/16/5/6/7. Each physical function stayed on its GPIO — only the CHxx label moved (e.g. the battery/sensor pin GPIO 5 is now CH04, GPIO 7 is now CH06). The wiring does not change, but devices flashed with an older firmware must update the pin numbers in their LNbits switch entries to match the channel they use (e.g. the primary relay is now pin `14`, not pin `6`). A firmware-only update leaves the device silent — payments arrive, but nothing switches.
 
 ---
 
 ## Battery Gauge
 
-The JC3248W535C has a **JST connector for a single-cell LiPo** with an on-board charging circuit. The battery rail is wired to **GPIO 5** through a divider (33 kΩ / 100 kΩ, per the vendor schematic), so the pack voltage can be read with the ADC. GPIO 5 is **ADC1_CH4** — and only ADC1 works while WiFi is active, since ADC2 (GPIO 14/15) is claimed by the WiFi driver.
+The JC3248W535C has a **JST connector for a single-cell LiPo** with an on-board charging circuit. The battery rail is wired to **GPIO 5** through a divider (33 kΩ / 100 kΩ, per the vendor schematic), so the pack voltage can be read with the ADC. GPIO 5 is **ADC1_CH4** — and only ADC1 works while WiFi is active, since ADC2 (GPIO 14/15/16) is claimed by the WiFi driver.
 
 The charge level (0–100 %) is shown in the **[Mini-PoS entry screen](#mini-pos-mode)**, in both orientations: top-right of the screen in portrait, and top-right of the left panel (next to the numpad divider) in landscape.
 
-### GPIO 5 has two mutually exclusive roles
+### GPIO 5 (CH04) has two mutually exclusive roles
 
 | GPIO 5 used as | Consequence |
 |----------------|-------------|
-| **Battery ADC** (CH03 = `off`, the default) | Battery charge level is measured and displayed. |
-| **Flex channel CH03** (relay / servo / sensor / ambient) | The channel works as configured; the battery display disappears, because a driven output overrides the high-impedance divider. |
+| **Battery ADC** (CH04 = `off`, the default) | Battery charge level is measured and displayed. |
+| **Flex channel CH04** (relay / servo / sensor / ambient) | The channel works as configured; the battery display disappears, because a driven output overrides the high-impedance divider. |
 
-No configuration switch is needed — the firmware derives this from the CH03 mode.
+No configuration switch is needed — the firmware derives this from the CH04 mode.
 
 ### Calibration
 
@@ -158,7 +159,7 @@ A *railed* reading (~3107 mV) does mean something though — with no cell to hol
 
 ## Vending Sensors
 
-Available on **CH02 (GPIO 7)** and **CH03 (GPIO 5)** only. Same three modes as the T-Display-S3 light barrier. All are digital inputs, active LOW (`INPUT_PULLUP`).
+Available on **CH04 (GPIO 5)**, **CH05 (GPIO 6)** and **CH06 (GPIO 7)** — the three ADC1-capable pins. Same three modes as the T-Display-S3 light barrier. All are digital inputs, active LOW (`INPUT_PULLUP`).
 
 | Mode | Behaviour |
 |------|-----------|
@@ -166,9 +167,9 @@ Available on **CH02 (GPIO 7)** and **CH03 (GPIO 5)** only. Same three modes as t
 | **Monitoring product blockage** | After a payment, a still-blocked outlet shows *PRODUCT BLOCKED* and holds further payments until the path is clear. |
 | **Level monitoring** | An empty supply bin shows *SUPPLY BIN IS EMPTY* and blocks payments until it is restocked. |
 
-Sensors are digital inputs — electrically any GPIO would do. CH02/CH03 were chosen because they are the ADC1-capable pins, which keeps an *analog* sensor possible later without moving the connector.
+Sensors are digital inputs — electrically any GPIO would do. CH04/CH05/CH06 are offered because they are the three ADC1-capable pins, which keeps an *analog* sensor possible later without moving the connector. Up to three sensors can run at once.
 
-> ⚠️ A sensor on **CH03** claims GPIO 5 as a digital input and therefore **disables the [battery gauge](#battery-gauge)**.
+> ⚠️ A sensor on **CH04** claims GPIO 5 as a digital input and therefore **disables the [battery gauge](#battery-gauge)**.
 
 ---
 
@@ -176,7 +177,7 @@ Sensors are digital inputs — electrically any GPIO would do. CH02/CH03 were ch
 
 **Requires the [zapbox_extension](https://github.com/AxelHamburch/zapbox_extension) v2.3.0+ on the LNbits server.**
 
-Turns the ZapBox into a small point-of-sale terminal: instead of a fixed QR code, the customer-facing display shows an **amount entry screen**. The operator types an amount, presses **INVOICE**, and the ZapBox requests a Lightning invoice from the LNbits server and shows it as a QR code. After payment, **CH01 (GPIO 6)** switches — like in single-channel mode.
+Turns the ZapBox into a small point-of-sale terminal: instead of a fixed QR code, the customer-facing display shows an **amount entry screen**. The operator types an amount, presses **INVOICE**, and the ZapBox requests a Lightning invoice from the LNbits server and shows it as a QR code. After payment, **CH01 (GPIO 14)** switches — like in single-channel mode.
 
 ### Payment flow
 
@@ -187,13 +188,13 @@ Turns the ZapBox into a small point-of-sale terminal: instead of a fixed QR code
    - **scanning the QR code** with any Lightning wallet
    - **tapping their phone** on the NFC Tag 2 (NT3H2111) — the tag carries the invoice
    - **tapping a Bolt Card** on the PN532 reader — the card pays the pending invoice (PIN protection supported)
-5. On settlement the server pushes the trigger over WebSocket: CH01 switches with the duration configured for pin 6 in LNbits (fallback: 3000 ms), the display shows **PAID** for 3 seconds, then returns to the empty entry screen
+5. On settlement the server pushes the trigger over WebSocket: CH01 switches with the duration configured for pin 14 in LNbits (fallback: 3000 ms), the display shows **PAID** for 3 seconds, then returns to the empty entry screen
 
 ### Entry screen
 
 - Numpad with decimal point (the `.` key is disabled when *Decimal separator: NO* is configured)
 - Amounts up to 7 characters (`xxxx.xx` or `xxxxxxx`)
-- 🔋 **Battery percentage** top-right (only when a battery is connected and CH03 is off)
+- 🔋 **Battery percentage** top-right (only when a battery is connected and CH04 is off)
 - **INVOICE** — request the invoice for the entered amount
 - **LAST PAY** — recalls the amount of the last settled payment; shown orange/locked for 5 seconds, then stays in the field and can be confirmed or edited
 - **CANCEL** (bottom-right on the QR screen) — aborts the pending invoice; a touch anywhere else does nothing
@@ -261,7 +262,7 @@ While no product QR is shown, the NFC Tag 2 carries `https://zapbox.space` and B
 
 Both authentication methods are supported: **LNURL-auth** (wallet login via QR) and **NTAG 424 DNA** (NFC tap — Bolt Card / Bolt Ring), plus an optional **4-digit PIN pad** after the tap.
 
-**Configuration:** *Web Installer → ZapBox Mode → Identity🫆Login*. The triggered pin defaults to CH01 (GPIO 6).
+**Configuration:** *Web Installer → ZapBox Mode → Identity🫆Login*. The triggered pin defaults to CH01 (GPIO 14).
 
 → Mechanism, teach mode and security: **[docs/identity.md](identity.md)**
 

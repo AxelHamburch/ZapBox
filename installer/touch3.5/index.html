@@ -267,7 +267,7 @@
                 <div>
                     <label for="multiControl">ZapBox Mode</label>
                     <select name="multiControl" id="multiControl">
-                        <option value="off" selected>Single channel — CH01 (pin 6 / default)</option>
+                        <option value="off" selected>Single channel — CH01 (pin 14 / default)</option>
                         <option value="duo">Multi channel — CH01 to CH06</option>
                         <option value="minipos">Mini-PoS — amount entry on display (CH01)</option>
                         <option value="authy">Identity🫆Login — LNURL-auth &amp; NFC Tag (CH01)</option>
@@ -288,7 +288,7 @@
 
             <!-- Single channel info: visible only in single mode -->
             <div id="singleChannelInfo" style="margin-top: 10px;">
-                <p style="color: #888; margin: 0;"><i>CH01 is wired to <strong>GPIO pin 6</strong> and operates as a relay output (on / off). <br> In LNbits, declare <strong>pin 6</strong> for this channel.</i></p>
+                <p style="color: #888; margin: 0;"><i>CH01 is wired to <strong>GPIO pin 14</strong> and operates as a relay output (on / off). <br> In LNbits, declare <strong>pin 14</strong> for this channel.</i></p>
             </div>
 
             <!-- Section header for mode-select: MULTI CHANNEL -->
@@ -299,15 +299,15 @@
             <!-- CH01–CH06 + multi-channel description: hidden in single mode -->
             <div id="multiChannelFields" style="display: none;">
                 <p style="margin-top: 14px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent channels</strong>. Each channel is triggered independently via its own QR code and amount in the LNbits extension. Channels set to <strong>ambient-light</strong>, <strong>sensor</strong>, or <strong>off</strong> are not counted as payment channels. Channels without a LNbits switch entry are skipped automatically.</i></p>
-                <p style="margin-top: 6px; color: #888;"><i><strong>Note:</strong> <strong>Special Mode</strong> (blink/pulse/strobe) applies to <strong>CH01 (GPIO 6) only</strong>. Additional channels always switch in standard on/off mode.</i></p>
-                <p style="margin-top: 6px; color: #888;"><i><strong>Sensors</strong> (vending machine) are available on <strong>CH02 (GPIO 7)</strong> and <strong>CH03 (GPIO 5)</strong> only. All inputs are active LOW (INPUT_PULLUP):<br>
+                <p style="margin-top: 6px; color: #888;"><i><strong>Note:</strong> <strong>Special Mode</strong> (blink/pulse/strobe) applies to <strong>CH01 (GPIO 14) only</strong>. Additional channels always switch in standard on/off mode.</i></p>
+                <p style="margin-top: 6px; color: #888;"><i><strong>Sensors</strong> (vending machine) are available on <strong>CH04 (GPIO 5)</strong>, <strong>CH05 (GPIO 6)</strong> and <strong>CH06 (GPIO 7)</strong> — the three ADC1-capable pins. All inputs are active LOW (INPUT_PULLUP):<br>
                     &#8226; <strong>Stop the advance</strong> — ends the running relay/servo action as soon as the sensor triggers (earliest after 2&nbsp;s).<br>
                     &#8226; <strong>Monitoring product blockage</strong> — after a payment, a still-blocked outlet shows <em>PRODUCT BLOCKED</em> and holds further payments until the path is clear.<br>
                     &#8226; <strong>Level monitoring</strong> — an empty supply bin shows <em>SUPPLY BIN IS EMPTY</em> and blocks payments until it is restocked.</i></p>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin-top: 16px;">
                     <div>
-                        <label for="ch01Mode">CH01 — GPIO 6 <span style="font-weight:normal; color:#888; font-size:12px;">(Special Mode channel)</span></label>
+                        <label for="ch01Mode">CH01 — GPIO 14 <span style="font-weight:normal; color:#888; font-size:12px;">(Special Mode channel)</span></label>
                         <select name="ch01Mode" id="ch01Mode">
                             <option value="relay" selected>Relay (default)</option>
                             <option value="servo180">Servo 180°</option>
@@ -328,15 +328,12 @@
                         </div>
                     </div>
                     <div>
-                        <label for="ch02Mode">CH02 — GPIO 7 <span style="font-weight:normal; color:#888; font-size:12px;">(sensor capable)</span></label>
+                        <label for="ch02Mode">CH02 — GPIO 15</label>
                         <select name="ch02Mode" id="ch02Mode">
                             <option value="off" selected>Off (default)</option>
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
-                            <option value="sensor-stop">Sensor — Stop the advance</option>
-                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
                         <div id="ch02Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
@@ -354,18 +351,14 @@
                         </div>
                     </div>
                     <div style="margin-top: 10px;">
-                        <label for="ch03Mode">CH03 — GPIO 5 <span style="font-weight:normal; color:#888; font-size:12px;">(sensor capable · shared with the battery gauge)</span></label>
+                        <label for="ch03Mode">CH03 — GPIO 16</label>
                         <select name="ch03Mode" id="ch03Mode">
-                            <option value="off" selected>Off (default) — GPIO 5 measures the battery 🔋</option>
+                            <option value="off" selected>Off (default)</option>
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
-                            <option value="sensor-stop">Sensor — Stop the advance</option>
-                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
-                            <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
-                        <p style="margin-top: 6px; color: #888; font-size: 12px;"><i><strong>🔋 Battery:</strong> GPIO 5 carries the battery voltage divider. While CH03 is <strong>Off</strong>, the charge level is shown in the Mini-PoS entry screen. Any other setting — relay, servo, sensor or ambient — claims the pin and <strong>disables the battery display</strong>.</i></p>
                         <div id="ch03Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
                             <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
                             <div><label for="ch03Servo180Start">Start angle (°)</label><input type="number" id="ch03Servo180Start" name="ch03Servo180Start" min="0" max="180" value="0"></div>
@@ -381,14 +374,18 @@
                         </div>
                     </div>
                     <div style="margin-top: 10px;">
-                        <label for="ch04Mode">CH04 — GPIO 14</label>
+                        <label for="ch04Mode">CH04 — GPIO 5 <span style="font-weight:normal; color:#888; font-size:12px;">(sensor capable · shared with the battery gauge)</span></label>
                         <select name="ch04Mode" id="ch04Mode">
-                            <option value="off" selected>Off (default)</option>
+                            <option value="off" selected>Off (default) — GPIO 5 measures the battery 🔋</option>
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
+                            <option value="sensor-stop">Sensor — Stop the advance</option>
+                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
+                        <p style="margin-top: 6px; color: #888; font-size: 12px;"><i><strong>🔋 Battery:</strong> GPIO 5 carries the battery voltage divider. While CH04 is <strong>Off</strong>, the charge level is shown in the Mini-PoS entry screen. Any other setting — relay, servo, sensor or ambient — claims the pin and <strong>disables the battery display</strong>.</i></p>
                         <div id="ch04Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
                             <p style="margin:0 0 8px 0; color:#333; font-weight:bold; font-size:12px;">180° Servo</p>
                             <div><label for="ch04Servo180Start">Start angle (°)</label><input type="number" id="ch04Servo180Start" name="ch04Servo180Start" min="0" max="180" value="0"></div>
@@ -404,12 +401,15 @@
                         </div>
                     </div>
                     <div style="margin-top: 10px;">
-                        <label for="ch05Mode">CH05 — GPIO 15</label>
+                        <label for="ch05Mode">CH05 — GPIO 6 <span style="font-weight:normal; color:#888; font-size:12px;">(sensor capable)</span></label>
                         <select name="ch05Mode" id="ch05Mode">
                             <option value="off" selected>Off (default)</option>
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
+                            <option value="sensor-stop">Sensor — Stop the advance</option>
+                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
                         <div id="ch05Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
@@ -427,12 +427,15 @@
                         </div>
                     </div>
                     <div style="margin-top: 10px;">
-                        <label for="ch06Mode">CH06 — GPIO 16</label>
+                        <label for="ch06Mode">CH06 — GPIO 7 <span style="font-weight:normal; color:#888; font-size:12px;">(sensor capable)</span></label>
                         <select name="ch06Mode" id="ch06Mode">
                             <option value="off" selected>Off (default)</option>
                             <option value="relay">Relay</option>
                             <option value="servo180">Servo 180°</option>
                             <option value="servo360">Servo 360° (continuous)</option>
+                            <option value="sensor-stop">Sensor — Stop the advance</option>
+                            <option value="sensor-monitor">Sensor — Monitoring product blockage</option>
+                            <option value="sensor-level">Sensor — Level monitoring</option>
                             <option value="ambient-light">Ambient Light (synced with display)</option>
                         </select>
                         <div id="ch06Servo180Box" class="t35Servo180Box" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:6px;">
@@ -467,7 +470,7 @@
                         <label for="t35ActivationMode">Activation Options</label>
                         <select name="t35ActivationMode" id="t35ActivationMode">
                             <option value="off" selected>Off (default) — each channel triggered separately</option>
-                            <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 6)</option>
+                            <option value="one-for-all">One for All — all channels triggered by CH01 (GPIO 14)</option>
                         </select>
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
                         <p id="activationOptionsMiniPosHint" style="display: none; margin: 4px 0 0 0; font-size: 11px; color: #888; font-style: italic;"><strong>Mini-PoS:</strong> With One for All, a paid invoice also triggers the channels CH02–CH06 that are configured as relay/servo (configure them in Multi channel mode first — the values are kept when switching back to Mini-PoS).</p>
@@ -496,7 +499,7 @@
 
             <!-- Mini-PoS configuration: visible only in Mini-PoS mode -->
             <div id="miniPosFields" style="display: none; margin-top: 10px;">
-                <p style="color: #888; margin: 0 0 14px 0;"><i>Mini-PoS works like single channel and switches <strong>GPIO pin 6</strong> — but instead of a fixed QR code, the user enters an amount on the touch display. The ZapBox then requests a Lightning invoice from your LNbits server (zapbox_extension required) and shows it as QR code. It can be paid by scanning, by Bolt Card (PN532) or by mobile phone NFC (NFC Tag 2). After payment, pin 6 is activated with the duration configured for pin 6 in LNbits (fallback: 3000&nbsp;ms). <strong>Note:</strong> <em>Activation Options — One for All</em> is not available in Mini-PoS when <em>Numerical Product Selection</em> is set to <em>Yes</em> in Multi-channel mode — switch it to <em>No</em> first.</i></p>
+                <p style="color: #888; margin: 0 0 14px 0;"><i>Mini-PoS works like single channel and switches <strong>GPIO pin 14</strong> — but instead of a fixed QR code, the user enters an amount on the touch display. The ZapBox then requests a Lightning invoice from your LNbits server (zapbox_extension required) and shows it as QR code. It can be paid by scanning, by Bolt Card (PN532) or by mobile phone NFC (NFC Tag 2). After payment, pin 14 is activated with the duration configured for pin 14 in LNbits (fallback: 3000&nbsp;ms). <strong>Note:</strong> <em>Activation Options — One for All</em> is not available in Mini-PoS when <em>Numerical Product Selection</em> is set to <em>Yes</em> in Multi-channel mode — switch it to <em>No</em> first.</i></p>
                 <div class="input-wrapper">
                     <div>
                         <label for="miniPosCurrency">Currency (ISO Code) for Payments</label>
@@ -548,12 +551,12 @@
                         <div>
                             <label for="authPin">Pin (GPIO triggered on success)</label>
                             <select name="authPin" id="authPin">
-                                <option value="6" selected>CH01 — GPIO 6 (default relay)</option>
-                                <option value="7">CH02 — GPIO 7</option>
-                                <option value="5">CH03 — GPIO 5 (disables the battery gauge)</option>
-                                <option value="14">CH04 — GPIO 14</option>
-                                <option value="15">CH05 — GPIO 15</option>
-                                <option value="16">CH06 — GPIO 16</option>
+                                <option value="14" selected>CH01 — GPIO 14 (default relay)</option>
+                                <option value="15">CH02 — GPIO 15</option>
+                                <option value="16">CH03 — GPIO 16</option>
+                                <option value="5">CH04 — GPIO 5 (disables the battery gauge)</option>
+                                <option value="6">CH05 — GPIO 6</option>
+                                <option value="7">CH06 — GPIO 7</option>
                             </select>
                             <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">All known identities will redeem this pin.</p>
                         </div>
@@ -608,7 +611,7 @@
                         <option value="fast-blink">Strobe (5 Hz, 1:1)</option>
                         <option value="custom">Custom (manual settings)</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Applies to <strong>CH01 (GPIO 6) only</strong> — additional channels always use standard on/off</p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Applies to <strong>CH01 (GPIO 14) only</strong> — additional channels always use standard on/off</p>
                 </div>
                 <div id="frequencyDiv" style="display: none;">
                     <label for="frequency">Frequency (Hz)</label>
@@ -622,7 +625,7 @@
                 </div>
             </div>
 
-            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> Special Mode controls how the relay on <strong>CH01 (GPIO 6)</strong> switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle. <strong>CH02–CH06 always switch in standard on/off mode</strong>, regardless of this setting.</i></p>
+            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> Special Mode controls how the relay on <strong>CH01 (GPIO 14)</strong> switches during the configured duration. "Standard" means simple on/off. Other modes create pulsing/blinking patterns with configurable frequency and duty cycle. <strong>CH02–CH06 always switch in standard on/off mode</strong>, regardless of this setting.</i></p>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
@@ -741,8 +744,8 @@
                 </div>
                 <div>
                     <label for="thresholdPin">GPIO pin to be controlled</label>
-                    <input type="number" name="thresholdPin" id="thresholdPin" placeholder="e.g. 6" value="6" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">6 (default CH01)</p>
+                    <input type="number" name="thresholdPin" id="thresholdPin" placeholder="e.g. 14" value="14" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">14 (default CH01)</p>
                 </div>
                 <div>
                     <label for="thresholdTime">Control time for GPIO pin (ms)</label>
@@ -1553,7 +1556,7 @@
                 "miniPosDecimal":     (document.getElementById('miniPosDecimal')     || {value: "yes"}).value,
                 "miniPosInvoiceKey":  (document.getElementById('miniPosInvoiceKey')  || {value: ""}).value,
                 "t35NumericSelect":   (document.getElementById('t35NumericSelect')   || {value: "no"}).value,
-                "authPin":            (document.getElementById('authPin')            || {value: "6"}).value,
+                "authPin":            (document.getElementById('authPin')            || {value: "14"}).value,
                 "authDuration":       (document.getElementById('authDuration')       || {value: "1000"}).value || "1000",
                 "authLabel":          (document.getElementById('authLabel')          || {value: "ZAPBOX Identity Trigger"}).value || "ZAPBOX Identity Trigger",
                 "authNtag424Pin":     (document.getElementById('authNtag424Pin')     || {value: "yes"}).value,
@@ -1772,9 +1775,9 @@
 
             // Multi-channel — CH01–CH06 with per-channel servo parameters
             if (zbMode === 'duo' || zbMode === 'modeselect') {
-                // [label, field prefix, GPIO]. CH03 is GPIO 5, which doubles as the battery ADC.
-                const chans = [['CH01', 'ch01', 6],  ['CH02', 'ch02', 7],  ['CH03', 'ch03', 5],
-                               ['CH04', 'ch04', 14], ['CH05', 'ch05', 15], ['CH06', 'ch06', 16]];
+                // [label, field prefix, GPIO]. CH04 is GPIO 5, which doubles as the battery ADC.
+                const chans = [['CH01', 'ch01', 14], ['CH02', 'ch02', 15], ['CH03', 'ch03', 16],
+                               ['CH04', 'ch04', 5],  ['CH05', 'ch05', 6],  ['CH06', 'ch06', 7]];
                 let mcRows = '';
                 chans.forEach(function(c) {
                     const label = c[0], g = c[1], gpio = c[2];
