@@ -397,6 +397,29 @@ installer/firmware/
 
 ## Release History
 
+### v958177 / v958177t — 2026-07-15
+
+```markdown
+## 🎯 Release v958177 / v958177t — Touch 3.5 Channel Re-map & Clearer Status Screens
+
+### 🖥️ Touch 3.5" Version (v958177t)
+- **Channel re-map:** CH01–CH06 now map to GPIO 14/15/16/5/6/7 — the primary channel (CH01) is **GPIO 14**. Each physical function stayed on its GPIO, only the CHxx label moved: the battery gauge is still on GPIO 5 (now CH04) and the vending sensors are still on GPIO 7 / GPIO 5 (now CH06 / CH04).
+- ⚠️ **Breaking change:** update the pin number in your LNbits switch entries to match the new channel (e.g. the primary relay is now **pin 14**, not pin 6). The wiring itself does not change.
+- **Third vending sensor:** all three ADC1-capable pins (GPIO 5/6/7 = CH04/CH05/CH06) can now be configured as sensors (stop / blockage / level) — previously only two.
+- **Mini-PoS decoupled from the server:** the device now tells the extension which relay pin to fire, so `zapbox_extension` no longer hard-codes a GPIO. Requires **zapbox_extension v2.5.4+**.
+- **Clearer single-channel status screens:** the old "READY 4 ZAP ACTION" demo QR is replaced by **LNBITS NOT CONFIGURED** (primary pin has no LNbits switch entry) and **LNBITS LABELS NOT LOADED** (offline / config not fetched yet).
+- Fixed: portrait Identity teach screen — "Learning Identities" now sits in the label box below the QR instead of being squeezed top-left under it.
+
+### 📦 Standard Version (v958177 — T-Display-S3)
+- **Clearer single-channel status screens:** **LNBITS NOT CONFIGURED** / **LNBITS LABELS NOT LOADED** instead of the old demo-QR fallback.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 958177
+- Documentation restructured into an overview README plus per-variant pages under `docs/`
+- E-Layout diagrams updated for the new Touch 3.5 pin map
+- Requires **zapbox_extension v2.5.4+** for the Mini-PoS / relay-pin decoupling
+```
+
 ### v957859 / v957859h / v957859t — 2026-07-13
 
 ```markdown
