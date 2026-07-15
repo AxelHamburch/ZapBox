@@ -81,7 +81,7 @@ Single-core RISC-V, the smallest footprint and the lowest power draw of all vari
 | **Relay channels** | 4 | 6 | **12** | 1 (+2 flex) |
 | **I/O Expander** (+8 channels) | ✅ | — | ✅ | — |
 | **Servo mode** | ✅ | ✅ per channel | ✅ | ✅ |
-| **Vending sensors** | 1 (light barrier) | 2 | 2 | 2 |
+| **Vending sensors** | 1 (light barrier) | 3 | 2 | 2 |
 | **NFC** (Bolt Card, phone tap) | ✅ | ✅ | ✅ | ✅ |
 | **Identity🫆Login** | LNURL-auth + NFC | LNURL-auth + NFC + PIN | NFC only | — |
 | **Mini-PoS** (amount entry) | — | ✅ | — | — |
