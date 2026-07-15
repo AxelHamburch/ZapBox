@@ -2376,8 +2376,9 @@ bool productSelectQrCancelHit(uint16_t x, uint16_t y) {
 // Authy teach screen: registration QR (from requestAuthLnurl) with a "Learning
 // Identities" indicator and a dedicated CANCEL button bottom-right (same look as
 // the Mini-PoS invoice screen). Touching anywhere else keeps teaching — only the
-// CANCEL button ends the session. Landscape shows the indicator in the QR label
-// box; portrait shows it top-left so the CANCEL button keeps the bottom-right.
+// CANCEL button ends the session. Both orientations show the "Learning
+// Identities" indicator in the QR label box (same layout as the Mini-PoS invoice
+// screen) with the CANCEL button bottom-right.
 void showAuthTeachScreen(String label, int pin) {
     DisplayLock l;
     if (!_gfx) return;
@@ -2392,10 +2393,10 @@ void showAuthTeachScreen(String label, int pin) {
 
     fillScreen(qrBg);
     if (isPortrait()) {
-        // "Learning Identities" top-left (two lines), QR + CANCEL below.
-        drawString(10, 12, "Learning", qrFg, qrBg, 2);
-        drawString(10, 34, "Identities", qrFg, qrBg, 2);
+        // QR on top, "Learning Identities" in the label box below, CANCEL
+        // bottom-right — identical layout to the Mini-PoS invoice screen.
         drawQRAt(lightningConfig.lightning, QR_V_X, QR_V_Y, QR_V_MOD, qrFg, qrBg);
+        drawLabelBoxAt(BOX_V_X, BOX_V_Y, BOX_V_W, BOX_V_H - 44, words, wordCount, qrFg, qrBg);
         int cbx = SCR_W - MP_QRC_W - MP_QRC_M, cby = SCR_H - MP_QRC_H - MP_QRC_M;
         drawRectBorder(cbx, cby, MP_QRC_W, MP_QRC_H, 2, qrFg);
         drawCenter(cbx + MP_QRC_W / 2, cby + MP_QRC_H / 2, "CANCEL", qrFg, qrBg, 2);
