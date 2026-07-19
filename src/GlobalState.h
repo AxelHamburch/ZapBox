@@ -321,6 +321,9 @@ struct T35AmbientConfig {
   // Numerical product selection: customer picks a product by typing its GPIO
   // number on a touch keypad (mutually exclusive with oneForAll)
   bool numericSelect = false;
+  // Installer setting as configured (survives mode selection). numericSelect is
+  // derived from it and stays false in modes with a single product.
+  bool numericSelectConfigured = false;
 
   // Derived: total number of independent payment channels (CH01 + relay/servo CH02-CH06)
   int paymentChannelCount = 1;

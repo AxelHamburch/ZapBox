@@ -1540,9 +1540,10 @@
                 "theme":           theme.value,
                 "screensaver":     screensaver.value,
                 "deepSleep":       deepSleep.value,
-                "activationTime":  (document.getElementById('activationTime') || {value: "5"}).value,
+                // Empty field = keep the placeholder default, not an empty value
+                "activationTime":  ((document.getElementById('activationTime') || {}).value || "5"),
                 "multiControl":    (document.getElementById('multiControl') || {value: "off"}).value,
-                "deepSleepTime":   deepSleepTime.value,
+                "deepSleepTime":   (deepSleepTime.value || "30"),
                 "btcTicker":       (document.getElementById('btcTicker') || {value: "selecting"}).value,
                 "currency":        (document.getElementById('currency') || {value: "USD"}).value,
                 "ioExpander":      (document.getElementById('ioExpander') || {value: "no"}).value,

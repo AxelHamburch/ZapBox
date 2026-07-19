@@ -358,11 +358,12 @@ void readFiles()
     if (!maRoot16.isNull()) {
       const char *maRoot16Char = maRoot16["value"];
       if (maRoot16Char != nullptr) {
-        powerConfig.activationTime = maRoot16Char;
-        // Validate activation time (1-120 minutes)
-        int actTime = String(powerConfig.activationTime).toInt();
-        if (actTime < 1) powerConfig.activationTime = "1";
-        if (actTime > 120) powerConfig.activationTime = "120";
+        // An empty field means "not configured" — keep the default instead of
+        // clamping 0 up to 1 minute.
+        int actTime = String(maRoot16Char).toInt();
+        if (actTime < 1)        powerConfig.activationTime = "5";
+        else if (actTime > 120) powerConfig.activationTime = "120";
+        else                    powerConfig.activationTime = maRoot16Char;
       }
     }
 
@@ -514,10 +515,10 @@ void readFiles()
     if (!maRoot23.isNull()) {
       const char *maRoot23Char = maRoot23["value"];
       if (maRoot23Char != nullptr) {
-        powerConfig.deepSleepTime = maRoot23Char;
-        int dsTime = String(powerConfig.deepSleepTime).toInt();
-        if (dsTime < 1) powerConfig.deepSleepTime = "1";
-        if (dsTime > 120) powerConfig.deepSleepTime = "120";
+        int dsTime = String(maRoot23Char).toInt();
+        if (dsTime < 1)        powerConfig.deepSleepTime = "30";  // empty field → default
+        else if (dsTime > 120) powerConfig.deepSleepTime = "120";
+        else                   powerConfig.deepSleepTime = maRoot23Char;
       }
     }
 
@@ -827,11 +828,15 @@ void readFiles()
       // Index 57: numerical product selection ("no" | "yes") — multi-channel only,
       // mutually exclusive with One for All (the installer enforces this too)
       String numSel = readGpioMode(57);
-      t35AmbientConfig.numericSelect = (numSel == "yes" && (multiChannelConfig.mode == "duo" || multiChannelConfig.mode == "modeselect"));
-      if (t35AmbientConfig.numericSelect && t35AmbientConfig.oneForAll) {
-        t35AmbientConfig.numericSelect = false;
+      t35AmbientConfig.numericSelectConfigured = (numSel == "yes");
+      if (t35AmbientConfig.numericSelectConfigured && t35AmbientConfig.oneForAll) {
+        t35AmbientConfig.numericSelectConfigured = false;
         LOG_INFO("Config", "T35: Numeric product selection disabled (One for All active)");
       }
+      // Mode-select boots on the picker screen: the keypad is only armed once the
+      // user actually picks multi-channel (see applyModeSelection).
+      t35AmbientConfig.numericSelect = (t35AmbientConfig.numericSelectConfigured &&
+                                        multiChannelConfig.mode == "duo");
 
       String modeLog;
       for (int i = 0; i < RELAY_CHANNEL_MAX; i++) {
@@ -2204,9 +2209,19 @@ static void applyModeSelection(int selected) {
       multiChannelConfig.mode = "off";
       maxProducts = 1;
       multiChannelConfig.currentProduct = 0;
+      #ifdef BOARD_JC3248W535C
+      t35AmbientConfig.numericSelect = false; // only one product — no keypad
+      #endif
       ensureQrForPin(RELAY_CHANNEL_PINS[0]);
-      showQRScreen();
-      productSelectionState.showTime = 0;
+      if (multiChannelConfig.btcTickerMode == "always") {
+        btctickerScreen();
+        multiChannelConfig.btcTickerActive = true;
+        productSelectionState.showTime = millis();
+      } else {
+        showQRScreen();
+        multiChannelConfig.btcTickerActive = false;
+        productSelectionState.showTime = 0;
+      }
       LOG_INFO("ModeSelect", "Single channel started");
       break;
 
@@ -2214,6 +2229,8 @@ static void applyModeSelection(int selected) {
       multiChannelConfig.mode = "duo";
       #ifdef BOARD_JC3248W535C
       maxProducts = t35AmbientConfig.oneForAll ? 1 : t35AmbientConfig.paymentChannelCount;
+      // Keypad only makes sense with more than one selectable product
+      t35AmbientConfig.numericSelect = (t35AmbientConfig.numericSelectConfigured && maxProducts > 1);
       #else
       maxProducts = 2;
       #endif
@@ -2227,6 +2244,9 @@ static void applyModeSelection(int selected) {
       multiChannelConfig.mode = "off";
       miniPosConfig.enabled   = true;
       maxProducts = 1;
+      #ifdef BOARD_JC3248W535C
+      t35AmbientConfig.numericSelect = false;
+      #endif
       miniPosIdleNfcTag();
       miniPosState.resetInput();
       miniPosState.inputActive = true;
@@ -2240,6 +2260,9 @@ static void applyModeSelection(int selected) {
       multiChannelConfig.mode = "off";
       authyConfig.enabled     = true;
       maxProducts = 1;
+      #ifdef BOARD_JC3248W535C
+      t35AmbientConfig.numericSelect = false;
+      #endif
       if (multiChannelConfig.btcTickerMode != "always") {
         multiChannelConfig.btcTickerMode = "off";
       }
@@ -3416,7 +3439,9 @@ void loop()
         // Handle touch on product selection screen OR Bitcoin ticker (selecting/always) OR Single mode QR with selecting
         if (deviceState.isInState(DeviceState::PRODUCT_SELECTION) || 
             (multiChannelConfig.btcTickerActive && (multiChannelConfig.btcTickerMode == "selecting" || multiChannelConfig.btcTickerMode == "always")) ||
-            (multiChannelConfig.mode == "off" && multiChannelConfig.btcTickerMode == "selecting" && !multiChannelConfig.btcTickerActive)) {
+            // Single mode on the QR screen: touch must still reach the toggle so
+            // the user can get back to the ticker (selecting *and* always).
+            (multiChannelConfig.mode == "off" && multiChannelConfig.btcTickerMode != "off" && !multiChannelConfig.btcTickerActive)) {
           bool navigateBack = false;
           String actionName = "";
           
@@ -3561,8 +3586,11 @@ void loop()
                 showQRScreen();
                 productSelectionState.showTime = millis(); // Start timeout to return to ticker
               } else {
-                // Already on QR: refresh timeout so interaction keeps QR visible
-                productSelectionState.showTime = millis();
+                // On QR: touch toggles straight back to the ticker
+                Serial.println("Touch detected - switching from QR to ticker (ALWAYS mode)");
+                btctickerScreen();
+                multiChannelConfig.btcTickerActive = true;
+                productSelectionState.showTime = 0; // Ticker has no timeout
               }
             }
             // Multi-Channel-Control Mode: Navigate to next product
