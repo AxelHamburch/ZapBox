@@ -91,6 +91,47 @@ bool isReadyForReceive() {
 }
 
 /**
+ * Writes a brightness level to the LED button pin.
+ * Uses analogWrite (LEDC under the hood) so the screensaver pulse can fade the
+ * LED. Boards without an LED pin (PIN_LED_BUTTON_LED < 0) are a no-op.
+ */
+void ledSetLevel(uint8_t level) {
+#if PIN_LED_BUTTON_LED >= 0
+  analogWrite(PIN_LED_BUTTON_LED, level);
+#else
+  (void)level;
+#endif
+}
+
+#if ENABLE_DISPLAY
+/**
+ * Screensaver breathing pulse for the LED button.
+ * While the screen is blanked the LED slowly fades in and out to draw attention
+ * to the device and hint that pressing the button wakes it up.
+ * Only runs when the device is ready — a dark LED still means "not ready".
+ */
+static const unsigned long LED_PULSE_PERIOD_MS = 6000; // one full breath
+static const uint8_t LED_PULSE_MIN = 4;                // 0..255 = 0..100%
+static const unsigned long LED_PULSE_STEP_MS = 20;     // 50 Hz update, flicker-free
+
+static void updateScreensaverPulse() {
+  static unsigned long lastPulseUpdate = 0;
+  unsigned long now = millis();
+  if (now - lastPulseUpdate < LED_PULSE_STEP_MS) return;
+  lastPulseUpdate = now;
+
+  // Phase derived from millis() rather than accumulated, so entering/leaving the
+  // screensaver needs no state and the pulse never drifts.
+  float phase = (now % LED_PULSE_PERIOD_MS) / (float)LED_PULSE_PERIOD_MS;
+  float wave = (1.0f - cosf(phase * 2.0f * PI)) * 0.5f; // 0…1, smooth at both ends
+  // Gamma correction: the eye is far more sensitive at low levels, a linear ramp
+  // would look like it snaps on and then crawls.
+  float corrected = powf(wave, 2.2f);
+  ledSetLevel(LED_PULSE_MIN + (uint8_t)(corrected * (255 - LED_PULSE_MIN)));
+}
+#endif
+
+/**
  * Updates the ready LED based on device state.
  * Only updates LED if state has changed to avoid redundant writes.
  * For headless version: Fast blink during initialization, slow blink in config mode, solid when ready.
@@ -122,7 +163,7 @@ void updateReadyLed() {
     authyState.nfcRejectedFlash = false;
     nfcNoLuckActive = true;
     nfcNoLuckStartTime = millis();
-    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    ledSetOn(true);
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, HIGH);
     #endif
@@ -137,7 +178,7 @@ void updateReadyLed() {
       static bool lastNoLuckState = true;
       if (on != lastNoLuckState) {
         lastNoLuckState = on;
-        digitalWrite(PIN_LED_BUTTON_LED, on ? HIGH : LOW);
+        ledSetOn(on);
         #ifdef PIN_ONBOARD_LED
         digitalWrite(PIN_ONBOARD_LED, on ? HIGH : LOW);
         #endif
@@ -146,7 +187,7 @@ void updateReadyLed() {
     }
     // Blink sequence done → return to steady ON
     nfcNoLuckActive = false;
-    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    ledSetOn(true);
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, HIGH);
     #endif
@@ -163,7 +204,7 @@ void updateReadyLed() {
         nfcConfirmStarted = true;
         nfcConfirmStartTime = millis();
         // First edge: ON
-        digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+        ledSetOn(true);
         #ifdef PIN_ONBOARD_LED
         digitalWrite(PIN_ONBOARD_LED, HIGH);
         #endif
@@ -175,14 +216,14 @@ void updateReadyLed() {
         static bool lastConfirmState = true;
         if (on != lastConfirmState) {
           lastConfirmState = on;
-          digitalWrite(PIN_LED_BUTTON_LED, on ? HIGH : LOW);
+          ledSetOn(on);
           #ifdef PIN_ONBOARD_LED
           digitalWrite(PIN_ONBOARD_LED, on ? HIGH : LOW);
           #endif
         }
       } else {
         // Blink sequence done – LED ON for rest of relay duration (it's the READY LED)
-        digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+        ledSetOn(true);
         #ifdef PIN_ONBOARD_LED
         digitalWrite(PIN_ONBOARD_LED, HIGH);
         #endif
@@ -194,7 +235,7 @@ void updateReadyLed() {
       unsigned long interval = nfcBlinkState ? 200 : 800; // ON=200ms, OFF=800ms
       if (millis() - lastNfcBlinkTime > interval) {
         nfcBlinkState = !nfcBlinkState;
-        digitalWrite(PIN_LED_BUTTON_LED, nfcBlinkState ? HIGH : LOW);
+        ledSetOn(nfcBlinkState);
         #ifdef PIN_ONBOARD_LED
         digitalWrite(PIN_ONBOARD_LED, nfcBlinkState ? HIGH : LOW);
         #endif
@@ -211,7 +252,7 @@ void updateReadyLed() {
       nfcNoLuckActive = true;
       nfcNoLuckStartTime = millis();
       // Start first blink: ON
-      digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+      ledSetOn(true);
       #ifdef PIN_ONBOARD_LED
       digitalWrite(PIN_ONBOARD_LED, HIGH);
       #endif
@@ -235,7 +276,7 @@ void updateReadyLed() {
       authyState.teachEnrolledFlash = false;
       teachEnrollFlashActive = true;
       teachEnrollFlashStart = millis();
-      digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+      ledSetOn(true);
       #ifdef PIN_ONBOARD_LED
       digitalWrite(PIN_ONBOARD_LED, HIGH);
       #endif
@@ -247,7 +288,7 @@ void updateReadyLed() {
         static bool lastTeachFlashState = true;
         if (on != lastTeachFlashState) {
           lastTeachFlashState = on;
-          digitalWrite(PIN_LED_BUTTON_LED, on ? HIGH : LOW);
+          ledSetOn(on);
           #ifdef PIN_ONBOARD_LED
           digitalWrite(PIN_ONBOARD_LED, on ? HIGH : LOW);
           #endif
@@ -262,7 +303,7 @@ void updateReadyLed() {
     static bool lastTeachState = false;
     if (on != lastTeachState) {
       lastTeachState = on;
-      digitalWrite(PIN_LED_BUTTON_LED, on ? HIGH : LOW);
+      ledSetOn(on);
       #ifdef PIN_ONBOARD_LED
       digitalWrite(PIN_ONBOARD_LED, on ? HIGH : LOW);
       #endif
@@ -282,7 +323,7 @@ void updateReadyLed() {
       initializationActive) {
     if (millis() - lastInitBlinkTime > 200) { // Blink every 200ms (5Hz)
       initBlinkState = !initBlinkState;
-      digitalWrite(PIN_LED_BUTTON_LED, initBlinkState ? HIGH : LOW);
+      ledSetOn(initBlinkState);
       #ifdef PIN_ONBOARD_LED
       digitalWrite(PIN_ONBOARD_LED, initBlinkState ? HIGH : LOW);
       #endif
@@ -298,7 +339,7 @@ void updateReadyLed() {
     static bool sensorBlinkState = false;
     if (millis() - lastSensorBlinkTime > 50) { // 50ms = 10Hz very fast blink
       sensorBlinkState = !sensorBlinkState;
-      digitalWrite(PIN_LED_BUTTON_LED, sensorBlinkState ? HIGH : LOW);
+      ledSetOn(sensorBlinkState);
       #ifdef PIN_ONBOARD_LED
       digitalWrite(PIN_ONBOARD_LED, sensorBlinkState ? HIGH : LOW);
       #endif
@@ -369,7 +410,7 @@ void updateReadyLed() {
       if (shouldBeOn != errorBlinkState || errorBlinkPhase != blinkPosition) {
         errorBlinkState = shouldBeOn;
         errorBlinkPhase = blinkPosition;
-        digitalWrite(PIN_LED_BUTTON_LED, shouldBeOn ? HIGH : LOW);
+        ledSetOn(shouldBeOn);
         #ifdef PIN_ONBOARD_LED
         digitalWrite(PIN_ONBOARD_LED, shouldBeOn ? HIGH : LOW);
         #endif
@@ -379,7 +420,7 @@ void updateReadyLed() {
       if (errorBlinkState) {
         errorBlinkState = false;
         errorBlinkPhase = -1;
-        digitalWrite(PIN_LED_BUTTON_LED, LOW);
+        ledSetOn(false);
         #ifdef PIN_ONBOARD_LED
         digitalWrite(PIN_ONBOARD_LED, LOW);
         #endif
@@ -405,8 +446,21 @@ void updateReadyLed() {
 
   // Normal LED behavior for all versions
   bool shouldBeOn = isReadyForReceive();
+
+#if ENABLE_DISPLAY
+  // Screensaver: pulse instead of steady ON, but only while ready. A dark LED
+  // keeps its meaning ("problem / not ready") in the screensaver too.
+  if (shouldBeOn && isScreensaverActive()) {
+    updateScreensaverPulse();
+    // Invalidate the cached state so waking up always rewrites full brightness
+    // instead of being skipped as "already ON".
+    readyLedState = false;
+    return;
+  }
+#endif
+
   if (shouldBeOn != readyLedState) {
-    digitalWrite(PIN_LED_BUTTON_LED, shouldBeOn ? HIGH : LOW); // Source 3.3V when ready
+    ledSetOn(shouldBeOn); // Source 3.3V when ready
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, shouldBeOn ? HIGH : LOW); // Also control onboard LED (ESP32 Dev)
     #endif

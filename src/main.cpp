@@ -1461,7 +1461,7 @@ void setup()
   // External LED-button wiring: source 3.3V on LED pin when ready; input uses pull-up
   #if PIN_LED_BUTTON_LED >= 0
   pinMode(PIN_LED_BUTTON_LED, OUTPUT);
-  digitalWrite(PIN_LED_BUTTON_LED, LOW); // LED off until device is ready
+  ledSetOn(false); // LED off until device is ready
   #endif
   #ifdef PIN_ONBOARD_LED
   pinMode(PIN_ONBOARD_LED, OUTPUT);
@@ -1485,14 +1485,14 @@ void setup()
   // Boot indicator: Blink LEDs 3 times quickly to show device is starting
   for (int i = 0; i < 3; i++) {
     #if PIN_LED_BUTTON_LED >= 0
-    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    ledSetOn(true);
     #endif
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, HIGH);
     #endif
     delay(100); // 100ms on
     #if PIN_LED_BUTTON_LED >= 0
-    digitalWrite(PIN_LED_BUTTON_LED, LOW);
+    ledSetOn(false);
     #endif
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, LOW);
@@ -1640,7 +1640,7 @@ void setup()
   #ifdef BOARD_ESP32C3_21_1
   // GPIO5 — status LED (initialized as OUTPUT, driven by existing LED logic)
   pinMode(PIN_LED_BUTTON_LED, OUTPUT);
-  digitalWrite(PIN_LED_BUTTON_LED, LOW);
+  ledSetOn(false);
   Serial.printf("[RELAY] GPIO%d (status LED) initialized\n", PIN_LED_BUTTON_LED);
   // GPIO6 / GPIO7 — mode-dependent
   auto initFlexPin = [](int gpio, bool isActor, bool isSensor) {
@@ -2621,14 +2621,14 @@ void loop()
         // Blink LED 3 times to signal failure
         for (int i = 0; i < 3; i++) {
           #if PIN_LED_BUTTON_LED >= 0
-          digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+          ledSetOn(true);
           #endif
           #ifdef PIN_ONBOARD_LED
           digitalWrite(PIN_ONBOARD_LED, HIGH);
           #endif
           delay(100);
           #if PIN_LED_BUTTON_LED >= 0
-          digitalWrite(PIN_LED_BUTTON_LED, LOW);
+          ledSetOn(false);
           #endif
           #ifdef PIN_ONBOARD_LED
           digitalWrite(PIN_ONBOARD_LED, LOW);
@@ -2712,14 +2712,14 @@ void loop()
           // Blink LED 3 times to signal failure
           for (int i = 0; i < 3; i++) {
             #if PIN_LED_BUTTON_LED >= 0
-            digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+            ledSetOn(true);
             #endif
             #ifdef PIN_ONBOARD_LED
             digitalWrite(PIN_ONBOARD_LED, HIGH);
             #endif
             delay(100);
             #if PIN_LED_BUTTON_LED >= 0
-            digitalWrite(PIN_LED_BUTTON_LED, LOW);
+            ledSetOn(false);
             #endif
             #ifdef PIN_ONBOARD_LED
             digitalWrite(PIN_ONBOARD_LED, LOW);
@@ -5161,14 +5161,14 @@ static void processNormalPayment(int pin, int duration)
     // Action start indicator: briefly turn off status LEDs for 300ms so the
     // onboard LED (GPIO 2) signals that the relay/action has just fired.
     #if PIN_LED_BUTTON_LED >= 0
-    digitalWrite(PIN_LED_BUTTON_LED, LOW);
+    ledSetOn(false);
     #endif
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, LOW);
     #endif
     delay(300);
     #if PIN_LED_BUTTON_LED >= 0
-    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    ledSetOn(true);
     #endif
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, HIGH);
