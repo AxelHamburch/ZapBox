@@ -12,6 +12,12 @@ bool isReadyForReceive();
 // Update ready LED based on device state
 void updateReadyLed();
 
+// LED button output (PIN_LED_BUTTON_LED).
+// All writes to the LED pin must go through these helpers: the pin is driven by
+// PWM (analogWrite), and a raw digitalWrite would leave the PWM channel running.
+void ledSetLevel(uint8_t level);   // 0 = off … 255 = full brightness
+inline void ledSetOn(bool on) { ledSetLevel(on ? 255 : 0); }
+
 // Redraw appropriate QR screen based on current mode/product
 void redrawQRScreen();
 

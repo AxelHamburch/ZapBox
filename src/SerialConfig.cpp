@@ -11,6 +11,7 @@
 #include "DeviceState.h"
 #include "GlobalState.h"
 #include "PinConfig.h"
+#include "UI.h"   // ledSetOn() — all LED pin writes go through the PWM wrapper
 
 // Global reference to touch controller (set from main.cpp)
 void* touchControllerPtr = nullptr;
@@ -207,7 +208,7 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
 #if !ENABLE_DISPLAY
     // LED blink state for config mode (headless version only)
     // Start with LED ON so the first blink is visible immediately
-    digitalWrite(PIN_LED_BUTTON_LED, HIGH);
+    ledSetOn(true);
     #ifdef PIN_ONBOARD_LED
     digitalWrite(PIN_ONBOARD_LED, HIGH);
     #endif
@@ -223,7 +224,7 @@ void executeConfig(String wifiSSID, String wifiPass, bool hasExistingData)
         // Blink LEDs for config mode indication (headless version only)
         if (millis() - lastConfigBlinkTime > 1000) { // Blink every 1 second (1Hz)
             configBlinkState = !configBlinkState;
-            digitalWrite(PIN_LED_BUTTON_LED, configBlinkState ? HIGH : LOW);
+            ledSetOn(configBlinkState);
             #ifdef PIN_ONBOARD_LED
             digitalWrite(PIN_ONBOARD_LED, configBlinkState ? HIGH : LOW);
             #endif
