@@ -351,7 +351,7 @@
                 <p style="margin: 0 0 15px 0; color: #888; font-size: 11px;"><i><strong>Up to 4 channels can be controlled.</strong> <br><br>
                     <strong>Pin 12:</strong> Relay (on/off, standard)<br>
                     <strong>Pin 13:</strong> Configurable (off/relay/180° servo/360° servo)<br>
-                    <strong>Pin 10:</strong> Configurable (off/relay/180° servo/360° servo)<br>
+                    <strong>Pin 10:</strong> Configurable (off/relay/180° servo/360° servo) – Currently unavailable<br>
                     <strong>Pin 11:</strong> Relay (on/off, also usable for ambient lighting)<br><br>
                     The "One for All" function allows all channels to be triggered simultaneously. To do this, you only need to configure pin 12 and, if necessary, a servo. In addition, the channels can also be configured and activated individually. To do this, the pins must be configured in LNbits and the servos must be set up. </i></p>
                 
@@ -375,7 +375,7 @@
                 <!-- GPIO Pin 13 Mode Selection -->
                 <div class="input-wrapper">
                     <div>
-                        <label for="pin13Mode">Mode GPIO Pin 13</label>
+                        <label for="pin13Mode">GPIO Pin 13</label>
                         <select name="pin13Mode" id="pin13Mode" disabled>
                             <option value="off" selected>Off (default)</option>
                             <option value="servo180">180° servo (0°-180° positioning)</option>
@@ -426,9 +426,9 @@
                 </div>
 
                 <!-- GPIO Pin 10 Mode Selection -->
-                <div class="input-wrapper" style="margin-top: 15px;">
-                    <div>
-                        <label for="pin10Mode">Mode GPIO Pin 10</label>
+                <div class="input-wrapper" style="margin-top: 15px; display: flex; align-items: flex-start; gap: 20px;">
+                    <div style="opacity: 0.5; flex: 1;">
+                        <label for="pin10Mode">GPIO Pin 10 (not connected)</label>
                         <select name="pin10Mode" id="pin10Mode" disabled>
                             <option value="off" selected>Off (default)</option>
                             <option value="servo180">180° servo (0°-180° positioning)</option>
@@ -436,6 +436,9 @@
                             <option value="relay">Relay function (external relay)</option>
                         </select>
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Select the function for GPIO Pin 10</p>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; flex: 1;">
+                        <p style="margin: 0; padding-left: 10px; font-size: 11px; color: #888; font-style: italic; border-left: 3px solid #888;">GPIO pin 10 is currently not connected because terminal 6 of the 16-pin header is occupied by GPIO pin 3 (NFC Tag 2 - Field Detection).</p>
                     </div>
                 </div>
 
@@ -486,17 +489,17 @@
             <div id="vendingSpecialSection">
             <div class="input-wrapper">
                 <div>
-                    <label for="lightBarrier">Special features for the vending machine</label>
+                    <label for="lightBarrier">GPIO Pin 2 - Features vending machine</label>
                     <select name="lightBarrier" id="lightBarrier">
                         <option value="no" selected>No (default)</option>
                         <option value="yes">Stop the advance (Product ejected, slide stopped)</option>
                         <option value="monitor">Monitoring product blockage (Remove product to resume)</option>
                         <option value="level">Level Monitoring (empty bin)</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN input on Pin 2 (light barrier / limit switch)</p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">NPN input on Pin 2 (light barrier / limit switch / etc.)</p>
                 </div>
                 <div>
-                    <label for="channel4Ambient">Channel 4 - Ambient lighting switch</label>
+                    <label for="channel4Ambient">GPIO Pin 11 - Ambient lighting switch</label>
                     <select name="channel4Ambient" id="channel4Ambient">
                         <option value="normal" selected>Off (default)</option>
                         <option value="ambient">Ambient lighting switch (pin 11)</option>
@@ -505,7 +508,7 @@
                 </div>
             </div>
 
-            <p style="margin-top: 10px; color: #888;"><i><strong>Notes:</strong><br>
+            <p style="margin-top: 10px; color: #888;"><i><strong>Notes for "Features vending machine":</strong><br>
             <strong>Stop the advance:</strong> A trigger from e.g. a light barrier (NPN) stops the action after 2 seconds at the earliest.<br>
             <strong>Monitoring product blockage:</strong> The (NPN) input (light barrier/limit switch) displays the message "PRODUCT IN THE EJECTOR - Remove the product" and no further payment is possible until the input is free again.<br>
             <strong>Level monitoring:</strong> The (NPN) input monitors the fill level of a magazine or container. As long as Pin 2 is pulled LOW (sensor active), everything is fine. As soon as Pin 2 is HIGH (sensor free), all payment options are blocked and the message "THE SUPPLY BIN IS EMPTY - Please restock it" is displayed. Payments are re-enabled automatically once the sensor is active again.</i></p>
@@ -2273,7 +2276,7 @@
             
             // Enable/disable mode selectors
             pin13Mode.disabled = !isServo;
-            pin10Mode.disabled = !isServo;
+            pin10Mode.disabled = true; // GPIO 10 not connected — always unavailable
             servoRelayMode.disabled = !isServo;
             
             // Update Pin 13 sections - read value fresh each time
@@ -2441,7 +2444,7 @@
                 
                 // Pin 13 Configuration
                 const pin13ModeVal = document.getElementById('pin13Mode').value;
-                servoConfigRows += row('Mode GPIO Pin 13', selText('pin13Mode'));
+                servoConfigRows += row('GPIO Pin 13', selText('pin13Mode'));
                 
                 if (pin13ModeVal === 'servo180') {
                     servoConfigRows += row('Pin 13 - 180&deg; Servo Start Angle (&deg;)', inputVal('pin13Servo180Start'));
@@ -2454,7 +2457,7 @@
                 
                 // Pin 10 Configuration
                 const pin10ModeVal = document.getElementById('pin10Mode').value;
-                servoConfigRows += row('Mode GPIO Pin 10', selText('pin10Mode'));
+                servoConfigRows += row('GPIO Pin 10 (not connected)', selText('pin10Mode'));
                 
                 if (pin10ModeVal === 'servo180') {
                     servoConfigRows += row('Pin 10 - 180&deg; Servo Start Angle (&deg;)', inputVal('pin10Servo180Start'));

@@ -45,7 +45,7 @@ ESP32-S3 with an integrated 170 × 320 LCD. The classic ZapBox — the most wide
 | 0 | BOOT Button | Input | Pull-up | Left physical button — Config mode trigger (5 s hold) |
 | 14 | HELP Button | Input | Pull-up | Right physical button — Help / Report mode |
 | 2 | Light Barrier | Input | Pull-up | NPN vending machine light barrier (active LOW) |
-| 4 | Battery Voltage | ADC Input | - | Battery voltage monitoring |
+| 4 | Battery Voltage | ADC Input | - | **Not implemented** in current firmware |
 | **Display Control** |
 | 38 | LCD Backlight | Output | HIGH=ON | Display brightness (PWM capable) |
 | 5 | LCD RES | Output | - | Display reset |
