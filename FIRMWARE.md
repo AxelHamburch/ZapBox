@@ -397,23 +397,27 @@ installer/firmware/
 
 ## Release History
 
-### 🚧 Pending Since Last Release (v958177 / v958177t — tag commit `d33e832`)
+### v959049 / v959049t — 2026-07-21
 
-**Not yet released.** Commits `d33e832..HEAD` (check with `git log --oneline d33e832..HEAD`) contain changes for:
+```markdown
+## 🎯 Release v959049 / v959049t — Screensaver LED Pulse & Touch 3.5 Mode-Select Fixes
 
-- **📦 Standard (T-Display-S3) + 🖥️ Touch 3.5"** — `7f8c7f5` Pulse LED button during screensaver: the LED now slowly breathes instead of steady ON while `isReadyForReceive()`, hinting that a press wakes the device. Display builds only (headless/C3 keep their status blink codes).
-- **🖥️ Touch 3.5" only** — `6a607c1` Fix mode-select single channel, screensaver default and ticker toggle:
-  - Picking "Single" on the mode-selection screen no longer wrongly shows the numeric product keypad
-  - Blank "Time until activation" / deep-sleep field now falls back to the documented default (5 min / 30 min) instead of clamping to 1 minute
-  - Single mode with `btcTickerMode="always"` can now be toggled back and forth between ticker and QR screen by touch
-- **All 4 installer pages** (`installer/index.html`, `installer/headless/index.html`, `installer/touch3.5/index.html`, `installer/c3/index.html`) — `eb08bc3`, `5baf384` fixed the broken "More e-layouts" link (now points to `docs/hardware-assets.md#electrical-layouts` instead of the old README anchor)
-- **📦 Standard installer only** — `155b2eb` GPIO 10 permanently greyed out with an explanatory note (physically not connected on T-Display-S3), GPIO 4 battery ADC documented as not implemented, a few pin labels clarified
+### 📦 Standard Version (v959049) + 🖥️ Touch 3.5" Version (v959049t)
+- **LED button pulses during screensaver**: instead of sitting at steady ON, the external LED button now slowly breathes while the device is ready to receive — a visual hint that pressing it wakes the device. Display builds only; headless and C3 keep their status blink codes.
 
-**⚠️ Before releasing, clean up in `platformio.ini`:**
-- `VERSION` is currently set to the dev marker `"v958177x"` (from commit `59f82e8`) — replace with the new Bitcoin block height per step 1, not with an `x` suffix
-- `default_envs` is currently `lilygo-t-display-s3` with `Touch3_5` commented out (from commit `4730b81`, for local LED-pulse testing) — this doesn't affect the release itself since each variant is built with an explicit `-e <env>` flag, but reset it to your preferred default afterwards if desired
+### 🖥️ Touch 3.5" Version (v959049t) only
+- Fixed: picking "Single" on the mode-selection screen no longer wrongly showed the numeric product keypad
+- Fixed: a blank "Time until activation" / deep-sleep field now falls back to the documented default (5 min / 30 min) instead of clamping to 1 minute
+- Fixed: single mode with BTC-ticker "always" can now be toggled back and forth between ticker and QR screen by touch (previously stuck)
 
-**Suggested release scope:** Standard + Touch 3.5" (both affected). Headless and C3 have no relevant changes since `d33e832` — skip them unless something else has landed by the time you release.
+### 🌐 Web Installer (all variants)
+- Fixed broken "More e-layouts" link across Standard, Headless, Touch 3.5" and C3 installer pages — now points to `docs/hardware-assets.md#electrical-layouts`
+- Standard installer: GPIO 10 permanently greyed out with an explanatory note (physically not connected on T-Display-S3), GPIO 4 battery ADC documented as not implemented, a few pin labels clarified to show their GPIO number directly
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 959049
+- Headless and ESP32-C3-21-1 not rebuilt — no relevant changes since v958177
+```
 
 ---
 
