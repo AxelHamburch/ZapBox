@@ -880,7 +880,10 @@ void readFiles()
       // Mini-PoS owns the screen. Threshold mode is disabled; the BTC ticker
       // is only supported in "always" mode where it acts as a screensaver
       // (touch → amount entry, idle PRODUCT_TIMEOUT → back to ticker).
-      if (multiChannelConfig.btcTickerMode != "always") {
+      // Only enforce this when Mini-PoS is actually the active mode — when we're
+      // merely sitting at the mode-select placeholder, the user may still pick a
+      // different sub-mode (e.g. Single channel) that should keep "selecting".
+      if (miniPosConfig.enabled && multiChannelConfig.btcTickerMode != "always") {
         multiChannelConfig.btcTickerMode = "off";
       }
       lightningConfig.thresholdKey = "";
@@ -2247,6 +2250,9 @@ static void applyModeSelection(int selected) {
       #ifdef BOARD_JC3248W535C
       t35AmbientConfig.numericSelect = false;
       #endif
+      if (multiChannelConfig.btcTickerMode != "always") {
+        multiChannelConfig.btcTickerMode = "off";
+      }
       miniPosIdleNfcTag();
       miniPosState.resetInput();
       miniPosState.inputActive = true;
