@@ -3957,6 +3957,7 @@ void loop()
             internetReconnectScreen();
             deviceState.transition(DeviceState::ERROR_RECOVERABLE);
             currentErrorType = 2; // Internet error
+            onErrorScreen = true;
             // Reset product selection screen
             deviceState.transition(DeviceState::READY);
           }
