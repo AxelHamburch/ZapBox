@@ -4066,7 +4066,7 @@ void loop()
     // succeed into the local send buffer for a long time before the TCP
     // stack notices the peer is gone (LWIP retransmission timeouts run to
     // several minutes) — so waitingForPong alone is too slow to catch this.
-    // The server sends us a WS ping roughly every 20-30 seconds while a
+    // The server sends us a WS ping roughly every 20 seconds while a
     // connection is genuinely alive; if that heartbeat goes quiet for a lot
     // longer than that while isConnected() still claims true, the connection
     // is dead and needs a hard reconnect. Forcing isConnected() to false here
@@ -4078,7 +4078,7 @@ void loop()
       unsigned long sinceHeartbeat = networkStatus.lastServerPingTime > 0
           ? (millis() - networkStatus.lastServerPingTime)
           : (millis() - networkStatus.wsConnectedTime);
-      if (sinceHeartbeat > 75000)
+      if (sinceHeartbeat > 60000)
       {
         Serial.printf("[WS] WATCHDOG: No server ping for %lus - connection appears half-open, forcing reconnect\n",
                       sinceHeartbeat / 1000);
