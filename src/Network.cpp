@@ -40,9 +40,11 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     {
       LOG_INFO("WebSocket", String("Connected to: ") + String((char*)payload));
       webSocket.sendTXT("Connected");
-      networkStatus.lastPongTime    = millis(); // Reset pong timer on connect
-      networkStatus.wsConnectedTime = millis(); // Track connect time for internet-check skip
-      networkStatus.waitingForPong  = false;
+      networkStatus.lastPongTime       = millis(); // Reset pong timer on connect
+      networkStatus.wsConnectedTime    = millis(); // Track connect time for internet-check skip
+      networkStatus.lastServerPingTime = 0;        // Stale ping from a previous connection must not
+                                                     // feed the half-open watchdog right after reconnect
+      networkStatus.waitingForPong     = false;
       // Don't set networkStatus.confirmed.websocket = true here!
       // Let fetchSwitchLabels() validate the device config first
       // If labels load successfully (HTTP 200), it will set websocket = true
