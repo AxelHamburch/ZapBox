@@ -4058,7 +4058,36 @@ void loop()
       networkStatus.lastPingTime = millis();
       networkStatus.waitingForPong = true;
     }
-    
+
+    // Watchdog: detect a half-open WebSocket (e.g. a router NAT-mapping drop
+    // during a brief outage) that webSocket.isConnected() does NOT catch.
+    // In that state the local TCP socket still looks "connected" because no
+    // FIN/RST was ever received, and our own sendPing() above can silently
+    // succeed into the local send buffer for a long time before the TCP
+    // stack notices the peer is gone (LWIP retransmission timeouts run to
+    // several minutes) — so waitingForPong alone is too slow to catch this.
+    // The server sends us a WS ping roughly every 20-30 seconds while a
+    // connection is genuinely alive; if that heartbeat goes quiet for a lot
+    // longer than that while isConnected() still claims true, the connection
+    // is dead and needs a hard reconnect. Forcing isConnected() to false here
+    // hands control back to the existing WiFi/Server/WebSocket check below,
+    // which already shows the error screen and retries.
+    if (webSocket.isConnected() && networkStatus.wsConnectedTime > 0 &&
+        !deviceState.isInState(DeviceState::CONFIG_MODE))
+    {
+      unsigned long sinceHeartbeat = networkStatus.lastServerPingTime > 0
+          ? (millis() - networkStatus.lastServerPingTime)
+          : (millis() - networkStatus.wsConnectedTime);
+      if (sinceHeartbeat > 75000)
+      {
+        Serial.printf("[WS] WATCHDOG: No server ping for %lus - connection appears half-open, forcing reconnect\n",
+                      sinceHeartbeat / 1000);
+        webSocket.disconnect();
+        networkStatus.confirmed.websocket = false;
+        networkStatus.waitingForPong = false;
+      }
+    }
+
     // Check WiFi, Server and WebSocket every 5 seconds while waiting for payment
     // Note: Internet is checked separately every 30 seconds
     if (millis() - lastWiFiCheck > 5000)
