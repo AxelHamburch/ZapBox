@@ -397,6 +397,22 @@ installer/firmware/
 
 ## Release History
 
+### v959791 / v959791h / v959791t — 2026-07-27
+
+```markdown
+## 🎯 Release v959791 / v959791h / v959791t — WebSocket Half-Open Reconnect Watchdog (Patch)
+
+### 📦 Standard (v959791) + 💡 Headless (v959791h) + 🖥️ Touch 3.5" (v959791t)
+- **Fixed silent payment outage after a brief router hiccup:** a short internet drop (e.g. a router NAT-table reset) could leave the WebSocket in a "half-open" state — the device kept reporting itself connected while the server had already dropped it, so the wallet got "No active ZapBox connections" and the device showed no error at all.
+- The device now tracks time since the server's own WebSocket ping (normally every ~20s). If it goes quiet for 60s while the connection still looks alive, the device now assumes it's dead, disconnects, shows the existing WebSocket error screen, and auto-reconnects once the server is reachable again — falling back to the NO INTERNET screen if it isn't.
+- Fixed a follow-up issue found during testing: right after a successful reconnect, the watchdog could immediately re-trigger using a stale ping timestamp from before the outage, causing a fast disconnect/reconnect loop and screen flicker. The ping timestamp is now cleared on every fresh connect.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 959791
+- Headless rebuilt for the first time since v957859h — this fix is the only relevant change carried over (Touch 3.5-specific and display-only changes since then do not apply to headless)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v959049 / v959049t — 2026-07-21
 
 ```markdown
