@@ -21,6 +21,7 @@ Complete wiring diagrams — start here when building a ZapBox.
 
 | Variant | Diagram |
 |---------|---------|
+| **Simple** | [E-Layout-ZapBox-Simple.png](../assets/electric/E-Layout-ZapBox-Simple.webp) |
 | **Compact** | [E-Layout-ZapBox-Compact.png](../assets/electric/E-Layout-ZapBox-Compact.png) |
 | **Compact-Ext** | [E-Layout-ZapBox-Compact-Ext.png](../assets/electric/E-Layout-ZapBox-Compact-Ext.png) |
 | **Duo** | [E-Layout-ZapBox-Duo.png](../assets/electric/E-Layout-ZapBox-Duo.png) |
@@ -68,6 +69,7 @@ Complete wiring diagrams — start here when building a ZapBox.
 | e955640 | ZapSave | ZapSave — sample connection |
 | e957556 | Touch3.5-FOUR | ZapBox Touch 3.5 with 4 channels |
 | e957575 | Touch3.5-ONE | ZapBox Touch 3.5 with 1 channel |
+| e959848 | Simple | As simple as possible |
 
 → All versions: [assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
@@ -107,6 +109,7 @@ Designed in **FreeCAD**, exported as `.3mf` for printing.
 | b955706 | ZapSave | ZapSave — sample box |
 | b956540 | Touch3.5-FOUR | ZapBox Touch 3.5 with 4 channels — incl. battery holder |
 | b957183 | Touch3.5-ONE | ZapBox Touch 3.5 with 1 channel — incl. battery holder |
+| b959898 | Simple | As simple as possible |
 
 → All versions: [assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
