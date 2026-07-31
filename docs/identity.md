@@ -25,7 +25,7 @@ Identity Login turns the ZapBox into an **identification terminal**. Instead of 
 
 ## What Each Variant Supports
 
-The only real difference between the variants is **whether a screen exists**. Without one, there is no QR code — and therefore no wallet login.
+The only real difference between the models is **whether they have a touchscreen**. Without a touchscreen, you cannot enter a PIN on the device.
 
 | | Touch 3.5" | T-Display-S3 | Headless |
 |---|:---:|:---:|:---:|
@@ -33,7 +33,7 @@ The only real difference between the variants is **whether a screen exists**. Wi
 | **NTAG 424 DNA** (Bolt Card / Ring tap) | ✅ | ✅ | ✅ |
 | **4-digit PIN after tap (NTAG 424)** | ✅ | ❌ | ❌ |
 | **Pay+Password** (classic, external QR) | ✅ | ✅ | ✅ |
-| **Dual-page** (Identity & Pay+Password) | ✅ | ✅ | ❌ |
+| **Dual-page** (Identity & Pay+Password) | ✅ | ✅ | ✅ |
 | **Teach mode started by** | 6-tap gesture + PIN on screen | Installer PIN *(one-shot)* | Installer PIN *(one-shot)* |
 | **Feedback** | Display toast | Display toast | [LED patterns](headless-esp32.md#led-status-diagnostics) |
 
