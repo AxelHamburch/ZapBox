@@ -25,7 +25,7 @@ Identity Login turns the ZapBox into an **identification terminal**. Instead of 
 
 ## What Each Variant Supports
 
-The only real difference between the models is **whether they have a touchscreen**. Without a touchscreen, you cannot enter a PIN on the device.
+The main difference between the models is **whether they have a touchscreen**. Without a touchscreen, you cannot enter a PIN on the device.
 
 | | Touch 3.5" | T-Display-S3 | Headless |
 |---|:---:|:---:|:---:|
@@ -33,11 +33,15 @@ The only real difference between the models is **whether they have a touchscreen
 | **NTAG 424 DNA** (Bolt Card / Ring tap) | ✅ | ✅ | ✅ |
 | **4-digit PIN after tap (NTAG 424)** | ✅ | ❌ | ❌ |
 | **Pay+Password** (classic, external QR) | ✅ | ✅ | ✅ |
-| **Dual-page** (Identity & Pay+Password) | ✅ | ✅ | ✅ |
+| **Dual-page** (Identity & Pay+Password) | ✅ | ✅ | ✅ / ❌ (no NFC Tag 2) |
 | **Teach mode started by** | 6-tap gesture + PIN on screen | Installer PIN *(one-shot)* | Installer PIN *(one-shot)* |
 | **Feedback** | Display toast | Display toast | [LED patterns](headless-esp32.md#led-status-diagnostics) |
 
 Teach mode always times out after **180 s**.
+
+Note: In the headless version, the Identity function for NFC Tag 2 is disabled because the “k1-Challenge-Renewal” would place too heavy a continuous load on the NT3H2111 chip every 90 seconds. (k1 is valid for ~120 seconds.)
+
+
 
 ---
 
