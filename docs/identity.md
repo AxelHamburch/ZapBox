@@ -39,7 +39,7 @@ The main difference between the models is **whether they have a touchscreen**. W
 
 Teach mode always times out after **180 s**.
 
-Note: In the headless version, the Identity function for NFC Tag 2 is disabled because the “k1-Challenge-Renewal” would place too heavy a continuous load on the NT3H2111 chip every 90 seconds. (k1 is valid for ~120 seconds.)
+Note: In the headless version, the Identity function for NFC Tag 2 is disabled because the “k1-Challenge-Renewal” would place too heavy a continuous load on the NT3H2111 chip every 90 seconds. 
 
 
 
