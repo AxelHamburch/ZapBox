@@ -29,11 +29,11 @@ The only real difference between the variants is **whether a screen exists**. Wi
 
 | | Touch 3.5" | T-Display-S3 | Headless |
 |---|:---:|:---:|:---:|
-| **LNURL-auth** (wallet login via QR) | ✅ | ✅ | ✅ |
+| **LNURL-auth** (wallet login) | ✅ | ✅ | ✅ |
 | **NTAG 424 DNA** (Bolt Card / Ring tap) | ✅ | ✅ | ✅ |
-| **4-digit PIN after tap** | ✅ | ❌ | ❌ |
+| **4-digit PIN after tap (NTAG 424)** | ✅ | ❌ | ❌ |
 | **Pay+Password** (classic, external QR) | ✅ | ✅ | ✅ |
-| **Dual-page** (identity + payment) | ✅ | ✅ | ❌ |
+| **Dual-page** (Identity & Pay+Password) | ✅ | ✅ | ❌ |
 | **Teach mode started by** | 6-tap gesture + PIN on screen | Installer PIN *(one-shot)* | Installer PIN *(one-shot)* |
 | **Feedback** | Display toast | Display toast | [LED patterns](headless-esp32.md#led-status-diagnostics) |
 
