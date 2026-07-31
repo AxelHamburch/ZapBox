@@ -29,9 +29,9 @@ The only real difference between the variants is **whether a screen exists**. Wi
 
 | | Touch 3.5" | T-Display-S3 | Headless |
 |---|:---:|:---:|:---:|
-| **LNURL-auth** (wallet login via QR) | ✅ | ✅ | ❌ *no screen* |
+| **LNURL-auth** (wallet login via QR) | ✅ | ✅ | ✅ |
 | **NTAG 424 DNA** (Bolt Card / Ring tap) | ✅ | ✅ | ✅ |
-| **4-digit PIN after tap** | ✅ | ✅ | ✅ |
+| **4-digit PIN after tap** | ✅ | ❌ | ❌ |
 | **Pay+Password** (classic, external QR) | ✅ | ✅ | ✅ |
 | **Dual-page** (identity + payment) | ✅ | ✅ | ❌ |
 | **Teach mode started by** | 6-tap gesture + PIN on screen | Installer PIN *(one-shot)* | Installer PIN *(one-shot)* |
