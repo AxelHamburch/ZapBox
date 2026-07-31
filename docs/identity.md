@@ -34,7 +34,6 @@ The only real difference between the variants is **whether a screen exists**. Wi
 | **4-digit PIN after tap** | ✅ | ✅ | ✅ |
 | **Pay+Password** (classic, external QR) | ✅ | ✅ | ✅ |
 | **Dual-page** (identity + payment) | ✅ | ✅ | ❌ |
-| **Servo output on success** | ❌ | ❌ | ✅ |
 | **Teach mode started by** | 6-tap gesture + PIN on screen | Installer PIN *(one-shot)* | Installer PIN *(one-shot)* |
 | **Feedback** | Display toast | Display toast | [LED patterns](headless-esp32.md#led-status-diagnostics) |
 
