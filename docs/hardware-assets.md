@@ -109,6 +109,7 @@ Designed in **FreeCAD**, exported as `.3mf` for printing.
 | b955706 | ZapSave | ZapSave — sample box |
 | b956540 | Touch3.5-FOUR | ZapBox Touch 3.5 with 4 channels — incl. battery holder |
 | b957183 | Touch3.5-ONE | ZapBox Touch 3.5 with 1 channel — incl. battery holder |
+| b958015 | Touch3.5-SIX+ | ZapBox Touch 3.5 with 6 channel & expansion options |
 | b959898 | Simple | As simple as possible |
 
 → All versions: [assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
