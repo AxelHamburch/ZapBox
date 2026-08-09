@@ -136,6 +136,12 @@ static void miniPosIdleNfcTag();
 static void applyModeSelection(int selected);
 
 const unsigned long PRODUCT_SELECTION_DELAY = PRODUCT_TIMEOUT; // Time to return to product selection
+
+// Numeric product QR (Touch 3.5 multi-channel): a payment can settle after the
+// screen has already reverted to idle (customer scans, then pays slowly).
+// Accept a late payment for the last-shown pin within this window instead of
+// silently dropping it — matches the Mini-PoS invoice validity window.
+const unsigned long NUMSEL_PAYMENT_GRACE_MS = INVOICE_TIMEOUT;
 const unsigned long BTC_TICKER_TIMEOUT_DELAY = BTCTICKER_TIMEOUT; // Time to hide ticker in selecting mode
 
 // Multi-Channel-Control product navigation
@@ -2400,6 +2406,8 @@ static void numericHandleGo() {
   productSelectState.qrActive = true;
   productSelectState.qrPin = pin;
   productSelectState.qrShownAt = millis();
+  productSelectState.lastPin = pin;
+  productSelectState.lastPinShownAt = productSelectState.qrShownAt;
   productSelectState.infoMsg = "";
   productSelectState.infoUntil = 0;
   showProductSelectQRScreen(label, pin);
@@ -5434,7 +5442,9 @@ void processPaymentEvent(String &payloadStr)
 
 #ifdef BOARD_JC3248W535C
     // Numeric product selection: only accept a payment that matches the
-    // product QR currently on screen.  A payment for a different pin (e.g.
+    // product QR currently on screen, or the last one shown within the grace
+    // window (NUMSEL_PAYMENT_GRACE_MS) if the screen already reverted to idle
+    // before the payment settled. A payment for a different/older pin (e.g.
     // an old invoice still pending in the payer's wallet) must be rejected
     // so the wrong relay is not triggered.
     // Numeric product selection guard: only active in multi-channel mode.
@@ -5443,15 +5453,27 @@ void processPaymentEvent(String &payloadStr)
     // every payment would be silently dropped because productSelectState.qrActive
     // is never set in those modes.
     if (t35AmbientConfig.numericSelect && multiChannelConfig.mode == "duo") {
-      if (!productSelectState.qrActive || productSelectState.qrPin <= 0) {
-        LOG_WARN("NumSel", "Payment received but no product QR active — ignoring");
+      bool matchesVisibleQr = productSelectState.qrActive &&
+                              productSelectState.qrPin > 0 &&
+                              pin == productSelectState.qrPin;
+      bool matchesRecentQr = !matchesVisibleQr &&
+                              productSelectState.lastPin > 0 &&
+                              pin == productSelectState.lastPin &&
+                              productSelectState.lastPinShownAt > 0 &&
+                              millis() - productSelectState.lastPinShownAt < NUMSEL_PAYMENT_GRACE_MS;
+      if (!matchesVisibleQr && !matchesRecentQr) {
+        if (productSelectState.lastPin <= 0) {
+          LOG_WARN("NumSel", "Payment received but no product QR was ever shown — ignoring");
+        } else {
+          LOG_WARN("NumSel", String("Payment pin ") + String(pin) +
+                   " does not match last shown pin " + String(productSelectState.lastPin) +
+                   " — rejected");
+        }
         return;
       }
-      if (pin != productSelectState.qrPin) {
-        LOG_WARN("NumSel", String("Payment pin ") + String(pin) +
-                 " does not match displayed pin " + String(productSelectState.qrPin) +
-                 " — rejected");
-        return;
+      if (matchesRecentQr) {
+        LOG_INFO("NumSel", String("Late payment for pin ") + String(pin) +
+                 " accepted (screen already reverted to idle)");
       }
     }
 #endif

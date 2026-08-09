@@ -830,6 +830,12 @@ struct ProductSelectState {
   bool     qrActive = false;
   int      qrPin = -1;            // GPIO/virtual pin whose LNURL is displayed
   uint32_t qrShownAt = 0;         // millis() — for the product timeout
+  // Last pin shown, kept past the visual QR timeout so a payment settling
+  // shortly after the screen reverts to idle still fires the right relay.
+  // Not cleared by resetAll() — only replaced by the next GO, so it always
+  // reflects "the last product a customer could plausibly have paid for".
+  int      lastPin = -1;
+  uint32_t lastPinShownAt = 0;
 
   void resetInput() {
     memset(digits, 0, sizeof(digits));
