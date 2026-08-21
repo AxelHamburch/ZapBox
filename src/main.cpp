@@ -5440,44 +5440,6 @@ void processPaymentEvent(String &payloadStr)
     int pin      = getValue(payloadStr, '-', 0).toInt();
     int duration = getValue(payloadStr, '-', 1).toInt();
 
-#ifdef BOARD_JC3248W535C
-    // Numeric product selection: only accept a payment that matches the
-    // product QR currently on screen, or the last one shown within the grace
-    // window (NUMSEL_PAYMENT_GRACE_MS) if the screen already reverted to idle
-    // before the payment settled. A payment for a different/older pin (e.g.
-    // an old invoice still pending in the payer's wallet) must be rejected
-    // so the wrong relay is not triggered.
-    // Numeric product selection guard: only active in multi-channel mode.
-    // When mode-select at startup switches to Single/Mini-PoS/Authy,
-    // multiChannelConfig.mode is "off" and the guard must not fire — otherwise
-    // every payment would be silently dropped because productSelectState.qrActive
-    // is never set in those modes.
-    if (t35AmbientConfig.numericSelect && multiChannelConfig.mode == "duo") {
-      bool matchesVisibleQr = productSelectState.qrActive &&
-                              productSelectState.qrPin > 0 &&
-                              pin == productSelectState.qrPin;
-      bool matchesRecentQr = !matchesVisibleQr &&
-                              productSelectState.lastPin > 0 &&
-                              pin == productSelectState.lastPin &&
-                              productSelectState.lastPinShownAt > 0 &&
-                              millis() - productSelectState.lastPinShownAt < NUMSEL_PAYMENT_GRACE_MS;
-      if (!matchesVisibleQr && !matchesRecentQr) {
-        if (productSelectState.lastPin <= 0) {
-          LOG_WARN("NumSel", "Payment received but no product QR was ever shown — ignoring");
-        } else {
-          LOG_WARN("NumSel", String("Payment pin ") + String(pin) +
-                   " does not match last shown pin " + String(productSelectState.lastPin) +
-                   " — rejected");
-        }
-        return;
-      }
-      if (matchesRecentQr) {
-        LOG_INFO("NumSel", String("Late payment for pin ") + String(pin) +
-                 " accepted (screen already reverted to idle)");
-      }
-    }
-#endif
-
     processNormalPayment(pin, duration);
 
     // Authy: a successful identification fired the relay and spent the k1 —
