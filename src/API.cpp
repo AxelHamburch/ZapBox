@@ -149,7 +149,9 @@ void fetchSwitchLabels()
         String labelStr = (labelChar != nullptr) ? String(labelChar) : "";
         int pinDuration = switchObj["duration"].as<int>(); // Action time in ms (0 if not set)
         
-        // Store label and duration based on pin number using array index (0-11)
+        // Store label and duration based on pin number using array index.
+        // getPinIndex() also resolves the virtual expander pins
+        // (200-207 → PCF8574, 300-315 → PCF8575) on JC3248W535C.
         int pinIndex = getPinIndex(pin);
         if (pinIndex >= 0 && pinIndex < PRODUCT_LABELS_MAX) {
           productLabels.labels[pinIndex] = labelStr;

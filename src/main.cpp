@@ -718,6 +718,34 @@ void readFiles()
       }
       LOG_INFO("Config", String("I/O Expander (PCF8574): ") + (expanderEnabled ? "ENABLED (pins 200-207 → relay)" : "disabled"));
     }
+
+    // Read I/O Expander 16 configuration (PCF8575)
+    //   Index 93 = ioExpander16 enable flag ("no" | "yes")
+    //   Index 94 = ioExpanderActiveHigh   — trigger polarity of the PCF8574
+    //   Index 95 = ioExpander16ActiveHigh — trigger polarity of the PCF8575
+    // All three are optional: configs written before this feature existed simply
+    // lack the indices, which keeps the previous behaviour (disabled / active-LOW).
+    {
+      auto readYes = [&](int idx) -> bool {
+        const JsonObject obj = doc[idx];
+        if (obj.isNull()) return false;
+        const char* val = obj["value"];
+        if (val == nullptr) return false;
+        String s = String(val); s.toLowerCase(); s.trim();
+        return (s == "yes" || s == "true" || s == "1" || s == "high");
+      };
+
+      ioExpander16Config.enabled    = readYes(93);
+      ioExpanderConfig.activeHigh   = readYes(94);
+      ioExpander16Config.activeHigh = readYes(95);
+
+      LOG_INFO("Config", String("I/O Expander (PCF8575): ") +
+                         (ioExpander16Config.enabled ? "ENABLED (pins 300-315 → relay)" : "disabled"));
+      LOG_INFO("Config", String("  PCF8574 trigger: ") +
+                         (ioExpanderConfig.activeHigh ? "active-HIGH" : "active-LOW") +
+                         ", PCF8575 trigger: " +
+                         (ioExpander16Config.activeHigh ? "active-HIGH" : "active-LOW"));
+    }
     #endif
 
     // Read Touch 3.5 channel config (indices 47-53, JC3248W535C only).
@@ -1699,8 +1727,11 @@ void setup()
 #endif  // BOARD_ESP32C3_21_1 / else
 
   // IOExpander init: Wire (SDA=18, SCL=17) is now ready after touch.begin()
+  // initIOExpander16() must run after initIOExpander() — its address-collision
+  // check relies on knowing whether the PCF8574 actually came up.
 #if ENABLE_DISPLAY
   initIOExpander();
+  initIOExpander16();
 #endif
 
   // GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless ESP32 Dev) — FD (Field Detection) for NT3H2111
@@ -2350,6 +2381,7 @@ static bool numericPinSelectable(int pin) {
   if (ch >  0) return t35AmbientConfig.flexActor[ch - 1];
 
   if (pin >= 200 && pin <= 207) return ioExpanderConfig.enabled;
+  if (pin >= 300 && pin <= 315) return ioExpander16Config.enabled;
   return false;
 }
 
@@ -4931,80 +4963,106 @@ static void oneForAllActivationTask(void* pvParams) {
   vTaskDelete(nullptr);
 }
 
+#if ENABLE_DISPLAY
+// Run a paid activation on an I/O expander channel.
+// wide == false → PCF8574, channels 0-7   (virtual pins 200-207)
+// wide == true  → PCF8575, channels 0-15  (virtual pins 300-315)
+// Screen flow, light-barrier abort and cleanup are identical to the physical-pin
+// path in processNormalPayment().
+static void runExpanderPayment(int ch, int duration, bool wide)
+{
+  const char* tag      = wide ? "IOExpander16" : "IOExpander";
+  const int   chLabel  = ch + (wide ? 300 : 200);
+
+  // Show action-time screen with countdown, same as physical pins
+  productSelectionState.showTime = 0;
+  activityTracking.lastActivityTime = millis();
+  if (deviceState.isInState(DeviceState::SCREENSAVER)) {
+    deactivateScreensaver();
+    deviceState.transition(DeviceState::READY);
+  }
+  actionTimeScreen();
+  updateActionTimeCountdown(duration / 1000);
+
+  Serial.printf("[%s] Activating CH%d for %d ms\n", tag, chLabel, duration);
+  if (wide) activateExpander16Channel(ch);
+  else      activateExpanderChannel(ch);
+
+  unsigned long startTime = millis();
+  int lastDisplayedSec = duration / 1000;
+  while (millis() - startTime < (unsigned long)duration) {
+    int remaining = (int)((duration - (millis() - startTime)) / 1000);
+    if (remaining != lastDisplayedSec) {
+      lastDisplayedSec = remaining;
+      updateActionTimeCountdown(remaining);
+    }
+    if (shouldStopForLightBarrier(startTime)) {
+      break;
+    }
+    webSocket.loop();
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+
+  if (wide) deactivateExpander16Channel(ch);
+  else      deactivateExpanderChannel(ch);
+  Serial.printf("[%s] CH%d deactivated\n", tag, chLabel);
+
+  // Thank-you screen + 2s hold (same as physical pins)
+  thankYouScreen();
+  activityTracking.lastActivityTime = millis();
+  unsigned long tyStart = millis();
+  while (millis() - tyStart < 2000) {
+    webSocket.loop();
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+
+  // Reset timer and NFC state – same cleanup as end of processNormalPayment()
+  productSelectionState.showTime = millis();
+  multiChannelConfig.btcTickerActive = false;
+  #if ENABLE_NFC
+  extensionConfig.nfcPaymentPending = false;
+  extensionConfig.nfcErrorDetail[0] = '\0';
+  nfcPendingScreenShown = false;
+  nfcNoLuckScreenShown  = false;
+  nfcErrorDetailShown   = false;
+  nfcNotSupportedShown  = false;
+  #endif
+  // Numeric selection (Touch 3.5): payment settled — clear the product QR
+  // state so redrawQRScreen() returns to the main product-selection screen,
+  // matching the physical-pin path (otherwise it stays on the same QR).
+  #ifdef BOARD_JC3248W535C
+  if (t35AmbientConfig.numericSelect) {
+    productSelectState.resetAll();
+    miniPosIdleNfcTag();
+  }
+  #endif
+  redrawQRScreen();
+  Serial.println("[NORMAL] Ready for next payment");
+}
+#endif  // ENABLE_DISPLAY
+
 static void processNormalPayment(int pin, int duration)
 {
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
 
-  // Virtual pin mapping: 200–207 → PCF8574 I/O-Expander CH05–CH12 (channels 0–7)
+  // Virtual pin mapping:
+  //   200–207 → PCF8574 I/O-Expander channels 0–7
+  //   300–315 → PCF8575 I/O-Expander channels 0–15
 #if ENABLE_DISPLAY
   if (pin >= 200 && pin <= 207) {
-    int ch = pin - 200;
     if (!ioExpanderConfig.enabled) {
-      Serial.printf("[IOExpander] ERROR: virtual pin %d received but I/O-Expander is disabled!\n", pin);
+      Serial.printf("[IOExpander] ERROR: virtual pin %d received but PCF8574 I/O-Expander is disabled!\n", pin);
       return;
     }
-    // Show action-time screen with countdown, same as physical pins
-    productSelectionState.showTime = 0;
-    activityTracking.lastActivityTime = millis();
-    if (deviceState.isInState(DeviceState::SCREENSAVER)) {
-      deactivateScreensaver();
-      deviceState.transition(DeviceState::READY);
+    runExpanderPayment(pin - 200, duration, false);
+    return;
+  }
+  if (pin >= 300 && pin <= 315) {
+    if (!ioExpander16Config.enabled) {
+      Serial.printf("[IOExpander16] ERROR: virtual pin %d received but PCF8575 I/O-Expander is disabled!\n", pin);
+      return;
     }
-    actionTimeScreen();
-    updateActionTimeCountdown(duration / 1000);
-
-    Serial.printf("[IOExpander] Activating CH%02d (P%d) for %d ms\n", ch + 5, ch, duration);
-    activateExpanderChannel(ch);
-
-    unsigned long startTime = millis();
-    int lastDisplayedSec = duration / 1000;
-    while (millis() - startTime < (unsigned long)duration) {
-      int remaining = (int)((duration - (millis() - startTime)) / 1000);
-      if (remaining != lastDisplayedSec) {
-        lastDisplayedSec = remaining;
-        updateActionTimeCountdown(remaining);
-      }
-      if (shouldStopForLightBarrier(startTime)) {
-        break;
-      }
-      webSocket.loop();
-      vTaskDelay(pdMS_TO_TICKS(10));
-    }
-
-    deactivateExpanderChannel(ch);
-    Serial.printf("[IOExpander] CH%02d (P%d) deactivated\n", ch + 5, ch);
-
-    // Thank-you screen + 2s hold (same as physical pins)
-    thankYouScreen();
-    activityTracking.lastActivityTime = millis();
-    unsigned long tyStart = millis();
-    while (millis() - tyStart < 2000) {
-      webSocket.loop();
-      vTaskDelay(pdMS_TO_TICKS(10));
-    }
-
-    // Reset timer and NFC state – same cleanup as end of processNormalPayment()
-    productSelectionState.showTime = millis();
-    multiChannelConfig.btcTickerActive = false;
-    #if ENABLE_NFC
-    extensionConfig.nfcPaymentPending = false;
-    extensionConfig.nfcErrorDetail[0] = '\0';
-    nfcPendingScreenShown = false;
-    nfcNoLuckScreenShown  = false;
-    nfcErrorDetailShown   = false;
-    nfcNotSupportedShown  = false;
-    #endif
-    // Numeric selection (Touch 3.5): payment settled — clear the product QR
-    // state so redrawQRScreen() returns to the main product-selection screen,
-    // matching the physical-pin path (otherwise it stays on the same QR).
-    #ifdef BOARD_JC3248W535C
-    if (t35AmbientConfig.numericSelect) {
-      productSelectState.resetAll();
-      miniPosIdleNfcTag();
-    }
-    #endif
-    redrawQRScreen();
-    Serial.println("[NORMAL] Ready for next payment");
+    runExpanderPayment(pin - 300, duration, true);
     return;
   }
 #endif

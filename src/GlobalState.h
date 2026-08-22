@@ -416,9 +416,9 @@ extern BitcoinData bitcoinData;
 // MULTI-PRODUCT LABELS
 // ============================================================================
 
-// Number of product label slots. 14 covers the largest layout
-// (JC3248W535C: 6 GPIO channels + 8 PCF8574 virtual pins).
-constexpr int PRODUCT_LABELS_MAX = 14;
+// Number of product label slots. 30 covers the largest layout
+// (JC3248W535C: 6 GPIO channels + 8 PCF8574 + 16 PCF8575 virtual pins).
+constexpr int PRODUCT_LABELS_MAX = 30;
 
 struct ProductLabels {
   // Labels stored in array by RELAY_CHANNEL_PINS order (see PinConfig.h):
@@ -430,6 +430,7 @@ struct ProductLabels {
   //   indices 4-11 only on esp32dev
   // JC3248W535C: index 0-5=GPIO 14/15/16/5/6/7 (CH01-CH06),
   //   index 6-13=PCF8574 virtual pins 200-207
+  //   index 14-29=PCF8575 virtual pins 300-315
   String labels[PRODUCT_LABELS_MAX];
   int durations[PRODUCT_LABELS_MAX] = {0}; // Action time per pin in ms (0 = not configured)
   unsigned long lastUpdate = 0;
@@ -447,6 +448,9 @@ extern ProductLabels productLabels;
 //   GPIO 23 → 6 (CH07)   GPIO 25 → 7 (CH08)
 //   GPIO 26 → 8 (CH09)   GPIO 27 → 9 (CH10)
 //   GPIO 32 → 10 (CH11)  GPIO 33 → 11 (CH12)  ← esp32dev only
+// JC3248W535C additionally maps the virtual expander pins:
+//   200-207 → 6-13   (PCF8574 P0-P7)
+//   300-315 → 14-29  (PCF8575 P00-P07 / P10-P17)
 // Returns -1 if pin is not a relay channel.
 inline int getPinIndex(int pin) {
   switch (pin) {
@@ -470,6 +474,23 @@ inline int getPinIndex(int pin) {
     case 205: return 11;
     case 206: return 12;
     case 207: return 13;
+    // Virtual IOExpander16 pins (PCF8575 P00–P07 / P10–P17) → slots 14–29
+    case 300: return 14;
+    case 301: return 15;
+    case 302: return 16;
+    case 303: return 17;
+    case 304: return 18;
+    case 305: return 19;
+    case 306: return 20;
+    case 307: return 21;
+    case 308: return 22;
+    case 309: return 23;
+    case 310: return 24;
+    case 311: return 25;
+    case 312: return 26;
+    case 313: return 27;
+    case 314: return 28;
+    case 315: return 29;
 #endif
     case 12: return 0;
     case 13: return 1;
@@ -605,7 +626,7 @@ struct PaymentQueue {
 extern PaymentQueue paymentQueue;
 
 // ============================================================================
-// I/O EXPANDER CONFIGURATION (PCF8574 — T-Display-S3 only)
+// I/O EXPANDER CONFIGURATION (PCF8574 / PCF8575)
 // ============================================================================
 
 struct IOExpanderChannelConfig {
@@ -614,10 +635,28 @@ struct IOExpanderChannelConfig {
 
 struct IOExpanderConfig {
   bool enabled = false;                   // True when PCF8574 is present and configured
+  // Relay trigger polarity. false = active-LOW (default, low-level trigger boards:
+  // LOW switches the relay on, all ports start HIGH). true = active-HIGH (high-level
+  // trigger boards: HIGH switches on, all ports start LOW). Active-HIGH also avoids
+  // the brief relay flicker on power-up, because an I2C glitch before initIOExpander()
+  // pulls the ports LOW — harmless when LOW means "off".
+  bool activeHigh = false;
   IOExpanderChannelConfig channels[8];    // virtual pins 200–207 → P0–P7
 };
 
 extern IOExpanderConfig ioExpanderConfig;
+
+// PCF8575 — 16 relay channels on virtual pins 300–315 (P00–P07 / P10–P17).
+// I2C address 0x21 (7-bit) = 0x42 in 8-bit notation: A0 to VDD, A1/A2 to GND.
+// 0x20 is deliberately avoided — that is the PCF8574's address and both chip
+// families share the 0x20–0x27 range.
+struct IOExpander16Config {
+  bool enabled = false;
+  bool activeHigh = false;    // see IOExpanderConfig::activeHigh
+  uint8_t address = 0x21;     // 7-bit I2C address
+};
+
+extern IOExpander16Config ioExpander16Config;
 
 // ============================================================================
 // NFC MODE CONFIGURATION

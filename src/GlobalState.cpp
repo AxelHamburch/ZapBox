@@ -78,6 +78,9 @@ ActivityTracking activityTracking;
 // I/O Expander Configuration (PCF8574)
 IOExpanderConfig ioExpanderConfig;
 
+// I/O Expander Configuration (PCF8575 — 16 channels, virtual pins 300-315)
+IOExpander16Config ioExpander16Config;
+
 // NFC Mode Configuration
 NfcConfig nfcConfig;
 
