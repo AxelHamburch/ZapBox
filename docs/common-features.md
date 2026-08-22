@@ -13,6 +13,7 @@ Features that work the same way on every ZapBox variant. Anything board-specific
 - [BTC Ticker](#btc-ticker)
 - [Threshold Mode](#threshold-mode)
 - [I/O Expander — PCF8574](#io-expander--pcf8574)
+- [I/O Expander — PCF8575](#io-expander--pcf8575)
 - [External LED Button](#external-led-button)
 - [Screensaver & Deep Sleep](#screensaver--deep-sleep)
 - [Startup & Error Detection](#startup--error-detection)
@@ -115,7 +116,21 @@ A0, A1, A2      →    GND                      (address = 0x20)
 P0 … P7         →                        →    IN1 … IN8
 ```
 
-> **⚠️ The PCF8574 outputs are active-LOW.** Use relay modules that trigger on LOW (most opto-coupled relay boards do). On startup all pins are set HIGH — all relays off.
+### Trigger level
+
+The relay polarity is selectable in the web installer (**PCF8574 — Relay Trigger Level**):
+
+| Setting | Behaviour | Idle state at boot |
+|---------|-----------|--------------------|
+| `Low-Level Trigger` *(default)* | LOW switches the relay **on** | all ports HIGH |
+| `High-Level Trigger` | HIGH switches the relay **on** | all ports LOW |
+
+> **💡 Relay flicker at power-up.** With a low-level trigger board the relays may click
+> briefly when the device is switched on. Between the expander powering up and the firmware
+> initialising it, the I²C lines can glitch and leave the ports LOW — which a low-level board
+> reads as "on". This window exists before any firmware runs and cannot be closed in software.
+> Wiring a **high-level trigger** board and selecting `High-Level Trigger` avoids it entirely,
+> because LOW then means "off".
 
 ### Channel modes
 
@@ -128,6 +143,82 @@ P0 … P7         →                        →    IN1 … IN8
 | `sensor-level` | Inverted logic: LOW = supply OK, HIGH = bin empty → blocks payments | "SUPPLY BIN EMPTY" |
 
 **I²C address:** `0x20` (A0/A1/A2 tied to GND). The expander is auto-detected at startup; if none is found, the feature is silently disabled.
+
+---
+
+## I/O Expander — PCF8575
+
+Adds **16 additional relay channels** (virtual pins 300–315) over the same I²C bus. Supported on the **Touch 3.5"** (JC3248W535C). Can run alongside a PCF8574, giving 8 + 16 = 24 expander channels in total.
+
+### Virtual pin mapping
+
+| Virtual Pin | Port | | Virtual Pin | Port |
+|-------------|------|---|-------------|------|
+| 300 | P00 | | 308 | P10 |
+| 301 | P01 | | 309 | P11 |
+| 302 | P02 | | 310 | P12 |
+| 303 | P03 | | 311 | P13 |
+| 304 | P04 | | 312 | P14 |
+| 305 | P05 | | 313 | P15 |
+| 306 | P06 | | 314 | P16 |
+| 307 | P07 | | 315 | P17 |
+
+### I²C address — mind the notation
+
+> **⚠️ PCF8574 and PCF8575 share the same `0x20`–`0x27` address range.** With A0/A1/A2 tied
+> to GND both chips answer on `0x20`, so a PCF8575 must be moved off that address whenever a
+> PCF8574 is also in use.
+
+ZapBox expects the PCF8575 on **`0x21`** — that is **A0 to VDD**, A1/A2 to GND.
+
+Many datasheets and wikis list these addresses in **8-bit notation including the R/W bit**
+(`0x40`, `0x42`, `0x44` … in steps of two). Arduino and `Wire` use the **7-bit** form, which
+is simply half of that value:
+
+| 8-bit (datasheet) | 7-bit (`Wire`) | A2 | A1 | A0 | |
+|---|---|---|---|---|---|
+| 0x40 | `0x20` | LOW | LOW | LOW | ⚠️ used by PCF8574 |
+| **0x42** | **`0x21`** | LOW | LOW | **HIGH** | ✅ ZapBox default |
+| 0x44 | `0x22` | LOW | HIGH | LOW | free (reserved for a 2nd PCF8574) |
+| 0x46 | `0x23` | LOW | HIGH | HIGH | free |
+| 0x48 | `0x24` | HIGH | LOW | LOW | ⚠️ used by PN532 |
+| 0x4A–0x4E | `0x25`–`0x27` | | | | free |
+
+If the address pins are left floating, the chip answers on a **random address that changes
+between scans** — a reliable symptom of unbridged A0/A1/A2.
+
+### Wiring
+
+```
+PCF8575         →    ZapBox              →    Relay Module
+────────────────────────────────────────────────────────────
+VCC             →    3.3V                     (not 5 V!)
+GND             →    GND
+SDA             →    GPIO 18 (shared I²C)
+SCL             →    GPIO 17 (shared I²C)
+A0              →    VDD                      (address = 0x21)
+A1, A2          →    GND
+P00 … P17       →                        →    IN1 … IN16
+INT             →    not connected            (inputs not implemented yet)
+```
+
+### Trigger level
+
+Same options as the PCF8574 — selectable in the installer as **PCF8575 — Relay Trigger Level**,
+with the same power-up flicker consideration described above.
+
+### Selecting these channels
+
+CH300–CH315 are reachable via the **numerical product selection** (keypad), a Bolt Card tap on
+the displayed product QR, or a direct payment/trigger from LNbits. The classic product browsing
+navigation only covers products 1–12 and does not reach them.
+
+### Inputs (not implemented)
+
+The PCF8575 can also read inputs. This is not implemented yet. When it is, it should use the
+chip's **`INT` line** wired to a free ESP32 GPIO: the PCF8575 pulls `INT` low whenever an input
+level changes, so the firmware can react to an interrupt instead of polling the chip
+continuously over I²C.
 
 ---
 

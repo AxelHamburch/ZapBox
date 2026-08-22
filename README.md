@@ -167,7 +167,7 @@ ZapBox/
 │   ├── NFCBoltCard.cpp/h          # Bolt Card LNURLW authentication
 │   ├── NFCCardEmulation.cpp/h     # PN532 target mode
 │   ├── NFCNT3H2111.cpp/h          # NT3H2111 NFC Tag 2 driver
-│   ├── IOExpander.h               # PCF8574 driver (virtual pins 200–207)
+│   ├── IOExpander.h               # PCF8574 (pins 200–207) + PCF8575 (pins 300–315)
 │   ├── I2CBus.h                   # Shared I²C bus mutex
 │   ├── ServoControl.cpp/h         # Servo motor control
 │   ├── TouchCST816S.cpp/h         # Touch driver (T-Display-S3)

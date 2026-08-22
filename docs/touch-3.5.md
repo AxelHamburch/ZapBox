@@ -11,6 +11,7 @@ ESP32-S3 with a 3.5" capacitive touch display (480 × 320). The largest ZapBox �
 - [Hardware](#hardware)
 - [GPIO Mapping](#gpio-mapping)
 - [Channels (CH01–CH06)](#channels-ch01ch06)
+  - [Expander channels (CH200–CH207 / CH300–CH315)](#expander-channels-ch200ch207--ch300ch315)
 - [Battery Gauge](#battery-gauge)
 - [Vending Sensors](#vending-sensors)
 - [Mini-PoS Mode](#mini-pos-mode)
@@ -34,7 +35,7 @@ ESP32-S3 with a 3.5" capacitive touch display (480 × 320). The largest ZapBox �
 | **Power draw** | ~200–350 mA |
 | **Channels** | 6 flex channels (relay / servo / sensor / ambient light) |
 
-**I²C addresses:** PN532 `0x24` · NT3H2111 `0x55` · PCF8574 `0x20`
+**I²C addresses:** PN532 `0x24` · NT3H2111 `0x55` · PCF8574 `0x20` · PCF8575 `0x21`
 (The AXS15231B touch sits on its own internal bus and does not share the external one.)
 
 ---
@@ -55,8 +56,8 @@ ESP32-S3 with a 3.5" capacitive touch display (480 × 320). The largest ZapBox �
 | 4 | I²C SDA | I²C | - | Internal bus — no external GPIO required |
 | 8 | I²C SCL | I²C | - | Internal bus — no external GPIO required |
 | **I²C Bus (external)** |
-| 17 | I²C SCL | I²C | - | Shared: PN532 + NT3H2111 + PCF8574 |
-| 18 | I²C SDA | I²C | - | Shared: PN532 + NT3H2111 + PCF8574 |
+| 17 | I²C SCL | I²C | - | Shared: PN532 + NT3H2111 + PCF8574 + PCF8575 |
+| 18 | I²C SDA | I²C | - | Shared: PN532 + NT3H2111 + PCF8574 + PCF8575 |
 | 9 | NFC IRQ | Input | Pull-up | PN532 interrupt (card detection, active LOW) |
 | **Flex Channels** |
 | 14 | CH01 | Output | - | Primary channel — relay *(default)* / servo. Special Mode applies here only |
@@ -101,6 +102,25 @@ Six freely configurable channels. Each channel's function is set independently i
 
 - **Payment channels:** every channel set to *relay* or *servo* becomes its own payment channel with a unique LNURL/QR code and its own amount and duration from the LNbits switch entry. Channels set to *ambient-light*, *sensor* or *off* are not counted as payment channels.
 - **CH01** is always active as the primary channel and is the only one that supports the **Special Modes** (blink / pulse / strobe); additional channels switch in standard on/off mode.
+
+### Expander channels (CH200–CH207 / CH300–CH315)
+
+Beyond the six GPIO channels, an I²C expander adds further relay channels — see [I/O Expander](common-features.md#io-expander--pcf8574):
+
+| Source | Channels | Virtual pins | Notes |
+|--------|----------|--------------|-------|
+| GPIO | CH01–CH06 | 14, 15, 16, 5, 6, 7 | Relay · servo · sensor · ambient light |
+| PCF8574 | CH200–CH207 | 200–207 | Relay only |
+| PCF8575 | CH300–CH315 | 300–315 | Relay only |
+
+With both expanders fitted a device offers up to **6 + 8 + 16 = 30 channels**.
+
+Expander channels behave like GPIO relay channels — same LNURL/QR code, same amount and duration from the LNbits switch entry, same action-time and thank-you screens. Two differences matter:
+
+- **They are relay-only.** No servo, sensor, ambient light or Special Mode.
+- **They are not part of the browsable product list.** Swiping through products only covers products 1–12, which map to the GPIO channels and CH200–CH207. Expander channels are reached with [Numerical Product Selection](#numerical-product-selection), a Bolt Card tap on the QR currently shown, or a direct trigger/payment from LNbits.
+
+> **💡 An expander alone makes a device multi-channel.** Enabling a PCF8574 or PCF8575 counts as adding payment channels, so *ZapBox Mode → Multi-channel* stays active even when CH02–CH06 are all `off` and only CH01 is a GPIO relay. This is what makes the keypad available for the expander channels.
 
 ### Per-channel servo parameters
 
@@ -226,11 +246,11 @@ The *Device settings string* must be configured as usual — it identifies the L
 
 ## Multi-Channel Mode
 
-Up to 6 independent payment channels, each with its own QR code, amount and duration from LNbits. See [Channels](#channels-ch01ch06) for the pin map and per-channel options.
+Up to 6 independent GPIO payment channels, each with its own QR code, amount and duration from LNbits — plus up to 24 more via the I²C expanders (CH200–CH207, CH300–CH315). See [Channels](#channels-ch01ch06) for the pin map, per-channel options and the [expander channels](#expander-channels-ch200ch207--ch300ch315).
 
-Customers pick a product by **swiping** the selection screen, or by typing its number with [Numerical Product Selection](#numerical-product-selection).
+Customers pick a product by **swiping** the selection screen, or by typing its number with [Numerical Product Selection](#numerical-product-selection). Swiping only reaches the GPIO channels and CH200–CH207; the keypad reaches every channel including CH300–CH315.
 
-**Configuration (Web Installer → ZapBox Mode → Multi-channel):** set each channel's function in the CH01–CH06 dropdowns; the servo parameter box appears automatically when a channel is set to Servo 180°/360°. *Activation Options* and *Numerical Product Selection* live in the same panel.
+**Configuration (Web Installer → ZapBox Mode → Multi-channel):** set each channel's function in the CH01–CH06 dropdowns; the servo parameter box appears automatically when a channel is set to Servo 180°/360°. *Activation Options* and *Numerical Product Selection* live in the same panel. The **I/O Expander** selects live further down the same page and add their channels to this mode.
 
 ---
 
@@ -238,14 +258,16 @@ Customers pick a product by **swiping** the selection screen, or by typing its n
 
 **Available in Multi-channel mode.**
 
-Instead of swiping through the products one by one, the customer selects a product by typing its **GPIO number** on a touch keypad and gets the matching QR code. The fixed binding to the GPIO number guarantees a unique assignment and maximum flexibility — every relay/servo channel that is configured as a switch in the LNbits extension is directly addressable, including the **I/O expander virtual pins 200–207**.
+Instead of swiping through the products one by one, the customer selects a product by typing its **GPIO number** on a touch keypad and gets the matching QR code. The fixed binding to the GPIO number guarantees a unique assignment and maximum flexibility — every relay/servo channel that is configured as a switch in the LNbits extension is directly addressable, including the **I/O expander virtual pins 200–207 (PCF8574) and 300–315 (PCF8575)**.
+
+This is the *only* way for a customer to reach the PCF8575 channels at the device, because product swiping stops at product 12. With both expanders fitted the keypad addresses up to 30 channels — which is also why paging through them was never an option.
 
 **Flow:**
 
 1. Main screen is the *Select your product* screen (or the BTC ticker with *BTC-Ticker Mode: ON - always*) — any touch opens the **product selection panel**
-2. Type the GPIO number of the product (e.g. `6`, `7`, `14` or `200`); `<` deletes the last digit, the small **CANCEL** button returns to the main screen
+2. Type the GPIO number of the product (e.g. `6`, `7`, `14`, `200` or `307`); `<` deletes the last digit, the small **CANCEL** button returns to the main screen
 3. Press the green **OK** key — the ZapBox validates the number:
-   - the pin must be configured as a **relay/servo channel** on the device (CH01–CH06 or I/O expander enabled), **and**
+   - the pin must be configured as a **relay/servo channel** on the device (CH01–CH06, or a virtual pin with the matching I/O expander enabled), **and**
    - LNbits must have a switch entry for this pin (fetched from the server)
    - unknown numbers show **"Product not available"**
 4. The product QR code is shown with the LNbits label; the content is also served via NFC: the **NFC Tag 2** carries the LNURL for phone taps and a **Bolt Card** tap on the PN532 pays this exact product (PIN protection supported)
@@ -303,6 +325,6 @@ These work the same way as on the other variants:
 | NFC (Bolt Card, card emulation, NT3H2111 phone tap) | [docs/nfc.md](nfc.md) |
 | Identity🫆Login | [docs/identity.md](identity.md) |
 | BTC ticker, Special Modes, Threshold Mode | [docs/common-features.md](common-features.md) |
-| I/O Expander (PCF8574, virtual pins 200–207) | [docs/common-features.md](common-features.md#io-expander--pcf8574) |
+| I/O Expander (PCF8574 pins 200–207, PCF8575 pins 300–315) | [docs/common-features.md](common-features.md#io-expander--pcf8574) |
 | Screensaver & Deep Sleep | [docs/common-features.md](common-features.md#screensaver--deep-sleep) |
 | Startup sequence & error diagnostics | [docs/common-features.md](common-features.md#startup--error-detection) |
