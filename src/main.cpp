@@ -844,17 +844,27 @@ void readFiles()
         }
       }
 
-      // Count actual payment channels: CH01 always, plus each relay/servo channel
+      // Count actual payment channels: CH01 always, plus each relay/servo channel.
+      // Deliberately GPIO-only: paymentChannelCount drives maxProducts and thus the
+      // product *browsing* navigation, which can only address products 1-12
+      // (see Network.cpp). Expander channels are not browsable — they are reached
+      // through the numeric keypad — so they must not inflate this count.
       int extra = 0;
       for (int i = 0; i < T35AmbientConfig::FLEX_COUNT; i++) {
         if (t35AmbientConfig.flexActor[i]) extra++;
       }
       t35AmbientConfig.paymentChannelCount = 1 + extra;
 
-      // If no CH02-CH06 channel is a relay/servo, treat device as single-channel
-      // even when multiControl="duo" was selected in the installer (e.g. to
-      // configure ambient-light on CH02 without adding a second payment channel).
-      if (extra == 0 && multiChannelConfig.mode == "duo") {
+      // ...but for deciding whether this is a multi-channel device at all, the
+      // expander channels do count. A device with only CH01 on GPIO plus a PCF8574
+      // or PCF8575 has plenty of payment targets, they just live behind the keypad.
+      const bool expanderChannels = ioExpanderConfig.enabled || ioExpander16Config.enabled;
+
+      // If neither a CH02-CH06 channel nor an expander provides an extra payment
+      // target, treat device as single-channel even when multiControl="duo" was
+      // selected in the installer (e.g. to configure ambient-light on CH02 without
+      // adding a second payment channel).
+      if (extra == 0 && !expanderChannels && multiChannelConfig.mode == "duo") {
         multiChannelConfig.mode = "off";
         LOG_INFO("Config", "T35: No extra payment channels — overriding multi-channel to single");
       }
@@ -2269,8 +2279,12 @@ static void applyModeSelection(int selected) {
       multiChannelConfig.mode = "duo";
       #ifdef BOARD_JC3248W535C
       maxProducts = t35AmbientConfig.oneForAll ? 1 : t35AmbientConfig.paymentChannelCount;
-      // Keypad only makes sense with more than one selectable product
-      t35AmbientConfig.numericSelect = (t35AmbientConfig.numericSelectConfigured && maxProducts > 1);
+      // Keypad only makes sense with more than one selectable product. Expander
+      // channels count here even though they are not part of maxProducts — they
+      // are exactly what the keypad exists for.
+      t35AmbientConfig.numericSelect =
+          (t35AmbientConfig.numericSelectConfigured &&
+           (maxProducts > 1 || ioExpanderConfig.enabled || ioExpander16Config.enabled));
       #else
       maxProducts = 2;
       #endif
