@@ -271,7 +271,7 @@
                     <label for="multiControl">ZapBox Mode</label>
                     <select name="multiControl" id="multiControl">
                         <option value="off" selected>Single channel — CH01 (pin 14 / default)</option>
-                        <option value="duo">Multi channel — CH01 to CH06</option>
+                        <option value="duo">Multi channel — CH01 to CH06 + I/O expander (CH200–CH207 / CH300–CH315)</option>
                         <option value="minipos">Mini-PoS — amount entry on display (CH01)</option>
                         <option value="authy">Identity🫆Login — LNURL-auth &amp; NFC Tag (CH01)</option>
                         <option value="modeselect">Selection - Mode selection at startup</option>
@@ -301,7 +301,8 @@
 
             <!-- CH01–CH06 + multi-channel description: hidden in single mode -->
             <div id="multiChannelFields" style="display: none;">
-                <p style="margin-top: 14px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent channels</strong>. Each channel is triggered independently via its own QR code and amount in the LNbits extension. Channels set to <strong>ambient-light</strong>, <strong>sensor</strong>, or <strong>off</strong> are not counted as payment channels. Channels without a LNbits switch entry are skipped automatically.</i></p>
+                <p style="margin-top: 14px; color: #888;"><i>The ZapBox Touch 3.5" supports up to <strong>6 independent GPIO channels</strong> (CH01–CH06), plus up to <strong>24 more via the I/O expanders</strong> — CH200–CH207 (PCF8574) and CH300–CH315 (PCF8575), configured further down this page. Each channel is triggered independently via its own QR code and amount in the LNbits extension. Channels set to <strong>ambient-light</strong>, <strong>sensor</strong>, or <strong>off</strong> are not counted as payment channels. Channels without a LNbits switch entry are skipped automatically.</i></p>
+                <p style="margin-top: 6px; color: #888;"><i><strong>Expander channels</strong> are relay outputs only (no servo, sensor, ambient light or Special Mode) and are <strong>not reachable by swiping</strong> through the products — product browsing stops at product 12. Use <strong>Numerical Product Selection</strong> below to reach them, or trigger them directly from LNbits. Enabling an expander is by itself enough to make this a multi-channel device, even if CH02–CH06 are all set to <em>off</em>.</i></p>
                 <p style="margin-top: 6px; color: #888;"><i><strong>Note:</strong> <strong>Special Mode</strong> (blink/pulse/strobe) applies to <strong>CH01 (GPIO 14) only</strong>. Additional channels always switch in standard on/off mode.</i></p>
                 <p style="margin-top: 6px; color: #888;"><i><strong>Sensors</strong> (vending machine) are available on <strong>CH04 (GPIO 5)</strong>, <strong>CH05 (GPIO 6)</strong> and <strong>CH06 (GPIO 7)</strong> — the three ADC1-capable pins. All inputs are active LOW (INPUT_PULLUP):<br>
                     &#8226; <strong>Stop the advance</strong> — ends the running relay/servo action as soon as the sensor triggers (earliest after 2&nbsp;s).<br>
@@ -490,7 +491,7 @@
                             <option value="no" selected>No (default)</option>
                             <option value="yes">Yes — Product selection panel</option>
                         </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">With the <strong>product selection panel</strong>, customers select a product by typing its <strong>GPIO number</strong> on a touch keypad — e.g. 5, 7, 14, or 200–207 when the I/O expander is used — and get the matching QR code (also served via NFC). The fixed binding to the GPIO number guarantees a unique assignment and maximum flexibility: simply configure and label each pin as a switch in your LNbits extension. Numbers without an LNbits switch show <strong>"Product not available"</strong>. Cannot be combined with <strong>One for All</strong>.</p>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">With the <strong>product selection panel</strong>, customers select a product by typing its <strong>GPIO number</strong> on a touch keypad — e.g. 5, 7, 14, or 200–207 / 300–315 when the I/O expanders are used — and get the matching QR code (also served via NFC). The fixed binding to the GPIO number guarantees a unique assignment and maximum flexibility: simply configure and label each pin as a switch in your LNbits extension. Numbers without an LNbits switch show <strong>"Product not available"</strong>. Cannot be combined with <strong>One for All</strong>.</p>
                     </div>
                 </div>
             </div>
@@ -640,9 +641,16 @@
                     <select name="ioExpander" id="ioExpander">
                         <option value="no" selected>No (default)</option>
                         <option value="yes">Yes — CH200–CH207 (virtual pins 200–207)</option>
-                        <option value="yes2" disabled style="color: #aaa;">Yes — CH200–CH207 &amp; CH210–CH217 (prepared, not yet implemented)</option>
+                        <option value="yes2" disabled style="color: #aaa;">Yes — CH200–CH207 &amp; CH220–CH227 (prepared, not yet implemented)</option>
                     </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I²C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V) — dual expander option is firmware-side in preparation</p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8574 on I²C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V) — address 0x20 (7-bit) = 0x40 (8-bit), A0/A1/A2 to GND. Dual expander option is firmware-side in preparation.</p>
+
+                    <label for="ioExpanderTrigger" style="margin-top: 14px;">PCF8574 — Relay Trigger Level</label>
+                    <select name="ioExpanderTrigger" id="ioExpanderTrigger">
+                        <option value="no" selected>Low-Level Trigger (default)</option>
+                        <option value="yes">High-Level Trigger</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Low-Level = relay switches on LOW (standard relay boards). High-Level = relay switches on HIGH — also prevents the brief relay flicker at power-up.</p>
                 </div>
                 <div style="flex: 1; max-width: 260px; margin-top: 2px; text-align: right;">
                     <a href="../assets/IO-Expander-PCF8574.webp" target="_blank" rel="noopener noreferrer">
@@ -652,12 +660,43 @@
                 </div>
             </div>
 
+            <!-- I/O-Expander Section (PCF8575 — 16 channels) -->
+            <div class="input-wrapper" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-top: 25px;">
+                <div style="flex: 2; min-width: 280px;">
+                    <label for="ioExpander16">I/O-Expander (PCF8575)</label>
+                    <select name="ioExpander16" id="ioExpander16">
+                        <option value="no" selected>No (default)</option>
+                        <option value="yes">Yes — CH300–CH315 (virtual pins 300–315)</option>
+                        <option value="yes-io" disabled style="color: #aaa;">Yes — with inputs via INT line (prepared, not yet implemented)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8575 on I²C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V — <strong>not</strong> 5 V). Address <strong>0x21</strong> (7-bit) = <strong>0x42</strong> in the 8-bit notation used by many datasheets: <strong>A0 to VDD</strong>, A1/A2 to GND. 0x20 is deliberately avoided — the PCF8574 sits there and both chips share the 0x20–0x27 range.</p>
+
+                    <label for="ioExpander16Trigger" style="margin-top: 14px;">PCF8575 — Relay Trigger Level</label>
+                    <select name="ioExpander16Trigger" id="ioExpander16Trigger">
+                        <option value="no" selected>Low-Level Trigger (default)</option>
+                        <option value="yes">High-Level Trigger</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Low-Level = relay switches on LOW (standard relay boards). High-Level = relay switches on HIGH — also prevents the brief relay flicker at power-up.</p>
+                </div>
+                <div style="flex: 1; max-width: 260px; margin-top: 2px; text-align: right;">
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <a href="../assets/IO-Expander-PCF8575-front.webp" target="_blank" rel="noopener noreferrer" style="flex: 1; max-width: 116px;">
+                            <img src="../assets/IO-Expander-PCF8575-front.webp" alt="I/O-Expander PCF8575 front view" style="width: 100%; height: auto; border-radius: 6px; display: block;">
+                        </a>
+                        <a href="../assets/IO-Expander-PCF8575-back.webp" target="_blank" rel="noopener noreferrer" style="flex: 1; max-width: 116px;">
+                            <img src="../assets/IO-Expander-PCF8575-back.webp" alt="I/O-Expander PCF8575 back view with A0-A2 solder jumpers" style="width: 100%; height: auto; border-radius: 6px; display: block;">
+                        </a>
+                    </div>
+                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #888;"><i>Front / back with A0–A2 jumpers — click to enlarge</i></p>
+                </div>
+            </div>
+
             <!-- I/O-Expander info panel (visible when expander is enabled) -->
             <div id="ioExpanderChannels" style="display: none; margin-top: 15px; padding: 16px; background: rgba(0,0,0,0.05); border: 1px solid #bbb; border-radius: 6px; color: #666; font-size: 13px;">
                 <p style="margin: 0 0 12px 0; font-weight: bold; color: #444;">I/O-Expander — How it works</p>
                 <p style="margin: 0 0 8px 0;"><i>
                     Each PCF8574 provides 8 open-collector I/O ports. All ports are configured as <strong>relay outputs (active LOW)</strong> — the relay fires when the port is pulled LOW.
-                    Channels are activated directly by the switch assignments in your <strong>LNbits extension</strong>: if a switch entry for virtual pin 200–207 (or 210–217) is present in LNbits, the corresponding PCF8574 port will be triggered on payment — no further configuration needed here.
+                    Channels are activated directly by the switch assignments in your <strong>LNbits extension</strong>: if a switch entry for virtual pin 200–207 (or 220–227) is present in LNbits, the corresponding PCF8574 port will be triggered on payment — no further configuration needed here.
                 </i></p>
                 <div id="ioExpanderInfoSingle" style="display: none; margin-top: 10px;">
                     <strong>PCF8574 #1</strong> — I²C address <code>0x20</code> (A0/A1/A2 all to GND)
@@ -689,22 +728,60 @@
                             </table>
                         </div>
                         <div>
-                            <strong>PCF8574 #2</strong> — I²C address <code>0x21</code><br>
-                            <span style="font-size: 11px; color: #888;">A0 to VCC, A1/A2 to GND</span>
+                            <strong>PCF8574 #2</strong> — I²C address <code>0x22</code><br>
+                            <span style="font-size: 11px; color: #888;">A1 to VCC, A0/A2 to GND (0x21 is taken by the PCF8575)</span>
                             <table style="margin-top: 6px; border-collapse: collapse; font-size: 12px;">
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH210</strong></td><td>P0</td><td style="padding-left:10px; color:#aaa;">pin 210</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH211</strong></td><td>P1</td><td style="padding-left:10px; color:#aaa;">pin 211</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH212</strong></td><td>P2</td><td style="padding-left:10px; color:#aaa;">pin 212</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH213</strong></td><td>P3</td><td style="padding-left:10px; color:#aaa;">pin 213</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH214</strong></td><td>P4</td><td style="padding-left:10px; color:#aaa;">pin 214</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH215</strong></td><td>P5</td><td style="padding-left:10px; color:#aaa;">pin 215</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH216</strong></td><td>P6</td><td style="padding-left:10px; color:#aaa;">pin 216</td></tr>
-                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH217</strong></td><td>P7</td><td style="padding-left:10px; color:#aaa;">pin 217</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH220</strong></td><td>P0</td><td style="padding-left:10px; color:#aaa;">pin 220</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH221</strong></td><td>P1</td><td style="padding-left:10px; color:#aaa;">pin 221</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH222</strong></td><td>P2</td><td style="padding-left:10px; color:#aaa;">pin 222</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH223</strong></td><td>P3</td><td style="padding-left:10px; color:#aaa;">pin 223</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH224</strong></td><td>P4</td><td style="padding-left:10px; color:#aaa;">pin 224</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH225</strong></td><td>P5</td><td style="padding-left:10px; color:#aaa;">pin 225</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH226</strong></td><td>P6</td><td style="padding-left:10px; color:#aaa;">pin 226</td></tr>
+                                <tr><td style="padding: 2px 12px 2px 0;"><strong>CH227</strong></td><td>P7</td><td style="padding-left:10px; color:#aaa;">pin 227</td></tr>
                             </table>
                         </div>
                     </div>
                 </div>
-                <p style="margin: 12px 0 0 0; font-size: 11px; color: #888;"><i>Relay outputs: active LOW (LOW = relay on, HIGH = relay off). Connect PCF8574 ports P0–P7 directly to the IN1–IN8 inputs of a low-level trigger relay board. All ports start HIGH (all relays off) on boot.</i></p>
+                <p style="margin: 12px 0 0 0; font-size: 11px; color: #888;"><i>Relay outputs follow the trigger level selected above. Low-Level Trigger: LOW = relay on, all ports start HIGH. High-Level Trigger: HIGH = relay on, all ports start LOW. Connect PCF8574 ports P0–P7 directly to the IN1–IN8 inputs of your relay board.</i></p>
+            </div>
+
+            <!-- I/O-Expander 16 info panel (visible when PCF8575 is enabled) -->
+            <div id="ioExpander16Channels" style="display: none; margin-top: 15px; padding: 16px; background: rgba(0,0,0,0.05); border: 1px solid #bbb; border-radius: 6px; color: #666; font-size: 13px;">
+                <p style="margin: 0 0 12px 0; font-weight: bold; color: #444;">I/O-Expander PCF8575 — How it works</p>
+                <p style="margin: 0 0 8px 0;"><i>
+                    The PCF8575 provides 16 open-collector I/O ports, all configured as <strong>relay outputs</strong>.
+                    Channels are activated directly by the switch assignments in your <strong>LNbits extension</strong>: if a switch entry for virtual pin 300–315 is present in LNbits, the corresponding PCF8575 port will be triggered on payment — no further configuration needed here.
+                </i></p>
+                <p style="margin: 8px 0 0 0; padding: 8px 10px; background: rgba(255,180,0,0.12); border-left: 3px solid #e0a800; font-size: 12px;">
+                    <strong>Note on selecting these channels:</strong> CH300–CH315 can only be reached via the <strong>numerical product selection</strong> (keypad), a Bolt Card tap on the displayed product QR, or a direct payment/trigger from LNbits. The classic product browsing navigation only covers products 1–12 and does not reach these channels — paging through 16 extra channels would be impractical anyway.
+                </p>
+                <div style="margin-top: 10px;">
+                    <strong>PCF8575</strong> — I²C address <code>0x21</code> (7-bit) = <code>0x42</code> (8-bit) — A0 to VDD, A1/A2 to GND
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; margin-top: 6px;">
+                        <table style="border-collapse: collapse; font-size: 12px;">
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH300</strong></td><td>P00</td><td style="padding-left:10px; color:#aaa;">pin 300</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH301</strong></td><td>P01</td><td style="padding-left:10px; color:#aaa;">pin 301</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH302</strong></td><td>P02</td><td style="padding-left:10px; color:#aaa;">pin 302</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH303</strong></td><td>P03</td><td style="padding-left:10px; color:#aaa;">pin 303</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH304</strong></td><td>P04</td><td style="padding-left:10px; color:#aaa;">pin 304</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH305</strong></td><td>P05</td><td style="padding-left:10px; color:#aaa;">pin 305</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH306</strong></td><td>P06</td><td style="padding-left:10px; color:#aaa;">pin 306</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH307</strong></td><td>P07</td><td style="padding-left:10px; color:#aaa;">pin 307</td></tr>
+                        </table>
+                        <table style="border-collapse: collapse; font-size: 12px;">
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH308</strong></td><td>P10</td><td style="padding-left:10px; color:#aaa;">pin 308</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH309</strong></td><td>P11</td><td style="padding-left:10px; color:#aaa;">pin 309</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH310</strong></td><td>P12</td><td style="padding-left:10px; color:#aaa;">pin 310</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH311</strong></td><td>P13</td><td style="padding-left:10px; color:#aaa;">pin 311</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH312</strong></td><td>P14</td><td style="padding-left:10px; color:#aaa;">pin 312</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH313</strong></td><td>P15</td><td style="padding-left:10px; color:#aaa;">pin 313</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH314</strong></td><td>P16</td><td style="padding-left:10px; color:#aaa;">pin 314</td></tr>
+                            <tr><td style="padding: 2px 12px 2px 0;"><strong>CH315</strong></td><td>P17</td><td style="padding-left:10px; color:#aaa;">pin 315</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <p style="margin: 12px 0 0 0; font-size: 11px; color: #888;"><i>Relay outputs follow the trigger level selected above. Connect PCF8575 ports P00–P17 to the inputs of your relay board. The <code>INT</code> line is only needed for input operation, which is not implemented yet.</i></p>
             </div>
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
@@ -1101,7 +1178,13 @@
             { "name": "authDuration",    "value": "1000" }, // 89
             { "name": "authLabel",       "value": "ZAPBOX Identity Trigger" }, // 90
             { "name": "authNtag424Pin",  "value": "yes" },  // 91
-            { "name": "authDualPage",    "value": "no" }    // 92
+            { "name": "authDualPage",    "value": "no" },   // 92
+            // index 93 – I/O-Expander PCF8575 enable flag (virtual pins 300–315)
+            { "name": "ioExpander16",         "value": "no" }, // 93
+            // indices 94-95 – relay trigger polarity per expander
+            //   "no" = active-LOW (low-level trigger, default), "yes" = active-HIGH
+            { "name": "ioExpanderTrigger",    "value": "no" }, // 94 (PCF8574)
+            { "name": "ioExpander16Trigger",  "value": "no" }  // 95 (PCF8575)
         ];
 
         // Setup Web Serial using serial.js
@@ -1354,6 +1437,7 @@
 
                 updateMultiControlState();
                 updateIOExpanderFieldState();
+                updateIOExpander16FieldState();
                 updateT35ServoBoxes();
 
                 serialBuffer = '';
@@ -1548,7 +1632,10 @@
                 "deepSleepTime":   (deepSleepTime.value || "30"),
                 "btcTicker":       (document.getElementById('btcTicker') || {value: "selecting"}).value,
                 "currency":        (document.getElementById('currency') || {value: "USD"}).value,
-                "ioExpander":      (document.getElementById('ioExpander') || {value: "no"}).value,
+                "ioExpander":         (document.getElementById('ioExpander')         || {value: "no"}).value,
+                "ioExpander16":       (document.getElementById('ioExpander16')       || {value: "no"}).value,
+                "ioExpanderTrigger":  (document.getElementById('ioExpanderTrigger')  || {value: "no"}).value,
+                "ioExpander16Trigger":(document.getElementById('ioExpander16Trigger')|| {value: "no"}).value,
                 "ch01Mode":          (document.getElementById('ch01Mode')          || {value: "relay"}).value,
                 "ch02Mode":          (document.getElementById('ch02Mode')          || {value: "off"}).value,
                 "ch03Mode":          (document.getElementById('ch03Mode')          || {value: "off"}).value,
@@ -1588,6 +1675,29 @@
             if (channels) channels.style.display = (val !== 'no') ? 'block' : 'none';
             if (infoSingle) infoSingle.style.display = (val === 'yes')  ? 'block' : 'none';
             if (infoDual)   infoDual.style.display   = (val === 'yes2') ? 'block' : 'none';
+            // Trigger-level select is only meaningful when the expander is enabled
+            const trig = document.getElementById('ioExpanderTrigger');
+            if (trig && trig.parentElement) {
+                const lbl = document.querySelector('label[for="ioExpanderTrigger"]');
+                const show = (val !== 'no');
+                trig.style.display = show ? '' : 'none';
+                if (lbl) lbl.style.display = show ? '' : 'none';
+                if (trig.nextElementSibling) trig.nextElementSibling.style.display = show ? '' : 'none';
+            }
+        }
+
+        function updateIOExpander16FieldState() {
+            const val = (document.getElementById('ioExpander16') || { value: 'no' }).value;
+            const channels = document.getElementById('ioExpander16Channels');
+            if (channels) channels.style.display = (val !== 'no') ? 'block' : 'none';
+            const trig = document.getElementById('ioExpander16Trigger');
+            if (trig) {
+                const lbl = document.querySelector('label[for="ioExpander16Trigger"]');
+                const show = (val !== 'no');
+                trig.style.display = show ? '' : 'none';
+                if (lbl) lbl.style.display = show ? '' : 'none';
+                if (trig.nextElementSibling) trig.nextElementSibling.style.display = show ? '' : 'none';
+            }
         }
 
         if (ioExpander) {
@@ -1597,6 +1707,26 @@
                 updateIOExpanderFieldState();
             });
         }
+
+        (function() {
+            const io16 = document.getElementById('ioExpander16');
+            if (io16) {
+                io16.addEventListener('change', (event) => {
+                    const cfg = config.find(c => c.name === 'ioExpander16');
+                    if (cfg) cfg.value = event.target.value;
+                    updateIOExpander16FieldState();
+                });
+            }
+            [['ioExpanderTrigger', 'ioExpanderTrigger'],
+             ['ioExpander16Trigger', 'ioExpander16Trigger']].forEach(([id, name]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('change', (event) => {
+                    const cfg = config.find(c => c.name === name);
+                    if (cfg) cfg.value = event.target.value;
+                });
+            });
+        })();
 
         // Show the matching grey servo-parameter box for each channel based on its
         // mode select (servo180 → 180° box, servo360 → 360° box, otherwise hidden).
@@ -1628,6 +1758,7 @@
         })();
 
         updateIOExpanderFieldState();
+        updateIOExpander16FieldState();
         updateT35ServoBoxes();
 
         function updateMultiControlState() {
@@ -1798,7 +1929,7 @@
                 });
                 mcRows += row('Activation Options', selText('t35ActivationMode'));
                 if (zbMode === 'duo') mcRows += row('Numerical Product Selection', selText('t35NumericSelect'));
-                sections += section('Multi channel (CH01–CH06)', mcRows);
+                sections += section('Multi channel (CH01–CH06 + expander channels)', mcRows);
             }
 
             // Mini-PoS
@@ -1831,9 +1962,22 @@
             const ioVal = (document.getElementById('ioExpander') || { value: 'no' }).value;
             let ioRows = row('I/O Expander', selText('ioExpander'));
             if (ioVal && ioVal !== 'no') {
-                ioRows += row('Channels', 'CH200–CH207 — relay outputs, triggered via LNbits switch entries');
+                ioRows += row('Channels', 'CH200–CH207 — relay outputs, triggered via LNbits switch entries') +
+                    row('I²C address', '0x20 (7-bit) / 0x40 (8-bit)') +
+                    row('Trigger level', selText('ioExpanderTrigger'));
             }
             sections += section('I/O Expander (PCF8574)', ioRows);
+
+            // I/O Expander (PCF8575) — 16 channels on virtual pins 300–315
+            const io16Val = (document.getElementById('ioExpander16') || { value: 'no' }).value;
+            let io16Rows = row('I/O Expander', selText('ioExpander16'));
+            if (io16Val && io16Val !== 'no') {
+                io16Rows += row('Channels', 'CH300–CH315 — relay outputs, triggered via LNbits switch entries') +
+                    row('I²C address', '0x21 (7-bit) / 0x42 (8-bit) — A0 to VDD') +
+                    row('Trigger level', selText('ioExpander16Trigger')) +
+                    row('Selection', 'Numerical product selection / Bolt Card on shown QR / direct LNbits trigger');
+            }
+            sections += section('I/O Expander (PCF8575)', io16Rows);
 
             // BTC Ticker
             sections += section('BTC Ticker',
