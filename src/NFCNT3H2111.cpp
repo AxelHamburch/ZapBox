@@ -238,6 +238,7 @@ bool nfcNT3H2111Init() {
         delay(150);
     }
 
+    i2cReportModule("NT3H2111", NT3H_ADDR, probe == 0);
     if (probe != 0) {
         LOG_WARN("NT3H", "NT3H2111 not found — NFC tag feature disabled, continuing boot");
         return false;

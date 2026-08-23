@@ -26,3 +26,15 @@ bool i2cTake();
 
 // Release the mutex.
 void i2cGive();
+
+// ---- Module status summary -------------------------------------------------
+//
+// Each I2C driver reports its probe result once during init; the "ZapBox ready!"
+// banner prints the collected results as a ✅/❌ list. No extra bus traffic —
+// the information is already known from initialisation.
+
+// Report the outcome of a module probe. addr = 7-bit I2C address.
+void i2cReportModule(const char *name, uint8_t addr, bool present);
+
+// Print one line per known module (✅ found / ❌ not found / – not configured).
+void i2cPrintModuleSummary();

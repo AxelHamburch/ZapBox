@@ -2615,6 +2615,8 @@ void loop()
     Serial.println("======================");
     Serial.println("   ZapBox ready! \xF0\x9F\x8E\x89");
     Serial.println("   Firmware: " VERSION);
+    Serial.println("   I2C modules:");
+    i2cPrintModuleSummary();
     Serial.println("======================");
     readyMessageShown = true;
   }

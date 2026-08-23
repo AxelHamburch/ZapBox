@@ -36,6 +36,7 @@ void initIOExpander() {
     // relay on before we could correct it.
     i2cTake();
     bool found = pcf.begin(outputState);
+    i2cReportModule("PCF8574", 0x20, found);
     i2cGive();
 
     if (!found) {
@@ -107,6 +108,7 @@ void initIOExpander16() {
     i2cTake();
     pcf16.setAddress(ioExpander16Config.address);
     bool found = pcf16.begin(outputState16);
+    i2cReportModule("PCF8575", ioExpander16Config.address, found);
     i2cGive();
 
     if (!found) {

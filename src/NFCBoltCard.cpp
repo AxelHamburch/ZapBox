@@ -643,6 +643,7 @@ bool nfcBoltCardInit()
     #endif
     Wire.beginTransmission(0x24);
     uint8_t probeResult = Wire.endTransmission();
+    i2cReportModule("PN532", 0x24, probeResult == 0);
     if (probeResult != 0) {
         LOG_INFO("NFC", String("No device at I2C address 0x24 (probe result: ") + String(probeResult) + ") – PN532 not connected");
         LOG_INFO("NFC", "  → Bolt Card feature disabled, normal operation unaffected");
