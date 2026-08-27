@@ -14,6 +14,7 @@ Features that work the same way on every ZapBox variant. Anything board-specific
 - [Threshold Mode](#threshold-mode)
 - [I/O Expander — PCF8574](#io-expander--pcf8574)
 - [I/O Expander — PCF8575](#io-expander--pcf8575)
+- [I/O Expander — MCP23017](#io-expander--mcp23017)
 - [External LED Button](#external-led-button)
 - [Screensaver & Deep Sleep](#screensaver--deep-sleep)
 - [Startup & Error Detection](#startup--error-detection)
@@ -123,7 +124,7 @@ The relay polarity is selectable in the web installer (**PCF8574 — Relay Trigg
 | Setting | Behaviour | Idle state at boot |
 |---------|-----------|--------------------|
 | `Low-Level Trigger` *(default)* | LOW switches the relay **on** | all ports HIGH |
-| `High-Level Trigger` | HIGH switches the relay **on** | all ports LOW |
+| `High-Level Trigger` *(not recommended)* | HIGH switches the relay **on** | all ports LOW |
 
 > **💡 Relay flicker at power-up.** With a low-level trigger board the relays may click
 > briefly when the device is switched on. Between the expander powering up and the firmware
@@ -131,6 +132,19 @@ The relay polarity is selectable in the web installer (**PCF8574 — Relay Trigg
 > reads as "on". This window exists before any firmware runs and cannot be closed in software.
 > Wiring a **high-level trigger** board and selecting `High-Level Trigger` avoids it entirely,
 > because LOW then means "off".
+
+> **⚠️ High-Level Trigger is not recommended.** The PCF8574/PCF8575 ports are
+> *quasi-bidirectional*: they sink around 25 mA towards GND, but in the HIGH state they only
+> source about **100 µA** from a weak internal pull-up. That is far below what the opto-coupler
+> input of a relay board draws (≈ 4 mA), so the level collapses as soon as the load is
+> connected — measured on hardware: **0 V → 0.8 V** under load with High-Level, versus a solid
+> **3.7 V → 0.3 V** with Low-Level. The relay then does not switch at all. The same weak pull-up
+> also makes the LEDs on an 8-channel board glow faintly in the idle state.
+>
+> Use **Low-Level Trigger** and accept the brief power-up click, or add an external pull-up
+> (4.7 k–10 k to the relay board's VCC) to suppress the glow. High-Level is only usable for
+> loads that draw practically no current. If you want both trigger levels to work properly,
+> use an [MCP23017](#io-expander--mcp23017) instead — it has push-pull outputs.
 
 ### Channel modes
 
@@ -148,7 +162,7 @@ The relay polarity is selectable in the web installer (**PCF8574 — Relay Trigg
 
 ## I/O Expander — PCF8575
 
-Adds **16 additional relay channels** (virtual pins 300–315) over the same I²C bus. Supported on the **Touch 3.5"** (JC3248W535C). Can run alongside a PCF8574, giving 8 + 16 = 24 expander channels in total.
+Adds **16 additional relay channels** (virtual pins 300–315) over the same I²C bus. Supported on the **Touch 3.5"** (JC3248W535C). Can run alongside a PCF8574 and an MCP23017, giving 8 + 16 + 16 = 40 expander channels in total.
 
 ### Virtual pin mapping
 
@@ -179,7 +193,7 @@ is simply half of that value:
 |---|---|---|---|---|---|
 | 0x40 | `0x20` | LOW | LOW | LOW | ⚠️ used by PCF8574 |
 | **0x42** | **`0x21`** | LOW | LOW | **HIGH** | ✅ ZapBox default |
-| 0x44 | `0x22` | LOW | HIGH | LOW | free (reserved for a 2nd PCF8574) |
+| 0x44 | `0x22` | LOW | HIGH | LOW | ⚠️ used by MCP23017 |
 | 0x46 | `0x23` | LOW | HIGH | HIGH | free |
 | 0x48 | `0x24` | HIGH | LOW | LOW | ⚠️ used by PN532 |
 | 0x4A–0x4E | `0x25`–`0x27` | | | | free |
@@ -205,7 +219,7 @@ INT             →    not connected            (inputs not implemented yet)
 ### Trigger level
 
 Same options as the PCF8574 — selectable in the installer as **PCF8575 — Relay Trigger Level**,
-with the same power-up flicker consideration described above.
+with the same power-up flicker consideration described above. The **High-Level Trigger is not recommended** here either — the PCF8575 pull-up is even weaker than the PCF8574 one (measured idle level 2.25 V versus 2.56 V with the same relay board), so the LED glow is more pronounced.
 
 ### Selecting these channels
 
@@ -219,6 +233,126 @@ The PCF8575 can also read inputs. This is not implemented yet. When it is, it sh
 chip's **`INT` line** wired to a free ESP32 GPIO: the PCF8575 pulls `INT` low whenever an input
 level changes, so the firmware can react to an interrupt instead of polling the chip
 continuously over I²C.
+
+---
+
+## I/O Expander — MCP23017
+
+Adds **16 additional relay channels** (virtual pins 400–415) over the same I²C bus. Supported on
+the **Touch 3.5"** (JC3248W535C). Can run alongside a PCF8574 *and* a PCF8575, giving
+8 + 16 + 16 = 40 expander channels in total.
+
+> **💡 This is the electrically better expander.** Unlike the PCF857x, the MCP23017 has true
+> **push-pull** outputs that sink *and* source 25 mA. Both trigger levels therefore work under
+> load, the idle LEDs on a relay board do not glow, and there is no power-up relay flicker —
+> after reset every port is a high-impedance input until the firmware configures it. See the
+> trigger-level warnings in the PCF8574/PCF8575 sections for what this fixes.
+
+### Virtual pin mapping
+
+| Virtual Pin | Port | | Virtual Pin | Port |
+|-------------|------|---|-------------|------|
+| 400 | GPA0 | | 408 | GPB0 |
+| 401 | GPA1 | | 409 | GPB1 |
+| 402 | GPA2 | | 410 | GPB2 |
+| 403 | GPA3 | | 411 | GPB3 |
+| 404 | GPA4 | | 412 | GPB4 |
+| 405 | GPA5 | | 413 | GPB5 |
+| 406 | GPA6 | | 414 | GPB6 |
+| 407 | GPA7 | | 415 | GPB7 |
+
+### I²C address
+
+The firmware expects the MCP23017 on **`0x22`** (7-bit) = **`0x44`** in the 8-bit notation used
+by many datasheets — **A1 to VCC, A0 and A2 to GND**. On the usual breakout boards these are
+solder jumpers, not header pins — see [Setting the address on the breakout
+board](#setting-the-address-on-the-breakout-board).
+
+> **⚠️ The default address collides.** With A0/A1/A2 all grounded the MCP23017 answers on
+> `0x20`, which is the PCF8574's address. All three chip families share the `0x20`–`0x27`
+> range, and the **PN532 NFC reader occupies `0x24`** on the same bus. The address pins must
+> therefore be wired deliberately.
+
+Occupied addresses on the shared bus:
+
+| Address | Device |
+|---------|--------|
+| `0x15` | CST816S touch controller |
+| `0x20` | PCF8574 |
+| `0x21` | PCF8575 |
+| `0x22` | **MCP23017** |
+| `0x23` | free |
+| `0x24` | PN532 NFC reader |
+| `0x25`–`0x27` | free |
+| `0x55` | NT3H2111 |
+
+`initIOExpanderMCP()` refuses to bring the chip up if its address collides with an active
+PCF8574, an active PCF8575, or the PN532, rather than producing random relay behaviour.
+
+> **⚠️ Never leave an address input open.** A floating pin makes the chip answer on a
+> **different address on every bus scan** — the same symptom the PCF8575 shows. Also check
+> `RST`: it is **active LOW** and must sit HIGH, otherwise the chip stays in reset and never
+> appears on the bus.
+
+### Setting the address on the breakout board
+
+The common green MCP23017 breakouts do not bring A0/A1/A2 out on the header — they carry three
+**solder jumpers** on the board, next to a `GND` / `VCC` label:
+
+```
+        GND   VCC
+   A2  [ ■ ]  [   ]
+   A1  [ ■ ]  [   ]     ← move this link to VCC for 0x22
+   A0  [ ■ ]  [   ]
+```
+
+In the factory state all three links sit on the `GND` side, which is address `0x20` — the
+PCF8574's address. For ZapBox, move **A1** to the `VCC` side: desolder the 0 Ω link (or clear
+the pad with solder wick) and bridge the VCC pad instead. A0 and A2 stay on GND.
+
+The relay ports are silkscreened as `PA0`–`PA7` and `PB0`–`PB7`; the datasheet calls the same
+pins `GPA0`–`GPA7` and `GPB0`–`GPB7`.
+
+### Wiring
+
+```
+MCP23017        →    ZapBox              →    Relay Module
+────────────────────────────────────────────────────────────
+VCC             →    3.3V
+GND             →    GND
+SDA             →    GPIO 18 (shared I²C)
+SCL             →    GPIO 17 (shared I²C)
+A1 jumper       →    VCC side                 (address = 0x22)
+A0, A2 jumpers  →    GND side (factory state)
+RST             →    must sit HIGH            (active LOW — must not float)
+PA0 … PB7       →                        →    IN1 … IN16
+INTA, INTB      →    not connected            (inputs not implemented yet)
+```
+
+### Trigger level
+
+Selectable in the installer as **MCP23017 — Relay Trigger Level**, same two options as the PCF
+expanders:
+
+| Setting | Behaviour | Idle state after init |
+|---------|-----------|-----------------------|
+| `Low-Level Trigger` *(default)* | LOW switches the relay **on** | all ports HIGH |
+| `High-Level Trigger` | HIGH switches the relay **on** | all ports LOW |
+
+Here **both settings are electrically fine**, because the outputs are push-pull. The
+initialisation writes the idle value into the output latch *before* switching the ports from
+input to output, so an active-HIGH relay board never sees a start-up pulse.
+
+### Selecting these channels
+
+CH400–CH415 are reachable via the **numerical product selection** (keypad), a Bolt Card tap on
+the displayed product QR, or a direct payment/trigger from LNbits. The classic product browsing
+navigation only covers products 1–12 and does not reach them.
+
+### Inputs (not implemented)
+
+The MCP23017 can also read inputs, with per-pin interrupt-on-change on the `INTA`/`INTB` lines.
+Not implemented yet.
 
 ---
 
