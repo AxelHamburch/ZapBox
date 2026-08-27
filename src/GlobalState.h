@@ -416,9 +416,9 @@ extern BitcoinData bitcoinData;
 // MULTI-PRODUCT LABELS
 // ============================================================================
 
-// Number of product label slots. 30 covers the largest layout
-// (JC3248W535C: 6 GPIO channels + 8 PCF8574 + 16 PCF8575 virtual pins).
-constexpr int PRODUCT_LABELS_MAX = 30;
+// Number of product label slots. 46 covers the largest layout
+// (JC3248W535C: 6 GPIO channels + 8 PCF8574 + 16 PCF8575 + 16 MCP23017 virtual pins).
+constexpr int PRODUCT_LABELS_MAX = 46;
 
 struct ProductLabels {
   // Labels stored in array by RELAY_CHANNEL_PINS order (see PinConfig.h):
@@ -431,6 +431,7 @@ struct ProductLabels {
   // JC3248W535C: index 0-5=GPIO 14/15/16/5/6/7 (CH01-CH06),
   //   index 6-13=PCF8574 virtual pins 200-207
   //   index 14-29=PCF8575 virtual pins 300-315
+  //   index 30-45=MCP23017 virtual pins 400-415
   String labels[PRODUCT_LABELS_MAX];
   int durations[PRODUCT_LABELS_MAX] = {0}; // Action time per pin in ms (0 = not configured)
   unsigned long lastUpdate = 0;
@@ -491,6 +492,23 @@ inline int getPinIndex(int pin) {
     case 313: return 27;
     case 314: return 28;
     case 315: return 29;
+    // Virtual MCP23017 pins (GPA0-GPA7 / GPB0-GPB7) → slots 30-45
+    case 400: return 30;
+    case 401: return 31;
+    case 402: return 32;
+    case 403: return 33;
+    case 404: return 34;
+    case 405: return 35;
+    case 406: return 36;
+    case 407: return 37;
+    case 408: return 38;
+    case 409: return 39;
+    case 410: return 40;
+    case 411: return 41;
+    case 412: return 42;
+    case 413: return 43;
+    case 414: return 44;
+    case 415: return 45;
 #endif
     case 12: return 0;
     case 13: return 1;
@@ -657,6 +675,24 @@ struct IOExpander16Config {
 };
 
 extern IOExpander16Config ioExpander16Config;
+
+// MCP23017 — 16 relay channels on virtual pins 400–415 (GPA0–GPA7 / GPB0–GPB7).
+// I2C address 0x22 (7-bit) = 0x44 in 8-bit notation: A1 to VDD, A0/A2 to GND.
+// The MCP23017 shares the 0x20–0x27 range with both PCF chip families, and 0x24
+// belongs to the PN532 NFC reader — initIOExpanderMCP() refuses to come up on a
+// colliding address instead of producing random relay behaviour.
+//
+// Unlike the PCF857x the MCP23017 has true push-pull outputs (25 mA sink AND
+// source), so an active-HIGH relay board actually works there. Its ports also
+// start as high-impedance inputs after power-on, which removes the power-up
+// relay flicker in both polarities.
+struct MCP23017Config {
+  bool enabled = false;
+  bool activeHigh = false;    // see IOExpanderConfig::activeHigh
+  uint8_t address = 0x22;     // 7-bit I2C address
+};
+
+extern MCP23017Config mcp23017Config;
 
 // ============================================================================
 // NFC MODE CONFIGURATION

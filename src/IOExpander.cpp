@@ -6,6 +6,7 @@
 #if ENABLE_DISPLAY
 #include <PCF8574.h>
 #include <PCF8575.h>
+#include <MCP23017.h>
 #include <Wire.h>
 
 // ---- PCF8574 (8 channels, virtual pins 200-207) ----------------------------
@@ -145,6 +146,92 @@ void deactivateExpander16Channel(int ch) {
     LOG_INFO("IOExpander16", String("CH") + String(ch + 300) + " (" + portName16(ch) + ") deactivated");
 }
 
+// ---- MCP23017 (16 channels, virtual pins 400-415) --------------------------
+
+static MCP23017 mcp(0x22);
+static bool mcpInitialized = false;
+static uint16_t outputStateMcp = 0x0000;
+
+static inline uint16_t idleStateMcp() {
+    return mcp23017Config.activeHigh ? 0x0000 : 0xFFFF;
+}
+
+// Human-readable MCP23017 port name: channels 0-7 → GPA0-GPA7, 8-15 → GPB0-GPB7.
+static String portNameMcp(int ch) {
+    return String("GP") + (ch < 8 ? "A" : "B") + String(ch % 8);
+}
+
+void initIOExpanderMCP() {
+    if (!mcp23017Config.enabled) return;
+
+    const uint8_t addr = mcp23017Config.address;
+
+    // Address collision guard. The MCP23017 answers in the same 0x20-0x27 range as
+    // both PCF chip families, and 0x24 belongs to the PN532 NFC reader. Refuse to
+    // come up on a taken address instead of producing random relay behaviour.
+    const char *clash = nullptr;
+    if (ioExpanderConfig.enabled && addr == 0x20)                       clash = "the active PCF8574";
+    else if (ioExpander16Config.enabled && addr == ioExpander16Config.address) clash = "the active PCF8575";
+    else if (addr == 0x24)                                              clash = "the PN532 NFC reader";
+    if (clash != nullptr) {
+        LOG_ERROR("MCP23017", String("MCP23017 address 0x") + String(addr, HEX) +
+                              " collides with " + clash +
+                              " – set A1 to VDD and A0/A2 to GND (0x22)");
+        mcp23017Config.enabled = false;
+        return;
+    }
+
+    outputStateMcp = idleStateMcp();
+
+    i2cTake();
+    mcp.setAddress(addr);
+    // begin(false) = no internal pull-ups. After power-on every MCP23017 port is a
+    // high-impedance input, so nothing is driven yet: write the idle value into the
+    // output latch FIRST, then switch the ports to output (IODIR = 0x0000). In that
+    // order an active-HIGH relay board never sees a start-up pulse. The second
+    // write16() re-asserts the latch after the direction change — two spare bytes at
+    // boot, and it does not depend on how the library orders its register writes.
+    bool found = mcp.begin(false);
+    if (found) {
+        mcp.write16(outputStateMcp);
+        mcp.pinMode16(0x0000);
+        mcp.write16(outputStateMcp);
+    }
+    i2cReportModule("MCP23017", addr, found);
+    i2cGive();
+
+    if (!found) {
+        LOG_ERROR("MCP23017", String("MCP23017 not found at 0x") + String(addr, HEX) +
+                              " – check wiring, the A0/A1/A2 pins and RESET (must be tied HIGH)");
+        mcp23017Config.enabled = false;
+        return;
+    }
+    mcpInitialized = true;
+    LOG_INFO("MCP23017", String("MCP23017 initialized at 0x") + String(addr, HEX) +
+                         " — 16 relay channels ready (virtual pins 400-415), trigger=" +
+                         (mcp23017Config.activeHigh ? "active-HIGH" : "active-LOW"));
+}
+
+void activateExpanderMCPChannel(int ch) {
+    if (!mcpInitialized || ch < 0 || ch > 15) return;
+    if (mcp23017Config.activeHigh) outputStateMcp |=  (1u << ch);
+    else                           outputStateMcp &= ~(1u << ch);
+    i2cTake();
+    mcp.write16(outputStateMcp);
+    i2cGive();
+    LOG_INFO("MCP23017", String("CH") + String(ch + 400) + " (" + portNameMcp(ch) + ") activated");
+}
+
+void deactivateExpanderMCPChannel(int ch) {
+    if (!mcpInitialized || ch < 0 || ch > 15) return;
+    if (mcp23017Config.activeHigh) outputStateMcp &= ~(1u << ch);
+    else                           outputStateMcp |=  (1u << ch);
+    i2cTake();
+    mcp.write16(outputStateMcp);
+    i2cGive();
+    LOG_INFO("MCP23017", String("CH") + String(ch + 400) + " (" + portNameMcp(ch) + ") deactivated");
+}
+
 #else
 // Headless variant: expander support not available — stub out all functions
 void initIOExpander() {}
@@ -153,4 +240,7 @@ void deactivateExpanderChannel(int) {}
 void initIOExpander16() {}
 void activateExpander16Channel(int) {}
 void deactivateExpander16Channel(int) {}
+void initIOExpanderMCP() {}
+void activateExpanderMCPChannel(int) {}
+void deactivateExpanderMCPChannel(int) {}
 #endif

@@ -175,13 +175,13 @@ void nfcLnurlwReceived(const String &lnurlw)
     // In servo mode, use productToPin() which skips inactive channels.
     // Products 1-4 → RELAY_CHANNEL_PINS[0-3] (GPIO 12/13/10/11).
     // Products 5-12 → virtual IOExpander pins 200-207 (PCF8574 P0-P7).
-    // The PCF8575 pins (300-315) have no product number — product browsing only
-    // covers 1-12. They are reached via numeric selection (qrPin below), a Bolt
-    // Card tap on the displayed QR, or a direct LNbits trigger.
+    // The PCF8575 (300-315) and MCP23017 (400-415) pins have no product number —
+    // product browsing only covers 1-12. They are reached via numeric selection
+    // (qrPin below), a Bolt Card tap on the displayed QR, or a direct LNbits trigger.
     int activePin = RELAY_CHANNEL_PINS[0]; // Default: CH01 / GPIO 12
     #ifdef BOARD_JC3248W535C
     // Numeric selection: the displayed product QR defines the pin directly
-    // (supports direct GPIOs and virtual pins 200-207 / 300-315)
+    // (supports direct GPIOs and virtual pins 200-207 / 300-315 / 400-415)
     if (t35AmbientConfig.numericSelect && productSelectState.qrActive &&
         productSelectState.qrPin > 0) {
         activePin = productSelectState.qrPin;

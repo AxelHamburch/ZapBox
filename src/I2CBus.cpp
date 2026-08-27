@@ -40,13 +40,14 @@ struct I2CModuleStatus {
 };
 
 // Fixed order so the banner always lists the same modules, whether or not a
-// driver ran. Addresses are filled in by i2cReportModule() — the PCF8575 is
-// jumper-selectable, so its address is only known at runtime.
+// driver ran. Addresses are filled in by i2cReportModule() — the PCF8575 and the
+// MCP23017 are jumper-selectable, so their addresses are only known at runtime.
 static I2CModuleStatus i2cModules[] = {
     { "PN532",    0x24, I2C_MODULE_UNCONFIGURED },
     { "NT3H2111", 0x55, I2C_MODULE_UNCONFIGURED },
     { "PCF8574",  0x20, I2C_MODULE_UNCONFIGURED },
     { "PCF8575",  0x21, I2C_MODULE_UNCONFIGURED },
+    { "MCP23017", 0x22, I2C_MODULE_UNCONFIGURED },
 };
 
 void i2cReportModule(const char *name, uint8_t addr, bool present)

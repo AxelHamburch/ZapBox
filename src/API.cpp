@@ -151,7 +151,7 @@ void fetchSwitchLabels()
         
         // Store label and duration based on pin number using array index.
         // getPinIndex() also resolves the virtual expander pins
-        // (200-207 → PCF8574, 300-315 → PCF8575) on JC3248W535C.
+        // (200-207 → PCF8574, 300-315 → PCF8575, 400-415 → MCP23017) on JC3248W535C.
         int pinIndex = getPinIndex(pin);
         if (pinIndex >= 0 && pinIndex < PRODUCT_LABELS_MAX) {
           productLabels.labels[pinIndex] = labelStr;

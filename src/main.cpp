@@ -719,11 +719,13 @@ void readFiles()
       LOG_INFO("Config", String("I/O Expander (PCF8574): ") + (expanderEnabled ? "ENABLED (pins 200-207 → relay)" : "disabled"));
     }
 
-    // Read I/O Expander 16 configuration (PCF8575)
-    //   Index 93 = ioExpander16 enable flag ("no" | "yes")
-    //   Index 94 = ioExpanderActiveHigh   — trigger polarity of the PCF8574
-    //   Index 95 = ioExpander16ActiveHigh — trigger polarity of the PCF8575
-    // All three are optional: configs written before this feature existed simply
+    // Read I/O Expander 16 configuration (PCF8575 / MCP23017)
+    //   Index 93 = ioExpander16 enable flag  ("no" | "yes")
+    //   Index 94 = ioExpanderActiveHigh      — trigger polarity of the PCF8574
+    //   Index 95 = ioExpander16ActiveHigh    — trigger polarity of the PCF8575
+    //   Index 96 = ioExpanderMcp enable flag ("no" | "yes")
+    //   Index 97 = ioExpanderMcpActiveHigh   — trigger polarity of the MCP23017
+    // All are optional: configs written before the respective feature existed simply
     // lack the indices, which keeps the previous behaviour (disabled / active-LOW).
     {
       auto readYes = [&](int idx) -> bool {
@@ -738,13 +740,19 @@ void readFiles()
       ioExpander16Config.enabled    = readYes(93);
       ioExpanderConfig.activeHigh   = readYes(94);
       ioExpander16Config.activeHigh = readYes(95);
+      mcp23017Config.enabled        = readYes(96);
+      mcp23017Config.activeHigh     = readYes(97);
 
       LOG_INFO("Config", String("I/O Expander (PCF8575): ") +
                          (ioExpander16Config.enabled ? "ENABLED (pins 300-315 → relay)" : "disabled"));
+      LOG_INFO("Config", String("I/O Expander (MCP23017): ") +
+                         (mcp23017Config.enabled ? "ENABLED (pins 400-415 → relay)" : "disabled"));
       LOG_INFO("Config", String("  PCF8574 trigger: ") +
                          (ioExpanderConfig.activeHigh ? "active-HIGH" : "active-LOW") +
                          ", PCF8575 trigger: " +
-                         (ioExpander16Config.activeHigh ? "active-HIGH" : "active-LOW"));
+                         (ioExpander16Config.activeHigh ? "active-HIGH" : "active-LOW") +
+                         ", MCP23017 trigger: " +
+                         (mcp23017Config.activeHigh ? "active-HIGH" : "active-LOW"));
     }
     #endif
 
@@ -856,9 +864,12 @@ void readFiles()
       t35AmbientConfig.paymentChannelCount = 1 + extra;
 
       // ...but for deciding whether this is a multi-channel device at all, the
-      // expander channels do count. A device with only CH01 on GPIO plus a PCF8574
-      // or PCF8575 has plenty of payment targets, they just live behind the keypad.
-      const bool expanderChannels = ioExpanderConfig.enabled || ioExpander16Config.enabled;
+      // expander channels do count. A device with only CH01 on GPIO plus a PCF8574,
+      // PCF8575 or MCP23017 has plenty of payment targets, they just live behind
+      // the keypad.
+      const bool expanderChannels = ioExpanderConfig.enabled ||
+                                    ioExpander16Config.enabled ||
+                                    mcp23017Config.enabled;
 
       // If neither a CH02-CH06 channel nor an expander provides an extra payment
       // target, treat device as single-channel even when multiControl="duo" was
@@ -1737,11 +1748,12 @@ void setup()
 #endif  // BOARD_ESP32C3_21_1 / else
 
   // IOExpander init: Wire (SDA=18, SCL=17) is now ready after touch.begin()
-  // initIOExpander16() must run after initIOExpander() — its address-collision
-  // check relies on knowing whether the PCF8574 actually came up.
+  // Order matters: each expander's address-collision check relies on knowing
+  // which of the previous ones actually came up.
 #if ENABLE_DISPLAY
   initIOExpander();
   initIOExpander16();
+  initIOExpanderMCP();
 #endif
 
   // GPIO 3 (T-Display-S3) / GPIO 46 (JC3248W535C) / GPIO 34 (headless ESP32 Dev) — FD (Field Detection) for NT3H2111
@@ -2284,7 +2296,8 @@ static void applyModeSelection(int selected) {
       // are exactly what the keypad exists for.
       t35AmbientConfig.numericSelect =
           (t35AmbientConfig.numericSelectConfigured &&
-           (maxProducts > 1 || ioExpanderConfig.enabled || ioExpander16Config.enabled));
+           (maxProducts > 1 || ioExpanderConfig.enabled ||
+            ioExpander16Config.enabled || mcp23017Config.enabled));
       #else
       maxProducts = 2;
       #endif
@@ -2388,7 +2401,8 @@ static void endAuthTeach() {
 // ============================================================================
 
 // True when the GPIO/virtual pin is configured as a payment actor on this
-// device (relay or servo channel, or PCF8574 virtual pin with expander on).
+// device (relay or servo channel, or an expander virtual pin with that
+// expander enabled).
 static bool numericPinSelectable(int pin) {
   int ch = t35AmbientConfig.channelIndexForGpio(pin);
   if (ch == 0) return true;                            // CH01 is always a payment actor
@@ -2396,6 +2410,7 @@ static bool numericPinSelectable(int pin) {
 
   if (pin >= 200 && pin <= 207) return ioExpanderConfig.enabled;
   if (pin >= 300 && pin <= 315) return ioExpander16Config.enabled;
+  if (pin >= 400 && pin <= 415) return mcp23017Config.enabled;
   return false;
 }
 
@@ -4980,15 +4995,22 @@ static void oneForAllActivationTask(void* pvParams) {
 }
 
 #if ENABLE_DISPLAY
+// Which expander a paid activation targets. The virtual-pin base is also the
+// channel-label offset: PCF8574 200-207, PCF8575 300-315, MCP23017 400-415.
+enum class ExpanderKind : uint8_t { Pcf8574, Pcf8575, Mcp23017 };
+
 // Run a paid activation on an I/O expander channel.
-// wide == false → PCF8574, channels 0-7   (virtual pins 200-207)
-// wide == true  → PCF8575, channels 0-15  (virtual pins 300-315)
 // Screen flow, light-barrier abort and cleanup are identical to the physical-pin
 // path in processNormalPayment().
-static void runExpanderPayment(int ch, int duration, bool wide)
+static void runExpanderPayment(int ch, int duration, ExpanderKind kind)
 {
-  const char* tag      = wide ? "IOExpander16" : "IOExpander";
-  const int   chLabel  = ch + (wide ? 300 : 200);
+  const char* tag =
+      (kind == ExpanderKind::Pcf8574)  ? "IOExpander"   :
+      (kind == ExpanderKind::Pcf8575)  ? "IOExpander16" : "MCP23017";
+  const int base =
+      (kind == ExpanderKind::Pcf8574)  ? 200 :
+      (kind == ExpanderKind::Pcf8575)  ? 300 : 400;
+  const int chLabel = ch + base;
 
   // Show action-time screen with countdown, same as physical pins
   productSelectionState.showTime = 0;
@@ -5001,8 +5023,11 @@ static void runExpanderPayment(int ch, int duration, bool wide)
   updateActionTimeCountdown(duration / 1000);
 
   Serial.printf("[%s] Activating CH%d for %d ms\n", tag, chLabel, duration);
-  if (wide) activateExpander16Channel(ch);
-  else      activateExpanderChannel(ch);
+  switch (kind) {
+    case ExpanderKind::Pcf8574:  activateExpanderChannel(ch);    break;
+    case ExpanderKind::Pcf8575:  activateExpander16Channel(ch);  break;
+    case ExpanderKind::Mcp23017: activateExpanderMCPChannel(ch); break;
+  }
 
   unsigned long startTime = millis();
   int lastDisplayedSec = duration / 1000;
@@ -5019,8 +5044,11 @@ static void runExpanderPayment(int ch, int duration, bool wide)
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 
-  if (wide) deactivateExpander16Channel(ch);
-  else      deactivateExpanderChannel(ch);
+  switch (kind) {
+    case ExpanderKind::Pcf8574:  deactivateExpanderChannel(ch);    break;
+    case ExpanderKind::Pcf8575:  deactivateExpander16Channel(ch);  break;
+    case ExpanderKind::Mcp23017: deactivateExpanderMCPChannel(ch); break;
+  }
   Serial.printf("[%s] CH%d deactivated\n", tag, chLabel);
 
   // Thank-you screen + 2s hold (same as physical pins)
@@ -5062,15 +5090,16 @@ static void processNormalPayment(int pin, int duration)
   Serial.printf("[RELAY] Pin: %d, Duration: %d ms\n", pin, duration);
 
   // Virtual pin mapping:
-  //   200–207 → PCF8574 I/O-Expander channels 0–7
-  //   300–315 → PCF8575 I/O-Expander channels 0–15
+  //   200–207 → PCF8574  I/O-Expander channels 0–7
+  //   300–315 → PCF8575  I/O-Expander channels 0–15
+  //   400–415 → MCP23017 I/O-Expander channels 0–15
 #if ENABLE_DISPLAY
   if (pin >= 200 && pin <= 207) {
     if (!ioExpanderConfig.enabled) {
       Serial.printf("[IOExpander] ERROR: virtual pin %d received but PCF8574 I/O-Expander is disabled!\n", pin);
       return;
     }
-    runExpanderPayment(pin - 200, duration, false);
+    runExpanderPayment(pin - 200, duration, ExpanderKind::Pcf8574);
     return;
   }
   if (pin >= 300 && pin <= 315) {
@@ -5078,7 +5107,15 @@ static void processNormalPayment(int pin, int duration)
       Serial.printf("[IOExpander16] ERROR: virtual pin %d received but PCF8575 I/O-Expander is disabled!\n", pin);
       return;
     }
-    runExpanderPayment(pin - 300, duration, true);
+    runExpanderPayment(pin - 300, duration, ExpanderKind::Pcf8575);
+    return;
+  }
+  if (pin >= 400 && pin <= 415) {
+    if (!mcp23017Config.enabled) {
+      Serial.printf("[MCP23017] ERROR: virtual pin %d received but MCP23017 I/O-Expander is disabled!\n", pin);
+      return;
+    }
+    runExpanderPayment(pin - 400, duration, ExpanderKind::Mcp23017);
     return;
   }
 #endif
