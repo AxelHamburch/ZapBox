@@ -15,6 +15,7 @@ Features that work the same way on every ZapBox variant. Anything board-specific
 - [I/O Expander — PCF8574](#io-expander--pcf8574)
 - [I/O Expander — PCF8575](#io-expander--pcf8575)
 - [I/O Expander — MCP23017](#io-expander--mcp23017)
+- [Relay Boards](#relay-boards)
 - [External LED Button](#external-led-button)
 - [Screensaver & Deep Sleep](#screensaver--deep-sleep)
 - [Startup & Error Detection](#startup--error-detection)
@@ -144,7 +145,8 @@ The relay polarity is selectable in the web installer (**PCF8574 — Relay Trigg
 > Use **Low-Level Trigger** and accept the brief power-up click, or add an external pull-up
 > (4.7 k–10 k to the relay board's VCC) to suppress the glow. High-Level is only usable for
 > loads that draw practically no current. If you want both trigger levels to work properly,
-> use an [MCP23017](#io-expander--mcp23017) instead — it has push-pull outputs.
+> use an [MCP23017](#io-expander--mcp23017) instead — it has push-pull outputs. See
+> [Relay Boards](#relay-boards) for the supply-side counterpart of this problem.
 
 ### Channel modes
 
@@ -350,6 +352,9 @@ Here **both settings are electrically fine**, because the outputs are push-pull.
 initialisation writes the idle value into the output latch *before* switching the ports from
 input to output, so an active-HIGH relay board never sees a start-up pulse.
 
+How to wire and power the relay board itself — the `JD-VCC` jumper, the shared ground and the
+optocoupler current at 3.3 V — is covered under [Relay Boards](#relay-boards).
+
 ### Selecting these channels
 
 CH400–CH415 are reachable via the **numerical product selection** (keypad), a Bolt Card tap on
@@ -360,6 +365,97 @@ navigation only covers products 1–12 and does not reach them.
 
 The MCP23017 can also read inputs, with per-pin interrupt-on-change on the `INTA`/`INTB` lines.
 Not implemented yet.
+
+---
+
+## Relay Boards
+
+Applies to every relay output — the direct GPIO channels as well as all three I/O expanders.
+The notes below are from a hardware session with the common 8- and 16-channel opto-coupler
+boards; the details vary between manufacturers, so **measure rather than assume**.
+
+### The `VCC` / `JD-VCC` jumper
+
+Boards with an optocoupler input carry a three-pin block `GND – VCC – JD-VCC` with a shorting
+jumper between `VCC` and `JD-VCC`.
+
+| Contact | Supplies |
+|---------|----------|
+| `VCC` | the **control side** — the optocoupler LEDs and the board logic. This voltage sets the LED current through the `IN` inputs. |
+| `JD-VCC` | the **load side** — the relay coils and their driver transistors, behind the optocoupler. |
+
+`JD` has no documented expansion; the accepted reading is the pinyin 继电 *(jìdiàn)* = "relay",
+so `JD-VCC` is simply the coil supply. With the jumper fitted — the factory state — one supply
+feeds everything.
+
+**Pull the jumper.** Then each side gets its own supply:
+
+```
+Relay board                        Supply
+──────────────────────────────────────────────────────
+JD-VCC          ←   +5 V           (relay coils)
+GND (3-pin block) ← 5 V supply ground
+
+VCC             ←   3.3 V from the ZapBox
+GND (signal header) ← ZapBox GND
+IN1 … IN16      ←   expander ports
+```
+
+The point is not isolation (see below) but current: relay coils draw roughly 70 mA each — over
+1 A across 16 channels — and that no longer comes out of the ZapBox's 3.3 V rail. Running the
+control side at 3.3 V also keeps every expander port at or below its own VDD, which removes the
+back-feed into the 3.3 V rail described in the PCF8574/PCF8575 trigger-level notes.
+
+> **⚠️ Remove the jumper, do not move it.** Left in place while 5 V sits on `JD-VCC` and 3.3 V
+> on `VCC`, it shorts the two supplies together.
+
+### The two `GND` pins are often bridged on the PCB
+
+Both ground pins are silkscreened `GND` — the one on the 3-pin power block belongs to the load
+side, the one on the signal header to the control side. On many boards they are **connected by
+a trace on the PCB**, which was the case on the board tested here.
+
+Check it yourself: jumper removed, board unpowered, continuity tester between the two `GND`
+pins.
+
+- **No continuity** → real isolation. Route each ground to its own supply and keep them apart.
+- **Continuity** → the optocoupler is a buffer, not an isolator. Splitting the supply is still
+  worth it for the current, but do not rely on any separation.
+
+With the grounds bridged, the coil return current has **two parallel paths** — through the 5 V
+supply and through the ZapBox ground — and divides by wire resistance. A thin or long ZapBox
+ground lead then carries part of an ampere, which shows up as a voltage offset on the ground
+reference and, in the worst case, as noise or resets. Keep the 5 V supply's ground lead **short
+and thick** so it is the path of least resistance, or better: **power the ZapBox and `JD-VCC`
+from the same 5 V supply**, which gives a single star point and no competing return paths.
+
+> **Mains on the relay contacts is still isolated.** That separation comes from the relay itself
+> — coil and contact set are physically separate with the corresponding creepage distances — not
+> from the optocoupler. A bridged control ground changes nothing about it.
+
+### Optocoupler current at 3.3 V
+
+The `IN` series resistors on these boards are dimensioned for 5 V, typically 1 kΩ. At 3.3 V the
+LED current drops to roughly:
+
+```
+(3.3 V − 1.2 V) / 1 kΩ ≈ 2.1 mA        instead of ≈ 3.8 mA at 5 V
+```
+
+A PC817 usually manages that, but it is close to the edge and depends on the individual part's
+current transfer ratio. **Test one channel before wiring all sixteen.** If a relay does not pull
+in reliably:
+
+- put `VCC` back on 5 V — this works, at the cost of roughly 1.7 mA back-feed per active channel
+  into the expander's 3.3 V rail, or
+- replace the series resistors with about 470 Ω, which brings the LED current at 3.3 V back to
+  ≈ 4.5 mA.
+
+### Never leave the control ground open
+
+The control-side `GND` is the reference for the `IN` signals. Splitting the supplies means
+giving *each* ground its own supply — not omitting one. Without a connection to the ZapBox
+ground no defined current flows through the optocoupler LED and nothing switches at all.
 
 ---
 
