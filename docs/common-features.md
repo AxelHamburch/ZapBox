@@ -252,14 +252,21 @@ the **Touch 3.5"** (JC3248W535C). Can run alongside a PCF8574 *and* a PCF8575, g
 
 | Virtual Pin | Port | | Virtual Pin | Port |
 |-------------|------|---|-------------|------|
-| 400 | GPA0 | | 408 | GPB0 |
-| 401 | GPA1 | | 409 | GPB1 |
-| 402 | GPA2 | | 410 | GPB2 |
-| 403 | GPA3 | | 411 | GPB3 |
-| 404 | GPA4 | | 412 | GPB4 |
-| 405 | GPA5 | | 413 | GPB5 |
-| 406 | GPA6 | | 414 | GPB6 |
-| 407 | GPA7 | | 415 | GPB7 |
+| 400 | PA0 | | 408 | PB0 |
+| 401 | PA1 | | 409 | PB1 |
+| 402 | PA2 | | 410 | PB2 |
+| 403 | PA3 | | 411 | PB3 |
+| 404 | PA4 | | 412 | PB4 |
+| 405 | PA5 | | 413 | PB5 |
+| 406 | PA6 | | 414 | PB6 |
+| 407 | PA7 | | 415 | PB7 |
+
+Port names are the ones silkscreened on the breakout board; the datasheet calls the same pins
+`GPA0`–`GPA7` and `GPB0`–`GPB7`.
+
+> **Note on the byte order.** The MCP23017 library writes the **high** byte of its 16-bit API to
+> port A, which would put channel CH400 on `PB0`. The driver calls `reverse16ByteOrder(true)` to
+> get the mapping above. If you ever swap the library out, this is the first thing to re-check.
 
 ### I²C address
 
@@ -310,8 +317,8 @@ In the factory state all three links sit on the `GND` side, which is address `0x
 PCF8574's address. For ZapBox, move **A1** to the `VCC` side: desolder the 0 Ω link (or clear
 the pad with solder wick) and bridge the VCC pad instead. A0 and A2 stay on GND.
 
-The relay ports are silkscreened as `PA0`–`PA7` and `PB0`–`PB7`; the datasheet calls the same
-pins `GPA0`–`GPA7` and `GPB0`–`GPB7`.
+The relay ports are silkscreened as `PA0`–`PA7` and `PB0`–`PB7` (see the virtual pin mapping
+above for which channel is which).
 
 ### Wiring
 

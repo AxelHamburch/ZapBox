@@ -492,7 +492,7 @@ inline int getPinIndex(int pin) {
     case 313: return 27;
     case 314: return 28;
     case 315: return 29;
-    // Virtual MCP23017 pins (GPA0-GPA7 / GPB0-GPB7) → slots 30-45
+    // Virtual MCP23017 pins (PA0-PA7 / PB0-PB7) → slots 30-45
     case 400: return 30;
     case 401: return 31;
     case 402: return 32;
@@ -676,7 +676,8 @@ struct IOExpander16Config {
 
 extern IOExpander16Config ioExpander16Config;
 
-// MCP23017 — 16 relay channels on virtual pins 400–415 (GPA0–GPA7 / GPB0–GPB7).
+// MCP23017 — 16 relay channels on virtual pins 400–415 (PA0–PA7 / PB0–PB7,
+// called GPA0–GPB7 in the datasheet).
 // I2C address 0x22 (7-bit) = 0x44 in 8-bit notation: A1 to VDD, A0/A2 to GND.
 // The MCP23017 shares the 0x20–0x27 range with both PCF chip families, and 0x24
 // belongs to the PN532 NFC reader — initIOExpanderMCP() refuses to come up on a

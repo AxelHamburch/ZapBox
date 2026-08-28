@@ -18,7 +18,11 @@
  * Virtual pin mapping (LNbits → expander):
  *   PCF8574:  200 → P0   … 207 → P7
  *   PCF8575:  300 → P00  … 307 → P07, 308 → P10  … 315 → P17
- *   MCP23017: 400 → GPA0 … 407 → GPA7, 408 → GPB0 … 415 → GPB7
+ *   MCP23017: 400 → PA0  … 407 → PA7,  408 → PB0  … 415 → PB7
+ *
+ * The MCP23017 driver reverses the library's 16-bit byte order: writeReg16() puts
+ * the HIGH byte on port A, which would map bit 0 to PB0. reverse16ByteOrder(true)
+ * restores the order the channel numbering implies.
  *
  * Relay logic is configurable per expander via ioExpanderConfig.activeHigh /
  * ioExpander16Config.activeHigh / mcp23017Config.activeHigh:

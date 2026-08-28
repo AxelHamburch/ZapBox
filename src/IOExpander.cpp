@@ -156,9 +156,10 @@ static inline uint16_t idleStateMcp() {
     return mcp23017Config.activeHigh ? 0x0000 : 0xFFFF;
 }
 
-// Human-readable MCP23017 port name: channels 0-7 → GPA0-GPA7, 8-15 → GPB0-GPB7.
+// Human-readable MCP23017 port name, in the PA0-PA7 / PB0-PB7 form the breakout
+// boards silkscreen (the datasheet calls the same pins GPA0-GPA7 / GPB0-GPB7).
 static String portNameMcp(int ch) {
-    return String("GP") + (ch < 8 ? "A" : "B") + String(ch % 8);
+    return String("P") + (ch < 8 ? "A" : "B") + String(ch % 8);
 }
 
 void initIOExpanderMCP() {
@@ -185,6 +186,12 @@ void initIOExpanderMCP() {
 
     i2cTake();
     mcp.setAddress(addr);
+    // Byte order of the 16-bit API. writeReg16() sends the HIGH byte to port A and
+    // the LOW byte to port B, so without this bit 0 would land on PB0 instead of
+    // PA0 — verified on hardware. Reversing it gives the mapping the channel
+    // numbering implies: bits 0-7 → PA0-PA7 (CH400-CH407), bits 8-15 → PB0-PB7
+    // (CH408-CH415).
+    mcp.reverse16ByteOrder(true);
     // begin(false) = no internal pull-ups. After power-on every MCP23017 port is a
     // high-impedance input, so nothing is driven yet: write the idle value into the
     // output latch FIRST, then switch the ports to output (IODIR = 0x0000). In that
