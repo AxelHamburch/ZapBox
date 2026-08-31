@@ -660,37 +660,6 @@
                 </div>
             </div>
 
-            <!-- I/O-Expander Section (PCF8575 — 16 channels) -->
-            <div class="input-wrapper" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-top: 25px;">
-                <div style="flex: 2; min-width: 280px;">
-                    <label for="ioExpander16">I/O-Expander (PCF8575)</label>
-                    <select name="ioExpander16" id="ioExpander16">
-                        <option value="no" selected>No (default)</option>
-                        <option value="yes">Yes — CH300–CH315 (virtual pins 300–315)</option>
-                        <option value="yes-io" disabled style="color: #aaa;">Yes — with inputs via INT line (prepared, not yet implemented)</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8575 on I²C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V — <strong>not</strong> 5 V). Address <strong>0x21</strong> (7-bit) = <strong>0x42</strong> in the 8-bit notation used by many datasheets: <strong>A0 to VDD</strong>, A1/A2 to GND. 0x20 is deliberately avoided — the PCF8574 sits there and both chips share the 0x20–0x27 range.</p>
-
-                    <label for="ioExpander16Trigger" style="margin-top: 14px;">PCF8575 — Relay Trigger Level</label>
-                    <select name="ioExpander16Trigger" id="ioExpander16Trigger">
-                        <option value="no" selected>Low-Level Trigger (default)</option>
-                        <option value="yes">High-Level Trigger (not recommended)</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Low-Level = relay switches on LOW (standard relay boards). High-Level = relay switches on HIGH — also prevents the brief relay flicker at power-up. <strong>High-Level is not recommended:</strong> the PCF857x ports are quasi-bidirectional and source only about 100&nbsp;µA in the HIGH state. Under the load of a relay board input the level collapses (measured ≈&nbsp;0.8&nbsp;V) and the relay no longer switches reliably. Use High-Level only for loads that draw almost no current.</p>
-                </div>
-                <div style="flex: 1; max-width: 260px; margin-top: 2px; text-align: right;">
-                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                        <a href="../assets/IO-Expander-PCF8575-front.webp" target="_blank" rel="noopener noreferrer" style="flex: 1; max-width: 116px;">
-                            <img src="../assets/IO-Expander-PCF8575-front.webp" alt="I/O-Expander PCF8575 front view" style="width: 100%; height: auto; border-radius: 6px; display: block;">
-                        </a>
-                        <a href="../assets/IO-Expander-PCF8575-back.webp" target="_blank" rel="noopener noreferrer" style="flex: 1; max-width: 116px;">
-                            <img src="../assets/IO-Expander-PCF8575-back.webp" alt="I/O-Expander PCF8575 back view with A0-A2 solder jumpers" style="width: 100%; height: auto; border-radius: 6px; display: block;">
-                        </a>
-                    </div>
-                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #888;"><i>Front / back with A0–A2 jumpers</i></p>
-                </div>
-            </div>
-
             <!-- I/O-Expander info panel (visible when expander is enabled) -->
             <div id="ioExpanderChannels" style="display: none; margin-top: 15px; padding: 16px; background: rgba(0,0,0,0.05); border: 1px solid #bbb; border-radius: 6px; color: #666; font-size: 13px;">
                 <p style="margin: 0 0 12px 0; font-weight: bold; color: #444;">I/O-Expander — How it works</p>
@@ -744,6 +713,37 @@
                     </div>
                 </div>
                 <p style="margin: 12px 0 0 0; font-size: 11px; color: #888;"><i>Relay outputs follow the trigger level selected above. Low-Level Trigger: LOW = relay on, all ports start HIGH. High-Level Trigger: HIGH = relay on, all ports start LOW. Connect PCF8574 ports P0–P7 directly to the IN1–IN8 inputs of your relay board.</i></p>
+            </div>
+
+            <!-- I/O-Expander Section (PCF8575 — 16 channels) -->
+            <div class="input-wrapper" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-top: 25px;">
+                <div style="flex: 2; min-width: 280px;">
+                    <label for="ioExpander16">I/O-Expander (PCF8575)</label>
+                    <select name="ioExpander16" id="ioExpander16">
+                        <option value="no" selected>No (default)</option>
+                        <option value="yes">Yes — CH300–CH315 (virtual pins 300–315)</option>
+                        <option value="yes-io" disabled style="color: #aaa;">Yes — with inputs via INT line (prepared, not yet implemented)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">PCF8575 on I²C bus (SDA=GPIO18, SCL=GPIO17, 3.3 V — <strong>not</strong> 5 V). Address <strong>0x21</strong> (7-bit) = <strong>0x42</strong> in the 8-bit notation used by many datasheets: <strong>A0 to VDD</strong>, A1/A2 to GND. 0x20 is deliberately avoided — the PCF8574 sits there and both chips share the 0x20–0x27 range.</p>
+
+                    <label for="ioExpander16Trigger" style="margin-top: 14px;">PCF8575 — Relay Trigger Level</label>
+                    <select name="ioExpander16Trigger" id="ioExpander16Trigger">
+                        <option value="no" selected>Low-Level Trigger (default)</option>
+                        <option value="yes">High-Level Trigger (not recommended)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Low-Level = relay switches on LOW (standard relay boards). High-Level = relay switches on HIGH — also prevents the brief relay flicker at power-up. <strong>High-Level is not recommended:</strong> the PCF857x ports are quasi-bidirectional and source only about 100&nbsp;µA in the HIGH state. Under the load of a relay board input the level collapses (measured ≈&nbsp;0.8&nbsp;V) and the relay no longer switches reliably. Use High-Level only for loads that draw almost no current.</p>
+                </div>
+                <div style="flex: 1; max-width: 260px; margin-top: 2px; text-align: right;">
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <a href="../assets/IO-Expander-PCF8575-front.webp" target="_blank" rel="noopener noreferrer" style="flex: 1; max-width: 116px;">
+                            <img src="../assets/IO-Expander-PCF8575-front.webp" alt="I/O-Expander PCF8575 front view" style="width: 100%; height: auto; border-radius: 6px; display: block;">
+                        </a>
+                        <a href="../assets/IO-Expander-PCF8575-back.webp" target="_blank" rel="noopener noreferrer" style="flex: 1; max-width: 116px;">
+                            <img src="../assets/IO-Expander-PCF8575-back.webp" alt="I/O-Expander PCF8575 back view with A0-A2 solder jumpers" style="width: 100%; height: auto; border-radius: 6px; display: block;">
+                        </a>
+                    </div>
+                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #888;"><i>Front / back with A0–A2 jumpers</i></p>
+                </div>
             </div>
 
             <!-- I/O-Expander 16 info panel (visible when PCF8575 is enabled) -->
