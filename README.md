@@ -188,7 +188,7 @@ ZapBox/
 
 - **LNbits**: v1.4.x or higher
 - **Bitcoin Switch Extension**: v1.2.1 or higher
-- **ZapBox Extension**: required for NFC Bolt Card payments and Mini-PoS
+- **ZapBox Extension**: required for NFC Bolt Card payments and Mini-PoS — **v2.6.2 or higher** for current firmware (Bolt Card taps and PIN entry ride a persistent device channel; older extensions are served via HTTPS fallback, but the 2.6.0/2.6.1 intermediates must not be mixed with newer firmware)
 - **ESP32 classic**: a standard ESP32 works for the headless build — an **unsoldered 30-pin board** is recommended for the headless housing
 
 Software versioning follows the [Releases](https://github.com/AxelHamburch/ZapBox/releases). Housings (`b…`) and electrical layouts (`e…`) are versioned by Bitcoin block height — see [Hardware & Documents](docs/hardware-assets.md).

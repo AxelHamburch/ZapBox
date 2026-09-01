@@ -72,13 +72,37 @@ ZapBox validates the "lnurlw://" prefix
     ↓
 Device signals PENDING (screen or LED)
     ↓
-WebSocket event to the extension:
-  { "event": "lnurlw", "lnurlw": "lnurlw://...", "pin": <activePin> }
+Event over the persistent device channel (zapbox_extension ≥ 2.6.0):
+  { "event": "lnurlw", "request_id": "...", "lnurlw": "lnurlw://...", "pin": <activePin> }
     ↓
 Extension resolves LNURLW → invoice → payment detected
     ↓
-WebSocket event back → ZapBox activates the channel
+Relay trigger back over the same channel → ZapBox activates the channel
 ```
+
+### Transport: persistent device channel
+
+The tap event travels over a **persistent WebSocket** to the extension
+(`/zapbox/api/v1/ws/nfc/<deviceId>`), opened once after boot and kept alive by
+device-side protocol pings. No fresh TLS connection is opened in the payment
+path — some consumer routers drop *new* TLS connections in phases while
+established connections keep working, which made per-tap HTTPS requests fail
+intermittently.
+
+While the channel is connected the device runs in **single-connection mode**:
+the LNbits core WebSocket (`/api/v1/ws/<id>`) is deliberately released and the
+extension (≥ 2.6.1) routes all events — relay triggers, `pin_required` /
+`pin_error`, teach events — over the device channel. Routers with small NAT
+tables cannot hold two persistent connections to the same host, so exactly one
+is kept. If the channel drops, the core WebSocket takes over automatically.
+
+The 4-digit payment PIN is also submitted over the channel
+(`pin_submit` / `pin_submit_result`, extension ≥ 2.6.2).
+
+**Fallback:** when the channel is down (older extension, connect failure), the
+tap falls back to `POST /zapbox/api/v1/nfc/<deviceId>` and the PIN to
+`POST .../nfc/pin_submit` over HTTPS — old firmware and old extensions keep
+working, but do not mix the 2.6.0/2.6.1 intermediates with newer counterparts.
 
 ### Timeout & "NO LUCK"
 
@@ -89,7 +113,7 @@ After a card tap the device enters a **pending** state while waiting for payment
 | **Display variants** | "PENDING NFC" screen | "NO LUCK" screen (5 s) | "ACTION TIME" → "THANK YOU" |
 | **Headless** | LED 200 ms ON / 800 ms OFF | LED 3× fast blink | LED 2× fast blink, then relay fires |
 
-HTTP errors during the LNURLW request do **not** immediately trigger NO LUCK — the server may still confirm the payment via WebSocket within the timeout window.
+An error reply on the device channel (`lnurlw_result` with `status: ERROR`) shows NO LUCK immediately, followed by the server's error detail. On the HTTPS fallback path, connection-level errors do **not** immediately trigger NO LUCK — the server may still confirm the payment within the timeout window.
 
 ### Card removal detection
 
