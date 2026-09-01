@@ -139,12 +139,20 @@ static volatile bool nfcWsOutboxPending = false;
 static bool          nfcWsStarted       = false;
 static bool          nfcWsHoldsTlsSlot  = false;
 static uint32_t      nfcWsSlotHeldSince = 0;
+// Escalating pause between failed connect phases. An extension without the
+// endpoint (older release) would otherwise be probed with a fresh TLS
+// handshake every few seconds, forever — precisely the connection pressure
+// this channel exists to avoid. 30 s → 1 → 2 → 4 → 8 min, reset on connect.
+static uint8_t       nfcWsFailedPhases   = 0;
+static uint32_t      nfcWsNextAttemptDue = 0;
 
 static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
     switch (type) {
     case WStype_CONNECTED:
         LOG_INFO("NFC-WS", "Device channel connected – taps use the persistent channel");
+        nfcWsFailedPhases   = 0; // endpoint exists — connect retries at full speed again
+        nfcWsNextAttemptDue = 0;
         break;
     case WStype_DISCONNECTED:
         // Drop a queued-but-unsent tap: after a reconnect it would arrive
@@ -191,6 +199,13 @@ void serviceNfcWebSocket()
         return;
     }
 
+    // Between failed connect phases: stay quiet until the backoff expires.
+    // (During an active phase nfcWsNextAttemptDue lies in the past.)
+    if (!nfcWebSocket.isConnected() &&
+        (int32_t)(millis() - nfcWsNextAttemptDue) < 0) {
+        return;
+    }
+
     if (!nfcWsStarted) {
         // Open only after the main WebSocket is validated and up: its handshake
         // has priority, and the router settle window separates the two connects.
@@ -228,8 +243,15 @@ void serviceNfcWebSocket()
         nfcWsHoldsTlsSlot  = true;
         nfcWsSlotHeldSince = millis();
     } else if (millis() - nfcWsSlotHeldSince > 15000) {
+        // Connect phase over without a connection — release the slot and back
+        // off before the next phase (see nfcWsFailedPhases above).
         nfcWsHoldsTlsSlot = false;
         netTlsGive();
+        if (nfcWsFailedPhases < 5) nfcWsFailedPhases++;
+        uint32_t pauseMs = 15000UL << nfcWsFailedPhases; // 30s, 1, 2, 4, 8 min
+        nfcWsNextAttemptDue = millis() + pauseMs;
+        LOG_INFO("NFC-WS", String("Channel not connecting (extension too old?) – next attempt in ")
+                           + String(pauseMs / 1000) + " s");
         return;
     }
     nfcWebSocket.loop();
