@@ -4738,7 +4738,7 @@ static void checkProductBlockage() {
 
   // Wait until the light barrier clears (product removed by customer or operator)
   while (digitalRead(PIN_LIGHT_BARRIER) == LOW) {
-    webSocket.loop();
+    wsKeepAlive();
     vTaskDelay(pdMS_TO_TICKS(100));
   }
 
@@ -4763,7 +4763,7 @@ static void checkProductBlockage() {
     productBlockedScreen();
 
     while (digitalRead(s.pin) == LOW) {
-      webSocket.loop();
+      wsKeepAlive();
       vTaskDelay(pdMS_TO_TICKS(100));
     }
 
@@ -4805,7 +4805,7 @@ static void processThresholdPayment(const JsonDocument &doc)
     productSelectionState.showTime = 0;
     
     // CRITICAL: Keep WebSocket alive during processing
-    webSocket.loop();
+    wsKeepAlive();
 
     int pin = lightningConfig.thresholdPin.toInt();
     int duration = lightningConfig.thresholdTime.toInt();
@@ -4905,7 +4905,7 @@ static void processThresholdPayment(const JsonDocument &doc)
           lastDisplayedSec = remaining;
           updateActionTimeCountdown(remaining);
         }
-        webSocket.loop(); // Keep WebSocket connection alive
+        wsKeepAlive(); // Keep WebSocket connection alive
         vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
       }
       
@@ -4919,7 +4919,7 @@ static void processThresholdPayment(const JsonDocument &doc)
     // CRITICAL: Non-blocking delay that keeps WebSocket alive
     unsigned long startTime = millis();
     while (millis() - startTime < 2000) {
-      webSocket.loop(); // Keep WebSocket connection alive
+      wsKeepAlive(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
     }
 
@@ -5142,7 +5142,7 @@ static void runExpanderPayment(int ch, int duration, ExpanderKind kind)
     if (shouldStopForLightBarrier(startTime)) {
       break;
     }
-    webSocket.loop();
+    wsKeepAlive();
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 
@@ -5158,7 +5158,7 @@ static void runExpanderPayment(int ch, int duration, ExpanderKind kind)
   activityTracking.lastActivityTime = millis();
   unsigned long tyStart = millis();
   while (millis() - tyStart < 2000) {
-    webSocket.loop();
+    wsKeepAlive();
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 
@@ -5449,7 +5449,7 @@ static void processNormalPayment(int pin, int duration)
         lastDisplayedSec = remaining;
         updateActionTimeCountdown(remaining);
       }
-      webSocket.loop(); // Keep WebSocket connection alive
+      wsKeepAlive(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
     }
 
@@ -5517,7 +5517,7 @@ static void processNormalPayment(int pin, int duration)
   unsigned long startTime = millis();
   unsigned long confirmScreenMs = miniPosConfig.enabled ? 3000 : 2000;
   while (millis() - startTime < confirmScreenMs) {
-    webSocket.loop(); // Keep WebSocket connection alive
+    wsKeepAlive(); // Keep WebSocket connection alive
     vTaskDelay(pdMS_TO_TICKS(10)); // Yield to other tasks
   }
 

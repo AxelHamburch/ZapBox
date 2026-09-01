@@ -4,6 +4,7 @@
 #include "Display.h"
 #include "PinConfig.h"
 #include <WebSocketsClient.h>
+#include "Network.h"
 
 // External references to main.cpp
 extern StateManager deviceState;
@@ -171,7 +172,7 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
         lastDisplayedSec = remaining;
         updateActionTimeCountdown(remaining);
       }
-      webSocket.loop(); // Keep WebSocket connection alive
+      wsKeepAlive(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(1)); // Yield to other tasks
     }
     
@@ -206,7 +207,7 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
         lastDisplayedSec = remaining;
         updateActionTimeCountdown(remaining);
       }
-      webSocket.loop(); // Keep WebSocket connection alive
+      wsKeepAlive(); // Keep WebSocket connection alive
       vTaskDelay(pdMS_TO_TICKS(1)); // Yield to other tasks
     }
     

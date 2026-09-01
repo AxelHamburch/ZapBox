@@ -12,6 +12,11 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length);
 // watchdog/reconnect it. See Network.cpp for the rationale.
 extern volatile bool deviceChannelActive;
 
+// Keep-alive for blocking sections: services the core WebSocket, but never
+// drives its auto-reconnect while the device channel is active (that would
+// resurrect the deliberately released core connection).
+void wsKeepAlive();
+
 // Network connectivity checks
 bool checkInternetConnectivity();
 bool checkServerReachability();

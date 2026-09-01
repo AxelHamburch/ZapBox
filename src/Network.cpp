@@ -35,6 +35,19 @@ extern bool labelsLoadedSuccessfully;
 // watchdog/reconnect/error machinery in main.cpp stands down.
 volatile bool deviceChannelActive = false;
 
+// Keep-alive replacement for raw webSocket.loop() calls sprinkled through
+// payment processing and blocking waits. When disconnected, loop() drives the
+// library's auto-reconnect — which silently resurrected the deliberately
+// released core WebSocket during single-connection mode (observed: released
+// at channel-connect, back 18 s later via a payment keep-alive). While the
+// device channel is active the core WS must stay down, so these calls become
+// no-ops; the channel itself is serviced by the main loop.
+void wsKeepAlive()
+{
+    if (deviceChannelActive) return;
+    webSocket.loop();
+}
+
 // Server → device event processing, shared by the core WebSocket and the
 // device channel: relay triggers ("6-500") and JSON events (pin_required,
 // pin_error, teach_ended, ...) are enqueued for the main loop; nfc_enrolled is
@@ -68,6 +81,13 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       break;
     case WStype_CONNECTED:
     {
+      // Belt and braces: should anything still resurrect the core WebSocket
+      // while the device channel carries all events, release it again.
+      if (deviceChannelActive) {
+        LOG_INFO("WebSocket", "Device channel active — releasing core WebSocket again");
+        webSocket.disconnect();
+        break;
+      }
       LOG_INFO("WebSocket", String("Connected to: ") + String((char*)payload));
       webSocket.sendTXT("Connected");
       networkStatus.lastPongTime       = millis(); // Reset pong timer on connect
