@@ -3983,6 +3983,9 @@ void loop()
     #else
     serviceWebSocket();
     #endif
+    #if ENABLE_NFC
+    serviceNfcWebSocket(); // device→server channel for Bolt Card taps
+    #endif
     loopCount++;
     
     // Update LED status regularly to reflect current network state

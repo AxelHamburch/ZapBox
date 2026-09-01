@@ -28,6 +28,11 @@ void nfcLnurlwReceived(const String &lnurlw);
 // Called from main.cpp when the user has entered 4 PIN digits.
 // HTTP POSTs the PIN to the zapbox_extension so it can complete the LNURLW callback.
 void sendPinSubmit(const String &sessionId, const String &pin);
+// Persistent device→server WebSocket channel to the zapbox_extension.
+// Call from the main loop (Core 1): services the connection, flushes taps
+// queued by the NFC task, and gates its own TLS handshake. Bolt Card taps
+// prefer this channel and fall back to the HTTPS POST when it is down.
+void serviceNfcWebSocket();
 #endif
 
 // ─── Authy (LNURL-auth) teach session ────────────────────────────────────────

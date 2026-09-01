@@ -120,6 +120,121 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 
 // ─── NFC Bolt Card LNURLW handler ──────────────────────────────────────────
 #ifdef ENABLE_NFC
+
+// ─── Device WebSocket channel (device → server) ─────────────────────────────
+// Persistent second WebSocket to the zapbox_extension
+// (/zapbox/api/v1/ws/nfc/<deviceId>). The core WS stays the trigger channel
+// (paid events, pings, "No active connections" check — all unchanged); this
+// one carries device-initiated events, currently the Bolt Card lnurlw.
+//
+// Why: some routers fail NEW TLS connections in phases (any destination)
+// while established connections keep working in both directions — proven by
+// a WS pong round-tripping while a fresh mempool.space handshake failed in
+// the same second. A tap over this channel needs no fresh connection.
+// When the channel is down (old extension, bad phase at boot), the tap falls
+// back to the HTTPS POST below — compatible in both directions.
+WebSocketsClient nfcWebSocket;
+static char          nfcWsOutbox[512];        // lnurlw event queued by the NFC task
+static volatile bool nfcWsOutboxPending = false;
+static bool          nfcWsStarted       = false;
+static bool          nfcWsHoldsTlsSlot  = false;
+static uint32_t      nfcWsSlotHeldSince = 0;
+
+static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
+{
+    switch (type) {
+    case WStype_CONNECTED:
+        LOG_INFO("NFC-WS", "Device channel connected – taps use the persistent channel");
+        break;
+    case WStype_DISCONNECTED:
+        // Drop a queued-but-unsent tap: after a reconnect it would arrive
+        // seconds late and its request_id would be rejected as stale anyway.
+        nfcWsOutboxPending = false;
+        break;
+    case WStype_TEXT: {
+        JsonDocument doc;
+        if (deserializeJson(doc, payload, length)) break;
+        if (strcmp(doc["event"] | "", "lnurlw_result") != 0) break;
+        uint32_t reqId = (uint32_t) String(doc["request_id"] | "").toInt();
+        if (reqId != extensionConfig.nfcRequestId) {
+            LOG_WARN("NFC-WS", "Stale lnurlw_result ignored");
+            break;
+        }
+        const char *status = doc["status"] | "";
+        if (strcmp(status, "OK") == 0) {
+            // Same as HTTP 200: invoice submitted — the relay trigger arrives
+            // via the core WebSocket ("paid" event). PENDING screen continues;
+            // a PIN-protected card additionally gets pin_required via core WS.
+            LOG_INFO("NFC", "NFC payment initiated – waiting for WebSocket paid event");
+        } else {
+            const char *detail = doc["detail"] | "Payment failed";
+            strlcpy(extensionConfig.nfcErrorDetail, detail, sizeof(extensionConfig.nfcErrorDetail));
+            extensionConfig.nfcPaymentPending = false;
+            extensionConfig.nfcPaymentFailed  = true;
+            LOG_WARN("NFC", String("Device channel result: ERROR – ") + detail);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+// Called from the main loop (Core 1). Services the channel, flushes taps
+// queued by the NFC task (Core 0 — sendTXT is not safe across cores), and
+// gates its own TLS handshake through the NetTls slot.
+void serviceNfcWebSocket()
+{
+    if (extensionConfig.apiPath != "zapbox" || !nfcConfig.boltcardActive ||
+        deviceState.isInState(DeviceState::CONFIG_MODE) || WiFi.status() != WL_CONNECTED) {
+        if (nfcWsHoldsTlsSlot) { nfcWsHoldsTlsSlot = false; netTlsGive(); }
+        return;
+    }
+
+    if (!nfcWsStarted) {
+        // Open only after the main WebSocket is validated and up: its handshake
+        // has priority, and the router settle window separates the two connects.
+        if (!networkStatus.confirmed.websocket || !webSocket.isConnected()) return;
+        if (!netTlsTryTake("NFC-WS")) return;
+        nfcWsHoldsTlsSlot  = true;
+        nfcWsSlotHeldSince = millis();
+        LOG_INFO("NFC-WS", String("Opening device channel: /zapbox/api/v1/ws/nfc/") + deviceId);
+        nfcWebSocket.beginSSL(lnbitsServer, 443, "/zapbox/api/v1/ws/nfc/" + deviceId);
+        nfcWebSocket.onEvent(nfcWebSocketEvent);
+        nfcWebSocket.setReconnectInterval(5000);
+        // Device-side protocol pings keep the channel alive and detect a
+        // half-open socket; the server answers pongs automatically.
+        nfcWebSocket.enableHeartbeat(20000, 6000, 3);
+        nfcWsStarted = true;
+    }
+
+    if (nfcWebSocket.isConnected()) {
+        if (nfcWsHoldsTlsSlot) { nfcWsHoldsTlsSlot = false; netTlsGive(); }
+        if (nfcWsOutboxPending) {
+            nfcWebSocket.sendTXT(nfcWsOutbox);
+            nfcWsOutboxPending = false;
+            LOG_INFO("NFC-WS", "lnurlw event sent over device channel");
+        }
+        nfcWebSocket.loop();
+        return;
+    }
+
+    // Disconnected → loop() drives a TLS handshake. Same hold pattern as
+    // serviceWebSocket(): keep the slot across the connecting phase, capped
+    // so a permanently failing channel can't starve other TLS users.
+    if (!nfcWsHoldsTlsSlot) {
+        if (!webSocket.isConnected()) return; // main WS recovers first
+        if (!netTlsTryTake("NFC-WS")) return;
+        nfcWsHoldsTlsSlot  = true;
+        nfcWsSlotHeldSince = millis();
+    } else if (millis() - nfcWsSlotHeldSince > 15000) {
+        nfcWsHoldsTlsSlot = false;
+        netTlsGive();
+        return;
+    }
+    nfcWebSocket.loop();
+}
+
 /**
  * Called from the NFC FreeRTOS task (NFCBoltCard.cpp) when a valid LNURLW
  * is read from a Bolt Card (NTAG424 DNA).
@@ -239,8 +354,6 @@ void nfcLnurlwReceived(const String &lnurlw)
     if (miniPosConfig.enabled && miniPosState.invoicePending) {
         url += "&minipos_hash=" + miniPosState.paymentHash;
     }
-    LOG_INFO("NFC", String("Sending NFC request to: ") + url);
-
     // Own TLS client so the handshake can be bounded. This matters more than the
     // connect timeout: setConnectTimeout() only limits the TCP connect (the
     // select() on the socket), NOT the TLS handshake — and WiFiClientSecure
@@ -264,6 +377,32 @@ void nfcLnurlwReceived(const String &lnurlw)
     // timeout, PIN cancel, ...) before this blocking call returns, nfcRequestId
     // is bumped and this snapshot goes stale — see the isTerminal check below.
     uint32_t myRequestId = ++extensionConfig.nfcRequestId;
+
+    // Preferred transport: the persistent device channel (serviceNfcWebSocket).
+    // The tap then rides an ESTABLISHED connection — no fresh TLS handshake,
+    // which is exactly what flaky routers drop in bad phases. The reply arrives
+    // as an "lnurlw_result" event (nfcWebSocketEvent); a lost reply is covered
+    // by the pending timeout in main.cpp. sendTXT() is not safe from this task
+    // (Core 0), so the payload is handed to Core 1 via the outbox.
+    if (nfcWebSocket.isConnected() && !nfcWsOutboxPending) {
+        JsonDocument doc;
+        doc["event"]      = "lnurlw";
+        doc["request_id"] = String(myRequestId);
+        doc["lnurlw"]     = lnurlw;
+        doc["pin"]        = activePin;
+        if (miniPosConfig.enabled && miniPosState.invoicePending) {
+            doc["minipos_hash"] = miniPosState.paymentHash;
+        }
+        size_t written = serializeJson(doc, nfcWsOutbox, sizeof(nfcWsOutbox));
+        if (written > 0 && written < sizeof(nfcWsOutbox) - 1) {
+            nfcWsOutboxPending = true;
+            LOG_INFO("NFC", "Tap queued on device channel (no new TLS connection)");
+            return;
+        }
+        LOG_WARN("NFC", "Payload too large for device channel – falling back to HTTPS");
+    }
+
+    LOG_INFO("NFC", String("Sending NFC request to: ") + url);
 
     // Retry loop for connection-level failures (negative HTTP codes).
     // These mean the request never reached the server (SSL timeout, DNS failure,
