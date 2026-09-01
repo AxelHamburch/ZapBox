@@ -477,8 +477,10 @@ void updateBtctickerValues()
     
   } else {
     // HORIZONTAL LAYOUT
+    int logoX = (displayConfig.orientation == "hi") ? 25 : 20;
+    int logoY = y - 32;
     int textX = (displayConfig.orientation == "hi") ? x + 30 : x + 25;
-    
+
     // Calculate sats per currency
     float priceFloat = bitcoinData.price.toFloat();
     String satsPerCurrency = "";
@@ -488,21 +490,29 @@ void updateBtctickerValues()
     } else {
       satsPerCurrency = "0";
     }
-    
-    // Clear and redraw price line
-    tft.fillRect(textX - 10, y - 55, 200, 30, themeBackground);
+
+    // The label+value strings are drawn centered (MC_DATUM), so a line's left
+    // edge shifts outward when the value gets wider. On the first update after
+    // boot the "Loading..." / "..." placeholders are wider than the real values,
+    // so a narrow textX-anchored clear left the placeholder's left half on
+    // screen and the fresh string was drawn on top of it (ghosting).
+    // Clear the full text band and repaint the logo so any value width works.
+    tft.fillRect(0, y - 55, 320, 30, themeBackground);
+    tft.fillRect(0, y - 15, 320, 30, themeBackground);
+    tft.fillRect(0, y + 25, 320, 30, themeBackground);
+    tft.drawBitmap(logoX, logoY, bitcoin_logo, 64, 64, themeForeground);
+
+    // Redraw price line
     tft.setTextSize(2);
     String topLabel = currency + "/BTC: ";
     tft.drawString(topLabel + bitcoinData.price, textX, y - 40, GFXFF);
-    
-    // Clear and redraw sats line
-    tft.fillRect(textX - 10, y - 15, 200, 30, themeBackground);
+
+    // Redraw sats line
     tft.setTextSize(2);
     String midLabel = "SAT/" + currency + ": ";
     tft.drawString(midLabel + satsPerCurrency, textX, y, GFXFF);
-    
-    // Clear and redraw block line
-    tft.fillRect(textX - 10, y + 25, 200, 30, themeBackground);
+
+    // Redraw block line
     tft.setTextSize(2);
     tft.drawString("Block: " + bitcoinData.blockHigh, textX, y + 40, GFXFF);
   }
