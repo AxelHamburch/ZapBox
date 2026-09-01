@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include "Network.h"
 #include "PinConfig.h"
@@ -8,6 +9,7 @@
 #include "GlobalState.h"
 #include "Display.h"
 #include "Log.h"
+#include "NetTls.h"
 
 // Externals from main.cpp
 extern StateManager deviceState;
@@ -23,6 +25,7 @@ extern ExtensionConfig extensionConfig;
 extern void fetchBitcoinData();
 #endif
 extern void fetchSwitchLabels();
+extern bool labelsLoadedSuccessfully;
 
 // WebSocket event handler
 void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
@@ -45,14 +48,31 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
       networkStatus.lastServerPingTime = 0;        // Stale ping from a previous connection must not
                                                      // feed the half-open watchdog right after reconnect
       networkStatus.waitingForPong     = false;
-      // Don't set networkStatus.confirmed.websocket = true here!
-      // Let fetchSwitchLabels() validate the device config first
-      // If labels load successfully (HTTP 200), it will set websocket = true
-      // If instance doesn't exist (HTTP 404), it will set websocket = false
-      LOG_INFO("WebSocket", "TCP connection established, fetching device config...");
-      
-      // Fetch switch labels from backend after successful connection
-      fetchSwitchLabels();
+      // Only fetch the switch config when we don't already have it.
+      //
+      // Fetching on EVERY connect opened a second HTTPS connection to the same
+      // host ~1.5 s after each WebSocket handshake. On routers that can't hold
+      // two connections to the same host:443 that left the WebSocket half-open
+      // (device thinks connected, server has no connection and sends no pings),
+      // the 60 s ping watchdog reconnected, the fetch fired again, and the device
+      // never reached a stable connection. The periodic refresh in
+      // updateSwitchLabels() keeps the config current instead — including a
+      // retry loop while labelsLoadedSuccessfully is still false.
+      if (labelsLoadedSuccessfully) {
+        // fetchSwitchLabels() is normally what validates the device config and
+        // confirms the WebSocket (API.cpp). With a cached config that validation
+        // already happened, so confirm here — otherwise the connection stays
+        // unconfirmed and triggers the WebSocket error screen.
+        LOG_INFO("WebSocket", "TCP connection established — config cached, skipping fetch");
+        networkStatus.confirmed.websocket = true;
+      } else {
+        // Don't set networkStatus.confirmed.websocket = true here!
+        // Let fetchSwitchLabels() validate the device config first
+        // If labels load successfully (HTTP 200), it will set websocket = true
+        // If instance doesn't exist (HTTP 404), it will set websocket = false
+        LOG_INFO("WebSocket", "TCP connection established, fetching device config...");
+        fetchSwitchLabels();
+      }
     }
     break;
     case WStype_TEXT:
@@ -220,9 +240,16 @@ void nfcLnurlwReceived(const String &lnurlw)
         url += "&minipos_hash=" + miniPosState.paymentHash;
     }
     LOG_INFO("NFC", String("Sending NFC request to: ") + url);
-    http.begin(url);
-    http.addHeader("Content-Type", "application/json");
-    http.setTimeout(15000); // LNURLW resolution can take several seconds
+
+    // Own TLS client so the handshake can be bounded. This matters more than the
+    // connect timeout: setConnectTimeout() only limits the TCP connect (the
+    // select() on the socket), NOT the TLS handshake — and WiFiClientSecure
+    // defaults that to 120 s. On a router that silently drops the handshake the
+    // POST then sat on a half-open port-443 socket for a full two minutes, long
+    // enough to take the WebSocket down with it. Same pattern as fetchBitcoinData().
+    WiFiClientSecure secureClient;
+    secureClient.setInsecure();           // same trust model as http.begin(url)
+    secureClient.setHandshakeTimeout(10); // seconds
 
     String body = String("{\"lnurlw\":\"") + lnurlw + String("\"}" );
 
@@ -233,26 +260,63 @@ void nfcLnurlwReceived(const String &lnurlw)
     // stripes / offset images that persist until power-cycle).
     extensionConfig.nfcPaymentPending = true;
     extensionConfig.nfcPaymentPendingStart = millis(); // starts the timeout in main.cpp
+    // Snapshot the request id. If the client gives up on this tap (60s pending
+    // timeout, PIN cancel, ...) before this blocking call returns, nfcRequestId
+    // is bumped and this snapshot goes stale — see the isTerminal check below.
+    uint32_t myRequestId = ++extensionConfig.nfcRequestId;
 
     // Retry loop for connection-level failures (negative HTTP codes).
     // These mean the request never reached the server (SSL timeout, DNS failure,
     // connection refused), so retrying is safe — no duplicate payment risk.
     // This covers the common case where the SSL stack isn't fully ready shortly
     // after boot (first NFC tap fails, second succeeds).
-    const int maxRetries = 2;
+    //
+    // Two attempts, not three: whenever attempt 1 failed on a struggling link,
+    // every further attempt failed too — the failures come in phases rather than
+    // independently. The third attempt therefore only added ~10 s of PENDING
+    // before the user saw NO LUCK. Failing sooner lets them tap again, which is
+    // a better chance than retrying inside the same bad phase.
+    const int maxRetries = 1;
     int httpCode = 0;
+    bool holdingSlot = false;
     for (int attempt = 0; attempt <= maxRetries; attempt++) {
         if (attempt > 0) {
+            // If WiFi itself dropped (e.g. the WebSocket is fighting for the same
+            // TLS/socket resources and lost), further attempts will just time out
+            // again for another 15s each — abort now instead of prolonging the
+            // outage and holding the NFC task in a dead retry loop.
+            if (WiFi.status() != WL_CONNECTED) {
+                LOG_WARN("NFC", "WiFi down – aborting NFC retries early");
+                httpCode = -1;
+                break;
+            }
             LOG_WARN("NFC", String("Retrying NFC request (attempt ") + String(attempt + 1) + "/" + String(maxRetries + 1) + ")...");
             http.end();
             delay(1000); // Wait 1s before retry — let SSL/network stack stabilize
-            http.begin(url);
-            http.addHeader("Content-Type", "application/json");
-            http.setTimeout(15000);
         }
+
+        // Only one TLS connection may be established at a time (see NetTls.h).
+        // Taken PER ATTEMPT and released again on failure: holding it across the
+        // whole retry sequence starved the WebSocket reconnect on Core 1 for the
+        // full duration of a hanging POST.
+        if (!netTlsTake("NFC", 20000)) {
+            LOG_WARN("NFC", "TLS slot busy – aborting attempt");
+            httpCode = -1;
+            break;
+        }
+        holdingSlot = true;
+
+        http.begin(secureClient, url);
+        http.addHeader("Content-Type", "application/json");
+        http.setConnectTimeout(8000);
+        http.setTimeout(15000); // LNURLW resolution can take several seconds
+
         httpCode = http.POST(body);
-        if (httpCode >= 0) break; // Got a server response (success or HTTP error) — stop retrying
+        if (httpCode >= 0) break; // Got a server response — keep the slot to read it
         LOG_WARN("NFC", String("Connection failed (HTTP ") + String(httpCode) + ") on attempt " + String(attempt + 1));
+        // Let the WebSocket have the connection while we back off before retrying.
+        netTlsGive();
+        holdingSlot = false;
     }
 
     if (httpCode == 200) {
@@ -283,18 +347,26 @@ void nfcLnurlwReceived(const String &lnurlw)
         String detailStr = String(extensionConfig.nfcErrorDetail);
         bool isTerminal = (httpCode < 0) || (httpCode >= 400);
         if (isTerminal) {
-            extensionConfig.nfcPaymentPending = false;
-            extensionConfig.nfcPaymentFailed  = true;
-            if (httpCode < 0) {
-                String connErr = "Connection failed";
-                connErr.toCharArray(extensionConfig.nfcErrorDetail, sizeof(extensionConfig.nfcErrorDetail));
-                LOG_WARN("NFC", "Connection failed after retries – showing NO LUCK immediately");
+            if (extensionConfig.nfcRequestId != myRequestId) {
+                // The client already gave up on this tap (60s timeout / PIN cancel)
+                // while this call was stuck retrying. Showing NO LUCK now would
+                // reopen a flow the user already saw finish — ignore it.
+                LOG_WARN("NFC", "Stale NFC response ignored – client already gave up on this tap");
             } else {
-                LOG_WARN("NFC", String("HTTP ") + String(httpCode) + " – showing NO LUCK immediately");
+                extensionConfig.nfcPaymentPending = false;
+                extensionConfig.nfcPaymentFailed  = true;
+                if (httpCode < 0) {
+                    String connErr = "Connection failed";
+                    connErr.toCharArray(extensionConfig.nfcErrorDetail, sizeof(extensionConfig.nfcErrorDetail));
+                    LOG_WARN("NFC", "Connection failed after retries – showing NO LUCK immediately");
+                } else {
+                    LOG_WARN("NFC", String("HTTP ") + String(httpCode) + " – showing NO LUCK immediately");
+                }
             }
         }
     }
     http.end();
+    if (holdingSlot) netTlsGive(); // connection closed – starts the router settle window
 }
 
 // ─── PIN Submit ─────────────────────────────────────────────────────────────
@@ -313,11 +385,21 @@ void sendPinSubmit(const String &sessionId, const String &pin)
     LOG_INFO("PIN", "Submitting PIN to server");
 
     HTTPClient http;
+    WiFiClientSecure secureClient;         // bounded handshake — see nfcLnurlwReceived()
+    secureClient.setInsecure();
+    secureClient.setHandshakeTimeout(10);  // seconds
     String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
                  + "/api/v1/nfc/pin_submit?session_id=" + sessionId
                  + "&pin=" + pin;
     LOG_INFO("PIN", String("PIN submit URL: ") + url);
-    http.begin(url);
+    if (!netTlsTake("PIN", 10000)) {
+        LOG_WARN("PIN", "TLS slot busy – PIN submit aborted");
+        pinPadState.errorMsg   = "Connection failed";
+        pinPadState.showError  = true;
+        pinPadState.errorStart = millis();
+        return;
+    }
+    http.begin(secureClient, url);
     http.setConnectTimeout(5000);
     http.setTimeout(7000);
 
@@ -335,6 +417,7 @@ void sendPinSubmit(const String &sessionId, const String &pin)
         }
     }
     http.end();
+    netTlsGive();
 }
 #endif // ENABLE_NFC
 
@@ -354,17 +437,28 @@ void sendPinSubmit(const String &sessionId, const String &pin)
 bool submitTeachPin(const String &pin)
 {
     LOG_INFO("Teach", "Submitting teach PIN to server");
+    if (!netTlsTake("Teach", 10000)) {
+        LOG_WARN("Teach", "TLS slot busy – teach PIN submit aborted");
+        pinPadState.errorMsg   = "Connection failed";
+        pinPadState.showError  = true;
+        pinPadState.errorStart = millis();
+        return false;
+    }
     HTTPClient http;
+    WiFiClientSecure secureClient;         // bounded handshake — see nfcLnurlwReceived()
+    secureClient.setInsecure();
+    secureClient.setHandshakeTimeout(10);  // seconds
     String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
                  + "/api/v1/auth/teach/start?device_id=" + deviceId
                  + "&pin=" + pin;
-    http.begin(url);
+    http.begin(secureClient, url);
     http.setConnectTimeout(5000);
     http.setTimeout(7000);
 
     int httpCode = http.POST("");
     String resp = http.getString();
     http.end();
+    netTlsGive();
 
     if (httpCode != 200) {
         LOG_ERROR("Teach", String("Teach start HTTP ") + String(httpCode));
@@ -413,14 +507,22 @@ bool submitTeachPin(const String &pin)
  */
 void stopTeachSession()
 {
+    if (!netTlsTake("Teach", 5000)) {
+        LOG_WARN("Teach", "TLS slot busy – teach stop skipped (server times out on its own)");
+        return;
+    }
     HTTPClient http;
+    WiFiClientSecure secureClient;         // bounded handshake — see nfcLnurlwReceived()
+    secureClient.setInsecure();
+    secureClient.setHandshakeTimeout(10);  // seconds
     String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
                  + "/api/v1/auth/teach/stop?device_id=" + deviceId;
-    http.begin(url);
+    http.begin(secureClient, url);
     http.setConnectTimeout(5000);
     http.setTimeout(7000);
     http.POST("");
     http.end();
+    netTlsGive();
     LOG_INFO("Teach", "Teach session stop requested");
 }
 

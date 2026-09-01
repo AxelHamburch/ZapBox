@@ -35,6 +35,7 @@
 #include "ServoControl.h"
 #include "IOExpander.h"
 #include "I2CBus.h"
+#include "NetTls.h"
 #include "Log.h"
 
 // NFC modules (optional feature, gated by ENABLE_NFC build flag)
@@ -102,7 +103,7 @@ unsigned long lastNavigationTime = 0; // Track time of last navigation for timeo
 unsigned long TOUCH_DOUBLE_CLICK_MS = 1000; // 1 second window for second click (non-const for extern linkage)
 const unsigned long TOUCH_LONG_PRESS_MS = 3000;  // 3 seconds for long press
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
-const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
+const unsigned long LABEL_UPDATE_INTERVAL = 900000; // 15 minutes in milliseconds
 const unsigned long GRACE_PERIOD_MS = 1000;  // 1 second grace period after wake-up (reduced from 5s for better UX)
 
 // Product timeout: configurable via platformio.ini build flag PRODUCT_TIMEOUT
@@ -168,6 +169,42 @@ static unsigned long nfcNotSupportedStart   = 0;
 #endif
 
 WebSocketsClient webSocket;
+
+// ─── WebSocket servicing under the TLS gate ─────────────────────────────────
+// webSocket.loop() does two very different things depending on state:
+//   connected    → plain I/O on an open session. Opens nothing, must never be
+//                  delayed (this is how the "paid" event arrives).
+//   disconnected → drives a fresh TLS handshake via the library's auto-reconnect.
+// Only the second case may collide with the NFC task's POST on Core 0, so the
+// TLS slot is held across the whole connecting phase — a handshake needs many
+// loop() iterations to complete, so taking/releasing per call would throttle it
+// to one step per settle window and stall the connect.
+// The hold is capped so a permanently failing WebSocket can't starve the NFC task.
+static bool     wsHoldsTlsSlot  = false;
+static uint32_t wsSlotHeldSince = 0;
+
+static void serviceWebSocket()
+{
+  if (webSocket.isConnected()) {
+    if (wsHoldsTlsSlot) { wsHoldsTlsSlot = false; netTlsGive(); }
+    webSocket.loop();
+    return;
+  }
+
+  if (!wsHoldsTlsSlot) {
+    if (!netTlsTryTake("WS")) return; // another TLS op in flight, or still settling
+    wsHoldsTlsSlot  = true;
+    wsSlotHeldSince = millis();
+  } else if (millis() - wsSlotHeldSince > 15000) {
+    // Long enough — let the NFC task have a turn. The settle window then applies
+    // before we retake the slot, which is what breaks the reconnect storm.
+    wsHoldsTlsSlot = false;
+    netTlsGive();
+    return;
+  }
+
+  webSocket.loop();
+}
 
 //////////////////FORWARD DECLARATIONS///////////////////
 
@@ -1723,6 +1760,7 @@ void setup()
 #endif
 
   initDisplayMutex(); // MUST be called before any display function (thread-safe SPI)
+  netTlsInit();       // MUST be called before the NFC task starts and before WiFi comes up
   i2cBusInit();       // MUST be called before touch.begin() / NFC init (shared I2C bus)
   initDisplay();
   startupScreen();
@@ -1916,7 +1954,7 @@ void setup()
     
     // Step 5: Process WebSocket events and check connection
     if (websocketStarted && !labelsValidationAttempted) {
-      webSocket.loop(); // Process events (this triggers WebSocket event handler and fetchSwitchLabels)
+      serviceWebSocket(); // Process events (this triggers WebSocket event handler and fetchSwitchLabels)
       
       // Only log once when WebSocket connects (not every loop iteration)
       static bool wsConnectLogged = false;
@@ -2785,6 +2823,10 @@ void loop()
         // Production: 60000 ms (60s).
         if (millis() - extensionConfig.nfcPaymentPendingStart > 60000) {
           extensionConfig.nfcPaymentPending = false;
+          // Invalidate the in-flight HTTP request (if the NFC task is still stuck
+          // retrying on a dead connection) so its late result can't reopen NO LUCK
+          // for a tap the user already saw time out.
+          extensionConfig.nfcRequestId++;
           nfcPendingScreenShown = false;
           // Blink LED 3 times to signal failure
           for (int i = 0; i < 3; i++) {
@@ -3139,6 +3181,7 @@ void loop()
               bool wasNfcRingLogin = pinPadState.nfcRingLogin;
               pinPadState.active                = false;
               extensionConfig.nfcPaymentPending = false;
+              extensionConfig.nfcRequestId++; // invalidate any still in-flight HTTP result
               nfcPendingScreenShown             = false;
               needsQRRedraw                     = true;
               productSelectionState.showTime    = millis();
@@ -3934,11 +3977,11 @@ void loop()
           sensorWsDisconnected = false;
           Serial.println("[SENSOR] Sensors cleared — WebSocket reconnecting");
         }
-        webSocket.loop();
+        serviceWebSocket();
       }
     }
     #else
-    webSocket.loop();
+    serviceWebSocket();
     #endif
     loopCount++;
     
@@ -4047,11 +4090,18 @@ void loop()
             if (multiChannelConfig.btcTickerActive) {
               Serial.println("[RECOVERY] Internet restored - fetching Bitcoin data for ticker...");
               HTTPClient http;
+              // Bound the TLS handshake: WiFiClientSecure defaults to 120 s, and
+              // http.begin(url) would inherit that — two of those back to back in
+              // the loop task freeze the UI for four minutes on a flaky router.
+              WiFiClientSecure secureClient;
+              secureClient.setInsecure();
+              secureClient.setHandshakeTimeout(10); // seconds
 
               // Fetch BTC price from mempool.space (same server as block height)
               String currencyUpper = currency;
               currencyUpper.toUpperCase();
-              http.begin("https://mempool.space/api/v1/prices");
+              http.begin(secureClient, "https://mempool.space/api/v1/prices");
+              http.setConnectTimeout(5000);
               http.setTimeout(8000);
               if (http.GET() == 200) {
                 JsonDocument doc;
@@ -4068,7 +4118,8 @@ void loop()
               delay(100);
 
               // Fetch block height
-              http.begin("https://mempool.space/api/blocks/tip/height");
+              http.begin(secureClient, "https://mempool.space/api/blocks/tip/height");
+              http.setConnectTimeout(5000);
               http.setTimeout(8000);
               if (http.GET() == 200) {
                 String val = http.getString();
@@ -4185,6 +4236,16 @@ void loop()
       }
       // Step 2: WebSocket NOT connected - check Server
       else if (!websocketOk) {
+        // Bail out BEFORE the expensive probe when an Internet error (type 2) is
+        // already on screen: both outcomes below return without acting on the
+        // result (server down → priority check further down, server up → the
+        // WebSocket step skips on the same priority rule). checkServerReachability()
+        // blocks up to 10 s and this runs every 5 s, so during an outage it
+        // monopolised the loop task and touch stopped responding entirely.
+        if (onErrorScreen && currentErrorType == 2) {
+          Serial.println("Server check skipped - Internet error has higher priority");
+          return;
+        }
         // WiFi OK but WebSocket not connected - check if Server is reachable
         serverOk = checkServerReachability();
         if (!serverOk) {
@@ -4259,7 +4320,16 @@ void loop()
           deviceState.transition(DeviceState::READY);
         }
         
-        // Try to reconnect WebSocket (up to 3 attempts)
+        // Try to reconnect WebSocket (up to 3 attempts).
+        // Hold the TLS slot across all attempts: this loop fires up to 3 back-to-back
+        // handshakes, and that burst on top of an in-flight NFC POST is exactly what
+        // the router drops (see NetTls.h). Recursive, so a slot already held by
+        // serviceWebSocket() on this task is fine.
+        NetTlsGuard tls("WS-reconnect", 20000);
+        if (!tls.held()) {
+          Serial.println("WebSocket reconnect deferred - TLS slot busy");
+          return;
+        }
         int reconnectAttempts = 0;
         int sslErrorCount = 0; // Count SSL connection errors (detected by error events)
         
@@ -4302,12 +4372,23 @@ void loop()
           // Labels are fetched automatically by WStype_CONNECTED in webSocketEvent()
           // when the WebSocket connects — no second fetch needed here.
 
-          // Redraw QR screen to replace any leftover error screen
-          Serial.println("[RECOVERY] WebSocket recovery complete - redrawing QR screen");
-          redrawQRScreen();
-          productSelectionState.showTime = millis();
-          deviceState.transition(DeviceState::READY);
-          
+          // Don't stomp on an active NFC screen (PENDING / NO LUCK / error detail).
+          // A Bolt Card tap that's currently mid-flow owns the display; forcing the
+          // QR/ticker screen back here raced with the NFC screen's own transitions
+          // and confused touch handling. The NFC flow already sets needsQRRedraw
+          // when it naturally finishes, so the QR screen returns on its own.
+          bool nfcScreenActive = extensionConfig.nfcPaymentPending || nfcPendingScreenShown ||
+                                 nfcNoLuckScreenShown || nfcErrorDetailShown;
+          if (nfcScreenActive) {
+            Serial.println("[RECOVERY] WebSocket recovered - NFC screen active, deferring redraw");
+          } else {
+            // Redraw QR screen to replace any leftover error screen
+            Serial.println("[RECOVERY] WebSocket recovery complete - redrawing QR screen");
+            redrawQRScreen();
+            productSelectionState.showTime = millis();
+            deviceState.transition(DeviceState::READY);
+          }
+
           return;
         }
         else

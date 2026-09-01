@@ -3,6 +3,7 @@
 #include "DeviceState.h"
 #include "Display.h"
 #include "Log.h"
+#include "NetTls.h"
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
@@ -26,7 +27,7 @@ extern ProductSelectState productSelectState;
 #endif
 
 // External constants from main.cpp
-const unsigned long LABEL_UPDATE_INTERVAL = 300000; // 5 minutes
+const unsigned long LABEL_UPDATE_INTERVAL = 900000; // 15 minutes
 
 // Retry backoff for failed label fetches
 static unsigned long lastFetchAttempt = 0;
@@ -49,8 +50,25 @@ static void loadApiPathIfNeeded() {
 
 #if ENABLE_BITCOIN_DATA
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes
-const unsigned long BTC_ERROR_RETRY_INTERVAL = 60000; // 1 minute retry for errors
+const unsigned long BTC_ERROR_RETRY_INTERVAL = 60000; // 1 minute — first retry after an error
+const unsigned long BTC_ERROR_RETRY_MAX = 480000; // 8 minutes — cap while failures persist
 static bool btcDataHasError = false; // Track if last BTC fetch had errors
+static uint8_t btcConsecutiveErrors = 0; // Drives the exponential backoff below (capped at 4)
+
+// Retry interval after N consecutive failures: 1, 2, 4, 8 minutes (then capped).
+//
+// The previous flat 1-minute retry never escalated, so a connection that stayed
+// broken was hit every single minute indefinitely — two TLS connections per
+// attempt (price + block height), which is real load on a struggling link.
+// Escalating only kicks in while failures REPEAT: the first retry still comes
+// after one minute exactly as before, and one successful fetch resets the
+// counter, so a one-off hiccup recovers at full speed.
+static unsigned long btcRetryInterval()
+{
+  if (btcConsecutiveErrors == 0) return BTC_ERROR_RETRY_INTERVAL;
+  unsigned long interval = BTC_ERROR_RETRY_INTERVAL << (btcConsecutiveErrors - 1);
+  return (interval > BTC_ERROR_RETRY_MAX) ? BTC_ERROR_RETRY_MAX : interval;
+}
 
 // External function declarations from main.cpp
 extern void btctickerScreen();
@@ -81,12 +99,29 @@ void fetchSwitchLabels()
   // Update last attempt time to prevent rapid retries
   lastFetchAttempt = millis();
 
+  // One TLS connection at a time (see NetTls.h). Runs under the gate even
+  // though it's called from webSocketEvent() on Core 1 — the NFC task on Core 0
+  // opens its own port-443 connections. The mutex is recursive, so a nested
+  // take from inside webSocket.loop() is fine.
+  NetTlsGuard tls("LABELS", 10000);
+  if (!tls.held()) {
+    Serial.println("[LABELS] Skipping fetch - TLS slot busy");
+    return;
+  }
+
   HTTPClient http;
+  // Bound the TLS handshake — WiFiClientSecure defaults to 120 s and
+  // http.begin(url) inherits it. This runs in the loop task on every WebSocket
+  // connect, so an unbounded handshake freezes the UI (and touch) with it.
+  WiFiClientSecure secureClient;
+  secureClient.setInsecure();           // same trust model as http.begin(url)
+  secureClient.setHandshakeTimeout(10); // seconds
   // Try primary extension path. On 404 or connection error, try the other extension.
   // Detected path is persisted in NVS so restarts go directly to the right path.
   String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath + "/api/v1/public/" + deviceId;
   Serial.println("[LABELS] Fetching switch configurations from: " + url);
-  http.begin(url);
+  http.begin(secureClient, url);
+  http.setConnectTimeout(5000);
   http.setTimeout(4000);
   int httpCode = http.GET();
 
@@ -98,7 +133,8 @@ void fetchSwitchLabels()
     http.end();
     url = "https://" + lnbitsServer + "/" + fallbackPath + "/api/v1/public/" + deviceId;
     Serial.println("[LABELS] Fetching switch configurations from: " + url);
-    http.begin(url);
+    http.begin(secureClient, url);
+    http.setConnectTimeout(5000);
     http.setTimeout(5000);
     httpCode = http.GET();
     if (httpCode == 200) {
@@ -243,6 +279,15 @@ void fetchBitcoinData()
   fetchInProgress = true;
   fetchStartedAt = millis();
 
+  // One TLS connection at a time (see NetTls.h) — the ticker refresh must not
+  // open mempool.space while the NFC task is mid-payment on Core 0.
+  NetTlsGuard tls("BTC", 8000);
+  if (!tls.held()) {
+    Serial.println("[BTC] Skipping fetch - TLS slot busy");
+    fetchInProgress = false;
+    return;
+  }
+
   Serial.println("[BTC] Fetching Bitcoin data...");
 
   // Update last fetch attempt time for backoff
@@ -336,7 +381,12 @@ void fetchBitcoinData()
   // Retry sooner if either request failed; stale display values are preserved
   btcDataHasError = (!priceOk || !blockOk);
   if (btcDataHasError) {
-    Serial.println("[BTC] ERROR detected - will retry in 1 minute instead of 5 minutes");
+    if (btcConsecutiveErrors < 4) btcConsecutiveErrors++; // cap: also bounds the shift
+    Serial.printf("[BTC] ERROR detected (%u in a row) - next retry in %lu s\n",
+                  btcConsecutiveErrors, btcRetryInterval() / 1000);
+  } else if (btcConsecutiveErrors > 0) {
+    btcConsecutiveErrors = 0; // recovered — back to the normal interval immediately
+    Serial.println("[BTC] Fetch recovered - back to normal update interval");
   }
 
   bitcoinData.lastUpdate = millis();
@@ -369,7 +419,7 @@ void updateBitcoinTicker()
   // handshake) — otherwise the "Loading..." placeholders would sit on the
   // ticker for the full 5-minute interval.
   bool noDataYet = (bitcoinData.price == "Loading...");
-  unsigned long updateInterval = (btcDataHasError || noDataYet) ? BTC_ERROR_RETRY_INTERVAL : BTC_UPDATE_INTERVAL;
+  unsigned long updateInterval = (btcDataHasError || noDataYet) ? btcRetryInterval() : BTC_UPDATE_INTERVAL;
 
   // Check if it's time for an update and enforce backoff for failed attempts
   if (currentTime - bitcoinData.lastUpdate >= updateInterval) {
@@ -411,6 +461,13 @@ void updateSwitchLabels()
 {
   // Skip if in error/config/help modes
   if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
+    return;
+  }
+
+  // Never open a second connection to the server while a Bolt Card payment is
+  // in flight — that collision is exactly what leaves the WebSocket half-open
+  // on routers with a small connection-tracking table. The refresh can wait.
+  if (extensionConfig.nfcPaymentPending) {
     return;
   }
 
