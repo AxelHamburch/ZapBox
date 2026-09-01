@@ -215,7 +215,24 @@ static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
             handleDeviceEvent(String((char *)payload));
             break;
         }
-        if (strcmp(doc["event"] | "", "lnurlw_result") != 0) {
+        const char *event = doc["event"] | "";
+        if (strcmp(event, "pin_submit_result") == 0) {
+            // Ack for a PIN sent over the channel (extension v2.6.2+). On OK
+            // the pin_error/paid events drive the UI from here — exactly like
+            // HTTP 200 did. On ERROR show it on the PIN pad, like an HTTP
+            // failure would.
+            if (strcmp(doc["status"] | "", "OK") == 0) {
+                LOG_INFO("PIN", "PIN accepted by server – waiting for WS response");
+            } else {
+                const char *detail = doc["detail"] | "PIN submit failed";
+                pinPadState.errorMsg   = detail;
+                pinPadState.showError  = true;
+                pinPadState.errorStart = millis();
+                LOG_WARN("PIN", String("PIN submit error: ") + detail);
+            }
+            break;
+        }
+        if (strcmp(event, "lnurlw_result") != 0) {
             // JSON, but not a tap reply: pin_required, pin_error, teach events,
             // ... — same processing as if it had arrived on the core WebSocket.
             handleDeviceEvent(String((char *)payload));
@@ -602,6 +619,25 @@ void nfcLnurlwReceived(const String &lnurlw)
 void sendPinSubmit(const String &sessionId, const String &pin)
 {
     LOG_INFO("PIN", "Submitting PIN to server");
+
+    // Preferred transport: the persistent device channel (extension v2.6.2+).
+    // The HTTPS POST below opens a fresh TLS connection, which fails in bad
+    // phases on flaky routers — exactly while the user waits at the PIN pad.
+    // Unlike the Bolt Card tap this runs on Core 1 (the loop task that also
+    // services nfcWebSocket), so sendTXT() may be called directly.
+    if (nfcWebSocket.isConnected()) {
+        JsonDocument doc;
+        doc["event"]      = "pin_submit";
+        doc["session_id"] = sessionId;
+        doc["pin"]        = pin;
+        String payload;
+        serializeJson(doc, payload);
+        if (nfcWebSocket.sendTXT(payload)) {
+            LOG_INFO("PIN", "PIN sent over device channel – waiting for WS response");
+            return;
+        }
+        LOG_WARN("PIN", "Device channel send failed – falling back to HTTPS");
+    }
 
     HTTPClient http;
     WiFiClientSecure secureClient;         // bounded handshake — see nfcLnurlwReceived()
