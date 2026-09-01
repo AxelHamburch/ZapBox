@@ -397,6 +397,32 @@ installer/firmware/
 
 ## Release History
 
+### v965053 / v965053h / v965053t — 2026-09-01
+
+```markdown
+## 🎯 Release v965053 / v965053h / v965053t — Persistent NFC Device Channel & Router Stability
+
+### 🌐 Network Stability (Standard + Headless + Touch 3.5")
+- **Persistent device WebSocket channel** for Bolt Card taps and PIN entry: payments no longer open a fresh TLS connection per tap. Fixes NFC failures on routers that intermittently drop NEW TLS connections while established connections keep working.
+- **Single-connection mode:** on routers that cannot hold two persistent connections to the same host, the device now runs exactly one — the core WebSocket and the device channel take over from each other automatically depending on which is alive.
+- Fixed TLS handshake timeouts silently defaulting to 120s (now bounded to 10s everywhere) — could hang the WebSocket and freeze touch input for up to two minutes.
+- Exponential backoff (1/2/4/8 min) for BTC ticker fetch errors, reset on the first successful fetch — was retrying every 60s indefinitely.
+- Fixed a priority bug where a stale Server-error screen could overwrite an active Internet-error screen.
+- Requires **zapbox_extension v2.6.2+** for the persistent device channel and PIN-over-channel (older extensions still work via the existing HTTPS fallback — do not mix the 2.6.0/2.6.1 intermediates with this firmware).
+
+### 🖥️ Touch 3.5" I/O Expander Support (v965053t)
+- **New MCP23017 expander** (I2C 0x22): 16 additional relay channels CH400–CH415.
+- **New PCF8575 expander:** 16 channels with selectable relay trigger level (active-LOW / active-HIGH).
+- Detected I2C modules now listed in the ready banner.
+- Fixed dropped payments for the numeric product QR after the screen returned to idle (BTC ticker) before settlement arrived.
+- Fixed: LNbits' manual GPIO test-trigger feature now fires even when no product QR is currently shown (previously silently dropped).
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 965053
+- Headless rebuilt for the first time since v959791h — shares the network stability fixes
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v959791 / v959791h / v959791t — 2026-07-27
 
 ```markdown
