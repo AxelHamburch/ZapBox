@@ -191,6 +191,13 @@ static void serviceWebSocket()
     return;
   }
 
+  // Single-connection mode: the device channel carries all events and the
+  // core WebSocket is deliberately down — do not resurrect it here.
+  if (deviceChannelActive) {
+    if (wsHoldsTlsSlot) { wsHoldsTlsSlot = false; netTlsGive(); }
+    return;
+  }
+
   if (!wsHoldsTlsSlot) {
     if (!netTlsTryTake("WS")) return; // another TLS op in flight, or still settling
     wsHoldsTlsSlot  = true;
@@ -4052,6 +4059,14 @@ void loop()
       } else if (nfcConfig.nfcSessionActive) {
         // Defer: NFC is exchanging APDUs — HTTP activity on Core 0 disrupts I2C timing
         Serial.println("[INTERNET] Deferred - NFC session active");
+      } else if (deviceChannelActive) {
+        // Single-connection mode: the device channel's heartbeat (protocol
+        // pings every 20 s, pong required) proves end-to-end connectivity —
+        // if it were dead, the library would have dropped it and cleared the
+        // flag. No blocking HTTP check needed.
+        Serial.println("[INTERNET] Skipping check - device channel active");
+        lastInternetCheck = millis();
+        networkStatus.confirmed.internet = true;
       } else if (webSocket.isConnected() &&
                  ((networkStatus.lastServerPingTime > 0 && millis() - networkStatus.lastServerPingTime < 45000) ||
                   (networkStatus.wsConnectedTime    > 0 && millis() - networkStatus.wsConnectedTime    < 60000))) {
@@ -4219,10 +4234,13 @@ void loop()
     if (millis() - lastWiFiCheck > 5000)
     {
       lastWiFiCheck = millis(); // Reset at entry so all return paths are rate-limited
-      // Check connection status step by step
+      // Check connection status step by step.
+      // Single-connection mode: while the device channel is up it carries all
+      // events and the core WebSocket is deliberately down — treat that as OK
+      // so no server probes, reconnects, or error screens fire against it.
       bool wifiOk = (WiFi.status() == WL_CONNECTED);
       bool serverOk = true;
-      bool websocketOk = webSocket.isConnected();
+      bool websocketOk = webSocket.isConnected() || deviceChannelActive;
       
       // Step 1: WiFi check (HIGHEST PRIORITY - check immediately)
       if (!wifiOk) {

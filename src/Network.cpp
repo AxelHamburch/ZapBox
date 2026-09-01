@@ -27,6 +27,33 @@ extern void fetchBitcoinData();
 extern void fetchSwitchLabels();
 extern bool labelsLoadedSuccessfully;
 
+// True while the persistent device channel (serviceNfcWebSocket) is connected.
+// The device then runs exactly ONE long-lived connection: NAT-challenged
+// routers were observed to be unable to hold two persistent connections to the
+// same host:443 — the entries clobber each other and BOTH flap (~60 s cycle).
+// While active, the core WebSocket stays deliberately disconnected and the
+// watchdog/reconnect/error machinery in main.cpp stands down.
+volatile bool deviceChannelActive = false;
+
+// Server → device event processing, shared by the core WebSocket and the
+// device channel: relay triggers ("6-500") and JSON events (pin_required,
+// pin_error, teach_ended, ...) are enqueued for the main loop; nfc_enrolled is
+// a teach confirmation and must not trigger a relay.
+static void handleDeviceEvent(const String &text)
+{
+  payloadStr = text;
+  if (payloadStr.indexOf("\"nfc_enrolled\"") >= 0) {
+    LOG_INFO("WebSocket", "nfc_enrolled event — card enrolled, no relay");
+    if (authyConfig.enabled) {
+      authyState.infoMsg   = "Card enrolled";
+      authyState.infoUntil = millis() + 2000;
+    }
+    return;
+  }
+  paymentQueue.enqueue(payloadStr);
+  LOG_INFO("WebSocket", String("Payment enqueued. Queue size: ") + String(paymentQueue.size()));
+}
+
 // WebSocket event handler
 void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
@@ -77,21 +104,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     break;
     case WStype_TEXT:
       LOG_DEBUG("WebSocket", String("Received: ") + String((char*)payload));
-      payloadStr = (char *)payload;
-      LOG_DEBUG("WebSocket", String("PayloadStr set to: ") + payloadStr);
-
-      // nfc_enrolled is a teach confirmation — do not trigger any relay.
-      if (payloadStr.indexOf("\"nfc_enrolled\"") >= 0) {
-        LOG_INFO("WebSocket", "nfc_enrolled event — card enrolled, no relay");
-        if (authyConfig.enabled) {
-          authyState.infoMsg   = "Card enrolled";
-          authyState.infoUntil = millis() + 2000;
-        }
-        break;
-      }
-
-      paymentQueue.enqueue(payloadStr);
-      LOG_INFO("WebSocket", String("Payment enqueued. Queue size: ") + String(paymentQueue.size()));
+      handleDeviceEvent(String((char *)payload));
       break;
     case WStype_PING:
       LOG_INFO("WebSocket", "Ping received from server");
@@ -150,19 +163,44 @@ static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
     switch (type) {
     case WStype_CONNECTED:
-        LOG_INFO("NFC-WS", "Device channel connected – taps use the persistent channel");
+        LOG_INFO("NFC-WS", "Device channel connected – single-connection mode");
         nfcWsFailedPhases   = 0; // endpoint exists — connect retries at full speed again
         nfcWsNextAttemptDue = 0;
+        // Single-connection mode: the extension (v2.6.1+) now routes ALL events
+        // over this channel, so drop the core WebSocket deliberately — two
+        // persistent connections to the same host make NAT-challenged routers
+        // flap both. main.cpp stands down its watchdog/reconnect machinery
+        // while deviceChannelActive is set. If the channel dies, the flag
+        // clears and the core WebSocket takes over again automatically.
+        deviceChannelActive = true;
+        networkStatus.confirmed.websocket = true;
+        if (webSocket.isConnected()) {
+            LOG_INFO("NFC-WS", "Releasing core WebSocket — device channel carries all events");
+            webSocket.disconnect();
+        }
         break;
     case WStype_DISCONNECTED:
+        if (deviceChannelActive) {
+            LOG_WARN("NFC-WS", "Device channel lost — core WebSocket takes over");
+        }
+        deviceChannelActive = false;
         // Drop a queued-but-unsent tap: after a reconnect it would arrive
         // seconds late and its request_id would be rejected as stale anyway.
         nfcWsOutboxPending = false;
         break;
     case WStype_TEXT: {
         JsonDocument doc;
-        if (deserializeJson(doc, payload, length)) break;
-        if (strcmp(doc["event"] | "", "lnurlw_result") != 0) break;
+        if (deserializeJson(doc, payload, length)) {
+            // Not JSON — plain relay trigger ("6-500") pushed over the channel
+            handleDeviceEvent(String((char *)payload));
+            break;
+        }
+        if (strcmp(doc["event"] | "", "lnurlw_result") != 0) {
+            // JSON, but not a tap reply: pin_required, pin_error, teach events,
+            // ... — same processing as if it had arrived on the core WebSocket.
+            handleDeviceEvent(String((char *)payload));
+            break;
+        }
         uint32_t reqId = (uint32_t) String(doc["request_id"] | "").toInt();
         if (reqId != extensionConfig.nfcRequestId) {
             LOG_WARN("NFC-WS", "Stale lnurlw_result ignored");

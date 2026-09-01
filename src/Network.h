@@ -7,6 +7,11 @@
 // WebSocket event handler
 void webSocketEvent(WStype_t type, uint8_t *payload, size_t length);
 
+// True while the persistent device channel is connected (single-connection
+// mode): the core WebSocket is then deliberately down and main.cpp must not
+// watchdog/reconnect it. See Network.cpp for the rationale.
+extern volatile bool deviceChannelActive;
+
 // Network connectivity checks
 bool checkInternetConnectivity();
 bool checkServerReachability();
