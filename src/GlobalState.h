@@ -387,8 +387,9 @@ extern T35AmbientConfig t35AmbientConfig;
 struct ExtensionConfig {
   // API path base: "bitcoinswitch" (classic) or "zapbox" (zapbox_extension)
   // Controls which LNbits extension the device communicates with.
-  // Set to "zapbox" when zapbox_extension is installed on the server.
-  String apiPath = "bitcoinswitch";
+  // zapbox_extension is the current extension; bitcoinswitch is legacy and
+  // only tried as a fallback when zapbox doesn't respond (see fetchSwitchLabels()).
+  String apiPath = "zapbox";
   // NFC state – written by the NFC task (Core 0), read by loop() (Core 1).
   // Must be volatile to prevent the compiler from caching stale values in registers.
   volatile bool nfcPaymentPending = false;           // True while waiting for LNURLW invoice settlement
