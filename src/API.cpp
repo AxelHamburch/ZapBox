@@ -8,6 +8,7 @@
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include <freertos/task.h>
 
 // External references to main.cpp
 extern StateManager deviceState;
@@ -25,9 +26,6 @@ extern ExtensionConfig extensionConfig;
 extern T35AmbientConfig t35AmbientConfig;
 extern ProductSelectState productSelectState;
 #endif
-
-// External constants from main.cpp
-const unsigned long LABEL_UPDATE_INTERVAL = 900000; // 15 minutes
 
 // Retry backoff for failed label fetches
 static unsigned long lastFetchAttempt = 0;
@@ -96,6 +94,20 @@ void fetchSwitchLabels()
     return;
   }
 
+  // Concurrency guard: this runs synchronously (startup / WebSocket connect)
+  // AND from the async retry task launched by updateSwitchLabels() once the
+  // device is up and running. Two overlapping fetches would waste TLS heap
+  // and could race on the shared label/state writes below.
+  static volatile bool fetchInProgress = false;
+  static volatile unsigned long fetchStartedAt = 0;
+  if (fetchInProgress && (millis() - fetchStartedAt) < 15000) {
+    Serial.println("[LABELS] Skipping fetch - previous fetch still in progress");
+    lastFetchAttempt = millis(); // arm backoff so the caller doesn't spin
+    return;
+  }
+  fetchInProgress = true;
+  fetchStartedAt = millis();
+
   // Update last attempt time to prevent rapid retries
   lastFetchAttempt = millis();
 
@@ -106,6 +118,7 @@ void fetchSwitchLabels()
   NetTlsGuard tls("LABELS", 10000);
   if (!tls.held()) {
     Serial.println("[LABELS] Skipping fetch - TLS slot busy");
+    fetchInProgress = false;
     return;
   }
 
@@ -244,8 +257,9 @@ void fetchSwitchLabels()
       labelsLoadedSuccessfully = false;
     }
   }
-  
+
   http.end();
+  fetchInProgress = false;
 }
 
 #if ENABLE_BITCOIN_DATA
@@ -471,22 +485,31 @@ void updateSwitchLabels()
     return;
   }
 
-  unsigned long currentTime = millis();
-
-  // Check if labels failed to load initially or if it's time for periodic update
-  if (!labelsLoadedSuccessfully || (currentTime - productLabels.lastUpdate >= LABEL_UPDATE_INTERVAL)) {
-    // Enforce backoff delay between retry attempts to prevent SSL memory exhaustion
-    if ((currentTime - lastFetchAttempt) < RETRY_BACKOFF) {
-      return; // Too soon - skip this attempt
-    }
-    
-    if (!labelsLoadedSuccessfully) {
-      Serial.println("[LABELS] Labels not loaded successfully, retrying...");
-    } else {
-      Serial.println("[LABELS] Periodic update interval reached, fetching labels...");
-    }
-    fetchSwitchLabels();
+  // Labels are fetched once at startup (via the WebSocket-connect / retry
+  // state machine in main.cpp). The switch configuration isn't expected to
+  // change while the device keeps running, so there is no periodic re-fetch
+  // here anymore — only a retry (with backoff) while it never succeeded.
+  if (labelsLoadedSuccessfully) {
+    return;
   }
+
+  unsigned long currentTime = millis();
+  // Enforce backoff delay between retry attempts to prevent SSL memory exhaustion
+  if ((currentTime - lastFetchAttempt) < RETRY_BACKOFF) {
+    return; // Too soon - skip this attempt
+  }
+
+  Serial.println("[LABELS] Labels not loaded successfully, retrying (async)...");
+  // Arm the backoff immediately so a slow task start can't cause this to be
+  // re-launched on the next loop tick before fetchSwitchLabels() itself runs.
+  lastFetchAttempt = currentTime;
+  xTaskCreatePinnedToCore(
+    [](void*) {
+      fetchSwitchLabels();
+      vTaskDelete(nullptr);
+    },
+    "label_retry", 8192, nullptr, 1, nullptr, 1 /* Core 1 */
+  );
 }
 
 // ============================================================================
