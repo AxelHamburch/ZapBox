@@ -32,7 +32,7 @@ Complete wiring diagrams — start here when building a ZapBox.
 | **Touch 3.5" — FOUR** | [E-Layout-ZapBox-Touch3.5-FOUR.webp](../assets/electric/E-Layout-ZapBox-Touch3.5-FOUR.webp) |
 | **Touch 3.5" — SIX+** | [E-Layout-ZapBox-Touch3.5-SIX+.webp](../assets/electric/E-Layout-ZapBox-Touch3.5-SIX+.webp) |
 | **Headless** | [E-Layout-ZapBox-Headless.png](../assets/electric/E-Layout-ZapBox-Headless.png) |
-| **Headless S** | [E-Layout-ZapBox-Headless-S.webp](../assets/electric/E-Layout-ZapBox-Headless-S.webp) |
+| **Headless (S)Simple** | [E-Layout-ZapBox-Headless-S.webp](../assets/electric/E-Layout-ZapBox-Headless-S.webp) |
 | **Headless Servo** | [E-Layout-ZapBox-Headless-Servo.png](../assets/electric/E-Layout-ZapBox-Headless-Servo.png) |
 | **ESP32-C3-21-1** | [E-Layout-ZapBox-esp32-c3-21-1.png](../assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png) |
 
