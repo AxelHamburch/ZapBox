@@ -32,6 +32,7 @@ Complete wiring diagrams — start here when building a ZapBox.
 | **Touch 3.5" — FOUR** | [E-Layout-ZapBox-Touch3.5-FOUR.webp](../assets/electric/E-Layout-ZapBox-Touch3.5-FOUR.webp) |
 | **Touch 3.5" — SIX+** | [E-Layout-ZapBox-Touch3.5-SIX+.webp](../assets/electric/E-Layout-ZapBox-Touch3.5-SIX+.webp) |
 | **Headless** | [E-Layout-ZapBox-Headless.png](../assets/electric/E-Layout-ZapBox-Headless.png) |
+| **Headless S** | [E-Layout-ZapBox-Headless-S.webp](../assets/electric/E-Layout-ZapBox-Headless-S.webp) |
 | **Headless Servo** | [E-Layout-ZapBox-Headless-Servo.png](../assets/electric/E-Layout-ZapBox-Headless-Servo.png) |
 | **ESP32-C3-21-1** | [E-Layout-ZapBox-esp32-c3-21-1.png](../assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png) |
 
@@ -72,6 +73,7 @@ Complete wiring diagrams — start here when building a ZapBox.
 | e957575 | Touch3.5-ONE | ZapBox Touch 3.5 with 1 channel |
 | e958085 | Touch3.5-SIX+ | ZapBox Touch 3.5 with 6 channel & expansion options |
 | e959848 | Simple | As simple as possible |
+| e965965 | Headless S | First Headless (S)imple |
 
 → All versions: [assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
@@ -113,6 +115,7 @@ Designed in **FreeCAD**, exported as `.3mf` for printing.
 | b957183 | Touch3.5-ONE | ZapBox Touch 3.5 with 1 channel — incl. battery holder |
 | b958015 | Touch3.5-SIX+ | ZapBox Touch 3.5 with 6 channel & expansion options |
 | b959898 | Simple | As simple as possible |
+| b965887 | Headless S | First Headless (S)imple |
 
 → All versions: [assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
