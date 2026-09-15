@@ -397,6 +397,24 @@ installer/firmware/
 
 ## Release History
 
+### v967164 / v967164h / v967164t — 2026-09-15
+
+```markdown
+## 🎯 Release v967164 / v967164h / v967164t — API Freeze Fix, zapbox-First Fallback & Ticker Ghosting
+
+### 🐛 Bug Fixes (Standard + Headless + Touch 3.5")
+- **Fixed touch/display/NFC freezing for up to ~18s**: the periodic switch-label re-fetch (every 15 min) ran synchronously in the main loop with no timeout guard on the fallback path. It no longer re-fetches on a timer once labels have loaded successfully once, and the retry-until-success path now runs as an async background task instead of blocking the main loop.
+- **Fixed a fresh device trying the wrong extension first**: the default API path was the legacy `bitcoinswitch` extension, so a device without a saved path queried it before falling back to `zapbox_extension`. Flipped the default so `zapbox_extension` is tried first, with `bitcoinswitch` as fallback.
+
+### 🖥️ Standard (T-Display-S3) only
+- Fixed BTC-ticker text ghosting on first boot in single/ALWAYS ticker mode: the "Loading..." placeholder could survive under the freshly drawn value in the horizontal layout because the clear rect didn't cover the full text band. Now clears the full band and repaints the Bitcoin logo on every ticker update.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 967164
+- Headless and Touch 3.5" rebuilt to carry the API freeze fix and zapbox-first fallback (no variant-specific changes)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v965053 / v965053h / v965053t — 2026-09-01
 
 ```markdown
