@@ -409,9 +409,14 @@ installer/firmware/
 ### 🖥️ Standard (T-Display-S3) only
 - Fixed BTC-ticker text ghosting on first boot in single/ALWAYS ticker mode: the "Loading..." placeholder could survive under the freshly drawn value in the horizontal layout because the clear rect didn't cover the full text band. Now clears the full band and repaints the Bitcoin logo on every ticker update.
 
+### 🔩 Hardware & E-Layout
+- **New "Headless (S)imple" enclosure** (`b965887-Headless-S`): a minimal 3D-printable case for the headless variant, incl. lid, fixative and panel parts
+- **New E-Layout `e965965-Headless-S`**: wiring diagram for the Headless (S)imple build
+- `docs/hardware-assets.md` updated with the new housing/E-Layout entries
+
 ### 🛠️ Technical Details
 - Updated to Bitcoin block height 967164
-- Headless and Touch 3.5" rebuilt to carry the API freeze fix and zapbox-first fallback (no variant-specific changes)
+- Headless and Touch 3.5" rebuilt to carry the API freeze fix and zapbox-first fallback (no variant-specific firmware changes)
 - ESP32-C3-21-1 not rebuilt — release on request only
 ```
 
