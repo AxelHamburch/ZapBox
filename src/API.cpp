@@ -441,29 +441,44 @@ void updateBitcoinTicker()
     if ((currentTime - lastFetchAttempt) < RETRY_BACKOFF) {
       return; // Too soon - skip this attempt
     }
-    
-    Serial.println("[BTC] Update interval reached, fetching new data...");
-    unsigned long lastUpdateBefore = bitcoinData.lastUpdate;
-    fetchBitcoinData();
 
-    // Refresh the display ONLY if the fetch actually completed (it may have
-    // been skipped while another fetch is in progress) AND we're STILL on the
-    // ticker screen. Partial update to reduce flicker.
-    if (bitcoinData.lastUpdate != lastUpdateBefore &&
-        !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP)) {
-      if (multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
-        updateBtctickerValues(); // Partial update instead of btctickerScreen()
-        Serial.println("[BTC] Values updated (partial refresh - reduced flicker)");
-      }
+    Serial.println("[BTC] Update interval reached, fetching new data...");
+    // Arm the backoff immediately so a slow task start can't cause this to be
+    // re-launched on the next loop tick before the task itself runs (same
+    // pattern as updateSwitchLabels() below).
+    lastFetchAttempt = currentTime;
+
+    // Runs in its own task so loop() (and touch handling) keeps running —
+    // fetchBitcoinData() makes two blocking HTTPS calls that otherwise froze
+    // touch reactions for several seconds on every periodic refresh (the
+    // initial boot fetch was already moved off loop() for the same reason).
+    xTaskCreatePinnedToCore(
+      [](void*) {
+        unsigned long lastUpdateBefore = bitcoinData.lastUpdate;
+        fetchBitcoinData();
+
+        // Refresh the display ONLY if the fetch actually completed (it may have
+        // been skipped while another fetch is in progress) AND we're STILL on the
+        // ticker screen. Partial update to reduce flicker.
+        if (bitcoinData.lastUpdate != lastUpdateBefore &&
+            !deviceState.isInState(DeviceState::SCREENSAVER) && !deviceState.isInState(DeviceState::DEEP_SLEEP)) {
+          if (multiChannelConfig.btcTickerActive && !deviceState.isInState(DeviceState::PRODUCT_SELECTION)) {
+            updateBtctickerValues(); // Partial update instead of btctickerScreen()
+            Serial.println("[BTC] Values updated (partial refresh - reduced flicker)");
+          }
 #ifdef BOARD_JC3248W535C
-      if (t35AmbientConfig.numericSelect &&
-          deviceState.isInState(DeviceState::PRODUCT_SELECTION) &&
-          !productSelectState.panelActive && !productSelectState.qrActive) {
-        updateProductSelectBlockHeight();
-        Serial.println("[BTC] Block height updated on product selection screen");
-      }
+          if (t35AmbientConfig.numericSelect &&
+              deviceState.isInState(DeviceState::PRODUCT_SELECTION) &&
+              !productSelectState.panelActive && !productSelectState.qrActive) {
+            updateProductSelectBlockHeight();
+            Serial.println("[BTC] Block height updated on product selection screen");
+          }
 #endif
-    }
+        }
+        vTaskDelete(nullptr);
+      },
+      "btc_periodic", 8192, nullptr, 1, nullptr, 1 /* Core 1 */
+    );
   }
 }
 #endif // ENABLE_BITCOIN_DATA
