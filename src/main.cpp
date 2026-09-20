@@ -5172,6 +5172,7 @@ static void runExpanderPayment(int ch, int duration, ExpanderKind kind)
   nfcNoLuckScreenShown  = false;
   nfcErrorDetailShown   = false;
   nfcNotSupportedShown  = false;
+  pinPadState           = PinPadState();  // reset PIN pad so touch nav works again
   #endif
   // Numeric selection (Touch 3.5): payment settled — clear the product QR
   // state so redrawQRScreen() returns to the main product-selection screen,
