@@ -757,12 +757,12 @@ static void blankScreen() {
 // updateBtctickerValues redraws only the 3 value rows to avoid logo flicker.
 
 static const int BTC_H_TXT_CX  = 330;
-static const int BTC_H_LBL1_Y  =  80;
-static const int BTC_H_VAL1_Y  = 106;
-static const int BTC_H_LBL2_Y  = 144;
-static const int BTC_H_VAL2_Y  = 172;
-static const int BTC_H_LBL3_Y  = 208;
-static const int BTC_H_VAL3_Y  = 236;
+static const int BTC_H_LBL1_Y  = 100;
+static const int BTC_H_VAL1_Y  = 126;
+static const int BTC_H_LBL2_Y  = 164;
+static const int BTC_H_VAL2_Y  = 192;
+static const int BTC_H_LBL3_Y  = 228;
+static const int BTC_H_VAL3_Y  = 256;
 static const int BTC_H_VAL_H   =  24;   // height of size-3 text (8×3)
 static const int BTC_H_VAL_X   = 222;   // clear from just past the logo (erases "Loading..." remnant)
 static const int BTC_H_VAL_W   = 258;   // width of value clear area (222 to 480)
@@ -785,9 +785,9 @@ static String calcSatsPerCurrency() {
 //   y=313  value  sats           size 4   ← updated
 //   y=351  label  "Block"        size 2
 //   y=386  value  block height   size 4   ← updated
-static const int BTC_V_VAL1_Y = 240;
-static const int BTC_V_VAL2_Y = 313;
-static const int BTC_V_VAL3_Y = 386;
+static const int BTC_V_VAL1_Y = 260;
+static const int BTC_V_VAL2_Y = 333;
+static const int BTC_V_VAL3_Y = 406;
 static const int BTC_V_VAL_H  =  32;  // height of size-4 text (8×4)
 
 static void btcDrawValues_portrait() {
@@ -846,16 +846,24 @@ static void drawBoltIcon(int x, int y, uint16_t color) {
   }
 }
 
-// Touch hint icon (pointing hand with three click rays), 40×44 box at (x,y).
+// Touch hint icon (pointing hand with three click rays), 48x60 box at (x,y).
 // Outline style: foreground outline, background interior.
 static void drawTouchIcon(int x, int y, uint16_t fg, uint16_t bg) {
-  fillRoundRect(x + 8,  y + 26, 28, 18, 8, fg);   // palm
-  fillRoundRect(x + 14, y + 10, 10, 26, 5, fg);   // index finger
-  fillRoundRect(x + 10, y + 28, 24, 14, 6, bg);   // palm interior
-  fillRoundRect(x + 16, y + 12,  6, 24, 3, bg);   // finger interior
-  drawThickLine(x + 10, y +  3, x + 14, y +  7, 2, fg);  // ray up-left
-  drawThickLine(x + 19, y +  0, x + 19, y +  5, 2, fg);  // ray up
-  drawThickLine(x + 28, y +  3, x + 24, y +  7, 2, fg);  // ray up-right
+  // outer silhouette
+  fillRoundRect(x + 18, y + 14, 12, 36, 6, fg);   // index finger
+  fillRoundRect(x + 14, y + 36, 32, 24, 10, fg);  // palm + curled fingers
+  fillRoundRect(x +  4, y + 40, 18, 12, 6, fg);   // thumb
+  // interior
+  fillRoundRect(x + 20, y + 16,  8, 34, 4, bg);
+  fillRoundRect(x + 16, y + 38, 28, 20, 8, bg);
+  fillRoundRect(x +  6, y + 42, 18,  8, 4, bg);
+  // curled-finger separators
+  fillRect(x + 32, y + 36, 2, 9, fg);
+  fillRect(x + 38, y + 37, 2, 8, fg);
+  // click rays around the fingertip
+  drawThickLine(x + 24, y +  0, x + 24, y +  7, 3, fg);
+  drawThickLine(x + 11, y +  4, x + 16, y +  9, 3, fg);
+  drawThickLine(x + 37, y +  4, x + 32, y +  9, 3, fg);
 }
 
 // "Zap⚡Box" title (size 4) centred at cx, with the touch icon to its right.
@@ -867,7 +875,7 @@ static void drawBtcHeader(int cx, int cy) {
   drawString(x, cy - 4 * size, "Zap", themeForeground, themeBackground, size, true);
   drawBoltIcon(x + tw + gap, cy - 12, themeForeground);
   drawString(x + tw + gap + bw + gap, cy - 4 * size, "Box", themeForeground, themeBackground, size, true);
-  drawTouchIcon(cx + (2 * tw + bw + 2 * gap) / 2 + 16, cy - 22, themeForeground, themeBackground);
+  drawTouchIcon(cx + (2 * tw + bw + 2 * gap) / 2 + 16, cy - 30, themeForeground, themeBackground);
 }
 
 void btctickerScreen() {
@@ -876,15 +884,15 @@ void btctickerScreen() {
   fillScreen(themeBackground);
   if (isPortrait()) {
     drawBtcHeader(PANEL_W / 2 - 20, 40);
-    drawMonoBitmapScaled((PANEL_W - 96) / 2, 78, bitcoin_logo, 96, 96, themeForeground, 1);
+    drawMonoBitmapScaled((PANEL_W - 96) / 2, 98, bitcoin_logo, 96, 96, themeForeground, 1);
     int cx = PANEL_W / 2;
-    drawCenter(cx, 205, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
-    drawCenter(cx, 278, ("SAT/" + currency).c_str(), themeForeground, themeBackground, 2);
-    drawCenter(cx, 351, "Block",                      themeForeground, themeBackground, 2);
+    drawCenter(cx, 225, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
+    drawCenter(cx, 298, ("SAT/" + currency).c_str(), themeForeground, themeBackground, 2);
+    drawCenter(cx, 371, "Block",                      themeForeground, themeBackground, 2);
     btcDrawValues_portrait();
   } else {
     drawBtcHeader(140, 46);
-    drawMonoBitmapScaled(100, (SCR_H - 120) / 2, bitcoin_logo_h, 120, 120, themeForeground, 1);
+    drawMonoBitmapScaled(100, (SCR_H - 120) / 2 + 20, bitcoin_logo_h, 120, 120, themeForeground, 1);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL1_Y, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL2_Y, ("SAT/" + currency).c_str(), themeForeground, themeBackground, 2);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL3_Y, "Block",                      themeForeground, themeBackground, 2);
