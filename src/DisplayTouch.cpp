@@ -829,16 +829,17 @@ static void drawThickLine(int x0, int y0, int x1, int y1, int t, uint16_t color)
   }
 }
 
-// Lightning bolt, 14×24 box at (x,y), filled polygon (even-odd test per pixel).
+// Lightning bolt, 21×36 box at (x,y) (polygon scaled 1.5×), even-odd test per pixel.
 static void drawBoltIcon(int x, int y, uint16_t color) {
   static const int8_t vx[6] = { 9, 0, 6, 3, 14, 8 };
   static const int8_t vy[6] = { 0, 13, 13, 24, 9, 9 };
-  for (int j = 0; j < 24; j++) {
-    for (int i = 0; i < 14; i++) {
+  for (int j = 0; j < 36; j++) {
+    for (int i = 0; i < 21; i++) {
       bool in = false;
+      const float px = (i + 0.5f) / 1.5f, py = (j + 0.5f) / 1.5f;
       for (int a = 0, b = 5; a < 6; b = a++) {
-        if ((vy[a] > j) != (vy[b] > j) &&
-            (i + 0.5f) < (float)(vx[b] - vx[a]) * (j + 0.5f - vy[a]) / (vy[b] - vy[a]) + vx[a])
+        if ((vy[a] > py) != (vy[b] > py) &&
+            px < (float)(vx[b] - vx[a]) * (py - vy[a]) / (vy[b] - vy[a]) + vx[a])
           in = !in;
       }
       if (in) putPixel(x + i, y + j, color);
@@ -901,10 +902,10 @@ static void drawTouchIcon(int x, int y, uint16_t fg) {
 // The font is ASCII-only, so the bolt is drawn as a polygon.
 static void drawBtcHeader(int cx, int cy) {
   const int size = 4;
-  const int tw = 3 * 6 * size, bw = 14, gap = 9;
+  const int tw = 3 * 6 * size, bw = 21, gap = 9;
   int x = cx - (2 * tw + bw + 2 * gap) / 2;
   drawString(x, cy - 4 * size, "Zap", themeForeground, themeBackground, size, true);
-  drawBoltIcon(x + tw + gap, cy - 12, themeForeground);
+  drawBoltIcon(x + tw + gap, cy - 20, themeForeground);
   drawString(x + tw + gap + bw + gap, cy - 4 * size, "Box", themeForeground, themeBackground, size, true);
   drawTouchIcon(cx + (2 * tw + bw + 2 * gap) / 2 + 16, cy - 32, themeForeground);
 }
