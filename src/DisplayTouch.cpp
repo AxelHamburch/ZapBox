@@ -902,12 +902,12 @@ static void drawTouchIcon(int x, int y, uint16_t fg) {
 // The font is ASCII-only, so the bolt is drawn as a polygon.
 static void drawBtcHeader(int cx, int cy) {
   const int size = 4;
-  const int tw = 3 * 6 * size, bw = 21, gap = 9;
-  int x = cx - (2 * tw + bw + 2 * gap) / 2;
+  const int tw = 3 * 6 * size, bw = 21, gapL = 5, gapR = 9;
+  int x = cx - (2 * tw + bw + gapL + gapR) / 2;
   drawString(x, cy - 4 * size, "Zap", themeForeground, themeBackground, size, true);
-  drawBoltIcon(x + tw + gap, cy - 20, themeForeground);
-  drawString(x + tw + gap + bw + gap, cy - 4 * size, "Box", themeForeground, themeBackground, size, true);
-  drawTouchIcon(cx + (2 * tw + bw + 2 * gap) / 2 + 16, cy - 32, themeForeground);
+  drawBoltIcon(x + tw + gapL, cy - 20, themeForeground);
+  drawString(x + tw + gapL + bw + gapR, cy - 4 * size, "Box", themeForeground, themeBackground, size, true);
+  drawTouchIcon(cx + (2 * tw + bw + gapL + gapR) / 2 + 16, cy - 32, themeForeground);
 }
 
 void btctickerScreen() {
