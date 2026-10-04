@@ -851,7 +851,48 @@ bool checkInternetConnectivity()
   }
 
   LOG_INFO("Network", "Internet check: FAILED (all URLs tried)");
+  logNetworkDiagnostics("Internet check failed");
   return false;
+}
+
+// ─── Diagnostics ─────────────────────────────────────────────────────────────
+
+void logBootDiagnostics() {
+  esp_reset_reason_t r = esp_reset_reason();
+  const char *name = "unknown";
+  switch (r) {
+    case ESP_RST_POWERON:   name = "power-on";                       break;
+    case ESP_RST_EXT:       name = "external pin";                   break;
+    case ESP_RST_SW:        name = "software restart";               break;
+    case ESP_RST_PANIC:     name = "PANIC (crash / exception)";      break;
+    case ESP_RST_INT_WDT:   name = "interrupt watchdog";             break;
+    case ESP_RST_TASK_WDT:  name = "task watchdog";                  break;
+    case ESP_RST_WDT:       name = "other watchdog";                 break;
+    case ESP_RST_DEEPSLEEP: name = "deep-sleep wake";                break;
+    case ESP_RST_BROWNOUT:  name = "BROWNOUT (supply voltage dip)";  break;
+    default: break;
+  }
+  String msg = String("Reset reason: ") + name + " (" + String((int)r) + ")";
+  if (r == ESP_RST_BROWNOUT || r == ESP_RST_PANIC || r == ESP_RST_INT_WDT ||
+      r == ESP_RST_TASK_WDT || r == ESP_RST_WDT) {
+    LOG_ERROR("Boot", msg + " – check power supply / wiring if this repeats");
+  } else {
+    LOG_INFO("Boot", msg);
+  }
+}
+
+void logNetworkDiagnostics(const char *why) {
+  String s = String(why) + ": ";
+  if (WiFi.status() == WL_CONNECTED) {
+    s += "RSSI=" + String(WiFi.RSSI()) + " dBm, ch=" + String(WiFi.channel()) +
+         ", IP=" + WiFi.localIP().toString() +
+         ", GW=" + WiFi.gatewayIP().toString() +
+         ", DNS=" + WiFi.dnsIP().toString();
+  } else {
+    s += "WiFi NOT connected (status " + String((int)WiFi.status()) + ")";
+  }
+  s += ", heap=" + String(ESP.getFreeHeap()) + " (min " + String(ESP.getMinFreeHeap()) + ")";
+  LOG_INFO("Net", s);
 }
 
 // TCP-based Server reachability check (test if LNbits server port is open).
@@ -894,8 +935,14 @@ static const unsigned long WIFI_AUTH_RETRY_MS = 1000; // 1 s between retries
 
 void initWiFiEventHandler() {
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+    if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+      LOG_INFO("Network", String("WiFi got IP ") + WiFi.localIP().toString() +
+                          ", RSSI " + String(WiFi.RSSI()) + " dBm, ch " + String(WiFi.channel()));
+    }
     if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
       uint8_t reason = info.wifi_sta_disconnected.reason;
+      // Every disconnect, not only auth failures — shows flaky links / AP kicks
+      LOG_WARN("Network", String("WiFi disconnected, reason ") + String(reason));
       // Reason 202 = AUTH_FAIL (wrong password), 201 = AUTH_EXPIRE, 15 = 4WAY_HANDSHAKE_TIMEOUT
       if (reason == 202 || reason == 201 || reason == 15) {
         WiFi.setAutoReconnect(false); // stop continuous storm of retries

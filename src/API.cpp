@@ -138,8 +138,19 @@ void fetchSwitchLabels()
   http.setTimeout(4000);
   int httpCode = http.GET();
 
-  // Auto-detect extension path: try fallback on 404 or any connection error
-  bool shouldTryFallback = (httpCode == 404) || (httpCode <= 0);
+  // Auto-detect extension path. A 404 always means "wrong extension". A connection
+  // error/timeout only says the network is flaky, so it triggers the probe only
+  // while no path has been saved yet (fresh device) — otherwise a hiccup makes a
+  // correctly configured device ask the other extension and waste ~10 s.
+  bool pathSaved = false;
+  {
+    Preferences probe;
+    if (probe.begin("zapbox", true)) {
+      pathSaved = probe.getString("apiPath", "").length() > 0;
+      probe.end();
+    }
+  }
+  bool shouldTryFallback = (httpCode == 404) || (httpCode <= 0 && !pathSaved);
   if (shouldTryFallback) {
     String fallbackPath = (extensionConfig.apiPath == "bitcoinswitch") ? "zapbox" : "bitcoinswitch";
     Serial.println("[LABELS] " + extensionConfig.apiPath + (httpCode == 404 ? " returned 404" : " connection error") + " - trying fallback: " + fallbackPath);

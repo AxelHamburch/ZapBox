@@ -21,6 +21,11 @@ void wsKeepAlive();
 bool checkInternetConnectivity();
 bool checkServerReachability();
 
+// Diagnostics: reset reason (brownout / watchdog / panic) and a one-line
+// snapshot of the link (RSSI, channel, IP, gateway, DNS, heap).
+void logBootDiagnostics();
+void logNetworkDiagnostics(const char *why);
+
 // WiFi monitoring and recovery
 void initWiFiEventHandler();
 void checkWiFiStatus();
