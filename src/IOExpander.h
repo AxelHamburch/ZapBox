@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 /**
  * IOExpander.h — PCF8574 / PCF8575 / MCP23017 I2C GPIO expanders (relay channels only)
  *
@@ -45,7 +47,7 @@
 void initIOExpander();
 
 // Activate relay channel ch (0–7 = virtual pins 200–207).
-void activateExpanderChannel(int ch);
+void activateExpanderChannel(int ch, uint32_t maxOnMs = 0);
 
 // Deactivate relay channel ch (0–7).
 void deactivateExpanderChannel(int ch);
@@ -57,7 +59,7 @@ void deactivateExpanderChannel(int ch);
 void initIOExpander16();
 
 // Activate relay channel ch (0–15 = virtual pins 300–315).
-void activateExpander16Channel(int ch);
+void activateExpander16Channel(int ch, uint32_t maxOnMs = 0);
 
 // Deactivate relay channel ch (0–15).
 void deactivateExpander16Channel(int ch);
@@ -70,7 +72,7 @@ void deactivateExpander16Channel(int ch);
 void initIOExpanderMCP();
 
 // Activate relay channel ch (0–15 = virtual pins 400–415).
-void activateExpanderMCPChannel(int ch);
+void activateExpanderMCPChannel(int ch, uint32_t maxOnMs = 0);
 
 // Deactivate relay channel ch (0–15).
 void deactivateExpanderMCPChannel(int ch);

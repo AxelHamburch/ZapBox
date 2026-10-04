@@ -5154,9 +5154,9 @@ static void runExpanderPayment(int ch, int duration, ExpanderKind kind)
 
   Serial.printf("[%s] Activating CH%d for %d ms\n", tag, chLabel, duration);
   switch (kind) {
-    case ExpanderKind::Pcf8574:  activateExpanderChannel(ch);    break;
-    case ExpanderKind::Pcf8575:  activateExpander16Channel(ch);  break;
-    case ExpanderKind::Mcp23017: activateExpanderMCPChannel(ch); break;
+    case ExpanderKind::Pcf8574:  activateExpanderChannel(ch, duration);    break;
+    case ExpanderKind::Pcf8575:  activateExpander16Channel(ch, duration);  break;
+    case ExpanderKind::Mcp23017: activateExpanderMCPChannel(ch, duration); break;
   }
 
   unsigned long startTime = millis();

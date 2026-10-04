@@ -9,6 +9,75 @@
 #include <MCP23017.h>
 #include <Wire.h>
 
+// ---- Relay safety layer ------------------------------------------------------
+//
+// A relay driving a solenoid must never stay on longer than the configured time
+// (the coil burns out). Three things used to be able to leave it on:
+//   1. The "off" write was a single fire-and-forget I2C write. The PN532 task
+//      shares the bus; if the write failed (bus glitch, collision) nothing
+//      noticed and the relay stayed on until the next reboot.
+//   2. i2cTake()'s result was ignored, so after a 500 ms mutex timeout the write
+//      ran unprotected, racing the PN532.
+//   3. "off" was issued only by the payment loop, which also updates the display
+//      and services WebSockets — any stall there delayed the switch-off.
+// Hence: every write is retried until the chip ACKs, and every activation arms a
+// failsafe deadline that an independent high-priority task enforces (and keeps
+// retrying until the off write succeeds), regardless of what the main loop does.
+
+enum { KIND_PCF8574 = 0, KIND_PCF8575 = 1, KIND_MCP23017 = 2, KIND_COUNT = 3 };
+static const uint32_t FAILSAFE_MARGIN_MS = 150;
+
+static SemaphoreHandle_t   relayMutex = nullptr;    // guards output state + deadlines
+static volatile uint32_t   offDeadline[KIND_COUNT][16]; // 0 = not armed
+static TaskHandle_t        relayWatchdog = nullptr;
+
+static void deactivateByKind(int kind, int ch);
+
+static void relayWatchdogTask(void *) {
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(20));
+        for (int k = 0; k < KIND_COUNT; k++) {
+            for (int ch = 0; ch < 16; ch++) {
+                uint32_t d = offDeadline[k][ch];
+                if (d != 0 && (int32_t)(millis() - d) >= 0) {
+                    LOG_ERROR("RelayGuard", String("Failsafe off for kind ") + String(k) +
+                                            " CH" + String(ch) + " – deactivating");
+                    deactivateByKind(k, ch);
+                }
+            }
+        }
+    }
+}
+
+static void ensureRelayGuard() {
+    if (relayMutex == nullptr) relayMutex = xSemaphoreCreateMutex();
+    if (relayWatchdog == nullptr) {
+        xTaskCreatePinnedToCore(relayWatchdogTask, "relay_wd", 3072, nullptr,
+                                configMAX_PRIORITIES - 2, &relayWatchdog, 1);
+    }
+}
+
+static void armFailsafe(int kind, int ch, uint32_t maxOnMs) {
+    if (maxOnMs == 0) return;
+    uint32_t d = millis() + maxOnMs + FAILSAFE_MARGIN_MS;
+    offDeadline[kind][ch] = d ? d : 1;
+}
+
+// Run one I2C write under the bus mutex, retrying until the chip ACKs.
+template <typename W>
+static bool i2cWriteRetry(const char *tag, W write) {
+    for (int attempt = 1; attempt <= 5; attempt++) {
+        if (i2cTake()) {
+            bool ok = write();
+            i2cGive();
+            if (ok) return true;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    LOG_ERROR(tag, "I2C write failed after 5 attempts");
+    return false;
+}
+
 // ---- PCF8574 (8 channels, virtual pins 200-207) ----------------------------
 
 static PCF8574 pcf(0x20);
@@ -45,32 +114,38 @@ void initIOExpander() {
         ioExpanderConfig.enabled = false;
         return;
     }
+    ensureRelayGuard();
     pcfInitialized = true;
     LOG_INFO("IOExpander", String("PCF8574 initialized at 0x20 — 8 relay channels ready "
                                   "(virtual pins 200-207), trigger=") +
                            (ioExpanderConfig.activeHigh ? "active-HIGH" : "active-LOW"));
 }
 
-void activateExpanderChannel(int ch) {
+void activateExpanderChannel(int ch, uint32_t maxOnMs) {
     if (!pcfInitialized || ch < 0 || ch > 7) return;
     // No mode check: relay activation is triggered by a paid LNbits invoice
     // on virtual pin 200-207. If the PCF8574 is present we execute it.
+    xSemaphoreTake(relayMutex, portMAX_DELAY);
+    armFailsafe(KIND_PCF8574, ch, maxOnMs);
     if (ioExpanderConfig.activeHigh) outputState |=  (1 << ch);
     else                             outputState &= ~(1 << ch);
-    i2cTake();
-    pcf.write8(outputState);
-    i2cGive();
+    i2cWriteRetry("IOExpander", [] { pcf.write8(outputState); return pcf.lastError() == 0; });
+    xSemaphoreGive(relayMutex);
     LOG_INFO("IOExpander", String("CH") + String(ch + 200) + " (P" + String(ch) + ") activated");
 }
 
 void deactivateExpanderChannel(int ch) {
     if (!pcfInitialized || ch < 0 || ch > 7) return;
+    xSemaphoreTake(relayMutex, portMAX_DELAY);
     if (ioExpanderConfig.activeHigh) outputState &= ~(1 << ch);
     else                             outputState |=  (1 << ch);
-    i2cTake();
-    pcf.write8(outputState);
-    i2cGive();
-    LOG_INFO("IOExpander", String("CH") + String(ch + 200) + " (P" + String(ch) + ") deactivated");
+    // Disarm only once the chip really got the off state; otherwise the
+    // watchdog keeps retrying.
+    if (i2cWriteRetry("IOExpander", [] { pcf.write8(outputState); return pcf.lastError() == 0; })) {
+        offDeadline[KIND_PCF8574][ch] = 0;
+        LOG_INFO("IOExpander", String("CH") + String(ch + 200) + " (P" + String(ch) + ") deactivated");
+    }
+    xSemaphoreGive(relayMutex);
 }
 
 // ---- PCF8575 (16 channels, virtual pins 300-315) ---------------------------
@@ -119,6 +194,7 @@ void initIOExpander16() {
         ioExpander16Config.enabled = false;
         return;
     }
+    ensureRelayGuard();
     pcf16Initialized = true;
     LOG_INFO("IOExpander16", String("PCF8575 initialized at 0x") +
                              String(ioExpander16Config.address, HEX) +
@@ -126,24 +202,27 @@ void initIOExpander16() {
                              (ioExpander16Config.activeHigh ? "active-HIGH" : "active-LOW"));
 }
 
-void activateExpander16Channel(int ch) {
+void activateExpander16Channel(int ch, uint32_t maxOnMs) {
     if (!pcf16Initialized || ch < 0 || ch > 15) return;
+    xSemaphoreTake(relayMutex, portMAX_DELAY);
+    armFailsafe(KIND_PCF8575, ch, maxOnMs);
     if (ioExpander16Config.activeHigh) outputState16 |=  (1u << ch);
     else                               outputState16 &= ~(1u << ch);
-    i2cTake();
-    pcf16.write16(outputState16);
-    i2cGive();
+    i2cWriteRetry("IOExpander16", [] { pcf16.write16(outputState16); return pcf16.lastError() == 0; });
+    xSemaphoreGive(relayMutex);
     LOG_INFO("IOExpander16", String("CH") + String(ch + 300) + " (" + portName16(ch) + ") activated");
 }
 
 void deactivateExpander16Channel(int ch) {
     if (!pcf16Initialized || ch < 0 || ch > 15) return;
+    xSemaphoreTake(relayMutex, portMAX_DELAY);
     if (ioExpander16Config.activeHigh) outputState16 &= ~(1u << ch);
     else                               outputState16 |=  (1u << ch);
-    i2cTake();
-    pcf16.write16(outputState16);
-    i2cGive();
-    LOG_INFO("IOExpander16", String("CH") + String(ch + 300) + " (" + portName16(ch) + ") deactivated");
+    if (i2cWriteRetry("IOExpander16", [] { pcf16.write16(outputState16); return pcf16.lastError() == 0; })) {
+        offDeadline[KIND_PCF8575][ch] = 0;
+        LOG_INFO("IOExpander16", String("CH") + String(ch + 300) + " (" + portName16(ch) + ") deactivated");
+    }
+    xSemaphoreGive(relayMutex);
 }
 
 // ---- MCP23017 (16 channels, virtual pins 400-415) --------------------------
@@ -213,41 +292,53 @@ void initIOExpanderMCP() {
         mcp23017Config.enabled = false;
         return;
     }
+    ensureRelayGuard();
     mcpInitialized = true;
     LOG_INFO("MCP23017", String("MCP23017 initialized at 0x") + String(addr, HEX) +
                          " — 16 relay channels ready (virtual pins 400-415), trigger=" +
                          (mcp23017Config.activeHigh ? "active-HIGH" : "active-LOW"));
 }
 
-void activateExpanderMCPChannel(int ch) {
+void activateExpanderMCPChannel(int ch, uint32_t maxOnMs) {
     if (!mcpInitialized || ch < 0 || ch > 15) return;
+    xSemaphoreTake(relayMutex, portMAX_DELAY);
+    armFailsafe(KIND_MCP23017, ch, maxOnMs);
     if (mcp23017Config.activeHigh) outputStateMcp |=  (1u << ch);
     else                           outputStateMcp &= ~(1u << ch);
-    i2cTake();
-    mcp.write16(outputStateMcp);
-    i2cGive();
+    i2cWriteRetry("MCP23017", [] { return mcp.write16(outputStateMcp); });
+    xSemaphoreGive(relayMutex);
     LOG_INFO("MCP23017", String("CH") + String(ch + 400) + " (" + portNameMcp(ch) + ") activated");
 }
 
 void deactivateExpanderMCPChannel(int ch) {
     if (!mcpInitialized || ch < 0 || ch > 15) return;
+    xSemaphoreTake(relayMutex, portMAX_DELAY);
     if (mcp23017Config.activeHigh) outputStateMcp &= ~(1u << ch);
     else                           outputStateMcp |=  (1u << ch);
-    i2cTake();
-    mcp.write16(outputStateMcp);
-    i2cGive();
-    LOG_INFO("MCP23017", String("CH") + String(ch + 400) + " (" + portNameMcp(ch) + ") deactivated");
+    if (i2cWriteRetry("MCP23017", [] { return mcp.write16(outputStateMcp); })) {
+        offDeadline[KIND_MCP23017][ch] = 0;
+        LOG_INFO("MCP23017", String("CH") + String(ch + 400) + " (" + portNameMcp(ch) + ") deactivated");
+    }
+    xSemaphoreGive(relayMutex);
+}
+
+static void deactivateByKind(int kind, int ch) {
+    switch (kind) {
+        case KIND_PCF8574:  deactivateExpanderChannel(ch);    break;
+        case KIND_PCF8575:  deactivateExpander16Channel(ch);  break;
+        case KIND_MCP23017: deactivateExpanderMCPChannel(ch); break;
+    }
 }
 
 #else
 // Headless variant: expander support not available — stub out all functions
 void initIOExpander() {}
-void activateExpanderChannel(int) {}
+void activateExpanderChannel(int, uint32_t) {}
 void deactivateExpanderChannel(int) {}
 void initIOExpander16() {}
-void activateExpander16Channel(int) {}
+void activateExpander16Channel(int, uint32_t) {}
 void deactivateExpander16Channel(int) {}
 void initIOExpanderMCP() {}
-void activateExpanderMCPChannel(int) {}
+void activateExpanderMCPChannel(int, uint32_t) {}
 void deactivateExpanderMCPChannel(int) {}
 #endif
