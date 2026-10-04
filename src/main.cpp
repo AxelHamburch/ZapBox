@@ -2775,6 +2775,9 @@ void loop()
           #endif
           delay(100);
         }
+        // The blink ends with the LED off; force updateReadyLed() to re-apply the
+        // real ready state (it only writes on change).
+        readyLedState = !isReadyForReceive();
         nfcNoLuckScreen();
         nfcNoLuckScreenShown = true;
         nfcNoLuckStart = millis();
@@ -2870,6 +2873,7 @@ void loop()
             #endif
             delay(100);
           }
+          readyLedState = !isReadyForReceive(); // blink leaves LED off – force re-apply
           nfcNoLuckScreen();
           nfcNoLuckScreenShown = true;
           nfcNoLuckStart = millis();
