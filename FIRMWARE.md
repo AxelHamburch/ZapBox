@@ -412,6 +412,11 @@ installer/firmware/
 - **Ready only when NFC is really ready:** the startup screen now waits (max. 12 s) for the persistent NFC device channel, so an early tap no longer falls back to a fresh HTTPS connection that flaky routers drop. The first BTC ticker fetch is held back until the channel is up so both TLS handshakes don't compete.
 - **Fixed ready LED staying dark** after a failed NFC payment (3× blink ended with the LED off).
 
+### 🌐 Diagnostics & Network
+- **Boot reset reason is now logged** (power-on, software, BROWNOUT, watchdog, panic) — a brownout/crash is immediately visible in the serial log.
+- Every WiFi disconnect reason is logged, IP/RSSI/channel on connect, and a link snapshot (RSSI, channel, IP, gateway, DNS, heap) when the internet check fails.
+- **No more wrong-extension probing on flaky networks:** a connection error/timeout during the label fetch only triggers the `bitcoinswitch` fallback while no extension path is saved yet; a 404 still always does.
+
 ### 🖥️ Touch 3.5" only
 - BTC ticker screen: new "Zap-bolt-Box" title with bolt icon and a double-tap touch icon; layout/spacing tweaks.
 
