@@ -901,7 +901,7 @@ static void drawTouchIcon(int x, int y, uint16_t fg) {
 // The font is ASCII-only, so the bolt is drawn as a polygon.
 static void drawBtcHeader(int cx, int cy) {
   const int size = 4;
-  const int tw = 3 * 6 * size, bw = 14, gap = 4;
+  const int tw = 3 * 6 * size, bw = 14, gap = 9;
   int x = cx - (2 * tw + bw + 2 * gap) / 2;
   drawString(x, cy - 4 * size, "Zap", themeForeground, themeBackground, size, true);
   drawBoltIcon(x + tw + gap, cy - 12, themeForeground);
