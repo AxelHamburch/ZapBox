@@ -397,6 +397,30 @@ installer/firmware/
 
 ## Release History
 
+### v969883 / v969883h / v969883t — 2026-10-04
+
+```markdown
+## 🎯 Release v969883 / v969883h / v969883t — Relay Failsafe, Bolt Card PIN Handling & Reliable NFC Startup
+
+### 🔌 Relay Safety (I/O expanders: PCF8574 / PCF8575 / MCP23017)
+- **Solenoid-safe switching:** the "off" write is now retried until the expander acknowledges it, and every activation arms an independent high-priority failsafe that forces the channel off at the configured time (+150 ms) even if the main loop stalls or an I²C write fails. Fixes a case where a relay could stay energised and burn out a magnet valve.
+- The I²C bus mutex result is now honoured (previously a timeout let writes run unprotected against the PN532).
+- A `RelayGuard: Failsafe off` log line shows when the failsafe had to step in.
+
+### 💳 Bolt Card / NTAG 424 DNA
+- **PIN-protected cards on devices without touch (Headless, non-touch boards):** the device now aborts immediately when the server asks for a PIN, instead of showing "PENDING NFC" for 3 minutes. Shows "PIN cards not supported on this device. Use a card without PIN limit." (LED blink on headless).
+- **Ready only when NFC is really ready:** the startup screen now waits (max. 12 s) for the persistent NFC device channel, so an early tap no longer falls back to a fresh HTTPS connection that flaky routers drop. The first BTC ticker fetch is held back until the channel is up so both TLS handshakes don't compete.
+- **Fixed ready LED staying dark** after a failed NFC payment (3× blink ended with the LED off).
+
+### 🖥️ Touch 3.5" only
+- BTC ticker screen: new "Zap-bolt-Box" title with bolt icon and a double-tap touch icon; layout/spacing tweaks.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 969883
+- Requires **zapbox_extension v2.6.2+** (unchanged)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v967164 / v967164h / v967164t — 2026-09-15
 
 ```markdown
