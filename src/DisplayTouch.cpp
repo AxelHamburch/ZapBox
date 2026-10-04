@@ -902,7 +902,7 @@ static void drawTouchIcon(int x, int y, uint16_t fg) {
 // The font is ASCII-only, so the bolt is drawn as a polygon.
 static void drawBtcHeader(int cx, int cy) {
   const int size = 4;
-  const int tw = 3 * 6 * size, bw = 21, gapL = 5, gapR = 9;
+  const int tw = 3 * 6 * size, bw = 21, gapL = 2, gapR = 9;
   int x = cx - (2 * tw + bw + gapL + gapR) / 2;
   drawString(x, cy - 4 * size, "Zap", themeForeground, themeBackground, size, true);
   drawBoltIcon(x + tw + gapL, cy - 20, themeForeground);
@@ -915,7 +915,7 @@ void btctickerScreen() {
   if (!_gfx) return;
   fillScreen(themeBackground);
   if (isPortrait()) {
-    drawBtcHeader(PANEL_W / 2 - 40, 56);
+    drawBtcHeader(PANEL_W / 2 - 35, 56);
     drawMonoBitmapScaled((PANEL_W - 96) / 2, 98, bitcoin_logo, 96, 96, themeForeground, 1);
     int cx = PANEL_W / 2;
     drawCenter(cx, 225, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
@@ -923,7 +923,7 @@ void btctickerScreen() {
     drawCenter(cx, 371, "Block",                      themeForeground, themeBackground, 2);
     btcDrawValues_portrait();
   } else {
-    drawBtcHeader(120, 58);
+    drawBtcHeader(125, 58);
     drawMonoBitmapScaled(100, (SCR_H - 120) / 2 + 20, bitcoin_logo_h, 120, 120, themeForeground, 1);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL1_Y, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL2_Y, ("SAT/" + currency).c_str(), themeForeground, themeBackground, 2);
