@@ -5577,6 +5577,18 @@ void processPaymentEvent(String &payloadStr)
     JsonDocument pinDoc;
     if (!deserializeJson(pinDoc, payloadStr)) {
       const char *event = pinDoc["event"];
+      if (event && strcmp(event, "pin_required") == 0 && !touchState.available) {
+        // No touch (non-touch / headless): PIN cannot be entered. Abort the
+        // pending NFC state at once (instead of waiting for the server's
+        // 180s PIN timeout) and show an error via the NFC failure path.
+        LOG_WARN("PIN", "PIN required but device has no touch input – aborting NFC payment");
+        strlcpy(extensionConfig.nfcErrorDetail,
+                "PIN cards not supported on this device. Use a card without PIN limit.",
+                sizeof(extensionConfig.nfcErrorDetail));
+        extensionConfig.nfcPaymentPending = false;
+        extensionConfig.nfcPaymentFailed  = true;
+        return;
+      }
       if (event && strcmp(event, "pin_required") == 0) {
         pinPadState = PinPadState();  // reset to defaults
         pinPadState.active      = true;
