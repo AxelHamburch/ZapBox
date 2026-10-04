@@ -1904,7 +1904,9 @@ void setup()
   unsigned long serverCheckDoneTime = 0; // when server check finished
   bool websocketStarted = false;
   unsigned long wifiConnectTime = 0; // Track when WiFi first connected
-  
+  bool coreReady = false;            // core connections + config validated
+  unsigned long coreReadyTime = 0;
+
   for (int i = 0; i < MAX_INIT_TIME; i++) {
     vTaskDelay(pdMS_TO_TICKS(100));
     
@@ -1975,6 +1977,19 @@ void setup()
     if (networkStatus.confirmed.wifi && networkStatus.confirmed.internet && 
         networkStatus.confirmed.server && networkStatus.confirmed.websocket && 
         labelsLoadedSuccessfully && labelsValidationAttempted) {
+      if (!coreReady) {
+        coreReady = true;
+        coreReadyTime = millis();
+      }
+      #if ENABLE_NFC
+      // Bolt Card taps need the device channel; without it they fall back to a
+      // fresh HTTPS POST, which flaky routers drop. Keep the init screen until
+      // the channel is up (capped, so a missing/old extension can't hold boot).
+      serviceNfcWebSocket();
+      if (nfcChannelPending() && millis() - coreReadyTime < 12000) {
+        continue;
+      }
+      #endif
       allConnectionsReady = true;
       SETUP_PRINTF("[STARTUP] All connections ready after %.1f seconds!\n", (i + 1) * 0.1);
       break; // Exit startup screen early
@@ -1995,8 +2010,11 @@ void setup()
     }
   }
   
+  // Loop ran out while only the (optional) device channel was still pending
+  if (coreReady) allConnectionsReady = true;
+
   SETUP_PRINT("[STARTUP] Startup screen completed");
-  
+
   // CRITICAL: Don't proceed if config mode was triggered during startup
   // Config mode runs on Core 0, setup() runs on Core 1 - race condition possible
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) {
@@ -4003,7 +4021,17 @@ void loop()
     // This replaces the old synchronous fetch in setup() / fetchSwitchLabels() that
     // blocked touch processing for up to 25 s during SSL timeouts.
     static bool btcFirstFetchLaunched = false;
-    if (!btcFirstFetchLaunched && networkStatus.confirmed.websocket &&
+    // Held back while the NFC device channel is still connecting so the two TLS
+    // handshakes don't compete (capped at 20 s).
+    static unsigned long btcGateStart = 0;
+    bool btcGateOpen = true;
+    #if ENABLE_NFC
+    if (nfcChannelPending()) {
+      if (btcGateStart == 0) btcGateStart = millis();
+      btcGateOpen = millis() - btcGateStart > 20000;
+    }
+    #endif
+    if (!btcFirstFetchLaunched && btcGateOpen && networkStatus.confirmed.websocket &&
         !deviceState.isInState(DeviceState::CONFIG_MODE)) {
       btcFirstFetchLaunched = true;
       xTaskCreatePinnedToCore(

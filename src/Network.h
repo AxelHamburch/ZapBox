@@ -43,6 +43,9 @@ void sendPinSubmit(const String &sessionId, const String &pin);
 // queued by the NFC task, and gates its own TLS handshake. Bolt Card taps
 // prefer this channel and fall back to the HTTPS POST when it is down.
 void serviceNfcWebSocket();
+// True while a device channel is expected (Bolt Card + zapbox extension) but not
+// connected yet and not given up on. Used to delay "ready" at boot.
+bool nfcChannelPending();
 #endif
 
 // ─── Authy (LNURL-auth) teach session ────────────────────────────────────────

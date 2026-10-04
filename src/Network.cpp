@@ -263,6 +263,13 @@ static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     }
 }
 
+bool nfcChannelPending()
+{
+    if (extensionConfig.apiPath != "zapbox" || !nfcConfig.boltcardActive) return false;
+    if (deviceChannelActive) return false;
+    return nfcWsFailedPhases == 0; // a failed connect phase means: stop waiting
+}
+
 // Called from the main loop (Core 1). Services the channel, flushes taps
 // queued by the NFC task (Core 0 — sendTXT is not safe across cores), and
 // gates its own TLS handshake through the NetTls slot.
