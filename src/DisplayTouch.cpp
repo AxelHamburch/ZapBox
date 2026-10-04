@@ -806,11 +806,76 @@ static void btcDrawValues_landscape() {
   drawCenter(BTC_H_TXT_CX, BTC_H_VAL3_Y, bitcoinData.blockHigh.c_str(), themeForeground, themeBackground, 3);
 }
 
+// Rounded rectangle, filled (per-pixel corner test; only used for tiny icons).
+static void fillRoundRect(int x, int y, int w, int h, int r, uint16_t color) {
+  for (int j = 0; j < h; j++) {
+    for (int i = 0; i < w; i++) {
+      int dx = (i < r) ? r - i - 1 : (i >= w - r ? i - (w - r) : -1);
+      int dy = (j < r) ? r - j - 1 : (j >= h - r ? j - (h - r) : -1);
+      if (dx >= 0 && dy >= 0 && dx * dx + dy * dy >= r * r) continue;
+      putPixel(x + i, y + j, color);
+    }
+  }
+}
+
+// Thick line from (x0,y0) to (x1,y1), drawn as a row of t×t blocks.
+static void drawThickLine(int x0, int y0, int x1, int y1, int t, uint16_t color) {
+  int steps = max(abs(x1 - x0), abs(y1 - y0));
+  if (steps == 0) steps = 1;
+  for (int s = 0; s <= steps; s++) {
+    int x = x0 + (x1 - x0) * s / steps;
+    int y = y0 + (y1 - y0) * s / steps;
+    fillRect(x - t / 2, y - t / 2, t, t, color);
+  }
+}
+
+// Lightning bolt, 14×24 box at (x,y), filled polygon (even-odd test per pixel).
+static void drawBoltIcon(int x, int y, uint16_t color) {
+  static const int8_t vx[6] = { 9, 0, 6, 3, 14, 8 };
+  static const int8_t vy[6] = { 0, 13, 13, 24, 9, 9 };
+  for (int j = 0; j < 24; j++) {
+    for (int i = 0; i < 14; i++) {
+      bool in = false;
+      for (int a = 0, b = 5; a < 6; b = a++) {
+        if ((vy[a] > j) != (vy[b] > j) &&
+            (i + 0.5f) < (float)(vx[b] - vx[a]) * (j + 0.5f - vy[a]) / (vy[b] - vy[a]) + vx[a])
+          in = !in;
+      }
+      if (in) putPixel(x + i, y + j, color);
+    }
+  }
+}
+
+// Touch hint icon (pointing hand with three click rays), 40×44 box at (x,y).
+// Outline style: foreground outline, background interior.
+static void drawTouchIcon(int x, int y, uint16_t fg, uint16_t bg) {
+  fillRoundRect(x + 8,  y + 26, 28, 18, 8, fg);   // palm
+  fillRoundRect(x + 14, y + 10, 10, 26, 5, fg);   // index finger
+  fillRoundRect(x + 10, y + 28, 24, 14, 6, bg);   // palm interior
+  fillRoundRect(x + 16, y + 12,  6, 24, 3, bg);   // finger interior
+  drawThickLine(x + 10, y +  3, x + 14, y +  7, 2, fg);  // ray up-left
+  drawThickLine(x + 19, y +  0, x + 19, y +  5, 2, fg);  // ray up
+  drawThickLine(x + 28, y +  3, x + 24, y +  7, 2, fg);  // ray up-right
+}
+
+// "Zap⚡Box" title (size 4) centred at cx, with the touch icon to its right.
+// The font is ASCII-only, so the bolt is drawn as a polygon.
+static void drawBtcHeader(int cx, int cy) {
+  const int size = 4;
+  const int tw = 3 * 6 * size, bw = 14, gap = 4;
+  int x = cx - (2 * tw + bw + 2 * gap) / 2;
+  drawString(x, cy - 4 * size, "Zap", themeForeground, themeBackground, size, true);
+  drawBoltIcon(x + tw + gap, cy - 12, themeForeground);
+  drawString(x + tw + gap + bw + gap, cy - 4 * size, "Box", themeForeground, themeBackground, size, true);
+  drawTouchIcon(cx + (2 * tw + bw + 2 * gap) / 2 + 16, cy - 22, themeForeground, themeBackground);
+}
+
 void btctickerScreen() {
   DisplayLock l;
   if (!_gfx) return;
   fillScreen(themeBackground);
   if (isPortrait()) {
+    drawBtcHeader(PANEL_W / 2 - 20, 40);
     drawMonoBitmapScaled((PANEL_W - 96) / 2, 78, bitcoin_logo, 96, 96, themeForeground, 1);
     int cx = PANEL_W / 2;
     drawCenter(cx, 205, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
@@ -818,6 +883,7 @@ void btctickerScreen() {
     drawCenter(cx, 351, "Block",                      themeForeground, themeBackground, 2);
     btcDrawValues_portrait();
   } else {
+    drawBtcHeader(140, 46);
     drawMonoBitmapScaled(100, (SCR_H - 120) / 2, bitcoin_logo_h, 120, 120, themeForeground, 1);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL1_Y, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL2_Y, ("SAT/" + currency).c_str(), themeForeground, themeBackground, 2);
