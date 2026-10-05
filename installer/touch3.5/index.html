@@ -707,7 +707,7 @@
                 </div>
             </div>
 
-            <p style="margin-top: 20px; color: #888;"><i>Magnetic switches—such as those used for automatic flaps—can burn out if activated for too long. To prevent accidental activation lasting longer than 2 seconds, the activation duration is strictly limited. This applies to all outputs set to "Relay" in the channel selection.</i></p>
+            <p id="protectionCircuitInfo" style="display: none; margin-top: 20px; color: #888;"><i>Solenoids, such as those in compartment vending machines, can overheat and burn out if powered for too long. To protect them, every output set to "Relay" in the channel selection has a hard cap of 2 seconds.</i></p>
 
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
@@ -1535,6 +1535,7 @@
                     if (pcCfg) pcCfg.value = 'no';
                 }
 
+                updateProtectionCircuitInfo();
                 updateMultiControlState();
                 updateIOExpanderFieldState();
                 updateIOExpander16FieldState();
@@ -2179,6 +2180,18 @@
             e.preventDefault();
             document.getElementById('help-image-modal').style.display = 'flex';
         });
+    
+        // Show the protection-circuit hint only while the circuit is switched on
+        function updateProtectionCircuitInfo() {
+            const sel = document.getElementById('protectionCircuit');
+            const info = document.getElementById('protectionCircuitInfo');
+            if (info) info.style.display = (sel && sel.value === 'yes') ? 'block' : 'none';
+        }
+        (function () {
+            const sel = document.getElementById('protectionCircuit');
+            if (sel) sel.addEventListener('change', updateProtectionCircuitInfo);
+            updateProtectionCircuitInfo();
+        })();
     </script>
 </body>
 </html>

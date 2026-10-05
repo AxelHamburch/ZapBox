@@ -4863,7 +4863,7 @@ static void processThresholdPayment(const JsonDocument &doc)
     int duration = lightningConfig.thresholdTime.toInt();
     // Protection circuit: threshold mode switches the pin as a plain relay
     const int requestedDuration = duration;
-    duration = capRelayDuration(duration, "Threshold relay");
+    if (!isAmbientLightPin(pin)) duration = capRelayDuration(duration, "Threshold relay");
 
     // Special mode only applies to Pin 12 (single-channel context).
     // Skip when: servo mode is active, or channel 4 ambient owns Pin 11.
@@ -5401,7 +5401,7 @@ static void processNormalPayment(int pin, int duration)
   // launches above so servo hold times (which fall back to this duration) are not
   // shortened; secondary relay tasks cap themselves.
   const int requestedDuration = duration;
-  if (!isServoPin) duration = capRelayDuration(duration, "Relay");
+  if (!isServoPin && !isAmbientLightPin(pin)) duration = capRelayDuration(duration, "Relay");
 
   if (useSpecialMode) {
     Serial.println("[NORMAL] Using special mode: " + specialModeConfig.mode);

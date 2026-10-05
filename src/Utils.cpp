@@ -28,6 +28,16 @@ int capRelayDuration(int durationMs, const char *context) {
   return durationMs;
 }
 
+bool isAmbientLightPin(int pin) {
+  if (channel4AmbientConfig.enabled && pin == 11) return true;
+  #ifdef BOARD_JC3248W535C
+  for (int i = 0; i < T35AmbientConfig::FLEX_COUNT; i++) {
+    if (t35AmbientConfig.flexAmbient[i] && RELAY_CHANNEL_PINS[i + 1] == pin) return true;
+  }
+  #endif
+  return false;
+}
+
 static void relayGuardExpired(void *arg) {
   int pin = (int)(intptr_t)arg;
   digitalWrite(pin, LOW);
@@ -48,6 +58,7 @@ void relayGuardDisarm(int pin) {
 
 void relayGuardArm(int pin, unsigned long durationMs) {
   if (!relayProtectionConfig.enabled || pin < 0 || pin >= RELAY_GUARD_MAX_PIN) return;
+  if (isAmbientLightPin(pin)) return; // ambient-light output is not a switched load
   relayGuardDisarm(pin);
   esp_timer_create_args_t args = {};
   args.callback = relayGuardExpired;

@@ -32,6 +32,13 @@ void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ra
 int capRelayDuration(int durationMs, const char *context);
 
 /**
+ * True if the GPIO currently carries the ambient-light (backlight sync) signal
+ * instead of a relay. Such a pin is not a switched load: the protection circuit
+ * must neither cap nor guard it.
+ */
+bool isAmbientLightPin(int pin);
+
+/**
  * Arm an independent failsafe for a GPIO relay pin that was just switched HIGH:
  * a timer (not the main loop) drives the pin LOW after durationMs + margin.
  * No-op while the protection circuit is off. Disarm once the pin was switched
