@@ -6,6 +6,62 @@
 #include <WebSocketsClient.h>
 #include "Network.h"
 
+#include <esp_timer.h>
+
+// ── Relay protection circuit ───────────────────────────────────────────────────
+// The regular switch-off runs in the payment loop, which also draws the display
+// and services WebSockets — a stall there would keep a magnet energised. The
+// guard is a one-shot esp_timer per pin that drives the pin LOW on its own.
+
+static const unsigned long RELAY_GUARD_MARGIN_MS = 150; // grace for the normal off path
+static const int RELAY_GUARD_MAX_PIN = 64;
+static esp_timer_handle_t relayGuardTimers[RELAY_GUARD_MAX_PIN] = {nullptr};
+static portMUX_TYPE relayGuardMux = portMUX_INITIALIZER_UNLOCKED;
+
+int capRelayDuration(int durationMs, const char *context) {
+  if (!relayProtectionConfig.enabled) return durationMs;
+  if (durationMs > RelayProtectionConfig::MAX_DURATION_MS) {
+    Serial.printf("[PROTECT] %s: requested %d ms capped to %d ms\n",
+                  context, durationMs, RelayProtectionConfig::MAX_DURATION_MS);
+    return RelayProtectionConfig::MAX_DURATION_MS;
+  }
+  return durationMs;
+}
+
+static void relayGuardExpired(void *arg) {
+  int pin = (int)(intptr_t)arg;
+  digitalWrite(pin, LOW);
+  Serial.printf("[PROTECT] Failsafe: GPIO %d forced LOW\n", pin);
+}
+
+void relayGuardDisarm(int pin) {
+  if (pin < 0 || pin >= RELAY_GUARD_MAX_PIN) return;
+  portENTER_CRITICAL(&relayGuardMux);
+  esp_timer_handle_t t = relayGuardTimers[pin];
+  relayGuardTimers[pin] = nullptr;
+  portEXIT_CRITICAL(&relayGuardMux);
+  if (t) {
+    esp_timer_stop(t); // returns an error if it already fired — harmless
+    esp_timer_delete(t);
+  }
+}
+
+void relayGuardArm(int pin, unsigned long durationMs) {
+  if (!relayProtectionConfig.enabled || pin < 0 || pin >= RELAY_GUARD_MAX_PIN) return;
+  relayGuardDisarm(pin);
+  esp_timer_create_args_t args = {};
+  args.callback = relayGuardExpired;
+  args.arg = (void *)(intptr_t)pin;
+  args.dispatch_method = ESP_TIMER_TASK;
+  args.name = "relay_guard";
+  esp_timer_handle_t t = nullptr;
+  if (esp_timer_create(&args, &t) != ESP_OK) return;
+  portENTER_CRITICAL(&relayGuardMux);
+  relayGuardTimers[pin] = t;
+  portEXIT_CRITICAL(&relayGuardMux);
+  esp_timer_start_once(t, (uint64_t)(durationMs + RELAY_GUARD_MARGIN_MS) * 1000ULL);
+}
+
 // External references to main.cpp
 extern StateManager deviceState;
 extern MultiChannelConfig multiChannelConfig;

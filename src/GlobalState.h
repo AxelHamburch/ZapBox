@@ -703,6 +703,21 @@ struct MCP23017Config {
 extern MCP23017Config mcp23017Config;
 
 // ============================================================================
+// RELAY PROTECTION CIRCUIT
+// ============================================================================
+// Magnetic switches (e.g. flap/hatch vending machines) burn out when energised
+// too long. With protection enabled (installer: "Protection circuit: On") every
+// output configured as "Relay" is hard-limited to MAX_DURATION_MS, whatever the
+// server/LNbits asks for, and an independent timer forces the output off even
+// if the main loop stalls. Servo outputs are not affected.
+struct RelayProtectionConfig {
+  bool enabled = false;
+  static constexpr int MAX_DURATION_MS = 2000;
+};
+
+extern RelayProtectionConfig relayProtectionConfig;
+
+// ============================================================================
 // NFC MODE CONFIGURATION
 // ============================================================================
 

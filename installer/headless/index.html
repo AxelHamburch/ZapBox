@@ -501,6 +501,22 @@
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
+        <!-- Protection Circuit Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="protectionCircuit">Protection circuit</label>
+                    <select name="protectionCircuit" id="protectionCircuit">
+                        <option value="no" selected>Off (default)</option>
+                        <option value="yes">On - Maximum switching duration 2 seconds</option>
+                    </select>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i>Magnetic switches—such as those used for automatic flaps—can burn out if activated for too long. To prevent accidental activation lasting longer than 2 seconds, the activation duration is strictly limited. This applies to all outputs set to "Relay" in the channel selection.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
         <!-- NFC Bolt Card Section -->
             <h3 style="margin: 0 0 10px 0;">NFC-Module</h3>
             <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server – no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
@@ -908,7 +924,9 @@
             { "name": "unused50",      "value": ""      },
             { "name": "authDualPage",  "value": "no"    },
             { "name": "authTeachPin",  "value": ""      },
-            { "name": "authGpioMode",  "value": "relay" }
+            { "name": "authGpioMode",  "value": "relay" },
+            // protectionCircuit: "yes" = hard cap of 2 s on relay activations (read by name in firmware)
+            { "name": "protectionCircuit", "value": "no" }
         ]
 
         // Setup Web Serial using serial.js
@@ -1354,6 +1372,17 @@
                 // authTeachPin (52) intentionally not pre-filled (one-time PIN, cleared after write)
                 updateAuthGpioModeFields();
 
+                // Protection circuit — by name; absent in older configs means Off
+                {
+                    const pcData = configData.find(c => c && c.name === "protectionCircuit");
+                    const pcVal = (pcData && pcData.value === "yes") ? "yes" : "no";
+                    let pc = config.find(c => c.name === "protectionCircuit");
+                    if (!pc) { pc = { name: "protectionCircuit", value: "no" }; config.push(pc); }
+                    pc.value = pcVal;
+                    const pcEl = document.getElementById("protectionCircuit");
+                    if (pcEl) pcEl.value = pcVal;
+                }
+
                 // Vending sensor dropdowns
                 document.getElementById('vendingSensor1').value = config[19].value || "no";
                 document.getElementById('vendingSensor2').value = config[31]?.value || "no";
@@ -1520,6 +1549,13 @@
             // authTeachPin (index 52): write value once; cleared on device after teach starts
             config[52].value = isIdentityMode ? (authTeachPin.value || "") : "";
             config[53].value = isIdentityMode ? (authGpioMode.value || "relay") : "";
+
+            // Protection circuit (hard cap on relay activation time) — looked up by name
+            {
+                let pc = config.find(c => c.name === "protectionCircuit");
+                if (!pc) { pc = { name: "protectionCircuit", value: "no" }; config.push(pc); }
+                pc.value = (document.getElementById("protectionCircuit") || { value: "no" }).value || "no";
+            }
 
             // Validate required fields
             const ssidValue = config[0].value.trim();
@@ -1817,6 +1853,10 @@
                     row('LNURL / Lightning Address', inputVal('thresholdLnurl'))
                 );
             }
+
+            sections += section('Protection circuit',
+                row('Protection circuit', selText('protectionCircuit'))
+            );
 
             const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
                 '<title>ZapBox Config &ndash; ' + ts + '</title>' +

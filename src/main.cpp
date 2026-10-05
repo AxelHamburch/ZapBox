@@ -572,6 +572,25 @@ void readFiles()
       }
     }
 
+    // Protection circuit: hard 2 s cap on all relay outputs. Looked up BY NAME
+    // ("protectionCircuit" = "yes"), not by index — the installer pages append it at
+    // different positions and older configs simply lack it (= off).
+    {
+      relayProtectionConfig.enabled = false;
+      for (JsonObject entry : doc.as<JsonArray>()) {
+        const char *name = entry["name"];
+        if (name != nullptr && strcmp(name, "protectionCircuit") == 0) {
+          const char *val = entry["value"];
+          relayProtectionConfig.enabled = (val != nullptr && strcmp(val, "yes") == 0);
+          break;
+        }
+      }
+      LOG_INFO("Config", String("Protection circuit: ") +
+                         (relayProtectionConfig.enabled
+                              ? String("ON (relay outputs limited to ") + String(RelayProtectionConfig::MAX_DURATION_MS) + " ms)"
+                              : String("off")));
+    }
+
     // Extension API path (bitcoinswitch vs. zapbox) is auto-detected at runtime in API.cpp
     // No manual config needed - ZapBox tries bitcoinswitch first, falls back to zapbox on 404.
 
@@ -4842,6 +4861,9 @@ static void processThresholdPayment(const JsonDocument &doc)
 
     int pin = lightningConfig.thresholdPin.toInt();
     int duration = lightningConfig.thresholdTime.toInt();
+    // Protection circuit: threshold mode switches the pin as a plain relay
+    const int requestedDuration = duration;
+    duration = capRelayDuration(duration, "Threshold relay");
 
     // Special mode only applies to Pin 12 (single-channel context).
     // Skip when: servo mode is active, or channel 4 ambient owns Pin 11.
@@ -4851,6 +4873,7 @@ static void processThresholdPayment(const JsonDocument &doc)
 
     if (useSpecialMode) {
       Serial.println("[THRESHOLD] Using special mode: " + specialModeConfig.mode);
+      relayGuardArm(pin, duration);
       if (deviceState.isInState(DeviceState::SCREENSAVER)) {
         deviceState.transition(DeviceState::READY);
         deactivateScreensaver();
@@ -4859,6 +4882,7 @@ static void processThresholdPayment(const JsonDocument &doc)
       actionTimeScreen();
       updateActionTimeCountdown(duration / 1000);
       executeSpecialMode(pin, duration, specialModeConfig.frequency, specialModeConfig.dutyCycleRatio);
+      relayGuardDisarm(pin);
     } else {
       Serial.println("[THRESHOLD] Using standard mode");
       if (deviceState.isInState(DeviceState::SCREENSAVER)) {
@@ -4877,7 +4901,7 @@ static void processThresholdPayment(const JsonDocument &doc)
         
         // Pin 13 — Servo 1 (positional)
         if (servoConfig.servo1Active()) {
-          int d13 = (productLabels.durations[1] > 0) ? productLabels.durations[1] : duration;
+          int d13 = (productLabels.durations[1] > 0) ? productLabels.durations[1] : requestedDuration;
           OFATaskParams* params13 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
           if (params13) {
             params13->pin = 13; params13->fallbackDuration = d13;
@@ -4891,7 +4915,7 @@ static void processThresholdPayment(const JsonDocument &doc)
         if (servoConfig.servo2Active()) {
           int d10 = (servoConfig.servo2Duration > 0) ? servoConfig.servo2Duration
                    : (productLabels.durations[2] > 0) ? productLabels.durations[2]
-                   : duration;
+                   : requestedDuration;
           OFATaskParams* params10 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
           if (params10) {
             params10->pin = 10; params10->fallbackDuration = d10;
@@ -4902,7 +4926,7 @@ static void processThresholdPayment(const JsonDocument &doc)
         
         // Pin 11 — Relay 2 (unless ambient-light mode)
         if (servoConfig.relay2Active() && !channel4AmbientConfig.enabled) {
-          int d11 = (productLabels.durations[3] > 0) ? productLabels.durations[3] : duration;
+          int d11 = (productLabels.durations[3] > 0) ? productLabels.durations[3] : requestedDuration;
           OFATaskParams* params11 = (OFATaskParams*)malloc(sizeof(OFATaskParams));
           if (params11) {
             params11->pin = 11; params11->fallbackDuration = d11;
@@ -4915,6 +4939,7 @@ static void processThresholdPayment(const JsonDocument &doc)
       
       pinMode(pin, OUTPUT);
       digitalWrite(pin, HIGH);
+      relayGuardArm(pin, duration);
       Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
       
       // CRITICAL: Non-blocking delay that keeps WebSocket alive
@@ -4943,6 +4968,7 @@ static void processThresholdPayment(const JsonDocument &doc)
       }
       
       digitalWrite(pin, LOW);
+      relayGuardDisarm(pin);
       Serial.printf("[RELAY] Pin %d set LOW\n", pin);
     }
 
@@ -4983,14 +5009,17 @@ static void oneForAllActivationTask(void* pvParams) {
   if (pin == 13) {
     if (servoConfig.pin13IsRelay) {
       // Pin 13 configured as external relay: switch HIGH for fallback duration
+      const int relayMs = capRelayDuration(fallback, "OFA relay Pin 13");
       pinMode(pin, OUTPUT);
       digitalWrite(pin, HIGH);
+      relayGuardArm(pin, relayMs);
       Serial.println("[OFA] Pin 13 set HIGH (relay mode)");
       unsigned long t0 = millis();
-      while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
+      while (!g_ofaStop && (millis() - t0 < (unsigned long)relayMs)) {
         vTaskDelay(pdMS_TO_TICKS(10));
       }
       digitalWrite(pin, LOW);
+      relayGuardDisarm(pin);
       Serial.println("[OFA] Pin 13 set LOW (relay mode)");
     } else {
       // Servo 1 (positional 0-180°): sweep Start→End, hold at end for the
@@ -5043,18 +5072,21 @@ static void oneForAllActivationTask(void* pvParams) {
 
   } else if (pin == 11) {
     // Relay 2: simple HIGH/LOW for fallback duration
+    const int relayMs = capRelayDuration(fallback, "OFA relay Pin 11");
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
+    relayGuardArm(pin, relayMs);
     Serial.printf("[OFA] Pin %d set HIGH\n", pin);
     // Poll g_ofaStop so the light barrier can cut the relay short.
     unsigned long t0 = millis();
-    while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
+    while (!g_ofaStop && (millis() - t0 < (unsigned long)relayMs)) {
       vTaskDelay(pdMS_TO_TICKS(10));
     }
     if (g_ofaStop) {
       Serial.printf("[OFA] Pin %d: stopped early by light barrier\n", pin);
     }
     digitalWrite(pin, LOW);
+    relayGuardDisarm(pin);
     Serial.printf("[OFA] Pin %d set LOW\n", pin);
   }
 #ifdef BOARD_ESP32C3_21_1
@@ -5113,14 +5145,17 @@ static void oneForAllActivationTask(void* pvParams) {
       Serial.printf("[OFA-T35] GPIO%d servo action done\n", pin);
     } else {
       // Touch 3.5 relay channel (GPIO 15/16/5/6/7): HIGH for fallbackDuration, then LOW
+      const int relayMs = capRelayDuration(fallback, "OFA relay T35");
       digitalWrite(pin, HIGH);
+      relayGuardArm(pin, relayMs);
       Serial.printf("[OFA-T35] GPIO%d set HIGH\n", pin);
       unsigned long t0 = millis();
-      while (!g_ofaStop && (millis() - t0 < (unsigned long)fallback)) {
+      while (!g_ofaStop && (millis() - t0 < (unsigned long)relayMs)) {
         vTaskDelay(pdMS_TO_TICKS(10));
       }
       if (g_ofaStop) Serial.printf("[OFA-T35] GPIO%d stopped early\n", pin);
       digitalWrite(pin, LOW);
+      relayGuardDisarm(pin);
       Serial.printf("[OFA-T35] GPIO%d set LOW\n", pin);
     }
   }
@@ -5146,6 +5181,10 @@ static void runExpanderPayment(int ch, int duration, ExpanderKind kind)
       (kind == ExpanderKind::Pcf8574)  ? 200 :
       (kind == ExpanderKind::Pcf8575)  ? 300 : 400;
   const int chLabel = ch + base;
+
+  // Protection circuit: hard cap (the expander failsafe watchdog is armed with
+  // the capped value below)
+  duration = capRelayDuration(duration, tag);
 
   // Show action-time screen with countdown, same as physical pins
   productSelectionState.showTime = 0;
@@ -5358,6 +5397,12 @@ static void processNormalPayment(int pin, int duration)
   }
   #endif
 
+  // Protection circuit: hard cap for relay outputs. Done after the One-For-All
+  // launches above so servo hold times (which fall back to this duration) are not
+  // shortened; secondary relay tasks cap themselves.
+  const int requestedDuration = duration;
+  if (!isServoPin) duration = capRelayDuration(duration, "Relay");
+
   if (useSpecialMode) {
     Serial.println("[NORMAL] Using special mode: " + specialModeConfig.mode);
     activityTracking.lastActivityTime = millis();
@@ -5367,7 +5412,9 @@ static void processNormalPayment(int pin, int duration)
     }
     actionTimeScreen();
     updateActionTimeCountdown(duration / 1000);
+    relayGuardArm(pin, duration);
     executeSpecialMode(pin, duration, specialModeConfig.frequency, specialModeConfig.dutyCycleRatio);
+    relayGuardDisarm(pin);
   } else {
     Serial.println("[NORMAL] Using standard mode");
     activityTracking.lastActivityTime = millis();
@@ -5391,6 +5438,7 @@ static void processNormalPayment(int pin, int duration)
     } else {
       pinMode(pin, OUTPUT);
       digitalWrite(pin, HIGH);
+      relayGuardArm(pin, duration);
       Serial.printf("[RELAY] Pin %d set HIGH\n", pin);
       // ESP32-C3-21-1: activate GPIO6/GPIO7 flex channels together with GPIO4
       #ifdef BOARD_ESP32C3_21_1
@@ -5398,11 +5446,13 @@ static void processNormalPayment(int pin, int duration)
         if (c3FlexConfig.gpio6Relay) {
           pinMode(PIN_FLEX_CH01, OUTPUT);
           digitalWrite(PIN_FLEX_CH01, HIGH);
+          relayGuardArm(PIN_FLEX_CH01, duration);
           Serial.printf("[RELAY] GPIO%d (flex CH01 relay) set HIGH\n", PIN_FLEX_CH01);
         }
         if (c3FlexConfig.gpio7Relay) {
           pinMode(PIN_FLEX_CH02, OUTPUT);
           digitalWrite(PIN_FLEX_CH02, HIGH);
+          relayGuardArm(PIN_FLEX_CH02, duration);
           Serial.printf("[RELAY] GPIO%d (flex CH02 relay) set HIGH\n", PIN_FLEX_CH02);
         }
       }
@@ -5417,7 +5467,7 @@ static void processNormalPayment(int pin, int duration)
           const int ofaPin = RELAY_CHANNEL_PINS[i + 1];   // flex slot i == CH02+i
           int pidx = getPinIndex(ofaPin);
           int chDur = (pidx >= 0 && productLabels.durations[pidx] > 0)
-                      ? productLabels.durations[pidx] : duration;
+                      ? productLabels.durations[pidx] : requestedDuration;
           OFATaskParams* p = (OFATaskParams*)malloc(sizeof(OFATaskParams));
           if (p) {
             p->pin = ofaPin; p->fallbackDuration = chDur;
@@ -5433,6 +5483,7 @@ static void processNormalPayment(int pin, int duration)
     if (multiChannelConfig.mode == "off" && pin == 12) {
       pinMode(13, OUTPUT);
       digitalWrite(13, HIGH);
+      relayGuardArm(13, duration);
       Serial.println("[RELAY] Pin 13 set HIGH (parallel to Pin 12 in Single mode)");
     }
 
@@ -5441,10 +5492,12 @@ static void processNormalPayment(int pin, int duration)
     if (pin == 12) {
       if (lightBarrierConfig.relayOutput) {
         digitalWrite(PIN_SENSOR_1, HIGH);
+        relayGuardArm(PIN_SENSOR_1, duration);
         Serial.println("[RELAY] GPIO 22 set HIGH (relay output, synced with Pin 12)");
       }
       if (lightBarrierConfig.relayOutput2) {
         digitalWrite(PIN_SENSOR_2, HIGH);
+        relayGuardArm(PIN_SENSOR_2, duration);
         Serial.println("[RELAY] GPIO 23 set HIGH (relay output, synced with Pin 12)");
       }
     }
@@ -5499,16 +5552,19 @@ static void processNormalPayment(int pin, int duration)
       #endif
     } else {
       digitalWrite(pin, LOW);
+      relayGuardDisarm(pin);
       Serial.printf("[RELAY] Pin %d set LOW\n", pin);
       // ESP32-C3-21-1: deactivate GPIO6/GPIO7 flex channels together with GPIO4
       #ifdef BOARD_ESP32C3_21_1
       if (pin == PIN_RELAY) {
         if (c3FlexConfig.gpio6Relay) {
           digitalWrite(PIN_FLEX_CH01, LOW);
+          relayGuardDisarm(PIN_FLEX_CH01);
           Serial.printf("[RELAY] GPIO%d (flex CH01 relay) set LOW\n", PIN_FLEX_CH01);
         }
         if (c3FlexConfig.gpio7Relay) {
           digitalWrite(PIN_FLEX_CH02, LOW);
+          relayGuardDisarm(PIN_FLEX_CH02);
           Serial.printf("[RELAY] GPIO%d (flex CH02 relay) set LOW\n", PIN_FLEX_CH02);
         }
       }
@@ -5518,6 +5574,7 @@ static void processNormalPayment(int pin, int duration)
 
     if (multiChannelConfig.mode == "off" && pin == 12) {
       digitalWrite(13, LOW);
+      relayGuardDisarm(13);
       Serial.println("[RELAY] Pin 13 set LOW (parallel to Pin 12 in Single mode)");
     }
 
@@ -5526,10 +5583,12 @@ static void processNormalPayment(int pin, int duration)
     if (pin == 12) {
       if (lightBarrierConfig.relayOutput) {
         digitalWrite(PIN_SENSOR_1, LOW);
+        relayGuardDisarm(PIN_SENSOR_1);
         Serial.println("[RELAY] GPIO 22 set LOW (relay output, synced with Pin 12)");
       }
       if (lightBarrierConfig.relayOutput2) {
         digitalWrite(PIN_SENSOR_2, LOW);
+        relayGuardDisarm(PIN_SENSOR_2);
         Serial.println("[RELAY] GPIO 23 set LOW (relay output, synced with Pin 12)");
       }
     }

@@ -83,6 +83,7 @@ IOExpander16Config ioExpander16Config;
 
 // I/O Expander Configuration (MCP23017 — 16 channels, virtual pins 400-415)
 MCP23017Config mcp23017Config;
+RelayProtectionConfig relayProtectionConfig;
 
 // NFC Mode Configuration
 NfcConfig nfcConfig;

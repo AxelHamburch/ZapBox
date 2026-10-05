@@ -638,6 +638,80 @@
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
+            <!-- BTC-Ticker Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="btcTicker">BTC-Ticker Mode</label>
+                    <select name="btcTicker" id="btcTicker">
+                        <option value="off">Off</option>
+                        <option value="always">On - always</option>
+                        <option value="selecting" selected>On - when selecting (default)</option>
+                    </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Control when Bitcoin price/block info is shown</p>
+                </div>
+                <div>
+                    <label for="currency">Currency (ISO Code)</label>
+                    <input type="text" name="currency" id="currency" placeholder="USD" maxlength="3" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Supported: USD, EUR, GBP, CAD, CHF, AUD, JPY (via mempool.space)</p>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>Off:</strong> No ticker shown (Multi-Channel: productSelectionScreen; Single: only QR code)</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>On - always:</strong> Ticker overlays screen, navigate with swipe to show products temporarily (returns after timeout)</i></p>
+            <p style="margin-top: 10px; color: #888;"><i><strong>On - when selecting:</strong> Single: Ticker only visible for a short time after swipe. Multi-Channel: productSelectionScreen → products → ticker (at end of product cycle)</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+            <!-- Threshold Mode Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="thresholdKey">Threshold Mode - Wallet Invoice/Read Key</label>
+                    <input type="text" name="thresholdKey" id="thresholdKey" placeholder="e.g. c9e68ab036.." autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">leave empty for normal mode (default)</p>
+                </div>
+                <div>
+                    <label for="thresholdAmount">Threshold value in satoshi</label>
+                    <input type="number" name="thresholdAmount" id="thresholdAmount" placeholder="e.g. 21" autocomplete="off">
+                </div>
+                <div>
+                    <label for="thresholdPin">GPIO pin to be controlled</label>
+                    <input type="number" name="thresholdPin" id="thresholdPin" placeholder="e.g. 14" value="14" autocomplete="off">
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">14 (default CH01)</p>
+                </div>
+                <div>
+                    <label for="thresholdTime">Control time for GPIO pin (ms)</label>
+                    <input type="number" name="thresholdTime" id="thresholdTime" placeholder="e.g. 3000" autocomplete="off">
+                </div>
+                <div>
+                    <label for="thresholdLnurl">LNURL or LIGHTNING ADDRESS for QR-Code</label>
+                    <input type="text" name="thresholdLnurl" id="thresholdLnurl" placeholder="LNURL or lightning address" autocomplete="off">
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> As soon as something is entered in the "Wallet Invoice/Read Key" field, "THRESHOLD MODE" becomes active. "NORMAL MODE" then no longer works. The data specified in the bitcoinSwitch extension, such as amount, PIN, and time, is ignored. Only a payment to the wallet with the invoice key counts.</i></p>
+
+            <p style="margin-top: 10px; color: #888;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
+        <!-- Protection Circuit Section -->
+            <div class="input-wrapper">
+                <div>
+                    <label for="protectionCircuit">Protection circuit</label>
+                    <select name="protectionCircuit" id="protectionCircuit">
+                        <option value="no" selected>Off (default)</option>
+                        <option value="yes">On - Maximum switching duration 2 seconds</option>
+                    </select>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; color: #888;"><i>Magnetic switches—such as those used for automatic flaps—can burn out if activated for too long. To prevent accidental activation lasting longer than 2 seconds, the activation duration is strictly limited. This applies to all outputs set to "Relay" in the channel selection.</i></p>
+
+        <!-- Section Separator -->
+        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
+
             <!-- I/O-Expander Section (PCF8574) -->
             <div class="input-wrapper" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
                 <div style="flex: 2; min-width: 280px;">
@@ -855,64 +929,6 @@
                 </div>
                 <p style="margin: 12px 0 0 0; font-size: 11px; color: #888;"><i>Relay outputs follow the trigger level selected above. Connect the ports <code>PA0</code>–<code>PA7</code> and <code>PB0</code>–<code>PB7</code> — the names silkscreened on the board — to the inputs of your relay board; the datasheet calls the same pins <code>GPA0</code>–<code>GPB7</code>. The <code>INTA</code>/<code>INTB</code> lines are only needed for input operation, which is not implemented yet.</i></p>
             </div>
-        <!-- Section Separator -->
-        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
-
-            <!-- BTC-Ticker Section -->
-            <div class="input-wrapper">
-                <div>
-                    <label for="btcTicker">BTC-Ticker Mode</label>
-                    <select name="btcTicker" id="btcTicker">
-                        <option value="off">Off</option>
-                        <option value="always">On - always</option>
-                        <option value="selecting" selected>On - when selecting (default)</option>
-                    </select>
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Control when Bitcoin price/block info is shown</p>
-                </div>
-                <div>
-                    <label for="currency">Currency (ISO Code)</label>
-                    <input type="text" name="currency" id="currency" placeholder="USD" maxlength="3" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Supported: USD, EUR, GBP, CAD, CHF, AUD, JPY (via mempool.space)</p>
-                </div>
-            </div>
-
-            <p style="margin-top: 20px; color: #888;"><i><strong>Off:</strong> No ticker shown (Multi-Channel: productSelectionScreen; Single: only QR code)</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>On - always:</strong> Ticker overlays screen, navigate with swipe to show products temporarily (returns after timeout)</i></p>
-            <p style="margin-top: 10px; color: #888;"><i><strong>On - when selecting:</strong> Single: Ticker only visible for a short time after swipe. Multi-Channel: productSelectionScreen → products → ticker (at end of product cycle)</i></p>
-
-        <!-- Section Separator -->
-        <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
-
-            <!-- Threshold Mode Section -->
-            <div class="input-wrapper">
-                <div>
-                    <label for="thresholdKey">Threshold Mode - Wallet Invoice/Read Key</label>
-                    <input type="text" name="thresholdKey" id="thresholdKey" placeholder="e.g. c9e68ab036.." autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">leave empty for normal mode (default)</p>
-                </div>
-                <div>
-                    <label for="thresholdAmount">Threshold value in satoshi</label>
-                    <input type="number" name="thresholdAmount" id="thresholdAmount" placeholder="e.g. 21" autocomplete="off">
-                </div>
-                <div>
-                    <label for="thresholdPin">GPIO pin to be controlled</label>
-                    <input type="number" name="thresholdPin" id="thresholdPin" placeholder="e.g. 14" value="14" autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">14 (default CH01)</p>
-                </div>
-                <div>
-                    <label for="thresholdTime">Control time for GPIO pin (ms)</label>
-                    <input type="number" name="thresholdTime" id="thresholdTime" placeholder="e.g. 3000" autocomplete="off">
-                </div>
-                <div>
-                    <label for="thresholdLnurl">LNURL or LIGHTNING ADDRESS for QR-Code</label>
-                    <input type="text" name="thresholdLnurl" id="thresholdLnurl" placeholder="LNURL or lightning address" autocomplete="off">
-                </div>
-            </div>
-
-            <p style="margin-top: 20px; color: #888;"><i><strong>Note:</strong> As soon as something is entered in the "Wallet Invoice/Read Key" field, "THRESHOLD MODE" becomes active. "NORMAL MODE" then no longer works. The data specified in the bitcoinSwitch extension, such as amount, PIN, and time, is ignored. Only a payment to the wallet with the invoice key counts.</i></p>
-
-            <p style="margin-top: 10px; color: #888;"><i><strong>How can I use this?</strong> Either by receiving payment directly into the wallet or by using the "Pay Links" extension. There you can get a static LNURL and even a lightning address. Payments to these addresses then trigger the pin, provided the threshold value is reached or exceeded.</i></p>
-
         <!-- Section Separator -->
         <hr style="margin: 40px 0 30px 0; border: none; border-top: 1px solid #888;">
 
@@ -1259,7 +1275,9 @@
             { "name": "ioExpander16Trigger",  "value": "no" }, // 95 (PCF8575)
             // indices 96-97 – I/O-Expander MCP23017 (virtual pins 400–415)
             { "name": "ioExpanderMcp",        "value": "no" }, // 96
-            { "name": "ioExpanderMcpTrigger", "value": "no" }  // 97
+            { "name": "ioExpanderMcpTrigger", "value": "no" }, // 97
+            // protectionCircuit: "yes" = hard cap of 2 s on relay activations (read by name in firmware)
+            { "name": "protectionCircuit", "value": "no" }  // 98
         ];
 
         // Setup Web Serial using serial.js
@@ -1510,6 +1528,13 @@
                     }
                 }
 
+                if (!configData.some(c => c && c.name === 'protectionCircuit')) {
+                    const pcEl = document.getElementById('protectionCircuit');
+                    if (pcEl) pcEl.value = 'no';
+                    const pcCfg = config.find(c => c.name === 'protectionCircuit');
+                    if (pcCfg) pcCfg.value = 'no';
+                }
+
                 updateMultiControlState();
                 updateIOExpanderFieldState();
                 updateIOExpander16FieldState();
@@ -1714,6 +1739,7 @@
                 "ioExpander16Trigger":(document.getElementById('ioExpander16Trigger')|| {value: "no"}).value,
                 "ioExpanderMcp":      (document.getElementById('ioExpanderMcp')      || {value: "no"}).value,
                 "ioExpanderMcpTrigger":(document.getElementById('ioExpanderMcpTrigger')|| {value: "no"}).value,
+                "protectionCircuit":  (document.getElementById('protectionCircuit')  || {value: "no"}).value,
                 "ch01Mode":          (document.getElementById('ch01Mode')          || {value: "relay"}).value,
                 "ch02Mode":          (document.getElementById('ch02Mode')          || {value: "off"}).value,
                 "ch03Mode":          (document.getElementById('ch03Mode')          || {value: "off"}).value,
@@ -2060,6 +2086,31 @@
             }
             sections += section('Special Mode', smRows);
 
+            // BTC Ticker
+            sections += section('BTC Ticker',
+                row('BTC-Ticker Mode', selText('btcTicker')) +
+                row('Currency', inputVal('currency')));
+
+            // Threshold Mode — active only when a wallet key is set; otherwise "off"
+            const thK = inputVal('thresholdKey'), thA = inputVal('thresholdAmount'),
+                  thP = inputVal('thresholdPin'), thT = inputVal('thresholdTime'),
+                  thL = inputVal('thresholdLnurl');
+            if (thK) {
+                sections += section('Threshold Mode',
+                    row('Threshold Mode', 'on') +
+                    row('Wallet Invoice/Read Key', thK) +
+                    row('Threshold (sat)', thA) +
+                    row('GPIO pin', thP) +
+                    row('Control time (ms)', thT) +
+                    row('LNURL / Lightning address', thL));
+            } else {
+                sections += section('Threshold Mode', row('Threshold Mode', 'Off (default)'));
+            }
+
+            // Protection circuit
+            sections += section('Protection circuit',
+                row('Protection circuit', selText('protectionCircuit')));
+
             // I/O Expander (PCF8574) — always shown; ports are fixed relay outputs (LNbits-controlled)
             const ioVal = (document.getElementById('ioExpander') || { value: 'no' }).value;
             let ioRows = row('I/O Expander', selText('ioExpander'));
@@ -2091,27 +2142,6 @@
                     row('Selection', 'Numerical product selection / Bolt Card on shown QR / direct LNbits trigger');
             }
             sections += section('I/O Expander (MCP23017)', ioMcpRows);
-
-            // BTC Ticker
-            sections += section('BTC Ticker',
-                row('BTC-Ticker Mode', selText('btcTicker')) +
-                row('Currency', inputVal('currency')));
-
-            // Threshold Mode — active only when a wallet key is set; otherwise "off"
-            const thK = inputVal('thresholdKey'), thA = inputVal('thresholdAmount'),
-                  thP = inputVal('thresholdPin'), thT = inputVal('thresholdTime'),
-                  thL = inputVal('thresholdLnurl');
-            if (thK) {
-                sections += section('Threshold Mode',
-                    row('Threshold Mode', 'on') +
-                    row('Wallet Invoice/Read Key', thK) +
-                    row('Threshold (sat)', thA) +
-                    row('GPIO pin', thP) +
-                    row('Control time (ms)', thT) +
-                    row('LNURL / Lightning address', thL));
-            } else {
-                sections += section('Threshold Mode', row('Threshold Mode', 'Off (default)'));
-            }
 
             // Screensaver & Deep Sleep (very bottom)
             sections += section('Screensaver',

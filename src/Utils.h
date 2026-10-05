@@ -22,4 +22,22 @@ String getValue(String data, char separator, int index);
  */
 void executeSpecialMode(int pin, unsigned long duration_ms, float freq, float ratio);
 
+// ── Relay protection circuit (see RelayProtectionConfig in GlobalState.h) ──────
+
+/**
+ * Hard-limit a relay activation time. Returns durationMs unchanged when the
+ * protection circuit is off; otherwise at most RelayProtectionConfig::MAX_DURATION_MS.
+ * @param context short label for the log line printed when the value is cut
+ */
+int capRelayDuration(int durationMs, const char *context);
+
+/**
+ * Arm an independent failsafe for a GPIO relay pin that was just switched HIGH:
+ * a timer (not the main loop) drives the pin LOW after durationMs + margin.
+ * No-op while the protection circuit is off. Disarm once the pin was switched
+ * LOW the regular way.
+ */
+void relayGuardArm(int pin, unsigned long durationMs);
+void relayGuardDisarm(int pin);
+
 #endif // UTILS_H
