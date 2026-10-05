@@ -28,6 +28,8 @@ void logNetworkDiagnostics(const char *why);
 
 // WiFi monitoring and recovery
 void initWiFiEventHandler();
+void applyWiFiCountry();          // regulatory domain DE (channels 1-13), logs the previous one once
+void noteWiFiAttemptStarted();    // call right after the first WiFi.begin() in setup()
 void checkWiFiStatus();
 void checkAndReconnectWiFi();
 

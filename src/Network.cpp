@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
@@ -928,27 +929,130 @@ bool checkServerReachability()
   return false;
 }
 
-// After AUTH_FAIL: pause briefly, then try once more.
-static bool     wifiAuthFailed      = false;
-static unsigned long wifiAuthRetryAt = 0;   // millis() when next retry is allowed
-static const unsigned long WIFI_AUTH_RETRY_MS = 1000; // 1 s between retries
+// ─── WiFi connection management ──────────────────────────────────────────────
+// Only ONE connection attempt runs at a time. The old logic called disconnect() +
+// begin() every 5 s from two places, which aborted attempts that were still
+// scanning/authenticating (reason 8 ASSOC_LEAVE is our own abort) and could keep
+// a marginal link from ever coming up. Now: an attempt gets WIFI_ATTEMPT_MAX_MS to
+// finish; a failure event ends it and schedules the next one with a growing pause.
+
+static volatile bool          wifiAttemptActive    = false;
+static volatile unsigned long wifiAttemptStartedAt = 0;
+static volatile unsigned long wifiNextAttemptAt    = 0;
+static volatile uint8_t       wifiFailStreak       = 0;   // failed attempts since the last connection
+static uint16_t               wifiAttemptCounter   = 0;
+static bool                   wifiScanPending      = false;
+static unsigned long          wifiScanStartedAt    = 0;
+static unsigned long          wifiLastScanAt       = 0;
+static const unsigned long    WIFI_ATTEMPT_MAX_MS  = 20000; // longer without an event = stuck
+
+// Pause before the next attempt: first failure is often transient (router not ready
+// right after boot, and the IDF retries once on its own), so keep it short, then back off.
+static unsigned long wifiBackoffMs(uint8_t streak) {
+  if (streak <= 1) return 3000;   // lets the IDF-internal retry finish first
+  if (streak == 2) return 5000;
+  if (streak == 3) return 10000;
+  return 15000;
+}
+
+static const char *wifiReasonName(uint8_t reason) {
+  switch (reason) {
+    case 2:   return "AUTH_EXPIRE";
+    case 4:   return "ASSOC_EXPIRE";
+    case 8:   return "ASSOC_LEAVE (own disconnect)";
+    case 15:  return "4WAY_HANDSHAKE_TIMEOUT";
+    case 39:  return "TIMEOUT";
+    case 200: return "BEACON_TIMEOUT (AP lost)";
+    case 201: return "NO_AP_FOUND";
+    case 202: return "AUTH_FAIL";
+    case 203: return "ASSOC_FAIL";
+    case 204: return "HANDSHAKE_TIMEOUT";
+    case 205: return "CONNECTION_FAIL";
+    default:  return "other";
+  }
+}
+
+// Regulatory domain. Logs what the radio had (answers "which channels does this
+// ESP32 scan?") and sets Germany: channels 1-13, with the AP's country IE winning.
+void applyWiFiCountry() {
+  static bool logged = false;
+  wifi_country_t cur = {};
+  if (!logged && esp_wifi_get_country(&cur) == ESP_OK) {
+    LOG_INFO("Network", String("WiFi country before: ") + cur.cc[0] + cur.cc[1] +
+                        ", channels " + String(cur.schan) + "-" + String(cur.schan + cur.nchan - 1) +
+                        ", policy " + String((int)cur.policy));
+  }
+  wifi_country_t c = {};
+  c.cc[0] = 'D'; c.cc[1] = 'E'; c.cc[2] = 0;
+  c.schan = 1;
+  c.nchan = 13;
+  c.max_tx_power = 20;
+  c.policy = WIFI_COUNTRY_POLICY_AUTO;
+  esp_err_t err = esp_wifi_set_country(&c);
+  if (!logged) {
+    LOG_INFO("Network", String("WiFi country set: DE, channels 1-13 (") + (err == ESP_OK ? "ok" : "FAILED") + ")");
+    logged = true;
+  }
+}
+
+// Call right after the very first WiFi.begin() in setup() so the gate knows an
+// attempt is already running.
+void noteWiFiAttemptStarted() {
+  wifiAttemptActive = true;
+  wifiAttemptStartedAt = millis();
+}
+
+static void logWifiScanSummary(int n) {
+  if (n <= 0) {
+    LOG_WARN("Net", "Scan: no networks found at all (radio problem?)");
+    return;
+  }
+  int load[15] = {0};
+  int seen = 0;
+  String aps;
+  for (int i = 0; i < n; i++) {
+    int ch = WiFi.channel(i);
+    if (ch >= 1 && ch <= 14) load[ch]++;
+    if (WiFi.SSID(i) == wifiConfig.ssid) {
+      seen++;
+      aps += " [ch" + String(ch) + " " + String(WiFi.RSSI(i)) + "dBm " + WiFi.BSSIDstr(i) + "]";
+    }
+  }
+  String chLoad;
+  for (int ch = 1; ch <= 14; ch++) if (load[ch]) chLoad += " ch" + String(ch) + ":" + String(load[ch]);
+  String msg = String("Scan: ") + String(n) + " networks, own SSID on " + String(seen) + " AP(s)" + aps;
+  if (seen == 0) msg += " — NOT VISIBLE";
+  msg += "; channel load:" + chLoad;
+  if (seen == 0) LOG_WARN("Net", msg); else LOG_INFO("Net", msg);
+}
 
 void initWiFiEventHandler() {
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
     if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+      wifiAttemptActive = false;
+      wifiFailStreak = 0;
       LOG_INFO("Network", String("WiFi got IP ") + WiFi.localIP().toString() +
-                          ", RSSI " + String(WiFi.RSSI()) + " dBm, ch " + String(WiFi.channel()));
+                          ", RSSI " + String(WiFi.RSSI()) + " dBm, ch " + String(WiFi.channel()) +
+                          ", AP " + WiFi.BSSIDstr());
     }
     if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
       uint8_t reason = info.wifi_sta_disconnected.reason;
-      // Every disconnect, not only auth failures — shows flaky links / AP kicks
-      LOG_WARN("Network", String("WiFi disconnected, reason ") + String(reason));
-      // Reason 202 = AUTH_FAIL (wrong password), 201 = AUTH_EXPIRE, 15 = 4WAY_HANDSHAKE_TIMEOUT
-      if (reason == 202 || reason == 201 || reason == 15) {
-        WiFi.setAutoReconnect(false); // stop continuous storm of retries
-        wifiAuthFailed = true;
-        wifiAuthRetryAt = millis() + WIFI_AUTH_RETRY_MS;
-        LOG_ERROR("Network", String("WiFi auth failed (reason ") + String(reason) + ") — retrying in 1 s");
+      const uint8_t *b = info.wifi_sta_disconnected.bssid;
+      char bssid[18];
+      snprintf(bssid, sizeof(bssid), "%02X:%02X:%02X:%02X:%02X:%02X", b[0], b[1], b[2], b[3], b[4], b[5]);
+      // Every disconnect, with reason name, AP and signal — shows flaky links / AP kicks
+      LOG_WARN("Network", String("WiFi disconnected, reason ") + String(reason) + " " + wifiReasonName(reason) +
+                          ", AP " + bssid + ", RSSI " + String((int)info.wifi_sta_disconnected.rssi));
+      // Reason 8 is our own WiFi.disconnect(); everything else ends the running attempt.
+      if (reason != 8) {
+        // From here on the gate in checkAndReconnectWiFi() drives retries, one at a
+        // time — the stack's own auto-reconnect would race with it.
+        WiFi.setAutoReconnect(false);
+        wifiAttemptActive = false;
+        if (wifiFailStreak < 250) wifiFailStreak++;
+        wifiNextAttemptAt = millis() + wifiBackoffMs(wifiFailStreak);
+        LOG_ERROR("Network", String("WiFi attempt failed (streak ") + String(wifiFailStreak) +
+                             ") — next attempt in " + String(wifiBackoffMs(wifiFailStreak) / 1000) + " s");
       }
     }
   });
@@ -983,33 +1087,50 @@ void checkAndReconnectWiFi()
       wifiReconnectScreen();
     }
 
-    // After AUTH_FAIL: wait 1 s, then try once more (transient auth issues are common)
-    if (wifiAuthFailed) {
-      if (millis() < wifiAuthRetryAt) {
-        return; // still in cool-down, stay on NO WIFI screen
-      }
-      // Cool-down expired — attempt one reconnect
-      wifiAuthFailed = false;
-      WiFi.setAutoReconnect(true);
-      WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
-      LOG_INFO("Network", "WiFi auth retry after 1 s cool-down");
+    const unsigned long now = millis();
+
+    // One attempt at a time: let a running attempt finish, respect the backoff.
+    if (wifiAttemptActive && (now - wifiAttemptStartedAt) < WIFI_ATTEMPT_MAX_MS) return;
+    if ((int32_t)(now - wifiNextAttemptAt) < 0) return;
+
+    // After repeated failures take a short passive look at the air (async, never
+    // together with a connect attempt): is our SSID visible at all, on which
+    // channel/AP/signal, how crowded are the channels?
+    if (wifiScanPending) {
+      int n = WiFi.scanComplete();
+      if (n == WIFI_SCAN_RUNNING && (now - wifiScanStartedAt) < 8000) return;
+      if (n >= 0) logWifiScanSummary(n);
+      else LOG_WARN("Net", "Scan did not complete");
+      WiFi.scanDelete();
+      wifiScanPending = false;
+      wifiLastScanAt = millis();
+    } else if (wifiFailStreak >= 2 && (wifiLastScanAt == 0 || (now - wifiLastScanAt) > 60000)) {
+      WiFi.scanNetworks(true);
+      wifiScanPending = true;
+      wifiScanStartedAt = now;
       return;
     }
 
     LOG_WARN("Network", "WiFi connection lost");
     if (networkStatus.errors.wifi < 99) networkStatus.errors.wifi++;
 
-    // Start WiFi reconnect but don't block waiting for it
-    if (!networkStatus.confirmed.wifi) {
+    // An attempt that never reported back (> WIFI_ATTEMPT_MAX_MS) or repeated
+    // failures: reset the radio stack. Otherwise just start the next attempt —
+    // no disconnect, so nothing in flight gets aborted.
+    const bool hardReset = wifiAttemptActive || wifiFailStreak >= 4;
+    if (hardReset) {
       WiFi.disconnect();
       delay(50);
       WiFi.mode(WIFI_STA);
-      WiFi.setSleep(false);
-      WiFi.setAutoReconnect(true);
-      WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
-      WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
-      LOG_INFO("Network", "WiFi reconnection started (non-blocking)");
     }
+    WiFi.setSleep(false);
+    WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+    applyWiFiCountry();
+    WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
+    wifiAttemptActive = true;
+    wifiAttemptStartedAt = millis();
+    LOG_INFO("Network", String("WiFi attempt #") + String(++wifiAttemptCounter) +
+                        " started (streak " + String(wifiFailStreak) + (hardReset ? ", radio reset" : "") + ")");
   }
   else if (WiFi.status() == WL_CONNECTED && networkStatus.errors.wifi > 0 && deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && currentErrorType == 1)
   {

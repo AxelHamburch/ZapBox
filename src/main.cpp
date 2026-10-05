@@ -1871,11 +1871,13 @@ void setup()
   WiFi.setSleep(false); // Disable WiFi power saving for stable connection
   WiFi.setAutoReconnect(true); // Enable auto-reconnect
   WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+  applyWiFiCountry(); // channels 1-13 (Germany); logs what the radio had before
   // Track if WiFi was intentionally skipped due to missing/invalid SSID
   bool ssidMissingOrInvalid = false;
   // Guard: only start WiFi if SSID is present and valid length (<= 32)
   if (wifiConfig.ssid.length() > 0 && wifiConfig.ssid.length() <= 32) {
     WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.wifiPassword.c_str());
+    noteWiFiAttemptStarted();
     SETUP_PRINT("[STARTUP] WiFi connection started in background (Power Save: OFF)");
   } else {
     SETUP_PRINT("[STARTUP] Skipping WiFi.begin(): SSID missing or invalid length");
