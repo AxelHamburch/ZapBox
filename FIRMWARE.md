@@ -397,6 +397,29 @@ installer/firmware/
 
 ## Release History
 
+### v969978 / v969978h / v969978t — 2026-10-05
+
+```markdown
+## 🎯 Release v969978 / v969978h / v969978t — Protection Circuit & WiFi Reconnect Rework
+
+### 🛡️ Protection circuit for solenoids (Standard + Headless + Touch 3.5")
+- **New installer option "Protection circuit"** (Off by default / On — maximum switching duration 2 seconds) on the Standard, Headless and Touch 3.5" installer pages. Solenoids such as those in compartment vending machines can overheat and burn out if powered for too long.
+- When On, **every output set to "Relay" has a hard cap of 2 seconds**, whatever LNbits requests: GPIO relays, I/O expander channels (PCF8574 / PCF8575 / MCP23017), Threshold mode and One-For-All relay channels. Servos and ambient-light outputs are not affected.
+- GPIO relays get an **independent failsafe timer** that forces the pin off even if the main loop stalls. The cap is logged as `[PROTECT] ... capped to 2000 ms`.
+- Installer: the I/O-Expander section moved between Threshold Mode and Screensaver; the hint text only shows while the circuit is On; Read/Write Config and Print Config support the new setting.
+
+### 📶 WiFi (Standard + Headless + Touch 3.5")
+- **Reconnect rework:** only one connection attempt at a time, with a growing pause after failures. The old logic restarted WiFi every 5 s from two places and aborted attempts that were still in flight, which could keep a marginal link from ever coming up.
+- **Better diagnostics:** every disconnect logs the reason name, the access point's BSSID and RSSI; after repeated failures an async scan logs whether the SSID is visible, on which channel/AP/signal, and the channel load.
+- Regulatory domain set to Germany (channels 1-13, the AP's country IE wins) so APs on channels 12/13 are found; the previous country is logged once at boot.
+- Boot log now shows the reset reason (brownout / watchdog / panic).
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 969978
+- Requires **zapbox_extension v2.6.2+** (unchanged)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v969883 / v969883h / v969883t — 2026-10-04
 
 ```markdown
