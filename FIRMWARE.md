@@ -406,6 +406,7 @@ installer/firmware/
 - **Fixed endless screen flicker after the first touch:** the touch controller could report a phantom swipe with out-of-range coordinates. The device then flipped between QR and BTC ticker several times a second, hogged the CPU and flooded the USB serial port, so the web installer connection timed out. Out-of-range sensor frames are now discarded, gestures only count while a finger is really down, and an ignored swipe no longer causes a busy loop.
 - Fixed a dead zone: a tap on exactly the screen centre line was ignored. Any tap now toggles QR / ticker (no left/right distinction anymore).
 - Landscape BTC ticker: title line (Zap⚡Box + touch icon) centred, value rows and Bitcoin logo re-positioned.
+- **E-Layout updated:** `E-Layout-ZapBox-Touch3.5-FOUR-e957556` (SVG + WebP) revised.
 
 ### 📶 WiFi (Standard + Headless + Touch 3.5")
 - **WiFi signal strength (RSSI, channel) is logged every 30 seconds** in the serial log.
