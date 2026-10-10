@@ -910,10 +910,13 @@ static void drawBtcHeader(int cx, int cy) {
   drawTouchIcon(cx + (2 * tw + bw + gapL + gapR) / 2 + 16, cy - 32, themeForeground);
 }
 
+static bool placeholderShown = false;  // true while the ticker shows "Loading..."
+
 void btctickerScreen() {
   DisplayLock l;
   if (!_gfx) return;
   fillScreen(themeBackground);
+  placeholderShown = (bitcoinData.price == "Loading...");
   if (isPortrait()) {
     drawBtcHeader(PANEL_W / 2 - 35, 56);
     drawMonoBitmapScaled((PANEL_W - 96) / 2, 98, bitcoin_logo, 96, 96, themeForeground, 1);
@@ -936,6 +939,12 @@ void btctickerScreen() {
 void updateBtctickerValues() {
   DisplayLock l;
   if (!_gfx) return;
+  // The "Loading..." placeholder is wider than the value area and leaves remnants
+  // next to the logo; when real data replaces it, redraw the whole screen instead.
+  bool isPlaceholder = (bitcoinData.price == "Loading...");
+  bool fullRedraw = placeholderShown && !isPlaceholder;
+  placeholderShown = isPlaceholder;
+  if (fullRedraw) { btctickerScreen(); return; }
   if (isPortrait()) {
     fillRect(0, BTC_V_VAL1_Y - BTC_V_VAL_H / 2, PANEL_W, BTC_V_VAL_H, themeBackground);
     fillRect(0, BTC_V_VAL2_Y - BTC_V_VAL_H / 2, PANEL_W, BTC_V_VAL_H, themeBackground);
