@@ -4008,8 +4008,21 @@ void loop()
                       !pinPadState.active &&
                       !extensionConfig.nfcPaymentPending &&
                       (millis() - productSelectionState.showTime) >= PRODUCT_SELECTION_DELAY) {
-              // Product showing: Return to Product No.1 after PRODUCT_SELECTION_DELAY
-              if (multiChannelConfig.currentProduct == 1) {
+              // Product showing: after PRODUCT_SELECTION_DELAY go back to the start screen
+              // (same screen the ticker returns to). Setups without a start screen
+              // (single servo channel, One-For-All) go to Product No.1 instead.
+              bool hasStartScreen = true;
+              if (multiChannelConfig.mode == "servo" && servoConfig.activeChannelCount() <= 1) hasStartScreen = false;
+              #ifdef BOARD_JC3248W535C
+              if (t35AmbientConfig.oneForAll) hasStartScreen = false;
+              #endif
+              if (hasStartScreen) {
+                Serial.println("[SCREEN] Timeout reached - returning to start screen (SELECTING mode - Duo/Quattro)");
+                multiChannelConfig.currentProduct = -1;
+                deviceState.transition(DeviceState::PRODUCT_SELECTION);
+                productSelectionScreen();
+                productSelectionState.showTime = 0;
+              } else if (multiChannelConfig.currentProduct == 1) {
                 productSelectionState.showTime = 0; // Already on Product 1, reset timer
               } else {
                 Serial.println("[SCREEN] Timeout reached - returning to Product No.1 (SELECTING mode - Duo/Quattro)");
