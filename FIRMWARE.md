@@ -397,6 +397,26 @@ installer/firmware/
 
 ## Release History
 
+### v970748 / v970748h / v970748t — 2026-10-10
+
+```markdown
+## 🎯 Release v970748 / v970748h / v970748t — Touch Phantom-Swipe Fix & WiFi Signal Log
+
+### 🖥️ Touch 3.5" Version (v970748t)
+- **Fixed endless screen flicker after the first touch:** the touch controller could report a phantom swipe with out-of-range coordinates. The device then flipped between QR and BTC ticker several times a second, hogged the CPU and flooded the USB serial port, so the web installer connection timed out. Out-of-range sensor frames are now discarded, gestures only count while a finger is really down, and an ignored swipe no longer causes a busy loop.
+- Fixed a dead zone: a tap on exactly the screen centre line was ignored. Any tap now toggles QR / ticker (no left/right distinction anymore).
+- Landscape BTC ticker: title line (Zap⚡Box + touch icon) centred, value rows and Bitcoin logo re-positioned.
+
+### 📶 WiFi (Standard + Headless + Touch 3.5")
+- **WiFi signal strength (RSSI, channel) is logged every 30 seconds** in the serial log.
+- Web installer pages: new *Troubleshoot → WiFi signal strength* section with a rating guide (excellent … unusable).
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 970748
+- Requires **zapbox_extension v2.6.2+** (unchanged)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v969978 / v969978h / v969978t — 2026-10-05
 
 ```markdown
