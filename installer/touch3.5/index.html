@@ -1095,6 +1095,16 @@
                 <li>If nothing else helps, erase the device via <a href="https://espressif.github.io/esptool-js/" target="_blank" rel="noopener noreferrer">https://espressif.github.io/esptool-js/</a> and reflash.</li>
             </ul>
 
+            <h3 id="wifisignal">WiFi signal strength</h3>
+            <p>The ZapBox writes its WiFi signal strength to the serial log every 30 seconds, e.g. <code>[INFO][WiFi] RSSI -62 dBm, ch 6</code>. The closer the value is to 0, the better:</p>
+            <ul>
+                <li><strong>-30 to -60 dBm:</strong> excellent</li>
+                <li><strong>-60 to -67 dBm:</strong> good, reliable</li>
+                <li><strong>-67 to -75 dBm:</strong> okay, may be slow at times</li>
+                <li><strong>-75 to -85 dBm:</strong> poor, disconnects and timeouts are likely. Move the ZapBox closer to the router or improve the antenna position.</li>
+                <li><strong>below -85 dBm:</strong> unusable</li>
+            </ul>
+
             <h3>Boot into flash mode (if flash fails)</h3>
             <ul>
                 <li>Connect the board via USB</li>

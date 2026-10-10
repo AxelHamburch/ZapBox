@@ -659,7 +659,18 @@
             <li>Message: “Installation failed ⚠️ Your ESP32 board is not supported” -> The firmware you want to flash is not compatible with the hardware. Check that you are using the correct web installer.</li>
             <li>If nothing else helps, do a complete restart by erasing all data on the ESP32. Use <a href="https://espressif.github.io/esptool-js/" target="_blank" rel="noopener noreferrer">https://espressif.github.io/esptool-js/</a>. → Press: <strong>Connect</strong> > <strong>Erase Flash</strong> and reflash the ZapBox.</li>
         </ul>
-        
+
+        <h3 id="wifisignal">WiFi signal strength</h3>
+
+        <p>The ZapBox writes its WiFi signal strength to the serial log every 30 seconds, e.g. <code>[INFO][WiFi] RSSI -62 dBm, ch 6</code>. The closer the value is to 0, the better:</p>
+        <ul>
+            <li><strong>-30 to -60 dBm:</strong> excellent</li>
+            <li><strong>-60 to -67 dBm:</strong> good, reliable</li>
+            <li><strong>-67 to -75 dBm:</strong> okay, may be slow at times</li>
+            <li><strong>-75 to -85 dBm:</strong> poor, disconnects and timeouts are likely. Move the ZapBox closer to the router or improve the antenna position.</li>
+            <li><strong>below -85 dBm:</strong> unusable</li>
+        </ul>
+
         <h3 id="hardwareproblems">Further note:</h3>
 
         <p>Some ESP32s must first be put into mode before flashing or transferring data. Otherwise, they will refuse to transfer. Try these:</p>
