@@ -318,6 +318,7 @@ static void nfc_task_code(void *pvParams)
             if (pn532SetRFField(true)) {
                 LOG_INFO("NFC", "PN532 RF ON – NT3H phone read window closed");
                 pn532WasPaused = false;
+                vTaskDelay(pdMS_TO_TICKS(150)); // let the field settle before the first poll
             } else {
                 LOG_WARN("NFC", "PN532 RF ON command failed – retrying before next poll");
                 vTaskDelay(pdMS_TO_TICKS(100));
@@ -445,10 +446,28 @@ static void nfc_task_code(void *pvParams)
 
         // Verify the card is an NTAG424 DNA (required for Bolt Card).
         bool isNtag = s_nfc->ntag424_isNTAG424();
+        // The first APDU after idle/RF-on sometimes fails on a real Bolt Card. A 7-byte
+        // UID is never a phone (phones use a 4-byte random UID), so retry before giving up.
+        for (int r = 0; r < 3 && !isNtag && uidLength == 7; r++) {
+            i2cGive();
+            vTaskDelay(pdMS_TO_TICKS(100));
+            i2cTake();
+            isNtag = s_nfc->ntag424_isNTAG424();
+        }
         if (!isNtag) {
             String uri = readNdefUri();
             i2cGive(); // release bus before HTTP call
             esp_log_level_set("i2c.master", ESP_LOG_WARN); // restore Wire logging
+            if (uri.length() == 0 && uidLength != 4) {
+                // 7-byte UID that did not answer as NTAG424: not a phone (the FD pin covers
+                // the NT3H). Do not open the 8 s pause; reset the RF field and re-detect.
+                LOG_WARN("NFC", "7-byte card not recognised as NTAG424 – resetting RF field");
+                pn532SetRFField(false);
+                vTaskDelay(pdMS_TO_TICKS(50));
+                pn532SetRFField(true);
+                vTaskDelay(pdMS_TO_TICKS(150));
+                continue;
+            }
             if (uri.length() == 0) {
                 // Non-NTAG424 card without NDEF URI is likely a phone — pause polling
                 // so the phone can read the NT3H2111 tag without REQA collision.
@@ -556,8 +575,12 @@ static void nfc_task_code(void *pvParams)
 
         if (bytesRead == 0)
         {
-            LOG_WARN("NFC", "NTAG424 read returned 0 bytes after 5 attempts");
-            vTaskDelay(pdMS_TO_TICKS(500));
+            LOG_WARN("NFC", "NTAG424 read returned 0 bytes after 5 attempts – resetting RF field");
+            // A stuck PN532 RF state is cleared by an RF off/on cycle; the card is then re-detected.
+            pn532SetRFField(false);
+            vTaskDelay(pdMS_TO_TICKS(50));
+            pn532SetRFField(true);
+            vTaskDelay(pdMS_TO_TICKS(150));
             continue;
         }
 
