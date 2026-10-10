@@ -190,6 +190,10 @@
 #undef PIN_RELAY_CH03
 #undef PIN_RELAY_CH04
 #undef RELAY_CHANNEL_MAX
+// GPIO 15 is relay channel CH02 here. The T-Display-S3 power-enable pin (PIN_POWER_ON = 15)
+// must not be driven HIGH by setup() on this board.
+#undef PIN_POWER_ON
+#define PIN_POWER_ON -1
 
 // ── Display (QSPI, internal to module — NOT on breakout header) ──
 // Pins defined as build flags in platformio.ini:
@@ -370,6 +374,10 @@ static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = {
 // GPIO6/GPIO7 flex channels are not LNbits payment channels — they always
 // fire together with GPIO4 based on their configured mode (relay/servo/sensor).
 #undef RELAY_CHANNEL_MAX
+// GPIO 15 is relay channel CH02 here. The T-Display-S3 power-enable pin (PIN_POWER_ON = 15)
+// must not be driven HIGH by setup() on this board.
+#undef PIN_POWER_ON
+#define PIN_POWER_ON -1
 #define RELAY_CHANNEL_MAX 1
 static const int RELAY_CHANNEL_PINS[RELAY_CHANNEL_MAX] = { PIN_RELAY };
 
