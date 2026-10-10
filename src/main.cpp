@@ -3665,12 +3665,10 @@ void loop()
               Serial.println("LEFT SIDE");
               actionName = "TOUCH LEFT";
               navigateBack = true;
-            } else if (y > 160) {
+            } else {
               Serial.println("RIGHT SIDE");
               actionName = "TOUCH RIGHT";
               navigateBack = true;
-            } else {
-              Serial.println("CENTER (ignored)");
             }
           }
           // Also accept quick touch without gesture (GESTURE_NONE rising edge)
@@ -3683,12 +3681,10 @@ void loop()
               Serial.println("LEFT SIDE");
               actionName = "QUICK TOUCH LEFT";
               navigateBack = true;
-            } else if (y > 160) {
+            } else {
               Serial.println("RIGHT SIDE");
               actionName = "QUICK TOUCH RIGHT";
               navigateBack = true;
-            } else {
-              Serial.println("CENTER (ignored)");
             }
           }
           
@@ -3810,19 +3806,15 @@ void loop()
             navigate = true;
             actionName = "SWIPE";
           } else if (gesture == GESTURE_SINGLE_CLICK) {
-            if (y < 160 || y > 160) { // Left or right side
-              navigate = true;
-              actionName = "SINGLE CLICK";
-            }
+            navigate = true;
+            actionName = "SINGLE CLICK";
           }
           // Also accept quick touch: GESTURE_NONE rising edge OR AXS15231B 0xFF new-touch marker.
           // AXS15231B fires 0xFF on every touch DOWN regardless of wasTouched state;
           // the 500 ms timeout in the navigate block prevents rapid re-triggering.
           else if ((gesture == GESTURE_NONE && isTouched && !wasTouched) || gesture == 0xFF) {
-            if (y < 160 || y > 160) { // Left or right side
-              navigate = true;
-              actionName = "QUICK TOUCH";
-            }
+            navigate = true;
+            actionName = "QUICK TOUCH";
           }
           
           if (navigate) {
