@@ -764,8 +764,8 @@ static const int BTC_H_VAL2_Y  = 208;
 static const int BTC_H_LBL3_Y  = 244;
 static const int BTC_H_VAL3_Y  = 272;
 static const int BTC_H_VAL_H   =  24;   // height of size-3 text (8×3)
-static const int BTC_H_VAL_X   = 222;   // clear from x=222 (the "Loading..." placeholder starts at x=221); logo is redrawn afterwards
-static const int BTC_H_VAL_W   = 258;   // width of value clear area (222 to 480)
+static const int BTC_H_VAL_X   = 236;   // clear from just past the logo (erases "Loading..." remnant)
+static const int BTC_H_VAL_W   = 244;   // width of value clear area (222 to 480)
 
 static String calcSatsPerCurrency() {
   float price = bitcoinData.price.toFloat();
@@ -945,8 +945,6 @@ void updateBtctickerValues() {
     fillRect(BTC_H_VAL_X, BTC_H_VAL1_Y - BTC_H_VAL_H / 2, BTC_H_VAL_W, BTC_H_VAL_H, themeBackground);
     fillRect(BTC_H_VAL_X, BTC_H_VAL2_Y - BTC_H_VAL_H / 2, BTC_H_VAL_W, BTC_H_VAL_H, themeBackground);
     fillRect(BTC_H_VAL_X, BTC_H_VAL3_Y - BTC_H_VAL_H / 2, BTC_H_VAL_W, BTC_H_VAL_H, themeBackground);
-    // The clear area overlaps the logo's right edge (logo spans x=113..232), so restore it.
-    drawMonoBitmapScaled(113, (SCR_H - 120) / 2 + 33, bitcoin_logo_h, 120, 120, themeForeground, 1);
     btcDrawValues_landscape();
   }
   flushDisplay();
