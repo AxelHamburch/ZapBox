@@ -2750,6 +2750,16 @@ void loop()
                     loopIterations, touchState.available, onErrorScreen, currentErrorType);
       lastLoopDebugPrint = millis();
     }
+    // WiFi signal strength every 30 s
+    static unsigned long lastRssiLog = 0;
+    if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastRssiLog >= 30000) {
+      lastRssiLog = millis();
+      if (WiFi.status() == WL_CONNECTED) {
+        LOG_INFO("WiFi", String("RSSI ") + WiFi.RSSI() + " dBm, ch " + WiFi.channel());
+      } else {
+        LOG_INFO("WiFi", "RSSI n/a (not connected)");
+      }
+    }
     // Check if config mode was triggered during payment wait
     if (deviceState.isInState(DeviceState::CONFIG_MODE))
     {
@@ -3634,7 +3644,11 @@ void loop()
           // Physical DOWN (toward button) = SWIPE_UP → renamed to RIGHT  
           // Physical LEFT = SWIPE_LEFT → renamed to DOWN
           // Physical RIGHT = SWIPE_RIGHT → renamed to UP
-          if (gesture == GESTURE_SWIPE_UP) {
+          // Gestures only count while a finger is really down; a latched gesture
+          // byte from the sensor must not keep triggering navigation.
+          if (!isTouched) {
+            // no navigation without an actual touch
+          } else if (gesture == GESTURE_SWIPE_UP) {
             actionName = "SWIPE RIGHT";
             navigateBack = true;
           } else if (gesture == GESTURE_SWIPE_DOWN) {
@@ -3647,45 +3661,20 @@ void loop()
             actionName = "SWIPE UP";
             navigateBack = true;
           }
-          // Check for single click or long press on left or right side of screen
+          // Single click or long press anywhere on the screen
           else if (gesture == GESTURE_SINGLE_CLICK || gesture == GESTURE_LONG_PRESS) {
-            // Display: 170x320 native, rotated to 320x170 (rotation=1)
-            // Touch coordinates are NOT rotated: X=0-170, Y=0-320
-            Serial.printf("[TOUCH] %s detected at X=%d, Y=%d - ", 
+            Serial.printf("[TOUCH] %s detected at X=%d, Y=%d\n",
                          gesture == GESTURE_SINGLE_CLICK ? "SINGLE CLICK" : "LONG PRESS", x, y);
-            
-            // With rotation=1: Touch Y maps to Display X
-            // Left side of display (low Display X) = low Touch Y (< 160)
-            // Right side of display (high Display X) = high Touch Y (> 160)
-            if (y < 160) {
-              Serial.println("LEFT SIDE");
-              actionName = "TOUCH LEFT";
-              navigateBack = true;
-            } else if (y > 160) {
-              Serial.println("RIGHT SIDE");
-              actionName = "TOUCH RIGHT";
-              navigateBack = true;
-            } else {
-              Serial.println("CENTER (ignored)");
-            }
+            actionName = "TOUCH";
+            navigateBack = true;
           }
           // Also accept quick touch without gesture (GESTURE_NONE rising edge)
           // or AXS15231B 0xFF "new-touch" marker (fired on every touch DOWN on JC3248W535C).
           // 500 ms timeout in the action block prevents rapid re-triggering.
           else if ((gesture == GESTURE_NONE && isTouched && !wasTouched) || gesture == 0xFF) {
-            Serial.printf("[TOUCH] QUICK TOUCH at X=%d, Y=%d - ", x, y);
-
-            if (y < 160) {
-              Serial.println("LEFT SIDE");
-              actionName = "QUICK TOUCH LEFT";
-              navigateBack = true;
-            } else if (y > 160) {
-              Serial.println("RIGHT SIDE");
-              actionName = "QUICK TOUCH RIGHT";
-              navigateBack = true;
-            } else {
-              Serial.println("CENTER (ignored)");
-            }
+            Serial.printf("[TOUCH] QUICK TOUCH at X=%d, Y=%d\n", x, y);
+            actionName = "QUICK TOUCH";
+            navigateBack = true;
           }
           
           if (navigateBack) {
@@ -3703,7 +3692,9 @@ void loop()
               gestureHandledThisTouch = true; // Mark gesture as handled
               lastNavigationTime = now; // Update navigation timestamp
             } else {
-              Serial.printf("[TOUCH] >>> %s IGNORED (only %lu ms since last navigation)\n", actionName.c_str(), now - lastNavigationTime);
+              // No log here: it fired on every loop pass and flooded USB-CDC.
+              // lastTouchEvent keeps the 10 ms poll throttle active.
+              lastTouchEvent = now;
               wasTouched = isTouched;
               continue;
             }
@@ -3797,24 +3788,22 @@ void loop()
           }
           
           // Respond to deliberate gestures
-          if (gesture == GESTURE_SWIPE_UP || gesture == GESTURE_SWIPE_DOWN || 
+          if (!isTouched) {
+            // latched gesture without a finger: ignore
+          } else if (gesture == GESTURE_SWIPE_UP || gesture == GESTURE_SWIPE_DOWN ||
               gesture == GESTURE_SWIPE_LEFT || gesture == GESTURE_SWIPE_RIGHT) {
             navigate = true;
             actionName = "SWIPE";
           } else if (gesture == GESTURE_SINGLE_CLICK) {
-            if (y < 160 || y > 160) { // Left or right side
-              navigate = true;
-              actionName = "SINGLE CLICK";
-            }
+            navigate = true;
+            actionName = "SINGLE CLICK";
           }
           // Also accept quick touch: GESTURE_NONE rising edge OR AXS15231B 0xFF new-touch marker.
           // AXS15231B fires 0xFF on every touch DOWN regardless of wasTouched state;
           // the 500 ms timeout in the navigate block prevents rapid re-triggering.
           else if ((gesture == GESTURE_NONE && isTouched && !wasTouched) || gesture == 0xFF) {
-            if (y < 160 || y > 160) { // Left or right side
-              navigate = true;
-              actionName = "QUICK TOUCH";
-            }
+            navigate = true;
+            actionName = "QUICK TOUCH";
           }
           
           if (navigate) {
