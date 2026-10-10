@@ -1565,6 +1565,25 @@ void Task1code(void *pvParameters)
 // SETUP - INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════════════════════
 
+#ifdef BOARD_JC3248W535C
+#include <driver/gpio.h>
+#include <esp_rom_gpio.h>
+// Runs from the C++ static-init phase, i.e. before app_main(), Arduino init and
+// the ~250 ms PSRAM init — the earliest point application code can run. It only
+// shortens the window in which the relay pins float; the ROM/bootloader phase
+// before it cannot be influenced by firmware (an external pull-down is the only
+// complete fix for a pull-up'd relay board).
+static void __attribute__((constructor(101))) earlyRelayPinsLow() {
+  const gpio_num_t pins[3] = { (gpio_num_t)PIN_RELAY_CH01, (gpio_num_t)PIN_RELAY_CH02,
+                               (gpio_num_t)PIN_RELAY_CH03 };
+  for (int i = 0; i < 3; i++) {
+    esp_rom_gpio_pad_select_gpio(pins[i]);
+    gpio_set_level(pins[i], 0);
+    gpio_set_direction(pins[i], GPIO_MODE_OUTPUT);
+  }
+}
+#endif
+
 void setup()
 {
 #ifdef BOARD_JC3248W535C
