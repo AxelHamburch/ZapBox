@@ -556,13 +556,13 @@ static void nfc_task_code(void *pvParams)
         }
 
         // Read the NDEF file from the NTAG424.
-        // Retry up to 5 times; release the I2C mutex between retries so other
+        // Retry up to 2 times, then reset the RF field; release the I2C mutex between retries so other
         // devices (PCF8574) can use the bus during the 100 ms wait.
         uint8_t bytesRead = 0;
-        for (int attempt = 1; attempt <= 5 && bytesRead == 0; attempt++)
+        for (int attempt = 1; attempt <= 2 && bytesRead == 0; attempt++)
         {
             bytesRead = s_nfc->ntag424_ISOReadFile(fileBuf, sizeof(fileBuf) - 1);
-            if (bytesRead == 0 && attempt < 5)
+            if (bytesRead == 0 && attempt < 2)
             {
                 LOG_WARN("NFC", String("NTAG424 read attempt ") + attempt + " returned 0 bytes – retrying...");
                 i2cGive();
@@ -575,7 +575,7 @@ static void nfc_task_code(void *pvParams)
 
         if (bytesRead == 0)
         {
-            LOG_WARN("NFC", "NTAG424 read returned 0 bytes after 5 attempts – resetting RF field");
+            LOG_WARN("NFC", "NTAG424 read returned 0 bytes after 2 attempts – resetting RF field");
             // A stuck PN532 RF state is cleared by an RF off/on cycle; the card is then re-detected.
             pn532SetRFField(false);
             vTaskDelay(pdMS_TO_TICKS(50));
