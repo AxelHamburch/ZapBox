@@ -764,8 +764,8 @@ static const int BTC_H_VAL2_Y  = 208;
 static const int BTC_H_LBL3_Y  = 244;
 static const int BTC_H_VAL3_Y  = 272;
 static const int BTC_H_VAL_H   =  24;   // height of size-3 text (8×3)
-static const int BTC_H_VAL_X   = 222;   // clear from just past the logo (erases "Loading..." remnant, which starts at x=221)
-static const int BTC_H_VAL_W   = 258;   // width of value clear area (222 to 480)
+static const int BTC_H_VAL_X   = 236;   // clear from just past the logo (erases "Loading..." remnant)
+static const int BTC_H_VAL_W   = 244;   // width of value clear area (222 to 480)
 
 static String calcSatsPerCurrency() {
   float price = bitcoinData.price.toFloat();
