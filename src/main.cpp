@@ -3651,41 +3651,20 @@ void loop()
             actionName = "SWIPE UP";
             navigateBack = true;
           }
-          // Check for single click or long press on left or right side of screen
+          // Single click or long press anywhere on the screen
           else if (gesture == GESTURE_SINGLE_CLICK || gesture == GESTURE_LONG_PRESS) {
-            // Display: 170x320 native, rotated to 320x170 (rotation=1)
-            // Touch coordinates are NOT rotated: X=0-170, Y=0-320
-            Serial.printf("[TOUCH] %s detected at X=%d, Y=%d - ", 
+            Serial.printf("[TOUCH] %s detected at X=%d, Y=%d\n",
                          gesture == GESTURE_SINGLE_CLICK ? "SINGLE CLICK" : "LONG PRESS", x, y);
-            
-            // With rotation=1: Touch Y maps to Display X
-            // Left side of display (low Display X) = low Touch Y (< 160)
-            // Right side of display (high Display X) = high Touch Y (> 160)
-            if (y < 160) {
-              Serial.println("LEFT SIDE");
-              actionName = "TOUCH LEFT";
-              navigateBack = true;
-            } else {
-              Serial.println("RIGHT SIDE");
-              actionName = "TOUCH RIGHT";
-              navigateBack = true;
-            }
+            actionName = "TOUCH";
+            navigateBack = true;
           }
           // Also accept quick touch without gesture (GESTURE_NONE rising edge)
           // or AXS15231B 0xFF "new-touch" marker (fired on every touch DOWN on JC3248W535C).
           // 500 ms timeout in the action block prevents rapid re-triggering.
           else if ((gesture == GESTURE_NONE && isTouched && !wasTouched) || gesture == 0xFF) {
-            Serial.printf("[TOUCH] QUICK TOUCH at X=%d, Y=%d - ", x, y);
-
-            if (y < 160) {
-              Serial.println("LEFT SIDE");
-              actionName = "QUICK TOUCH LEFT";
-              navigateBack = true;
-            } else {
-              Serial.println("RIGHT SIDE");
-              actionName = "QUICK TOUCH RIGHT";
-              navigateBack = true;
-            }
+            Serial.printf("[TOUCH] QUICK TOUCH at X=%d, Y=%d\n", x, y);
+            actionName = "QUICK TOUCH";
+            navigateBack = true;
           }
           
           if (navigateBack) {
