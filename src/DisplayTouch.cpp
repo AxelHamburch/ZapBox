@@ -757,12 +757,12 @@ static void blankScreen() {
 // updateBtctickerValues redraws only the 3 value rows to avoid logo flicker.
 
 static const int BTC_H_TXT_CX  = 330;
-static const int BTC_H_LBL1_Y  = 136;
-static const int BTC_H_VAL1_Y  = 162;
-static const int BTC_H_LBL2_Y  = 200;
-static const int BTC_H_VAL2_Y  = 228;
-static const int BTC_H_LBL3_Y  = 264;
-static const int BTC_H_VAL3_Y  = 292;
+static const int BTC_H_LBL1_Y  = 116;
+static const int BTC_H_VAL1_Y  = 142;
+static const int BTC_H_LBL2_Y  = 180;
+static const int BTC_H_VAL2_Y  = 208;
+static const int BTC_H_LBL3_Y  = 244;
+static const int BTC_H_VAL3_Y  = 272;
 static const int BTC_H_VAL_H   =  24;   // height of size-3 text (8×3)
 static const int BTC_H_VAL_X   = 222;   // clear from just past the logo (erases "Loading..." remnant)
 static const int BTC_H_VAL_W   = 258;   // width of value clear area (222 to 480)
@@ -924,7 +924,7 @@ void btctickerScreen() {
     btcDrawValues_portrait();
   } else {
     drawBtcHeader(200, 58);  // title+icon span cx-88..cx+168 -> centred on 480 px
-    drawMonoBitmapScaled(100, (SCR_H - 120) / 2 + 20, bitcoin_logo_h, 120, 120, themeForeground, 1);
+    drawMonoBitmapScaled(100, (SCR_H - 120) / 2 + 33, bitcoin_logo_h, 120, 120, themeForeground, 1);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL1_Y, (currency + "/BTC").c_str(), themeForeground, themeBackground, 2);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL2_Y, ("SAT/" + currency).c_str(), themeForeground, themeBackground, 2);
     drawCenter(BTC_H_TXT_CX, BTC_H_LBL3_Y, "Block",                      themeForeground, themeBackground, 2);
