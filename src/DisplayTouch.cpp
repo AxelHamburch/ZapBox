@@ -1619,15 +1619,8 @@ int modeSelectHitTest(uint16_t x, uint16_t y) {
 void productSelectionScreen() {
   DisplayLock l; if (!_gfx) return;
   fillScreen(themeBackground);
-  if (isPortrait()) {
-    drawCenter(SCR_W / 2, 177, "ZAPBOX",      themeForeground, themeBackground, 5);
-    drawCenter(SCR_W / 2, 242, "the machine", themeForeground, themeBackground, 4);
-    drawCenter(SCR_W / 2, 299, "touch me..",  themeForeground, themeBackground, 3);
-  } else {
-    drawCenter(SCR_W / 2,  92, "ZAPBOX",      themeForeground, themeBackground, 5);
-    drawCenter(SCR_W / 2, 157, "the machine", themeForeground, themeBackground, 4);
-    drawCenter(SCR_W / 2, 214, "touch me..",  themeForeground, themeBackground, 3);
-  }
+  // Title + touch icon span cx-88..cx+168 (256 px), so cx = centre - 40 centres the whole line.
+  drawBtcHeader(SCR_W / 2 - 40, SCR_H / 2);
   if (bitcoinData.blockHigh != "...") {
     String blk = fmtBlockHeight(bitcoinData.blockHigh);
     drawCenter(SCR_W / 2, SCR_H - 14, blk.c_str(), themeForeground, themeBackground, 2);

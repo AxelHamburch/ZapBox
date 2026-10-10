@@ -405,6 +405,7 @@ installer/firmware/
 ### 🖥️ Touch 3.5" Version (v970756t)
 - **Fixed GPIO 15 (CH02) switching on at every start:** a leftover pin definition from the T-Display-S3 (power-enable pin) drove GPIO 15 HIGH at the beginning of boot, so a relay on CH02 clicked for about a second at each power-up or restart. GPIO 15 is now left alone until its configured mode is applied.
 - **Fixed a channel staying permanently on after a fresh flash:** outputs set to "off" were left floating; they are now held LOW. GPIO 14/15/16 are also pulled LOW at the very start of boot to shorten the unconfigured window.
+- **New start screen in multi-channel mode** (BTC-Ticker "On - when selecting"): the "ZAPBOX / the machine / touch me.." text is replaced by the Zap⚡Box title with the touch icon, centred on the screen (landscape and portrait).
 
 ### 🛠️ Technical Details
 - Updated to Bitcoin block height 970756
