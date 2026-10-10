@@ -563,6 +563,20 @@ A higher-priority error always overrides the display of a lower one: if WiFi is 
 
 **Smart recovery:** when WiFi reconnects, internet and server status are re-checked immediately, and the device returns to the correct screen for its actual state.
 
+### WiFi signal strength
+
+All variants (display and headless) write the WiFi signal strength to the serial log (115200 baud) every 30 seconds, e.g. `[INFO][WiFi] RSSI -62 dBm, ch 6`. The closer the value is to 0, the better:
+
+| RSSI | Rating |
+|------|--------|
+| -30 to -60 dBm | Excellent |
+| -60 to -67 dBm | Good, reliable |
+| -67 to -75 dBm | Okay, may be slow at times |
+| -75 to -85 dBm | Poor — disconnects and timeouts likely; move the ZapBox closer to the router or improve the antenna position |
+| below -85 dBm | Unusable |
+
+The same guide is on the *Troubleshoot* section of every web installer page.
+
 ### Report mode
 
 Shows error counters (0–99) for all four error types with their occurrence counts.
