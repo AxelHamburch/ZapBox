@@ -1567,6 +1567,17 @@ void Task1code(void *pvParameters)
 
 void setup()
 {
+#ifdef BOARD_JC3248W535C
+  // Drive the relay outputs LOW as early as possible. Until now the pins float
+  // (GPIO 15/16 are the 32 kHz XTAL pads), so a relay board with a pull-up or a
+  // slow driver stage could switch on until the config was read ~1 s later.
+  // The config-specific init below re-purposes a pin if it is a sensor,
+  // ambient light or servo; GPIO 5 (battery divider) is never touched here.
+  for (int i = 0; i < 3; i++) {
+    pinMode(RELAY_CHANNEL_PINS[i], OUTPUT);
+    digitalWrite(RELAY_CHANNEL_PINS[i], LOW);
+  }
+#endif
   Serial.setRxBufferSize(2048); // Increased for long JSON with LNURL
   Serial.begin(115200);
 
@@ -1669,7 +1680,11 @@ void setup()
       } else if (gpio == PIN_BAT_ADC) {
         Serial.printf("[FLEX] GPIO %d: off — left as INPUT for the battery gauge\n", gpio);
       } else {
-        Serial.printf("[FLEX] GPIO %d: off — skipped\n", gpio);
+        // Unused output: hold it LOW instead of leaving it floating, otherwise a
+        // relay board with a pull-up keeps the channel permanently on.
+        pinMode(gpio, OUTPUT);
+        digitalWrite(gpio, LOW);
+        Serial.printf("[FLEX] GPIO %d: off — held LOW\n", gpio);
       }
     }
   }
