@@ -2750,6 +2750,16 @@ void loop()
                     loopIterations, touchState.available, onErrorScreen, currentErrorType);
       lastLoopDebugPrint = millis();
     }
+    // WiFi signal strength every 30 s
+    static unsigned long lastRssiLog = 0;
+    if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastRssiLog >= 30000) {
+      lastRssiLog = millis();
+      if (WiFi.status() == WL_CONNECTED) {
+        LOG_INFO("WiFi", String("RSSI ") + WiFi.RSSI() + " dBm, ch " + WiFi.channel());
+      } else {
+        LOG_INFO("WiFi", "RSSI n/a (not connected)");
+      }
+    }
     // Check if config mode was triggered during payment wait
     if (deviceState.isInState(DeviceState::CONFIG_MODE))
     {
