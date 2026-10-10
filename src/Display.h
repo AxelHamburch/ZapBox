@@ -76,7 +76,6 @@ bool miniPosQrCancelHit(uint16_t x, uint16_t y);
 void miniPosPaidScreen();
 // Numerical product selection (Touch 3.5 multi-channel only)
 void showProductSelectScreen();
-void updateProductSelectBlockHeight();
 int  productSelectHitTest(uint16_t x, uint16_t y);
 void showProductSelectQRScreen(String label, int pin);
 bool productSelectQrCancelHit(uint16_t x, uint16_t y);
@@ -95,7 +94,6 @@ inline void showMiniPosQRScreen() {}
 inline bool miniPosQrCancelHit(uint16_t, uint16_t) { return false; }
 inline void miniPosPaidScreen() {}
 inline void showProductSelectScreen() {}
-inline void updateProductSelectBlockHeight() {}
 inline int  productSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showProductSelectQRScreen(String, int) {}
 inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }
@@ -159,7 +157,6 @@ inline void showMiniPosQRScreen() {}
 inline bool miniPosQrCancelHit(uint16_t, uint16_t) { return false; }
 inline void miniPosPaidScreen() {}
 inline void showProductSelectScreen() {}
-inline void updateProductSelectBlockHeight() {}
 inline int  productSelectHitTest(uint16_t, uint16_t) { return -1; }
 inline void showProductSelectQRScreen(String, int) {}
 inline bool productSelectQrCancelHit(uint16_t, uint16_t) { return false; }

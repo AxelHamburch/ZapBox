@@ -4097,14 +4097,6 @@ void loop()
               updateBtctickerValues();
               Serial.println("[BTC] Initial data drawn to active ticker");
             }
-            #ifdef BOARD_JC3248W535C
-            if (t35AmbientConfig.numericSelect &&
-                deviceState.isInState(DeviceState::PRODUCT_SELECTION) &&
-                !productSelectState.panelActive && !productSelectState.qrActive) {
-              updateProductSelectBlockHeight();
-              Serial.println("[BTC] Initial block height drawn to product selection screen");
-            }
-            #endif
           }
           vTaskDelete(nullptr);
         },

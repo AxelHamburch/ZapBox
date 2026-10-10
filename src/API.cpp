@@ -477,14 +477,6 @@ void updateBitcoinTicker()
             updateBtctickerValues(); // Partial update instead of btctickerScreen()
             Serial.println("[BTC] Values updated (partial refresh - reduced flicker)");
           }
-#ifdef BOARD_JC3248W535C
-          if (t35AmbientConfig.numericSelect &&
-              deviceState.isInState(DeviceState::PRODUCT_SELECTION) &&
-              !productSelectState.panelActive && !productSelectState.qrActive) {
-            updateProductSelectBlockHeight();
-            Serial.println("[BTC] Block height updated on product selection screen");
-          }
-#endif
         }
         vTaskDelete(nullptr);
       },

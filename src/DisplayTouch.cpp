@@ -1499,26 +1499,6 @@ void showMobilePhoneScreen(String label, int pin) {
   flushDisplay();
 }
 
-static String fmtBlockHeight(const String& raw) {
-  // Format raw block height as "#X.XXX.XXX" (zero-padded to 7 digits)
-  char buf[8];
-  snprintf(buf, sizeof(buf), "%07ld", raw.toInt());
-  String s = "";
-  s += buf[0]; s += '.';
-  s += buf[1]; s += buf[2]; s += buf[3]; s += '.';
-  s += buf[4]; s += buf[5]; s += buf[6];
-  return s;
-}
-
-void updateProductSelectBlockHeight() {
-  DisplayLock l; if (!_gfx) return;
-  if (bitcoinData.blockHigh == "...") return;
-  String blk = fmtBlockHeight(bitcoinData.blockHigh);
-  fillRect(0, SCR_H - 22, SCR_W, 20, themeBackground);
-  drawCenter(SCR_W / 2, SCR_H - 14, blk.c_str(), themeForeground, themeBackground, 2);
-  flushDisplay();
-}
-
 // ============================================================================
 // MODE SELECTION SCREEN (Touch 3.5 — "modeselect" startup)
 // ============================================================================
