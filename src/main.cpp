@@ -3634,7 +3634,11 @@ void loop()
           // Physical DOWN (toward button) = SWIPE_UP → renamed to RIGHT  
           // Physical LEFT = SWIPE_LEFT → renamed to DOWN
           // Physical RIGHT = SWIPE_RIGHT → renamed to UP
-          if (gesture == GESTURE_SWIPE_UP) {
+          // Gestures only count while a finger is really down; a latched gesture
+          // byte from the sensor must not keep triggering navigation.
+          if (!isTouched) {
+            // no navigation without an actual touch
+          } else if (gesture == GESTURE_SWIPE_UP) {
             actionName = "SWIPE RIGHT";
             navigateBack = true;
           } else if (gesture == GESTURE_SWIPE_DOWN) {
@@ -3703,7 +3707,9 @@ void loop()
               gestureHandledThisTouch = true; // Mark gesture as handled
               lastNavigationTime = now; // Update navigation timestamp
             } else {
-              Serial.printf("[TOUCH] >>> %s IGNORED (only %lu ms since last navigation)\n", actionName.c_str(), now - lastNavigationTime);
+              // No log here: it fired on every loop pass and flooded USB-CDC.
+              // lastTouchEvent keeps the 10 ms poll throttle active.
+              lastTouchEvent = now;
               wasTouched = isTouched;
               continue;
             }
@@ -3797,7 +3803,9 @@ void loop()
           }
           
           // Respond to deliberate gestures
-          if (gesture == GESTURE_SWIPE_UP || gesture == GESTURE_SWIPE_DOWN || 
+          if (!isTouched) {
+            // latched gesture without a finger: ignore
+          } else if (gesture == GESTURE_SWIPE_UP || gesture == GESTURE_SWIPE_DOWN ||
               gesture == GESTURE_SWIPE_LEFT || gesture == GESTURE_SWIPE_RIGHT) {
             navigate = true;
             actionName = "SWIPE";

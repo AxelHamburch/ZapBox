@@ -127,8 +127,14 @@ bool TouchAXS15231B::readTouchData() {
   uint16_t tx = ((buf[2] & 0x0F) << 8) | buf[3];
   uint16_t ty = ((buf[4] & 0x0F) << 8) | buf[5];
 
-  if (tx >= PANEL_W) tx = PANEL_W - 1;
-  if (ty >= PANEL_H) ty = PANEL_H - 1;
+  // Out-of-range coordinates (typically 0xFFF) are a phantom/invalid frame, not
+  // a finger. Clamping them produced a permanent fake touch at the panel edge
+  // with a latched swipe gesture, so treat the frame as "no touch" instead.
+  if (tx >= PANEL_W || ty >= PANEL_H) {
+    _gesture = 0;
+    _points = 0;
+    return false;
+  }
 
   // Convert to logical canvas coordinates matching DisplayTouch.cpp's putPixel mapping.
   // Physical panel: 320 wide × 480 tall (portrait native).
