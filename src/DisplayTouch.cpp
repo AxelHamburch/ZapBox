@@ -756,7 +756,7 @@ static void blankScreen() {
 //
 // updateBtctickerValues redraws only the 3 value rows to avoid logo flicker.
 
-static const int BTC_H_TXT_CX  = 317;
+static const int BTC_H_TXT_CX  = 311;
 static const int BTC_H_LBL1_Y  = 116;
 static const int BTC_H_VAL1_Y  = 142;
 static const int BTC_H_LBL2_Y  = 180;
