@@ -1621,10 +1621,6 @@ void productSelectionScreen() {
   fillScreen(themeBackground);
   // Title + touch icon span cx-88..cx+168 (256 px), so cx = centre - 40 centres the whole line.
   drawBtcHeader(SCR_W / 2 - 40, SCR_H / 2);
-  if (bitcoinData.blockHigh != "...") {
-    String blk = fmtBlockHeight(bitcoinData.blockHigh);
-    drawCenter(SCR_W / 2, SCR_H - 14, blk.c_str(), themeForeground, themeBackground, 2);
-  }
   flushDisplay();
 }
 // ============================================================================
