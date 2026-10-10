@@ -397,6 +397,22 @@ installer/firmware/
 
 ## Release History
 
+### v970756t — 2026-10-10
+
+```markdown
+## 🎯 Release v970756t — Touch 3.5": Relay Output GPIO 15 No Longer Switches On at Boot (Patch)
+
+### 🖥️ Touch 3.5" Version (v970756t)
+- **Fixed GPIO 15 (CH02) switching on at every start:** a leftover pin definition from the T-Display-S3 (power-enable pin) drove GPIO 15 HIGH at the beginning of boot, so a relay on CH02 clicked for about a second at each power-up or restart. GPIO 15 is now left alone until its configured mode is applied.
+- **Fixed a channel staying permanently on after a fresh flash:** outputs set to "off" were left floating; they are now held LOW. GPIO 14/15/16 are also pulled LOW at the very start of boot to shorten the unconfigured window.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 970756
+- Standard and Headless are unaffected (no changes) — not rebuilt
+- Requires **zapbox_extension v2.6.2+** (unchanged)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v970748 / v970748h / v970748t — 2026-10-10
 
 ```markdown
