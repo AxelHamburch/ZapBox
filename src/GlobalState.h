@@ -331,6 +331,10 @@ struct T35AmbientConfig {
   // derived from it and stays false in modes with a single product.
   bool numericSelectConfigured = false;
 
+  // "Display standard output" = no: CH01 (GPIO14) is skipped when browsing products in
+  // Multi-channel mode. It stays payable via LNbits / the numeric keypad.
+  bool hideStdOutput = false;
+
   // Derived: total number of independent payment channels (CH01 + relay/servo CH02-CH06)
   int paymentChannelCount = 1;
 

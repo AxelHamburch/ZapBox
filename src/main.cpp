@@ -947,6 +947,19 @@ void readFiles()
       // mutually exclusive with One for All (the installer enforces this too)
       String numSel = readGpioMode(57);
       t35AmbientConfig.numericSelectConfigured = (numSel == "yes");
+
+      // Display standard output — looked up BY NAME (absent in older configs = show CH01)
+      t35AmbientConfig.hideStdOutput = false;
+      for (JsonObject entry : doc.as<JsonArray>()) {
+        const char *name = entry["name"];
+        if (name != nullptr && strcmp(name, "displayStdOutput") == 0) {
+          const char *val = entry["value"];
+          t35AmbientConfig.hideStdOutput = (val != nullptr && strcmp(val, "no") == 0);
+          break;
+        }
+      }
+      LOG_INFO("Config", String("T35: Display standard output (CH01 in browsing): ") +
+                         (t35AmbientConfig.hideStdOutput ? "hidden" : "shown"));
       if (t35AmbientConfig.numericSelectConfigured && t35AmbientConfig.oneForAll) {
         t35AmbientConfig.numericSelectConfigured = false;
         LOG_INFO("Config", "T35: Numeric product selection disabled (One for All active)");
@@ -3935,6 +3948,10 @@ void loop()
           if (multiChannelConfig.currentProduct > 0) {
             if (multiChannelConfig.currentProduct == 1) {
               productSelectionState.showTime = 0; // Already on Product 1, reset timer
+            } else if (hideCh01Browsing()) {
+              Serial.println("[SCREEN] Timeout reached - returning to first visible product (CH01 hidden)");
+              multiChannelConfig.currentProduct = 1;
+              navigateToNextProduct(); // steps past the hidden CH01
             } else {
               Serial.println("[SCREEN] Timeout reached - returning to Product No.1 (OFF mode - Duo/Quattro)");
               multiChannelConfig.currentProduct = 1;
@@ -4024,6 +4041,10 @@ void loop()
                 productSelectionState.showTime = 0;
               } else if (multiChannelConfig.currentProduct == 1) {
                 productSelectionState.showTime = 0; // Already on Product 1, reset timer
+              } else if (hideCh01Browsing()) {
+                Serial.println("[SCREEN] Timeout reached - returning to first visible product (CH01 hidden)");
+                multiChannelConfig.currentProduct = 1;
+                navigateToNextProduct(); // steps past the hidden CH01
               } else {
                 Serial.println("[SCREEN] Timeout reached - returning to Product No.1 (SELECTING mode - Duo/Quattro)");
                 multiChannelConfig.currentProduct = 1;

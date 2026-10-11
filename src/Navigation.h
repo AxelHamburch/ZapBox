@@ -25,6 +25,7 @@ void handleTouchButton();
  * Wakes device from power saving mode if needed.
  */
 void navigateToNextProduct();
+bool hideCh01Browsing(); // true when CH01 is skipped while browsing (T35 "Display standard output" = No)
 
 
 

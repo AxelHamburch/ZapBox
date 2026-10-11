@@ -40,6 +40,17 @@ extern int maxProducts;
 extern T35AmbientConfig t35AmbientConfig;
 #endif
 
+// True when product 1 (CH01) must be skipped while browsing ("Display standard output" = No).
+// Multi-channel relay layout only; One for All shows CH01 as its single QR code.
+bool hideCh01Browsing() {
+#ifdef BOARD_JC3248W535C
+  return t35AmbientConfig.hideStdOutput && !t35AmbientConfig.oneForAll &&
+         multiChannelConfig.mode != "servo";
+#else
+  return false;
+#endif
+}
+
 // External constants
 extern unsigned long TOUCH_DOUBLE_CLICK_MS;
 
@@ -123,7 +134,7 @@ void navigateToNextProduct() {
     // Start from first product
     multiChannelConfig.currentProduct = 1;
     productSelectionState.showTime = millis(); // Reset timer immediately to prevent race condition
-  } else if (multiChannelConfig.btcTickerActive) {
+  } else if (multiChannelConfig.btcTickerActive && !hideCh01Browsing()) {
     // If ticker is active, go back to first product
     multiChannelConfig.btcTickerActive = false;
     multiChannelConfig.currentProduct = 1;
@@ -179,7 +190,7 @@ void navigateToNextProduct() {
         int idx0 = multiChannelConfig.currentProduct - 1; // 0-based RELAY_CHANNEL_PINS index
         int pin = (idx0 >= 0 && idx0 < RELAY_CHANNEL_MAX) ? RELAY_CHANNEL_PINS[idx0] : RELAY_CHANNEL_PINS[0];
         int idx = getPinIndex(pin);
-        if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
+        if (idx >= 0 && !(multiChannelConfig.currentProduct == 1 && hideCh01Browsing()) && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
           break; // This product has a switch – show it
         }
         LOG_DEBUG("Navigation", String("Product ") + String(multiChannelConfig.currentProduct) + " (Pin " + String(pin) + ") has no switch – skipping");
@@ -204,7 +215,8 @@ void navigateToNextProduct() {
             int idx0 = multiChannelConfig.currentProduct - 1;
             int pin = (idx0 >= 0 && idx0 < RELAY_CHANNEL_MAX) ? RELAY_CHANNEL_PINS[idx0] : RELAY_CHANNEL_PINS[0];
             int idx = getPinIndex(pin);
-            if (idx >= 0 && (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
+            if (idx >= 0 && !(multiChannelConfig.currentProduct == 1 && hideCh01Browsing()) &&
+                (productLabels.durations[idx] > 0 || productLabels.labels[idx].length() > 0)) {
               break;
             }
             multiChannelConfig.currentProduct++;
@@ -216,6 +228,9 @@ void navigateToNextProduct() {
       }
     } else {
       // Servo mode or labels not yet loaded: use original simple wrap logic
+      if (multiChannelConfig.currentProduct == 1 && navMaxProducts > 1 && hideCh01Browsing()) {
+        multiChannelConfig.currentProduct = 2;
+      }
       if (multiChannelConfig.btcTickerMode == "selecting") {
         if (multiChannelConfig.currentProduct > navMaxProducts) {
           multiChannelConfig.currentProduct = 0; // Reset for next navigation

@@ -346,20 +346,6 @@
                 </div>
             </div>
             
-            <!-- Display standard output — Multi-channel (Duo / Quattro) only -->
-            <div id="displayStdOutputDiv" style="display: none; margin-top: 16px;">
-                <div class="input-wrapper" style="margin-bottom: 0;">
-                    <div>
-                        <label for="displayStdOutput">Display standard output</label>
-                        <select name="displayStdOutput" id="displayStdOutput">
-                            <option value="yes" selected>Yes, show GPIO12 (default)</option>
-                            <option value="no">No, hide GPIO12</option>
-                        </select>
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Valid only for ZapBox Mode – Multi-Channel</p>
-                    </div>
-                </div>
-            </div>
-
             <div id="modeInfoSection">
             <p style="margin-top: 10px; color: #888;"><i><strong>ZapBox Mode:</strong> Activate up to 4 GPIO pins (12, 13, 10, 11) with unique QR codes. Product labels and LNURLs are automatically retrieved from your LNbits switch configuration. Use NEXT button, touch gestures (swipe ←→) or external button (if available) to navigate between products. Servo mode requires additional settings. See below.</i></p>
             <p style="margin-top: 10px; color: #888;"><i><strong>Note:</strong> The Threshold function is compatible with the default Compact (1 channel) mode and with Servo mode when using "One for All" activation option.</i></p>
@@ -1250,9 +1236,7 @@
             { "name": "authDualPage",  "value": "no"  },
             { "name": "authTeachPin",  "value": ""    },
             // protectionCircuit: "yes" = hard cap of 2 s on relay activations (read by name in firmware)
-            { "name": "protectionCircuit", "value": "no" },
-            // displayStdOutput: "no" = hide CH01 (GPIO12) when browsing products in Multi-channel mode (read by name in firmware)
-            { "name": "displayStdOutput", "value": "yes" }
+            { "name": "protectionCircuit", "value": "no" }
         ]
 
         // Setup Web Serial using serial.js
@@ -1862,17 +1846,6 @@
                     updateProtectionCircuitInfo();
                 }
 
-                // Display standard output — by name; absent in older configs means Yes (show)
-                {
-                    const dsData = configData.find(c => c && c.name === "displayStdOutput");
-                    const dsVal = (dsData && dsData.value === "no") ? "no" : "yes";
-                    let ds = config.find(c => c.name === "displayStdOutput");
-                    if (!ds) { ds = { name: "displayStdOutput", value: "yes" }; config.push(ds); }
-                    ds.value = dsVal;
-                    const dsEl = document.getElementById("displayStdOutput");
-                    if (dsEl) dsEl.value = dsVal;
-                }
-
                 // Update servo/authy field enabled/disabled state based on multiControl mode
                 updateServoFieldState();
                 updateAuthyFieldState();
@@ -2089,13 +2062,6 @@
                 let pc = config.find(c => c.name === "protectionCircuit");
                 if (!pc) { pc = { name: "protectionCircuit", value: "no" }; config.push(pc); }
                 pc.value = (document.getElementById("protectionCircuit") || { value: "no" }).value || "no";
-            }
-
-            // Display standard output (hide CH01 in Multi-channel browsing) — looked up by name
-            {
-                let ds = config.find(c => c.name === "displayStdOutput");
-                if (!ds) { ds = { name: "displayStdOutput", value: "yes" }; config.push(ds); }
-                ds.value = (document.getElementById("displayStdOutput") || { value: "yes" }).value || "yes";
             }
 
             // Validate required fields
@@ -2357,8 +2323,6 @@
             authyFields.style.display = isAuthy ? 'block' : 'none';
             document.getElementById('vendingSpecialSection').style.display = isAuthy ? 'none' : 'block';
             document.getElementById('modeInfoSection').style.display = isAuthy ? 'none' : 'block';
-            const dsDiv = document.getElementById('displayStdOutputDiv');
-            if (dsDiv) dsDiv.style.display = (multiControl.value === 'duo' || multiControl.value === 'quattro') ? 'block' : 'none';
         }
 
         // Servo config field change listeners
@@ -2528,7 +2492,6 @@
 
             sections += section('ZapBox Mode &amp; LED Button',
                 row('ZapBox Mode', selText('multiControl')) +
-                ((multiControlVal === 'duo' || multiControlVal === 'quattro') ? row('Display standard output', selText('displayStdOutput')) : '') +
                 row('LED Button', selText('externalButton'))
             );
 
