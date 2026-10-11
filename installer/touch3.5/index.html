@@ -475,6 +475,7 @@
             </div>
 
             <!-- Activation Options — shown for Multi-channel AND Mini-PoS -->
+            <div id="activationOptionsHome"></div>
             <div id="activationOptionsDiv" style="display: none; margin-top: 16px;">
                 <div class="input-wrapper" style="margin-bottom: 0; display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 280px;">
@@ -518,7 +519,14 @@
 
             <!-- Mini-PoS configuration: visible only in Mini-PoS mode -->
             <div id="miniPosFields" style="display: none; margin-top: 10px;">
-                <p style="color: #888; margin: 0 0 14px 0;"><i>Mini-PoS works like single channel and switches <strong>GPIO pin 14</strong> — but instead of a fixed QR code, the user enters an amount on the touch display. The ZapBox then requests a Lightning invoice from your LNbits server (zapbox_extension required) and shows it as QR code. It can be paid by scanning, by Bolt Card (PN532) or by mobile phone NFC (NFC Tag 2). After payment, pin 14 is activated with the duration configured for pin 14 in LNbits (fallback: 3000&nbsp;ms). <strong>Note:</strong> <em>Activation Options — One for All</em> is not available in Mini-PoS when <em>Numerical Product Selection</em> is set to <em>Yes</em> in Multi-channel mode — switch it to <em>No</em> first.</i></p>
+                <p style="color: #888; margin: 0 0 14px 0;"><i>Mini-PoS works like single channel and switches <strong>GPIO pin 14</strong> — but instead of a fixed QR code, the user enters an amount on the touch display. The ZapBox then requests a Lightning invoice from your LNbits server (zapbox_extension required) and shows it as QR code. It can be paid by scanning, by Bolt Card (PN532) or by mobile phone NFC (NFC Tag 2). After payment, pin 14 is activated with the duration configured for pin 14 in LNbits (fallback: 3000&nbsp;ms).</i></p>
+                <div class="input-wrapper">
+                    <div>
+                        <label for="miniPosInvoiceKey">Wallet Invoice Key</label>
+                        <input type="text" name="miniPosInvoiceKey" id="miniPosInvoiceKey" placeholder="e.g. c9e68ab036.." maxlength="32" autocomplete="off">
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">"Invoice/read key" of the LNbits wallet that receives the payments (32 characters)</p>
+                    </div>
+                </div>
                 <div class="input-wrapper">
                     <div>
                         <label for="miniPosCurrency">Currency (ISO Code) for Payments</label>
@@ -532,12 +540,10 @@
                             <option value="no">NO — whole numbers only (e.g. 1000 Sat)</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="miniPosInvoiceKey">Wallet Invoice Key</label>
-                        <input type="text" name="miniPosInvoiceKey" id="miniPosInvoiceKey" placeholder="e.g. c9e68ab036.." maxlength="32" autocomplete="off">
-                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">"Invoice/read key" of the LNbits wallet that receives the payments (32 characters)</p>
-                    </div>
                 </div>
+                <!-- In Mini-PoS mode the shared Activation Options block is moved here (see updateMultiControlState) -->
+                <div id="miniPosActivationSlot"></div>
+                <p style="color: #888; margin: 14px 0 0 0;"><i><strong>Note:</strong> <em>Activation Options — One for All</em> is not available in Mini-PoS when <em>Numerical Product Selection</em> is set to <em>Yes</em> in Multi-channel mode — switch it to <em>No</em> first.</i></p>
             </div>
 
             <!-- Section header for mode-select: IDENTITY -->
@@ -1948,6 +1954,17 @@
             if (msMiniPosHeader) msMiniPosHeader.style.display = isMs ? 'block' : 'none';
             if (msAuthyHeader)   msAuthyHeader.style.display   = isMs ? 'block' : 'none';
             if (msMultiHeader)   msMultiHeader.style.display   = isMs ? 'block' : 'none';
+            // In Mini-PoS the shared Activation Options block sits inside the Mini-PoS section
+            // (after Currency/Decimal); in every other mode it returns to its home position.
+            const activationHome = document.getElementById('activationOptionsHome');
+            const activationSlot = document.getElementById('miniPosActivationSlot');
+            if (activation && activationHome && activationSlot) {
+                if (mode === 'minipos') {
+                    if (activation.parentNode !== activationSlot) activationSlot.appendChild(activation);
+                } else if (activationHome.nextSibling !== activation) {
+                    activationHome.parentNode.insertBefore(activation, activationHome.nextSibling);
+                }
+            }
             // Activation Options (One for All) apply to Multi-channel, Mini-PoS, and mode-select
             if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos' || isMs) ? 'block' : 'none';
             if (activationHint) activationHint.style.display = (mode === 'minipos') ? 'block' : 'none';
@@ -2099,9 +2116,7 @@
             // Mini-PoS
             if (zbMode === 'minipos' || zbMode === 'modeselect') {
                 sections += section('Mini-PoS',
-                    row('Currency', inputVal('miniPosCurrency')) +
-                    row('Decimal separator', selText('miniPosDecimal')) +
-                    row('Wallet Invoice Key', inputVal('miniPosInvoiceKey')) +
+row('Wallet Invoice Key', inputVal('miniPosInvoiceKey')) +                    row('Currency', inputVal('miniPosCurrency')) +                    row('Decimal separator', selText('miniPosDecimal')) +
                     (zbMode === 'minipos' ? row('Activation Options', selText('t35ActivationMode')) : ''));
             }
 
