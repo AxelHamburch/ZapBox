@@ -397,6 +397,35 @@ installer/firmware/
 
 ## Release History
 
+### v970961t — 2026-10-11
+
+```markdown
+## 🎯 Release v970961t — Touch 3.5": Multi-Channel Fixes, NFC Reliability & "Display standard output"
+
+### 🖥️ Touch 3.5" Version (v970961t)
+- **Fixed the last channel missing when browsing products in multi-channel mode:** with gaps in the channel assignment (e.g. CH04 off, CH06 on) the browsing stopped one product too early, so GPIO 7 never appeared. Browsing now runs up to the highest configured channel.
+- **Fixed "Pin 200 not found" on Bolt Card payments:** on the Touch 3.5 the legacy mapping "product 5–12 = I/O expander pins 200–207" wrongly sent GPIO 6 (product 5) as pin 200. The pin now comes from the channel list; expander pins stay reachable via the numeric keypad.
+- **New option "Display standard output"** (Multi-channel, installer next to *Activation Options*): *No, hide GPIO14* skips CH01 when browsing products (also when returning from the BTC ticker and after the screen timeout). CH01 stays payable via LNbits and the numeric keypad. Not applied with *One for All*. Default: *Yes, show GPIO14*.
+- **NFC / Bolt Card:** no false phone detection for 7-byte cards; the NTAG 424 check is retried and the RF field is reset after 2 failed reads (faster recovery).
+- **BTC ticker:** full redraw when real data replaces "Loading…" — no remnant next to the Bitcoin logo anymore.
+
+### 🌐 Web Installer
+- New **Display standard output** select (Touch 3.5", right of *Activation Options*, Multi-channel only).
+- Multi-channel mode text: "Multi channel — CH01 to CH06 & optional I/O expanders".
+- **Mini-PoS section re-ordered:** info text, Wallet Invoice Key, Currency & Decimal separator, Activation Options, then the One-for-All note.
+- *Protection circuit*: hint line "Protective circuit options." under the select (Touch 3.5", Standard and Headless installers).
+
+### 🔩 Hardware & E-Layout
+- **New E-Layout `e970885-Touch3.5-UNI`** (SVG + WebP): wiring diagram for the Touch 3.5" UNI build; added to the electrical layouts in `docs/hardware-assets.md`.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 970961
+- New config key `displayStdOutput` (read by name, absent = show CH01)
+- Standard and Headless are unaffected (installer hint text only) — not rebuilt
+- Requires **zapbox_extension v2.6.2+** (unchanged)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v970756t — 2026-10-10
 
 ```markdown
