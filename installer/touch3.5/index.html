@@ -2116,7 +2116,9 @@
             // Mini-PoS
             if (zbMode === 'minipos' || zbMode === 'modeselect') {
                 sections += section('Mini-PoS',
-row('Wallet Invoice Key', inputVal('miniPosInvoiceKey')) +                    row('Currency', inputVal('miniPosCurrency')) +                    row('Decimal separator', selText('miniPosDecimal')) +
+                    row('Wallet Invoice Key', inputVal('miniPosInvoiceKey')) +
+                    row('Currency', inputVal('miniPosCurrency')) +
+                    row('Decimal separator', selText('miniPosDecimal')) +
                     (zbMode === 'minipos' ? row('Activation Options', selText('t35ActivationMode')) : ''));
             }
 
