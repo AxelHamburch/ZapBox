@@ -476,8 +476,8 @@
 
             <!-- Activation Options — shown for Multi-channel AND Mini-PoS -->
             <div id="activationOptionsDiv" style="display: none; margin-top: 16px;">
-                <div class="input-wrapper" style="margin-bottom: 0;">
-                    <div>
+                <div class="input-wrapper" style="margin-bottom: 0; display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 280px;">
                         <label for="t35ActivationMode">Activation Options</label>
                         <select name="t35ActivationMode" id="t35ActivationMode">
                             <option value="off" selected>Off (default) — each channel triggered separately</option>
@@ -485,6 +485,14 @@
                         </select>
                         <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">In <strong>One for All</strong> mode, a payment on CH01 simultaneously activates all relay/servo channels. Only 1 QR code is shown (CH01). Ambient-light and sensor channels are not affected.</p>
                         <p id="activationOptionsMiniPosHint" style="display: none; margin: 4px 0 0 0; font-size: 11px; color: #888; font-style: italic;"><strong>Mini-PoS:</strong> With One for All, a paid invoice also triggers the channels CH02–CH06 that are configured as relay/servo (configure them in Multi channel mode first — the values are kept when switching back to Mini-PoS).</p>
+                    </div>
+                    <div id="displayStdOutputDiv" style="flex: 1; min-width: 280px;">
+                        <label for="displayStdOutput">Display standard output</label>
+                        <select name="displayStdOutput" id="displayStdOutput">
+                            <option value="yes" selected>Yes, show GPIO14 (default)</option>
+                            <option value="no">No, hide GPIO14</option>
+                        </select>
+                        <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Valid only for ZapBox Mode – Multi-Channel</p>
                     </div>
                 </div>
             </div>
@@ -707,6 +715,7 @@
                         <option value="no" selected>Off (default)</option>
                         <option value="yes">On - Maximum switching duration 2 seconds</option>
                     </select>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">Protective circuit options.</p>
                 </div>
             </div>
 
@@ -1290,7 +1299,9 @@
             { "name": "ioExpanderMcp",        "value": "no" }, // 96
             { "name": "ioExpanderMcpTrigger", "value": "no" }, // 97
             // protectionCircuit: "yes" = hard cap of 2 s on relay activations (read by name in firmware)
-            { "name": "protectionCircuit", "value": "no" }  // 98
+            { "name": "protectionCircuit", "value": "no" },  // 98
+            // displayStdOutput: "no" = hide CH01 (GPIO14) when browsing products in Multi-channel mode (read by name in firmware)
+            { "name": "displayStdOutput", "value": "yes" }  // 99
         ];
 
         // Setup Web Serial using serial.js
@@ -1548,6 +1559,13 @@
                     if (pcCfg) pcCfg.value = 'no';
                 }
 
+                if (!configData.some(c => c && c.name === 'displayStdOutput')) {
+                    const dsEl = document.getElementById('displayStdOutput');
+                    if (dsEl) dsEl.value = 'yes';
+                    const dsCfg = config.find(c => c.name === 'displayStdOutput');
+                    if (dsCfg) dsCfg.value = 'yes';
+                }
+
                 updateProtectionCircuitInfo();
                 updateMultiControlState();
                 updateIOExpanderFieldState();
@@ -1761,6 +1779,7 @@
                 "ch05Mode":         (document.getElementById('ch05Mode')         || {value: "off"}).value,
                 "ch06Mode":         (document.getElementById('ch06Mode')         || {value: "off"}).value,
                 "t35ActivationMode":  (document.getElementById('t35ActivationMode')  || {value: "off"}).value,
+                "displayStdOutput":   (document.getElementById('displayStdOutput')   || {value: "yes"}).value,
                 "miniPosCurrency":    (document.getElementById('miniPosCurrency')    || {value: "EUR"}).value || "EUR",
                 "miniPosDecimal":     (document.getElementById('miniPosDecimal')     || {value: "yes"}).value,
                 "miniPosInvoiceKey":  (document.getElementById('miniPosInvoiceKey')  || {value: ""}).value,
@@ -1932,6 +1951,8 @@
             // Activation Options (One for All) apply to Multi-channel, Mini-PoS, and mode-select
             if (activation) activation.style.display = (mode === 'duo' || mode === 'minipos' || isMs) ? 'block' : 'none';
             if (activationHint) activationHint.style.display = (mode === 'minipos') ? 'block' : 'none';
+            const displayStd = document.getElementById('displayStdOutputDiv');
+            if (displayStd) displayStd.style.display = (mode === 'duo' || isMs) ? 'block' : 'none';
             // Numerical product selection: Multi-channel and mode-select (pre-config for the Multi-channel tile)
             if (numericSelect) numericSelect.style.display = (mode === 'duo' || isMs) ? 'block' : 'none';
             updateNumericSelectState();
@@ -2070,6 +2091,7 @@
                     }
                 });
                 mcRows += row('Activation Options', selText('t35ActivationMode'));
+                mcRows += row('Display standard output', selText('displayStdOutput'));
                 if (zbMode === 'duo') mcRows += row('Numerical Product Selection', selText('t35NumericSelect'));
                 sections += section('Multi channel (CH01–CH06 + expander channels)', mcRows);
             }
