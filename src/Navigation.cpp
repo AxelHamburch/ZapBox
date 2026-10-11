@@ -157,6 +157,14 @@ void navigateToNextProduct() {
     int navMaxProducts = RELAY_CHANNEL_MAX;
     if (multiChannelConfig.mode == "quattro" && channel4AmbientConfig.enabled) navMaxProducts = 3;
     else if (multiChannelConfig.mode == "servo") navMaxProducts = servoConfig.activeChannelCount();
+    #ifdef BOARD_JC3248W535C
+    // Product positions are channel positions (CH01..CH06) and may have gaps, so the
+    // channel *count* (maxProducts) would cut off the last channel (e.g. CH04 off, CH06 on).
+    if (multiChannelConfig.mode != "servo" && !t35AmbientConfig.oneForAll) {
+      int hi = t35AmbientConfig.highestPaymentPosition();
+      if (hi < navMaxProducts) navMaxProducts = hi;
+    } else
+    #endif
     if (maxProducts > 0 && maxProducts < navMaxProducts) navMaxProducts = maxProducts;
     #ifdef BOARD_JC3248W535C
     if (t35AmbientConfig.oneForAll) navMaxProducts = 1;

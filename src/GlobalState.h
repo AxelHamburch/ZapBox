@@ -314,6 +314,12 @@ struct T35AmbientConfig {
     for (int i = 0; i < FLEX_COUNT; i++) if (flexActor[i]) return true;
     return false;
   }
+  // Highest 1-based product position that is a payment channel (CH01 = 1).
+  // Differs from paymentChannelCount when channels have gaps (e.g. CH04 off, CH06 relay).
+  int highestPaymentPosition() const {
+    for (int i = FLEX_COUNT - 1; i >= 0; i--) if (flexActor[i]) return i + 2;
+    return 1;
+  }
 
   // Activation mode
   bool oneForAll = false;      // true: CH01 payment fires all actor channels simultaneously

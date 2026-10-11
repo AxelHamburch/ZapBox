@@ -433,9 +433,14 @@ void nfcLnurlwReceived(const String &lnurlw)
             activePin = servoConfig.productToPin(multiChannelConfig.currentProduct);
         } else {
             int prod = multiChannelConfig.currentProduct;
+            #ifndef BOARD_JC3248W535C
+            // Legacy boards: products 5-12 are IOExpander virtual pins 200-207.
+            // JC3248W535C has 6 GPIO channels; expanders are keypad-only (see above).
             if (prod >= 5 && prod <= 12) {
-                activePin = 200 + (prod - 5); // IOExpander virtual pins 200-207
-            } else {
+                activePin = 200 + (prod - 5);
+            } else
+            #endif
+            {
                 int idx = prod - 1;
                 if (idx >= 0 && idx < RELAY_CHANNEL_MAX) {
                     activePin = RELAY_CHANNEL_PINS[idx];
