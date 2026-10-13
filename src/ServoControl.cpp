@@ -3,11 +3,63 @@
 #include "PinConfig.h"
 #include "Log.h"
 #include <ESP32Servo.h>
+#include <Preferences.h>
 
 static Servo servo1;  // Display: Pin 13 positional | Headless: Pin 12 (servo180)
 static Servo servo2;  // Display: Pin 10 continuous  | Headless: Pin 12 (servo360)
 static bool servo1Attached = false;
 static bool servo2Attached = false;
+
+// 180° servo (servo1): attach is deferred until the first move so nothing drives the
+// pin during boot. The last commanded position is kept in NVS; at boot the servo is
+// only homed to Start if it is not known to be there already.
+static bool servo1Enabled = false;     // configured and usable, not necessarily attached yet
+static const char* SERVO_NVS_NS = "servopos";
+
+static int servo1Pin() {
+#if ENABLE_DISPLAY
+  return 13;
+#else
+  return 12;
+#endif
+}
+
+static int loadServo1Pos() {
+  Preferences p;
+  if (!p.begin(SERVO_NVS_NS, true)) return -1;
+  int v = p.getInt("pos1", -1);
+  p.end();
+  return v;
+}
+
+static void saveServo1Pos(int pos) {
+  Preferences p;
+  if (!p.begin(SERVO_NVS_NS, false)) return;
+  p.putInt("pos1", pos);
+  p.end();
+}
+
+// Attach on demand and assert Start before the first sweep (no-op if already there).
+static void ensureServo1Attached() {
+  if (servo1Attached) return;
+  servo1.attach(servo1Pin());
+  servo1Attached = true;
+  servo1.write(servoConfig.servo1Start);
+  LOG_INFO("Servo", String("180° Servo attached to Pin ") + servo1Pin() + ", start: " + String(servoConfig.servo1Start) + "°");
+}
+
+// Boot: leave the pin untouched while the position is known to be Start; only
+// drive the servo (to Start) if it may have been left elsewhere.
+static void initServo1Deferred() {
+  int known = loadServo1Pos();
+  if (known == servoConfig.servo1Start) {
+    LOG_INFO("Servo", String("180° Servo already at ") + known + "° (stored) - not driven at boot");
+    return;
+  }
+  LOG_INFO("Servo", String("180° Servo position unknown/changed (stored ") + known + "°) - homing to start");
+  ensureServo1Attached();
+  saveServo1Pos(servoConfig.servo1Start);
+}
 
 #ifdef BOARD_ESP32C3_21_1
 static Servo servo_flex6;  // C3 GPIO6 flex channel
@@ -54,10 +106,8 @@ void initServos() {
 #if ENABLE_DISPLAY
   // Display version: servo1 on Pin 13, servo2 on Pin 10
   if (servoConfig.servo1Active()) {
-    servo1.attach(13);
-    servo1Attached = true;
-    servo1.write(servoConfig.servo1Start);
-    LOG_INFO("Servo", String("Servo 1 (positional) attached to Pin 13, start: ") + String(servoConfig.servo1Start) + "°");
+    servo1Enabled = true;
+    initServo1Deferred();
   }
   if (servoConfig.servo2Active()) {
     servo2.attach(10);
@@ -68,10 +118,8 @@ void initServos() {
 #else
   // Headless version: servo on Pin 12 (single-pin mode)
   if (multiChannelConfig.mode == "servo180" && servoConfig.servo1Active()) {
-    servo1.attach(12);
-    servo1Attached = true;
-    servo1.write(servoConfig.servo1Start);
-    LOG_INFO("Servo", String("180° Servo attached to Pin 12, start: ") + String(servoConfig.servo1Start) + "°");
+    servo1Enabled = true;
+    initServo1Deferred();
   } else if (multiChannelConfig.mode == "servo360" && servoConfig.servo2Active()) {
     servo2.attach(12);
     servo2Attached = true;
@@ -160,11 +208,13 @@ void activateServo(int servoPin) {
   }
 #endif
 #if ENABLE_DISPLAY
-  if (servoPin == 13 && servo1Attached && servoConfig.servo1Active()) {
+  if (servoPin == 13 && servo1Enabled && servoConfig.servo1Active()) {
 #else
-  if (servoPin == 12 && servo1Attached && servoConfig.servo1Active()) {
+  if (servoPin == 12 && servo1Enabled && servoConfig.servo1Active()) {
 #endif
     // Positional servo: sweep Start → End
+    ensureServo1Attached();
+    saveServo1Pos(servoConfig.servo1End);
     LOG_INFO("Servo", String("180° Servo: ") + String(servoConfig.servo1Start) + "° → " + String(servoConfig.servo1End) + "°");
     slowSweep(servo1, servoConfig.servo1Start, servoConfig.servo1End, servoConfig.servo1Duration);
 #if ENABLE_DISPLAY
@@ -214,13 +264,15 @@ void deactivateServo(int servoPin) {
   }
 #endif
 #if ENABLE_DISPLAY
-  if (servoPin == 13 && servo1Attached && servoConfig.servo1Active()) {
+  if (servoPin == 13 && servo1Enabled && servoConfig.servo1Active()) {
 #else
-  if (servoPin == 12 && servo1Attached && servoConfig.servo1Active()) {
+  if (servoPin == 12 && servo1Enabled && servoConfig.servo1Active()) {
 #endif
     // Positional servo: return End → Start
+    ensureServo1Attached();
     LOG_INFO("Servo", String("180° Servo: returning to ") + String(servoConfig.servo1Start) + "°");
     slowSweep(servo1, servoConfig.servo1End, servoConfig.servo1Start, servoConfig.servo1Duration);
+    saveServo1Pos(servoConfig.servo1Start);
 #if ENABLE_DISPLAY
   } else if (servoPin == 10 && servo2Attached && servoConfig.servo2Active()) {
 #else
@@ -234,6 +286,7 @@ void deactivateServo(int servoPin) {
 
 void detachServos() {
   if (servo1Attached) { servo1.detach(); servo1Attached = false; }
+  servo1Enabled = false;
   if (servo2Attached) { servo2.detach(); servo2Attached = false; }
 #ifdef BOARD_ESP32C3_21_1
   if (servoFlex6Attached) { servo_flex6.detach(); servoFlex6Attached = false; }
