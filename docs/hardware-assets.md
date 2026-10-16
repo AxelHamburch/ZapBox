@@ -117,6 +117,7 @@ Designed in **FreeCAD**, exported as `.3mf` for printing.
 | b958015 | Touch3.5-SIX+ | ZapBox Touch 3.5 with 6 channel & expansion options |
 | b959898 | Simple | As simple as possible |
 | b965887 | Headless S | First Headless (S)imple |
+| b971130 | CardDealer | "MONEY WARS" Card Game Vending Machine |
 
 → All versions: [assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
