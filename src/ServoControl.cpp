@@ -303,7 +303,8 @@ void deactivateServo(int servoPin) {
 }
 
 void detachServos() {
-  if (servo1Attached) { servo1.detach(); servo1Attached = false; }
+  if (servo1.attached()) servo1.detach();
+  servo1Attached = false;
   servo1Enabled = false;
   if (servo2Attached) { servo2.detach(); servo2Attached = false; }
 #ifdef BOARD_ESP32C3_21_1

@@ -397,6 +397,27 @@ installer/firmware/
 
 ## Release History
 
+### v971725 / v971725h / v971725t — 2026-10-16
+
+```markdown
+## 🎯 Release v971725 / v971725h / v971725t — Servo: No Output at Boot & Position Memory
+
+### ⚙️ 180° Servos (Standard + Headless + Touch 3.5")
+- **The 180° servo is no longer driven at boot:** the servo pin stays untouched until the first payment, so nothing twitches or moves at power-up or restart.
+- **Last position is remembered** (stored in flash per servo/channel). At boot the servo is only homed to *Start* if it is not known to be there already, e.g. after a power loss in the middle of a cycle or after changing the Start angle.
+- Applies to the 180° servo on all variants and to all six 180° channels of the Touch 3.5".
+- Fixed: the 180° servo was not released on a servo re-init / config change.
+- 360° servos are unchanged.
+
+### 🔩 Hardware
+- New enclosure `b971130-CardDealer` ("MONEY WARS" card game vending machine) added to `docs/hardware-assets.md`.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 971725
+- Requires **zapbox_extension v2.6.2+** (unchanged)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v970961t — 2026-10-11
 
 ```markdown
