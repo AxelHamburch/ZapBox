@@ -52,6 +52,45 @@
       transform: translateY(-1px);
     }
 
+    /* ── Inline links in header text (plain text links, not buttons) ── */
+    header p a {
+      display: inline;
+      margin: 0;
+      padding: 0;
+      background: none;
+      color: #ff6b35;
+      border-radius: 0;
+      font-size: inherit;
+      transform: none;
+    }
+    header p a:hover {
+      background: none;
+      color: #ff8555;
+      text-decoration: underline;
+      transform: none;
+    }
+
+    /* ── Note below gallery ── */
+    .gallery-note {
+      max-width: 900px;
+      margin: 32px auto 0;
+      text-align: center;
+      font-size: 1rem;
+      color: #aaa;
+      line-height: 1.7;
+    }
+
+    .gallery-note a {
+      color: #ff6b35;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .gallery-note a:hover {
+      color: #ff8555;
+      text-decoration: underline;
+    }
+
     /* ── Footer section ── */
     .footer-section {
       max-width: 900px;
@@ -187,12 +226,16 @@
   <header>
     <h1>Granule Dispenser</h1>
     <p>
-      A cat food dispenser converted into a mineral fertilizer granule dispenser. Of course, you can still use it to donate cat food, and—by combining it with a webcam—build something like <a href="https://lightningcats.io/" target="_blank">https://lightningcats.io/</a>.<br>
+      A cat food dispenser converted into a mineral fertilizer granule dispenser. Of course, you can still use it to donate cat food, and—by combining it with a webcam—build something like <a href="https://lightningcats.io/" target="_blank">lightningcats.io</a><br>
     </p>
     <a href="https://www.google.com/search?q=cat+feeder+aliexpress" target="_blank">🐱 Search for cat feeder</a>
   </header>
 
   <div class="gallery" id="gallery"></div>
+
+  <p class="gallery-note">
+    The Granule Dispenser uses a Zap⚡Box Compact. You can find the electrical layout <a href="https://github.com/AxelHamburch/ZapBox/blob/main/assets/electric/E-Layout-ZapBox-Compact.png" target="_blank">here</a>, and the housing design <a href="https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing/b950530-Compact" target="_blank">here, for example</a>.
+  </p>
 
   <div class="footer-section">
     <a href="../">← Back to the gallery overview</a><br><br>
