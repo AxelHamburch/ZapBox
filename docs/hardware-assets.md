@@ -130,12 +130,14 @@ User manuals in Markdown (for reading online) and PDF (for printing).
 
 | | Markdown | PDF |
 |---|----------|-----|
+| **Simple** | [de](../assets/operating-instructions/Simple-oi-de.md) / [en](../assets/operating-instructions/Simple-oi-en.md) | [de](../assets/operating-instructions/Simple-oi-de.pdf) / [en](../assets/operating-instructions/Simple-oi-en.pdf) |
 | **Compact** | [de](../assets/operating-instructions/Compact-oi-de.md) / [en](../assets/operating-instructions/Compact-oi-en.md) | [de](../assets/operating-instructions/Compact-oi-de.pdf) / [en](../assets/operating-instructions/Compact-oi-en.pdf) |
 | **Duo** | [de](../assets/operating-instructions/Duo-oi-de.md) / [en](../assets/operating-instructions/Duo-oi-en.md) | [de](../assets/operating-instructions/Duo-oi-de.pdf) / [en](../assets/operating-instructions/Duo-oi-en.pdf) |
 | **Quattro** | [de](../assets/operating-instructions/Quattro-oi-de.md) / [en](../assets/operating-instructions/Quattro-oi-en.md) | [de](../assets/operating-instructions/Quattro-oi-de.pdf) / [en](../assets/operating-instructions/Quattro-oi-en.pdf) |
 | **ZapOMat** | [de](../assets/operating-instructions/ZapOMat-oi-de.md) / [en](../assets/operating-instructions/ZapOMat-oi-en.md) | [de](../assets/operating-instructions/ZapOMat-oi-de.pdf) / [en](../assets/operating-instructions/ZapOMat-oi-en.pdf) |
 | **Servo** | [de](../assets/operating-instructions/Servo-oi-de.md) / [en](../assets/operating-instructions/Servo-oi-en.md) | [de](../assets/operating-instructions/Servo-oi-de.pdf) / [en](../assets/operating-instructions/Servo-oi-en.pdf) |
 | **Headless** | [de](../assets/operating-instructions/Headless-oi-de.md) / [en](../assets/operating-instructions/Headless-oi-en.md) | [de](../assets/operating-instructions/Headless-oi-de.pdf) / [en](../assets/operating-instructions/Headless-oi-en.pdf) |
+| **Headless Simple** | [de](../assets/operating-instructions/Headless-Simple-oi-de.md) / [en](../assets/operating-instructions/Headless-Simple-oi-en.md) | [de](../assets/operating-instructions/Headless-Simple-oi-de.pdf) / [en](../assets/operating-instructions/Headless-Simple-oi-en.pdf) |
 | **Headless Servo** | [de](../assets/operating-instructions/Headless-Servo-oi-de.md) / [en](../assets/operating-instructions/Headless-Servo-oi-en.md) | [de](../assets/operating-instructions/Headless-Servo-oi-de.pdf) / [en](../assets/operating-instructions/Headless-Servo-oi-en.pdf) |
 
 → Archive and development: [assets/operating-instructions/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/operating-instructions)
