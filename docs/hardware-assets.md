@@ -119,6 +119,7 @@ Designed in **FreeCAD**, exported as `.3mf` for printing.
 | b965887 | Headless S | First Headless (S)imple |
 | b971104 | Headless Servo | Headless servo for installation in the CardDealer (b971130) |
 | b971130 | CardDealer | "MONEY WARS" Card Game Vending Machine |
+| b972802 | NodeShelf | A simple shelf for a lightning node |
 
 → All versions: [assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
 
