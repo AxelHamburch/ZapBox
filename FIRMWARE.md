@@ -409,9 +409,19 @@ installer/firmware/
 - Note: the servo moves at every power-up / restart, even if it is already in position.
 - 360° servos are unchanged.
 
-### 🔩 Hardware
-- New enclosures / assets in `docs/hardware-assets.md`: `b972802-NodeShelf`, `b971104-Headless-Servo`; `e959848-Simple` and `b971130-CardDealer` updated.
-- Web: new Card Dealer gallery page and overview card.
+### 🔩 Hardware & E-Layouts
+- **New E-Layout `e973091-ExternalRelay`** (SVG + WebP): wiring diagram for an external power relay with 1 channel.
+- **New enclosure `b972640-ExternalRelay`**: external power relay box incl. cable glands (M12 box, lid, seal, lens; 3MF + FreeCAD).
+- **New enclosure `b971104-Headless-Servo`**: headless servo mount for installation in the CardDealer (3MF + FreeCAD).
+- **New enclosure `b972802-NodeShelf`**: a simple shelf for a lightning node (3MF + FreeCAD, preview images).
+- **Updated `b971130-CardDealer`** (MONEY WARS): revised model, new MoneyWars-v2 STL parts.
+- **Updated E-Layout `e959848-Simple`** (SVG + WebP); the T-Display-S3 installer wiring diagram and the e-layout viewer now use the updated layout.
+- `docs/hardware-assets.md`: new entries for e970885 (Touch3.5-UNI), e973091, b971104, b972640, b972802; External Relay under *Miscellaneous*; operating instructions for *Simple* and *Headless Simple* linked.
+
+### 📚 Docs & Web
+- New **Card Dealer** gallery page in the lightbox (with overview card, demo video link and social preview tags); Granule Dispenser (grit) description extended.
+- New Bolt Card handout (English): `assets/bolt-cards/bc-handout-en-972185.pdf`.
+- Touch 3.5": the touch driver call is now unambiguous (`requestFrom` cast) — no functional change.
 
 ### 🛠️ Technical Details
 - Updated to Bitcoin block height 973831
