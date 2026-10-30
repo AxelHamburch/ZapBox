@@ -397,6 +397,28 @@ installer/firmware/
 
 ## Release History
 
+### v973831 / v973831h / v973831t — 2026-10-30
+
+```markdown
+## 🎯 Release v973831 / v973831h / v973831t — Servo: Always Home to Start at Boot
+
+### ⚙️ 180° Servos (Standard + Headless + Touch 3.5")
+- **The 180° servo now always moves to its Start position at every boot** (power-on and restart) and keeps holding it. Before, the pin was left untouched when the stored position already said "Start". An undriven servo is free-wheeling, so a servo turned by hand while the device was off (or swapped / remounted) stayed in the wrong position until the first payment.
+- Applies to the 180° servo on all variants and to all six 180° channels of the Touch 3.5".
+- Boot log: `180° Servo homing to start (<angle>°)`.
+- Note: the servo moves at every power-up / restart, even if it is already in position.
+- 360° servos are unchanged.
+
+### 🔩 Hardware
+- New enclosures / assets in `docs/hardware-assets.md`: `b972802-NodeShelf`, `b971104-Headless-Servo`; `e959848-Simple` and `b971130-CardDealer` updated.
+- Web: new Card Dealer gallery page and overview card.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 973831
+- Requires **zapbox_extension v2.6.2+** (unchanged)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v971725 / v971725h / v971725t — 2026-10-16
 
 ```markdown
