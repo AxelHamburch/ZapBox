@@ -24,14 +24,6 @@ static int servo1Pin() {
 #endif
 }
 
-static int loadServoPos(const char* key) {
-  Preferences p;
-  if (!p.begin(SERVO_NVS_NS, true)) return -1;
-  int v = p.getInt(key, -1);
-  p.end();
-  return v;
-}
-
 static void saveServoPos(const char* key, int pos) {
   Preferences p;
   if (!p.begin(SERVO_NVS_NS, false)) return;
@@ -47,15 +39,11 @@ static void ensureServo180Attached(Servo& srv, int pin, int start, const char* n
   LOG_INFO("Servo", String(name) + " attached to Pin " + pin + ", start: " + start + "°");
 }
 
-// Boot: leave the pin untouched while the position is known to be Start; only
-// drive the servo (to Start) if it may have been left elsewhere.
+// Boot: always drive the servo to Start. The real position can differ from the
+// stored one (moved by hand while unpowered, swapped, remounted), and an
+// unpowered/undriven servo is free-wheeling.
 static void initServo180Deferred(Servo& srv, int pin, int start, const char* key, const char* name) {
-  int known = loadServoPos(key);
-  if (known == start) {
-    LOG_INFO("Servo", String(name) + " already at " + known + "° (stored) - not driven at boot");
-    return;
-  }
-  LOG_INFO("Servo", String(name) + " position unknown/changed (stored " + known + "°) - homing to start");
+  LOG_INFO("Servo", String(name) + " homing to start (" + start + "°)");
   ensureServo180Attached(srv, pin, start, name);
   saveServoPos(key, start);
 }
