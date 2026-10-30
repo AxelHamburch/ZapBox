@@ -81,7 +81,7 @@ bool TouchAXS15231B::readTouchData() {
 
   // Read 8-byte response
   uint8_t buf[8] = {0};
-  uint8_t got = _wire->requestFrom(AXS_ADDR, (uint8_t)sizeof(buf));
+  uint8_t got = _wire->requestFrom((uint8_t)AXS_ADDR, (uint8_t)sizeof(buf));
   if (got != sizeof(buf)) {
     _errCount++;
     if (_errCount == 1 || (_errCount % 200) == 0) {
