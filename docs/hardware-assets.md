@@ -37,7 +37,7 @@ Complete wiring diagrams — start here when building a ZapBox.
 | **Headless Servo** | [E-Layout-ZapBox-Headless-Servo.png](../assets/electric/E-Layout-ZapBox-Headless-Servo.png) |
 | **ESP32-C3-21-1** | [E-Layout-ZapBox-esp32-c3-21-1.png](../assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png) |
 
-**Miscellaneous:** [ZapSave](../assets/electric/E-Layout-ZapBox-ZapSave.png) · [USB-Power-Hub](../assets/electric/E-Layout-ZapBox-USB-Power-Hub.png)
+**Miscellaneous:** [ZapSave](../assets/electric/E-Layout-ZapBox-ZapSave.png) · [USB-Power-Hub](../assets/electric/E-Layout-ZapBox-USB-Power-Hub.png) · [ExternalRelay](../assets/electric/E-Layout-ZapBox-ExternalRelay)
 
 ### Version history (Inkscape)
 
@@ -75,6 +75,8 @@ Complete wiring diagrams — start here when building a ZapBox.
 | e958085 | Touch3.5-SIX+ | ZapBox Touch 3.5 with 6 channel & expansion options |
 | e959848 | Simple | As simple as possible |
 | e965965 | Headless S | First Headless (S)imple |
+| e970885 | Touch3.5-UNI | ZapBox Touch 3.5 with 5 channels |
+| e973091 | ExternalRelay | External power relay with 1 channels |
 
 → All versions: [assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
@@ -119,6 +121,7 @@ Designed in **FreeCAD**, exported as `.3mf` for printing.
 | b965887 | Headless S | First Headless (S)imple |
 | b971104 | Headless Servo | Headless servo for installation in the CardDealer (b971130) |
 | b971130 | CardDealer | "MONEY WARS" Card Game Vending Machine |
+| b972640 | ExternalRelay | External power relay, including cable glands |
 | b972802 | NodeShelf | A simple shelf for a lightning node |
 
 → All versions: [assets/housing/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/housing)
