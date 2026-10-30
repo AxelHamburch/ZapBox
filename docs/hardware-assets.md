@@ -37,7 +37,7 @@ Complete wiring diagrams — start here when building a ZapBox.
 | **Headless Servo** | [E-Layout-ZapBox-Headless-Servo.png](../assets/electric/E-Layout-ZapBox-Headless-Servo.png) |
 | **ESP32-C3-21-1** | [E-Layout-ZapBox-esp32-c3-21-1.png](../assets/electric/E-Layout-ZapBox-esp32-c3-21-1.png) |
 
-**Miscellaneous:** [ZapSave](../assets/electric/E-Layout-ZapBox-ZapSave.png) · [USB-Power-Hub](../assets/electric/E-Layout-ZapBox-USB-Power-Hub.png) · [ExternalRelay](../assets/electric/E-Layout-ZapBox-ExternalRelay.webp)
+**Miscellaneous:** [ZapSave](../assets/electric/E-Layout-ZapBox-ZapSave.png) · [USB-Power-Hub](../assets/electric/E-Layout-ZapBox-USB-Power-Hub.png) · [External Relay](../assets/electric/E-Layout-ZapBox-ExternalRelay.webp)
 
 ### Version history (Inkscape)
 
