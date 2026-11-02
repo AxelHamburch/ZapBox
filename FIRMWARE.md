@@ -397,6 +397,29 @@ installer/firmware/
 
 ## Release History
 
+### v974282 / v974282h / v974282t — 2026-11-02
+
+```markdown
+## 🎯 Release v974282 / v974282h / v974282t — Instant Network Error Screens, No More Freezes
+
+### 🌐 Network & Error Screens (Standard + Headless + Touch 3.5")
+- **Connection loss is shown immediately:** when WiFi is up but neither the WebSocket nor the device channel is, **NO WEB SOCKET** appears after 1.5 s (a reconnect that completes at once stays invisible). The background checks then escalate it to **NO SERVER** / **NO INTERNET**. The screen stays until everything is back. Before, the error only appeared after the blocking checks had finished (up to ~30 s).
+- **No more frozen screen on a flaky router:** the Internet check (up to 25 s), the server check (up to 8 s) and the Bitcoin refresh after a recovery (up to 26 s) blocked the main loop, so touch and the display did not react. They now run in the background; the WebSocket reconnect no longer blocks either.
+- **No WebSocket handshakes while WiFi is down:** removes the `Host is unreachable` log spam once a second and keeps the TLS slot free for Bolt Card taps.
+- Log: the device-channel message now reads "TLS handshake failed or extension too old" instead of blaming the extension only.
+
+### 🖥️ Touch 3.5" only
+- **Fixed mixed error/BTC-ticker screens:** the ticker, the keypad timers and the keypad touch painted over an active error screen (a background Bitcoin refresh could land on top of it). An error screen is now left alone until the connection is back.
+
+### 💳 Bolt Card errors (with zapbox_extension v2.6.6)
+- Unexpected server errors are no longer a bare "Internal error." — the display shows the cause (e.g. `Wallet balance cannot exceed 1000000 sats.`), the label on its own line, the rest word-wrapped. The firmware displays the text unchanged; this part is delivered by the extension.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 974282
+- Requires **zapbox_extension v2.6.2+**; **v2.6.6 recommended** (readable NFC error details)
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v973831 / v973831h / v973831t — 2026-10-30
 
 ```markdown
