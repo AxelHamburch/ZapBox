@@ -411,9 +411,6 @@ installer/firmware/
 ### 🖥️ Touch 3.5" only
 - **Fixed mixed error/BTC-ticker screens:** the ticker, the keypad timers and the keypad touch painted over an active error screen (a background Bitcoin refresh could land on top of it). An error screen is now left alone until the connection is back.
 
-### 💳 Bolt Card errors (with zapbox_extension v2.6.6)
-- Unexpected server errors are no longer a bare "Internal error." — the display shows the cause (e.g. `Wallet balance cannot exceed 1000000 sats.`), the label on its own line, the rest word-wrapped. The firmware displays the text unchanged; this part is delivered by the extension.
-
 ### 🔩 Hardware & E-Layouts
 - **New E-Layout `e974117-ExternalRelay`** (SVG + WebP): wiring diagram for an external power and standard relay with 1 channel; the `E-Layout-ZapBox-ExternalRelay` overview image is updated to it.
 - **New enclosure `b974003-ExternalRelay`**: external standard relay box (1 CH) incl. cable glands (M12 box, lid, seal, label; 3MF + FreeCAD, preview images).
@@ -421,7 +418,7 @@ installer/firmware/
 
 ### 🛠️ Technical Details
 - Updated to Bitcoin block height 974282
-- Requires **zapbox_extension v2.6.2+**; **v2.6.6 recommended** (readable NFC error details)
+- Requires **zapbox_extension v2.6.2+** (unchanged)
 - ESP32-C3-21-1 not rebuilt — release on request only
 ```
 
