@@ -77,7 +77,7 @@ Complete wiring diagrams — start here when building a ZapBox.
 | e965965 | Headless S | First Headless (S)imple |
 | e970885 | Touch3.5-UNI | ZapBox Touch 3.5 with 5 channels |
 | e973091 | ExternalRelay | External power relay with 1 channels |
-
+| e974117 | ExternalRelay | External power and standard relay with 1 channels |
 
 → All versions: [assets/electric/](https://github.com/AxelHamburch/ZapBox/tree/main/assets/electric)
 
