@@ -414,6 +414,11 @@ installer/firmware/
 ### 💳 Bolt Card errors (with zapbox_extension v2.6.6)
 - Unexpected server errors are no longer a bare "Internal error." — the display shows the cause (e.g. `Wallet balance cannot exceed 1000000 sats.`), the label on its own line, the rest word-wrapped. The firmware displays the text unchanged; this part is delivered by the extension.
 
+### 🔩 Hardware & E-Layouts
+- **New E-Layout `e974117-ExternalRelay`** (SVG + WebP): wiring diagram for an external power and standard relay with 1 channel; the `E-Layout-ZapBox-ExternalRelay` overview image is updated to it.
+- **New enclosure `b974003-ExternalRelay`**: external standard relay box (1 CH) incl. cable glands (M12 box, lid, seal, label; 3MF + FreeCAD, preview images).
+- `docs/hardware-assets.md`: new entries for e974117 and b974003.
+
 ### 🛠️ Technical Details
 - Updated to Bitcoin block height 974282
 - Requires **zapbox_extension v2.6.2+**; **v2.6.6 recommended** (readable NFC error details)
