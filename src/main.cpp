@@ -213,6 +213,22 @@ static void serviceWebSocket()
   webSocket.loop();
 }
 
+// Non-blocking WebSocket reconnect state (driven from the 5 s network check in loop()).
+static bool          wsReconActive  = false;
+static unsigned long wsReconStarted = 0;
+static const unsigned long WS_RECON_ATTEMPT_MS = 15000;
+
+// True when a running reconnect attempt has finished (connected or timed out) and the
+// network check should run now instead of waiting for its 5 s tick.
+static bool wsReconnectNeedsCheck()
+{
+  if (!wsReconActive) return false;
+  // Connected (or handed over to the device channel): the attempt is over, one
+  // pass through the network check clears the error screen.
+  if (webSocket.isConnected() || deviceChannelActive) { wsReconActive = false; return true; }
+  return millis() - wsReconStarted > WS_RECON_ATTEMPT_MS;
+}
+
 //////////////////FORWARD DECLARATIONS///////////////////
 
 void reportMode();
@@ -2813,6 +2829,45 @@ void loop()
       return; // Exit silently - config mode handles serial output
     }
 
+    // ── Immediate connection-loss feedback ──────────────────────────────────
+    // The 5 s network check below runs probes (internet / server) that take seconds;
+    // the error must not wait for them. As soon as WiFi is up but neither the core
+    // WebSocket nor the device channel is, show NO WEB SOCKET right away. The probes
+    // then escalate it to NO SERVER / NO INTERNET, and the screen stays until
+    // everything is back. (A lost WiFi is already shown by checkAndReconnectWiFi().)
+    {
+      static unsigned long connLostSince = 0;
+      const bool wifiUp = (WiFi.status() == WL_CONNECTED);
+      const bool linkOk = webSocket.isConnected() || deviceChannelActive;
+      const bool screenBusy = deviceState.isInState(DeviceState::SCREENSAVER) ||
+                              deviceState.isInState(DeviceState::DEEP_SLEEP) ||
+                              deviceState.isInState(DeviceState::HELP_SCREEN) ||
+                              deviceState.isInState(DeviceState::REPORT_SCREEN) ||
+                              extensionConfig.nfcPaymentPending || nfcPendingScreenShown ||
+                              nfcNoLuckScreenShown || nfcErrorDetailShown || pinPadState.active;
+      if (!wifiUp || linkOk || !readyMessageShown || screenBusy || onErrorScreen || currentErrorType != 0) {
+        connLostSince = 0;
+      } else if (connLostSince == 0) {
+        connLostSince = millis();
+      } else if (millis() - connLostSince > 1500) { // ride out a reconnect that completes at once
+        connLostSince = 0;
+        Serial.println("[SCREEN] Connection lost - showing error screen immediately");
+        websocketReconnectScreen();
+        onErrorScreen = true;
+        currentErrorType = 4;
+        networkStatus.confirmed.websocket = false;
+        #ifdef BOARD_JC3248W535C
+        // Drop the keypad / product QR state: the screen is no longer theirs
+        productSelectState.panelActive = false;
+        productSelectState.qrActive    = false;
+        productSelectState.numDigits   = 0;
+        productSelectState.digits[0]   = '\0';
+        #endif
+        deviceState.transition(DeviceState::READY);
+        lastInternetCheck = 0; // start the internet probe now instead of up to 30 s later
+      }
+    }
+
     // ── NFC payment monitoring ──────────────────────────────────────────────
     // MUST be very early in the loop – the network recovery block below contains
     // many return statements that would prevent this code from ever executing
@@ -3138,7 +3193,7 @@ void loop()
 
     // ── Numerical product selection timers (Touch 3.5 multi-channel) ─────
     #ifdef BOARD_JC3248W535C
-    if (t35AmbientConfig.numericSelect &&
+    if (t35AmbientConfig.numericSelect && !onErrorScreen && currentErrorType == 0 &&
         !pinPadState.active && !extensionConfig.nfcPaymentPending) {
       uint32_t nsNow = millis();
       if (productSelectState.panelActive) {
@@ -3578,7 +3633,7 @@ void loop()
         if (t35AmbientConfig.numericSelect) {
           // Ignore touches while an NFC payment is pending or a transient
           // screen (help/report/error) owns the display.
-          if (extensionConfig.nfcPaymentPending ||
+          if (extensionConfig.nfcPaymentPending || onErrorScreen || currentErrorType != 0 ||
               !(deviceState.isInState(DeviceState::READY) ||
                 deviceState.isInState(DeviceState::PRODUCT_SELECTION) ||
                 deviceState.isInState(DeviceState::BTC_TICKER))) {
@@ -4153,7 +4208,7 @@ void loop()
     }
     
     // Check Internet connectivity every 30 seconds (independent of WebSocket)
-    if (millis() - lastInternetCheck > 30000 && !deviceState.isInState(DeviceState::CONFIG_MODE))
+    if ((millis() - lastInternetCheck > 30000 || internetCheckReady()) && !deviceState.isInState(DeviceState::CONFIG_MODE))
     {
       // CRITICAL: Check WiFi first! Don't show "No Internet" if WiFi is down
       if (WiFi.status() != WL_CONNECTED) {
@@ -4183,7 +4238,12 @@ void loop()
         lastInternetCheck = millis();
         networkStatus.confirmed.internet = true;
       } else if (WiFi.status() == WL_CONNECTED) {
-        bool hasInternet = checkInternetConnectivity();
+        // The check runs in a background task (it blocks 10-25 s when the link is
+        // flaky). Until it reports back the loop keeps serving touch and screens.
+        bool hasInternet = false;
+        if (!internetCheckPoll(hasInternet)) {
+          // still running
+        } else {
         if (!hasInternet) {
           if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || currentErrorType > 2) {
             Serial.println("[INTERNET] Internet connection lost!");
@@ -4209,58 +4269,13 @@ void loop()
             // Always fetch Bitcoin data when Internet is restored (if ticker is active)
             // BUT: Don't update bitcoinData.lastUpdate so the regular timer continues
             if (multiChannelConfig.btcTickerActive) {
-              Serial.println("[RECOVERY] Internet restored - fetching Bitcoin data for ticker...");
-              HTTPClient http;
-              // Bound the TLS handshake: WiFiClientSecure defaults to 120 s, and
-              // http.begin(url) would inherit that — two of those back to back in
-              // the loop task freeze the UI for four minutes on a flaky router.
-              WiFiClientSecure secureClient;
-              secureClient.setInsecure();
-              secureClient.setHandshakeTimeout(10); // seconds
-
-              // Fetch BTC price from mempool.space (same server as block height)
-              String currencyUpper = currency;
-              currencyUpper.toUpperCase();
-              http.begin(secureClient, "https://mempool.space/api/v1/prices");
-              http.setConnectTimeout(5000);
-              http.setTimeout(8000);
-              if (http.GET() == 200) {
-                JsonDocument doc;
-                if (!deserializeJson(doc, http.getString())) {
-                  long price = doc[currencyUpper] | 0L;
-                  if (price > 0) {
-                    bitcoinData.price = String(price);
-                    Serial.println("[BTC] Recovery price updated: " + bitcoinData.price + " " + currency);
-                  }
-                }
-              }
-              http.end();
-
-              delay(100);
-
-              // Fetch block height
-              http.begin(secureClient, "https://mempool.space/api/blocks/tip/height");
-              http.setConnectTimeout(5000);
-              http.setTimeout(8000);
-              if (http.GET() == 200) {
-                String val = http.getString();
-                val.trim();
-                if (val.length() > 0) {
-                  bitcoinData.blockHigh = val;
-                  Serial.println("[BTC] Recovery block height updated: " + bitcoinData.blockHigh);
-                }
-              }
-              http.end();
-              
-              // DON'T update bitcoinData.lastUpdate - let the regular update cycle continue
-              Serial.println("[BTC] Recovery fetch completed (timer NOT reset)");
-              
-              // Redraw ticker screen if it was active
-              if (!deviceState.isInState(DeviceState::ERROR_RECOVERABLE)) {
-                btctickerScreen();
-              }
+              // Two blocking HTTPS calls here froze the loop (and touch) for up to
+              // 26 s on a flaky router — let the periodic updater fetch in its own
+              // task instead (same approach as the WiFi recovery path).
+              Serial.println("[RECOVERY] Internet restored - Bitcoin data refresh scheduled");
+              bitcoinData.lastUpdate = 0;
             }
-            
+
             // If recovering from Internet error screen, clear error and refresh display
             if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE) && currentErrorType == 2) {
               Serial.println("[RECOVERY] Clearing Internet error screen...");
@@ -4278,6 +4293,7 @@ void loop()
           }
         }
         lastInternetCheck = millis();
+        } // internetCheckPoll() result handled
       }
     }
     
@@ -4334,7 +4350,7 @@ void loop()
 
     // Check WiFi, Server and WebSocket every 5 seconds while waiting for payment
     // Note: Internet is checked separately every 30 seconds
-    if (millis() - lastWiFiCheck > 5000)
+    if (millis() - lastWiFiCheck > 5000 || serverCheckReady() || wsReconnectNeedsCheck())
     {
       lastWiFiCheck = millis(); // Reset at entry so all return paths are rate-limited
       // Check connection status step by step.
@@ -4371,7 +4387,9 @@ void loop()
           return;
         }
         // WiFi OK but WebSocket not connected - check if Server is reachable
-        serverOk = checkServerReachability();
+        // Runs in a background task (blocks up to 8 s); the result is picked up
+        // as soon as it is ready, see the loop gate above.
+        if (!serverCheckPoll(serverOk)) return;
         if (!serverOk) {
           // Server down - WebSocket can't connect (that's expected)
           websocketOk = false;
@@ -4444,44 +4462,36 @@ void loop()
           deviceState.transition(DeviceState::READY);
         }
         
-        // Try to reconnect WebSocket (up to 3 attempts).
-        // Hold the TLS slot across all attempts: this loop fires up to 3 back-to-back
-        // handshakes, and that burst on top of an in-flight NFC POST is exactly what
-        // the router drops (see NetTls.h). Recursive, so a slot already held by
-        // serviceWebSocket() on this task is fine.
-        NetTlsGuard tls("WS-reconnect", 20000);
-        if (!tls.held()) {
-          Serial.println("WebSocket reconnect deferred - TLS slot busy");
-          return;
-        }
-        int reconnectAttempts = 0;
-        int sslErrorCount = 0; // Count SSL connection errors (detected by error events)
-        
-        while (!webSocket.isConnected() && reconnectAttempts < 3 && !deviceState.isInState(DeviceState::CONFIG_MODE))
+        // Reconnect WITHOUT blocking the loop (the old 3x blocking attempts held
+        // touch and the error screen for ~10 s per round): arm the library once,
+        // serviceWebSocket() then drives the handshake under the TLS gate (NetTls.h)
+        // so it cannot collide with the NFC task's POST. Success or timeout is picked
+        // up quickly through wsReconnectNeedsCheck() in the loop gate above.
+        if (!webSocket.isConnected())
         {
-          if (WiFi.status() != WL_CONNECTED || deviceState.isInState(DeviceState::CONFIG_MODE)) return;
-          
-          webSocket.disconnect();
-          vTaskDelay(pdMS_TO_TICKS(500));
-          
-          reconnectAttempts++;
-          Serial.printf("WebSocket reconnect attempt %d/3\n", reconnectAttempts);
-          
-          if (lightningConfig.thresholdKey.length() > 0) {
-            webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + lightningConfig.thresholdKey);
-          } else {
-            webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+          if (!wsReconActive)
+          {
+            webSocket.disconnect();
+            Serial.println("WebSocket reconnect started");
+            if (lightningConfig.thresholdKey.length() > 0) {
+              webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + lightningConfig.thresholdKey);
+            } else {
+              webSocket.beginSSL(lnbitsServer, 443, "/api/v1/ws/" + deviceId);
+            }
+            webSocket.onEvent(webSocketEvent);
+            webSocket.setReconnectInterval(1000);
+            wsReconActive  = true;
+            wsReconStarted = millis();
+            return;
           }
-          webSocket.onEvent(webSocketEvent);
-          webSocket.setReconnectInterval(1000);
-          
-          // Wait for connection to establish (up to 3 seconds, with loop() calls)
-          for (int i = 0; i < 30 && !webSocket.isConnected(); i++) {
-            webSocket.loop();
-            vTaskDelay(pdMS_TO_TICKS(100));
-          }
+          if (millis() - wsReconStarted <= WS_RECON_ATTEMPT_MS) return; // handshake in progress
+          wsReconActive = false;
         }
-        
+        else
+        {
+          wsReconActive = false;
+        }
+
         if (webSocket.isConnected())
         {
           Serial.println("WebSocket reconnected successfully");
@@ -4517,8 +4527,8 @@ void loop()
         }
         else
         {
-          // WebSocket reconnect failed after 3 attempts
-          Serial.printf("WebSocket reconnect failed after %d attempts\n", reconnectAttempts);
+          // WebSocket reconnect attempt timed out
+          Serial.println("WebSocket reconnect attempt timed out");
           if (networkStatus.errors.websocket < 99) networkStatus.errors.websocket++;
           Serial.printf("[ERROR] WebSocket error count: %d\n", networkStatus.errors.websocket);
           
@@ -4530,8 +4540,11 @@ void loop()
           // disconnect() stops the auto-reconnect timer and closes the TCP socket.
           webSocket.disconnect();
           
-          Serial.println("[SCREEN] Showing WebSocket error screen (type 4)");
-          websocketReconnectScreen();
+          if (!(onErrorScreen && currentErrorType == 4)) {
+            // Already on screen (shown as soon as the connection dropped) - no redraw
+            Serial.println("[SCREEN] Showing WebSocket error screen (type 4)");
+            websocketReconnectScreen();
+          }
           networkStatus.confirmed.websocket = false; // Clear confirmation
           currentErrorType = 4;
           onErrorScreen = true;

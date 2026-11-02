@@ -333,7 +333,7 @@ void serviceNfcWebSocket()
         if (nfcWsFailedPhases < 5) nfcWsFailedPhases++;
         uint32_t pauseMs = 15000UL << nfcWsFailedPhases; // 30s, 1, 2, 4, 8 min
         nfcWsNextAttemptDue = millis() + pauseMs;
-        LOG_INFO("NFC-WS", String("Channel not connecting (extension too old?) – next attempt in ")
+        LOG_INFO("NFC-WS", String("Channel not connecting (TLS handshake failed or extension too old) – next attempt in ")
                            + String(pauseMs / 1000) + " s");
         return;
     }
@@ -933,6 +933,72 @@ bool checkServerReachability()
   LOG_WARN("Network", "Server NOT reachable (port 443 closed/timeout)");
   return false;
 }
+
+// ─── Non-blocking wrappers ───────────────────────────────────────────────────
+// One short-lived task per check. The loop task only ever reads two volatile
+// words, so touch, error screens and NFC keep running while the check waits for
+// its timeouts.
+
+namespace {
+struct AsyncProbe {
+  enum : uint8_t { IDLE, RUNNING, DONE };
+  volatile uint8_t       state      = IDLE;
+  volatile bool          result     = false;
+  volatile unsigned long finishedAt = 0;
+  bool (*fn)()                      = nullptr;
+  const char *name                  = "";
+};
+
+AsyncProbe internetProbe;
+AsyncProbe serverProbe;
+
+void probeTask(void *arg)
+{
+  AsyncProbe *p = static_cast<AsyncProbe *>(arg);
+  bool ok       = p->fn();
+  p->result     = ok;
+  p->finishedAt = millis();
+  p->state      = AsyncProbe::DONE;
+  vTaskDelete(nullptr);
+}
+
+// true = a fresh result is available in `ok`; false = running / just started.
+bool probePoll(AsyncProbe &p, bool &ok)
+{
+  if (p.state == AsyncProbe::DONE) {
+    if (millis() - p.finishedAt <= 15000) {
+      ok      = p.result;
+      p.state = AsyncProbe::IDLE;
+      return true;
+    }
+    p.state = AsyncProbe::IDLE; // stale, nobody collected it: probe again
+  }
+  if (p.state == AsyncProbe::IDLE) {
+    p.state = AsyncProbe::RUNNING;
+    if (xTaskCreatePinnedToCore(probeTask, p.name, 6144, &p, 1, nullptr, 1) != pdPASS) {
+      p.state = AsyncProbe::IDLE; // no memory for the task: retry on the next call
+    }
+  }
+  return false;
+}
+} // namespace
+
+bool internetCheckPoll(bool &ok)
+{
+  internetProbe.fn   = checkInternetConnectivity;
+  internetProbe.name = "probe_inet";
+  return probePoll(internetProbe, ok);
+}
+
+bool serverCheckPoll(bool &ok)
+{
+  serverProbe.fn   = checkServerReachability;
+  serverProbe.name = "probe_srv";
+  return probePoll(serverProbe, ok);
+}
+
+bool internetCheckReady() { return internetProbe.state == AsyncProbe::DONE; }
+bool serverCheckReady()   { return serverProbe.state   == AsyncProbe::DONE; }
 
 // ─── WiFi connection management ──────────────────────────────────────────────
 // Only ONE connection attempt runs at a time. The old logic called disconnect() +

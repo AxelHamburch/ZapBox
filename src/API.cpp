@@ -20,6 +20,8 @@ extern String lnbitsServer;
 extern String deviceId;
 extern String currency;
 extern bool labelsLoadedSuccessfully;
+extern bool onErrorScreen;     // main.cpp: a NO WIFI / NO INTERNET / ... screen owns the display
+extern byte currentErrorType;  // main.cpp: 0 = none
 extern bool labelsValidationAttempted;
 extern ExtensionConfig extensionConfig;
 #ifdef BOARD_JC3248W535C
@@ -433,7 +435,7 @@ void updateBitcoinTicker()
     needsUpdate = true;
   }
 #endif
-  if (!needsUpdate || deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
+  if (!needsUpdate || onErrorScreen || currentErrorType != 0 || deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
     return;
   }
 
@@ -492,7 +494,7 @@ void updateBitcoinTicker()
 void updateSwitchLabels()
 {
   // Skip if in error/config/help modes
-  if (deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
+  if (onErrorScreen || currentErrorType != 0 || deviceState.isInState(DeviceState::ERROR_RECOVERABLE) || deviceState.isInState(DeviceState::CONFIG_MODE) || deviceState.isInState(DeviceState::HELP_SCREEN)) {
     return;
   }
 

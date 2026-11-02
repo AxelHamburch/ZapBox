@@ -131,6 +131,8 @@ static bool themeInvertQr() {
 
 // External currency string set from config (defaults to "USD")
 extern String currency;
+extern bool onErrorScreen;     // main.cpp: a NO WIFI / NO INTERNET / ... screen owns the display
+extern byte currentErrorType;  // main.cpp: 0 = none
 
 // True once switch labels were successfully fetched from LNbits (main.cpp).
 // Used to distinguish "primary pin not configured" from "labels not loaded yet".
@@ -915,6 +917,7 @@ static bool placeholderShown = false;  // true while the ticker shows "Loading..
 void btctickerScreen() {
   DisplayLock l;
   if (!_gfx) return;
+  if (onErrorScreen || currentErrorType != 0) return; // never paint over an error screen
   fillScreen(themeBackground);
   placeholderShown = (bitcoinData.price == "Loading...");
   if (isPortrait()) {
@@ -939,6 +942,10 @@ void btctickerScreen() {
 void updateBtctickerValues() {
   DisplayLock l;
   if (!_gfx) return;
+  // The ticker values are refreshed from a background task; the error screen may
+  // have appeared since the fetch started. Painting then leaves ticker fragments
+  // on top of the error text.
+  if (onErrorScreen || currentErrorType != 0) return;
   // The "Loading..." placeholder is wider than the value area and leaves remnants
   // next to the logo; when real data replaces it, redraw the whole screen instead.
   bool isPlaceholder = (bitcoinData.price == "Loading...");

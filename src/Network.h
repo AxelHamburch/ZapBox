@@ -21,6 +21,16 @@ void wsKeepAlive();
 bool checkInternetConnectivity();
 bool checkServerReachability();
 
+// Non-blocking variants for the main loop. Both checks can block for 10-25 s on
+// a flaky link, which froze touch and error screens. The *Poll() calls run the
+// check in a short-lived task: the first call starts it and returns false; call
+// again on later loop iterations until it returns true with the result in `ok`.
+// A result nobody collected within 15 s is discarded and the check restarts.
+bool internetCheckPoll(bool &ok);
+bool serverCheckPoll(bool &ok);
+bool internetCheckReady();   // result waiting to be collected
+bool serverCheckReady();
+
 // Diagnostics: reset reason (brownout / watchdog / panic) and a one-line
 // snapshot of the link (RSSI, channel, IP, gateway, DNS, heap).
 void logBootDiagnostics();
