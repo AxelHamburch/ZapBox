@@ -198,6 +198,13 @@ static void serviceWebSocket()
     return;
   }
 
+  // No WiFi: a handshake cannot succeed (errno 118 "Host is unreachable" once a
+  // second, log spam, and the TLS slot stays busy). Wait for the link instead.
+  if (WiFi.status() != WL_CONNECTED) {
+    if (wsHoldsTlsSlot) { wsHoldsTlsSlot = false; netTlsGive(); }
+    return;
+  }
+
   if (!wsHoldsTlsSlot) {
     if (!netTlsTryTake("WS")) return; // another TLS op in flight, or still settling
     wsHoldsTlsSlot  = true;
