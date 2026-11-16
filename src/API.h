@@ -2,6 +2,7 @@
 #define API_H
 
 #include <Arduino.h>
+#include <HTTPClient.h>
 
 /**
  * API.h - Server Communication Module
@@ -83,5 +84,17 @@ bool requestNfcAuth(const String &externalId, const String &p, const String &c,
  * Returns true on success.
  */
 bool requestNfcTeach(const String &externalId, const String &p, const String &c);
+
+/**
+ * Device authentication (zapbox_extension v2.7.0+).
+ * The device token comes from the device settings string
+ * (wss://<host>/api/v1/ws/<id>?token=<token>) and is sent as
+ * "X-Device-Token" header on every device-side call to the extension.
+ * It is never put into a URL.
+ */
+void addDeviceTokenHeader(HTTPClient &http);
+
+/** Extra handshake headers for the device WebSocket channel. */
+String deviceChannelExtraHeaders();
 
 #endif // API_H

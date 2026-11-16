@@ -11,11 +11,13 @@
 #include "Display.h"
 #include "Log.h"
 #include "NetTls.h"
+#include "API.h"
 
 // Externals from main.cpp
 extern StateManager deviceState;
 extern String lnbitsServer;
 extern String deviceId;
+extern String deviceToken;
 extern String payloadStr;
 extern WebSocketsClient webSocket;
 extern byte currentErrorType;
@@ -297,6 +299,9 @@ void serviceNfcWebSocket()
         nfcWsHoldsTlsSlot  = true;
         nfcWsSlotHeldSince = millis();
         LOG_INFO("NFC-WS", String("Opening device channel: /zapbox/api/v1/ws/nfc/") + deviceId);
+        // Device token (extension v2.7.0+): without it the server closes the
+        // channel with code 4401 and the core WebSocket stays the fallback.
+        nfcWebSocket.setExtraHeaders(deviceChannelExtraHeaders().c_str());
         nfcWebSocket.beginSSL(lnbitsServer, 443, "/zapbox/api/v1/ws/nfc/" + deviceId);
         nfcWebSocket.onEvent(nfcWebSocketEvent);
         nfcWebSocket.setReconnectInterval(5000);
@@ -556,6 +561,7 @@ void nfcLnurlwReceived(const String &lnurlw)
         holdingSlot = true;
 
         http.begin(secureClient, url);
+        addDeviceTokenHeader(http);
         http.addHeader("Content-Type", "application/json");
         http.setConnectTimeout(8000);
         http.setTimeout(15000); // LNURLW resolution can take several seconds
@@ -668,6 +674,7 @@ void sendPinSubmit(const String &sessionId, const String &pin)
         return;
     }
     http.begin(secureClient, url);
+    addDeviceTokenHeader(http);
     http.setConnectTimeout(5000);
     http.setTimeout(7000);
 
@@ -720,6 +727,7 @@ bool submitTeachPin(const String &pin)
                  + "/api/v1/auth/teach/start?device_id=" + deviceId
                  + "&pin=" + pin;
     http.begin(secureClient, url);
+    addDeviceTokenHeader(http);
     http.setConnectTimeout(5000);
     http.setTimeout(7000);
 
@@ -786,6 +794,7 @@ void stopTeachSession()
     String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
                  + "/api/v1/auth/teach/stop?device_id=" + deviceId;
     http.begin(secureClient, url);
+    addDeviceTokenHeader(http);
     http.setConnectTimeout(5000);
     http.setTimeout(7000);
     http.POST("");

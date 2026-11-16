@@ -18,6 +18,7 @@ extern BitcoinData bitcoinData;
 extern NetworkStatus networkStatus;
 extern String lnbitsServer;
 extern String deviceId;
+extern String deviceToken;
 extern String currency;
 extern bool labelsLoadedSuccessfully;
 extern bool onErrorScreen;     // main.cpp: a NO WIFI / NO INTERNET / ... screen owns the display
@@ -560,6 +561,7 @@ bool requestMiniPosInvoice(const String &amountStr)
                + "/api/v1/pos/invoice";
   LOG_INFO("MiniPoS", "Requesting invoice: " + amountStr + " " + miniPosConfig.currency);
   http.begin(url);
+  addDeviceTokenHeader(http);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Api-Key", miniPosConfig.invoiceKey);
   http.setConnectTimeout(5000);
@@ -627,6 +629,7 @@ bool fetchMiniPosLastPay(String &amountOut)
   String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
                + "/api/v1/pos/invoice/last?device_id=" + deviceId;
   http.begin(url);
+  addDeviceTokenHeader(http);
   http.addHeader("X-Api-Key", miniPosConfig.invoiceKey);
   http.setConnectTimeout(5000);
   http.setTimeout(7000);
@@ -681,6 +684,7 @@ bool requestAuthLnurl(String *actionOut, int *httpOut)
              + "?pin=" + String(authyConfig.authPin)
              + "&duration=" + String(authyConfig.authDuration);
   http.begin(url);
+  addDeviceTokenHeader(http);
   http.setConnectTimeout(5000);
   http.setTimeout(10000);
 
@@ -737,6 +741,7 @@ bool requestNfcAuth(const String &externalId, const String &p, const String &c,
 
   HTTPClient http;
   http.begin(url);
+  addDeviceTokenHeader(http);
   http.setConnectTimeout(5000);
   http.setTimeout(10000);
   int code = http.GET();
@@ -779,6 +784,7 @@ bool requestNfcTeach(const String &externalId, const String &p, const String &c)
 
   HTTPClient http;
   http.begin(url);
+  addDeviceTokenHeader(http);
   http.setConnectTimeout(5000);
   http.setTimeout(10000);
   int code = http.GET();
@@ -791,4 +797,25 @@ bool requestNfcTeach(const String &externalId, const String &p, const String &c)
   if (deserializeJson(doc, resp)) return false;
   const char *status = doc["status"];
   return status && String(status) == "OK";
+}
+
+// ---------------------------------------------------------------------------
+// Device authentication (zapbox_extension v2.7.0+)
+// ---------------------------------------------------------------------------
+
+void addDeviceTokenHeader(HTTPClient &http)
+{
+  if (deviceToken.length() > 0) {
+    http.addHeader("X-Device-Token", deviceToken);
+  }
+}
+
+String deviceChannelExtraHeaders()
+{
+  // Keep the library's default Origin header, add the device token.
+  String headers = "Origin: file://";
+  if (deviceToken.length() > 0) {
+    headers += "\r\nX-Device-Token: " + deviceToken;
+  }
+  return headers;
 }

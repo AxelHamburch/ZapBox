@@ -89,6 +89,7 @@ bool labelsValidationAttempted = false; // Track if label fetch was attempted (r
 String payloadStr;
 String lnbitsServer;
 String deviceId;
+String deviceToken;  // zapbox_extension v2.7.0+: from "?token=" in the device string
 unsigned long configModeStartTime = 0; // Track when config mode started for touch exit
 bool firstLoop = true; // Track first loop iteration
 byte currentErrorType = 0; // 0=none, 1=WiFi (highest), 2=Internet, 3=Server, 4=WebSocket (lowest)
@@ -271,6 +272,30 @@ void readFiles()
     const char *maRoot2Char = maRoot2["value"];
     wifiConfig.switchStr = maRoot2Char;
     
+    // v2.7.0 device string: wss://<host>/api/v1/ws/<id>?token=<token>.
+    // Split off the query first; the token is sent as X-Device-Token header,
+    // never in a URL, and is not logged.
+    deviceToken = "";
+    {
+      int queryIndex = wifiConfig.switchStr.indexOf('?');
+      if (queryIndex != -1) {
+        String query = wifiConfig.switchStr.substring(queryIndex + 1);
+        wifiConfig.switchStr = wifiConfig.switchStr.substring(0, queryIndex);
+        int tokenIndex = query.indexOf("token=");
+        if (tokenIndex != -1) {
+          int tokenEnd = query.indexOf('&', tokenIndex);
+          deviceToken = (tokenEnd == -1) ? query.substring(tokenIndex + 6)
+                                         : query.substring(tokenIndex + 6, tokenEnd);
+          deviceToken.trim();
+        }
+      }
+    }
+    if (deviceToken.length() == 0) {
+      LOG_WARN("Config", "Device string has no token - zapbox_extension v2.7.0+ will reject device calls. Copy the new device string from the extension.");
+    } else {
+      LOG_INFO("Config", "Device token: set (" + String(deviceToken.length()) + " chars)");
+    }
+
     // Parse WebSocket URL (works with both ws:// and wss://)
     int protocolIndex = wifiConfig.switchStr.indexOf("://");
     LOG_DEBUG("Config", String("switchStr='") + wifiConfig.switchStr + String("', protocolIndex=") + String(protocolIndex));
