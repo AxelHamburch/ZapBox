@@ -188,31 +188,53 @@ static uint32_t      nfcWsNextAttemptDue = 0;
 // shows the server's "Token invalid" detail.
 static bool          nfcWsTokenRejected  = false;
 
+// Set on the bare connect; cleared by "device_channel_ready", by a token
+// rejection or by a disconnect. Extensions before v2.7.0 never send the ready
+// event: serviceNfcWebSocket() then activates the channel after a short grace
+// period, exactly like before.
+static bool          nfcWsAwaitingReady  = false;
+static uint32_t      nfcWsConnectedAt    = 0;
+static const uint32_t NFC_WS_READY_GRACE_MS = 3000;
+
+// Single-connection mode: the extension (v2.6.1+) routes ALL events over the
+// device channel, so drop the core WebSocket deliberately — two persistent
+// connections to the same host make NAT-challenged routers flap both.
+// main.cpp stands down its watchdog/reconnect machinery while
+// deviceChannelActive is set. If the channel dies, the flag clears and the
+// core WebSocket takes over again automatically.
+static void activateDeviceChannel(const char *why)
+{
+    nfcWsAwaitingReady = false;
+    if (deviceChannelActive) return;
+    LOG_INFO("NFC-WS", String("Device channel active (") + why + ") – single-connection mode");
+    deviceChannelActive = true;
+    networkStatus.confirmed.websocket = true;
+    if (webSocket.isConnected()) {
+        LOG_INFO("NFC-WS", "Releasing core WebSocket — device channel carries all events");
+        webSocket.disconnect();
+    }
+}
+
 static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
     switch (type) {
     case WStype_CONNECTED:
-        LOG_INFO("NFC-WS", "Device channel connected – single-connection mode");
+        // Not yet single-connection mode: extension v2.7.0+ first checks the
+        // device token and confirms with "device_channel_ready" (or rejects with
+        // "device_token_invalid"). Releasing the core WebSocket on the bare
+        // connect would drop it even for a channel that is closed a moment later.
+        LOG_INFO("NFC-WS", "Device channel connected – waiting for server confirmation");
         nfcWsFailedPhases   = 0; // endpoint exists — connect retries at full speed again
         nfcWsNextAttemptDue = 0;
-        // Single-connection mode: the extension (v2.6.1+) now routes ALL events
-        // over this channel, so drop the core WebSocket deliberately — two
-        // persistent connections to the same host make NAT-challenged routers
-        // flap both. main.cpp stands down its watchdog/reconnect machinery
-        // while deviceChannelActive is set. If the channel dies, the flag
-        // clears and the core WebSocket takes over again automatically.
-        deviceChannelActive = true;
-        networkStatus.confirmed.websocket = true;
-        if (webSocket.isConnected()) {
-            LOG_INFO("NFC-WS", "Releasing core WebSocket — device channel carries all events");
-            webSocket.disconnect();
-        }
+        nfcWsConnectedAt    = millis();
+        nfcWsAwaitingReady  = true;
         break;
     case WStype_DISCONNECTED:
         if (deviceChannelActive) {
             LOG_WARN("NFC-WS", "Device channel lost — core WebSocket takes over");
         }
         deviceChannelActive = false;
+        nfcWsAwaitingReady  = false;
         // Drop a queued-but-unsent tap: after a reconnect it would arrive
         // seconds late and its request_id would be rejected as stale anyway.
         nfcWsOutboxPending = false;
@@ -225,9 +247,14 @@ static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
             break;
         }
         const char *event = doc["event"] | "";
+        if (strcmp(event, "device_channel_ready") == 0) {
+            activateDeviceChannel("server confirmed");
+            break;
+        }
         if (strcmp(event, "device_token_invalid") == 0) {
             LOG_ERROR("NFC-WS", "Server rejected the device token – copy the new device string from the extension into the Web Installer");
             nfcWsTokenRejected = true;
+            nfcWsAwaitingReady = false;
             deviceChannelActive = false; // core WebSocket takes over again
             nfcWsOutboxPending = false;
             extensionConfig.deviceTokenRejectedAt = millis();
@@ -336,6 +363,12 @@ void serviceNfcWebSocket()
 
     if (nfcWebSocket.isConnected()) {
         if (nfcWsHoldsTlsSlot) { nfcWsHoldsTlsSlot = false; netTlsGive(); }
+        // Older extension (< v2.7.0) without "device_channel_ready": activate
+        // after the grace period, as before. A v2.7.0 rejection arrives well
+        // within it.
+        if (nfcWsAwaitingReady && millis() - nfcWsConnectedAt > NFC_WS_READY_GRACE_MS) {
+            activateDeviceChannel("no confirmation, older extension");
+        }
         if (nfcWsOutboxPending) {
             nfcWebSocket.sendTXT(nfcWsOutbox);
             nfcWsOutboxPending = false;
