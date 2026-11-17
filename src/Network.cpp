@@ -181,6 +181,12 @@ static uint32_t      nfcWsSlotHeldSince = 0;
 // this channel exists to avoid. 30 s → 1 → 2 → 4 → 8 min, reset on connect.
 static uint8_t       nfcWsFailedPhases   = 0;
 static uint32_t      nfcWsNextAttemptDue = 0;
+// Set when the server answered the channel handshake with "device_token_invalid".
+// Retrying cannot help (the token only changes with a new device string and a
+// reboot), and every retry would release the core WebSocket for a moment, so
+// the channel stays off until the next boot. Taps use the HTTPS fallback, which
+// shows the server's "Token invalid" detail.
+static bool          nfcWsTokenRejected  = false;
 
 static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
@@ -219,6 +225,17 @@ static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
             break;
         }
         const char *event = doc["event"] | "";
+        if (strcmp(event, "device_token_invalid") == 0) {
+            LOG_ERROR("NFC-WS", "Server rejected the device token – copy the new device string from the extension into the Web Installer");
+            nfcWsTokenRejected = true;
+            deviceChannelActive = false; // core WebSocket takes over again
+            nfcWsOutboxPending = false;
+            extensionConfig.deviceTokenRejectedAt = millis();
+            extensionConfig.deviceTokenRejected   = true;
+            // Not disconnected here (re-entrant inside the library callback):
+            // serviceNfcWebSocket() closes the socket from the main loop.
+            break;
+        }
         if (strcmp(event, "pin_submit_result") == 0) {
             // Ack for a PIN sent over the channel (extension v2.6.2+). On OK
             // the pin_error/paid events drive the UI from here — exactly like
@@ -268,6 +285,7 @@ static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 
 bool nfcChannelPending()
 {
+    if (nfcWsTokenRejected) return false; // will never connect – do not hold boot
     if (extensionConfig.apiPath != "zapbox" || !nfcConfig.boltcardActive) return false;
     if (deviceChannelActive) return false;
     return nfcWsFailedPhases == 0; // a failed connect phase means: stop waiting
@@ -278,6 +296,11 @@ bool nfcChannelPending()
 // gates its own TLS handshake through the NetTls slot.
 void serviceNfcWebSocket()
 {
+    if (nfcWsTokenRejected) {
+        if (nfcWsHoldsTlsSlot) { nfcWsHoldsTlsSlot = false; netTlsGive(); }
+        if (nfcWebSocket.isConnected()) nfcWebSocket.disconnect();
+        return;
+    }
     if (extensionConfig.apiPath != "zapbox" || !nfcConfig.boltcardActive ||
         deviceState.isInState(DeviceState::CONFIG_MODE) || WiFi.status() != WL_CONNECTED) {
         if (nfcWsHoldsTlsSlot) { nfcWsHoldsTlsSlot = false; netTlsGive(); }
@@ -738,7 +761,10 @@ bool submitTeachPin(const String &pin)
 
     if (httpCode != 200) {
         LOG_ERROR("Teach", String("Teach start HTTP ") + String(httpCode));
-        pinPadState.errorMsg   = (httpCode < 0) ? "Connection failed" : "Server error";
+        // 401: the extension rejected the device token (v2.7.0+, outdated device string)
+        pinPadState.errorMsg   = (httpCode < 0)    ? "Connection failed"
+                               : (httpCode == 401) ? "Token invalid"
+                                                   : "Server error";
         pinPadState.showError  = true;
         pinPadState.errorStart = millis();
         return false;

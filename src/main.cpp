@@ -2906,6 +2906,26 @@ void loop()
     // if it were placed later.
     #if ENABLE_NFC
     {
+      // Device token rejected by the extension (v2.7.0+): tell the user once, on
+      // an idle screen. Taps keep showing the server's own "Token invalid"
+      // detail, so this is only the proactive notice.
+      if (extensionConfig.deviceTokenRejected) {
+        const bool screenFree = readyMessageShown && !onErrorScreen && currentErrorType == 0 &&
+                                deviceState.isInState(DeviceState::READY) &&
+                                !extensionConfig.nfcPaymentPending && !nfcPendingScreenShown &&
+                                !nfcNoLuckScreenShown && !nfcErrorDetailShown &&
+                                !nfcNotSupportedShown && !pinPadState.active;
+        if (screenFree) {
+          extensionConfig.deviceTokenRejected = false;
+          nfcErrorDetailScreen("Token invalid: update device string");
+          nfcErrorDetailShown = true; // dismissed by the existing 6 s handling below
+          nfcErrorDetailStart = millis();
+          LOG_WARN("NFC", "Device token rejected – showing notice");
+        } else if (millis() - extensionConfig.deviceTokenRejectedAt > 120000UL) {
+          extensionConfig.deviceTokenRejected = false; // screen stayed busy – give up quietly
+        }
+      }
+
       // Extension mismatch: NFC tap detected but not using zapbox_extension
       if (extensionConfig.nfcExtensionMismatch) {
         extensionConfig.nfcExtensionMismatch = false;

@@ -406,6 +406,8 @@ struct ExtensionConfig {
   volatile unsigned long nfcPaymentPendingStart = 0; // Timestamp when NFC payment was initiated (for timeout)
   volatile bool nfcPaymentFailed = false;            // True when HTTP POST to server failed – triggers NO LUCK screen
   volatile bool nfcExtensionMismatch = false;         // True when NFC tap detected but extension is not zapbox
+  volatile bool deviceTokenRejected = false;         // True when the server rejected the device token (extension v2.7.0+) – main loop shows a notice once
+  unsigned long deviceTokenRejectedAt = 0;           // Timestamp of the rejection (the notice is dropped if the screen stays busy)
   char nfcErrorDetail[128] = "";                     // Detail message from last NFC HTTP error (shown after NO LUCK screen)
   // Bumped whenever the client gives up on the current tap (60s pending timeout,
   // PIN cancel, ...). The blocking HTTP POST in nfcLnurlwReceived() captures the

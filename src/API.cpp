@@ -580,8 +580,10 @@ bool requestMiniPosInvoice(const String &amountStr)
     String resp = http.getString();
     http.end();
     LOG_ERROR("MiniPoS", String("Invoice HTTP ") + String(httpCode) + " - " + resp);
-    miniPosState.infoMsg = (httpCode < 0) ? String("Connection failed")
-                                          : "Server error " + String(httpCode);
+    // 401: the extension rejected the device token (v2.7.0+, outdated device string)
+    miniPosState.infoMsg = (httpCode < 0)    ? String("Connection failed")
+                         : (httpCode == 401) ? String("Token invalid")
+                                             : "Server error " + String(httpCode);
     return false;
   }
 
