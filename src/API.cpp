@@ -4,6 +4,7 @@
 #include "Display.h"
 #include "Log.h"
 #include "NetTls.h"
+#include "Network.h"
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
@@ -137,6 +138,9 @@ void fetchSwitchLabels()
   String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath + "/api/v1/public/" + deviceId;
   Serial.println("[LABELS] Fetching switch configurations from: " + url);
   http.begin(secureClient, url);
+  // With a valid token the extension (v2.7.0+) switches this ZapBox to signed
+  // core-WebSocket triggers and returns the current trigger counter.
+  addDeviceTokenHeader(http);
   http.setConnectTimeout(5000);
   http.setTimeout(4000);
   int httpCode = http.GET();
@@ -184,6 +188,9 @@ void fetchSwitchLabels()
     DeserializationError error = deserializeJson(doc, payload);
     
     if (!error) {
+      if (doc["trigger_counter"].is<uint32_t>()) {
+        noteServerTriggerCounter(doc["trigger_counter"].as<uint32_t>());
+      }
       // Extract currency from response (optional field – not all extensions send it)
       const char* currencyChar = doc["currency"];
       if (currencyChar != nullptr) {

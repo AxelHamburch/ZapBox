@@ -12,6 +12,8 @@
 #include "Log.h"
 #include "NetTls.h"
 #include "API.h"
+#include <Preferences.h>
+#include "mbedtls/md.h"
 
 // Externals from main.cpp
 extern StateManager deviceState;
@@ -68,6 +70,134 @@ static void handleDeviceEvent(const String &text)
   }
   paymentQueue.enqueue(payloadStr);
   LOG_INFO("WebSocket", String("Payment enqueued. Queue size: ") + String(paymentQueue.size()));
+}
+
+// ── Signed relay triggers on the core WebSocket (zapbox_extension v2.7.0+, Z6) ──
+// LNbits core lets anyone push text into /api/v1/ws/<deviceId> without
+// authentication, and the device ID is public (QR code). With a device token
+// the core WebSocket therefore only accepts relay triggers in a signed
+// envelope:
+//   {"event":"trigger","data":"4-2000","ctr":17,"sig":"<hex>"}
+//   sig = HMAC-SHA256(device token, "<deviceId>|<ctr>|<data>")
+// ctr must be higher than any counter seen before (anyone can listen on that
+// channel, so replays must fail). It is kept in NVS per device ID and resynced
+// from the server at boot (public config, see noteServerTriggerCounter()).
+// The device channel is authenticated by the token itself and needs no
+// signature.
+
+static uint32_t lastTriggerCtr    = 0;
+static bool     lastTriggerLoaded = false;
+
+static void loadLastTriggerCtr()
+{
+    lastTriggerLoaded = true;
+    Preferences prefs;
+    if (!prefs.begin("zapbox", true)) return;
+    // Counter belongs to one ZapBox instance: a new device string with another
+    // ID starts from 0 again.
+    if (prefs.getString("trigId", "") == deviceId) {
+        lastTriggerCtr = prefs.getUInt("trigCtr", 0);
+    }
+    prefs.end();
+}
+
+static void storeLastTriggerCtr(uint32_t ctr)
+{
+    lastTriggerCtr = ctr;
+    Preferences prefs;
+    if (!prefs.begin("zapbox", false)) return;
+    prefs.putString("trigId", deviceId);
+    prefs.putUInt("trigCtr", ctr);
+    prefs.end();
+}
+
+void noteServerTriggerCounter(uint32_t ctr)
+{
+    if (!lastTriggerLoaded) loadLastTriggerCtr();
+    if (ctr > lastTriggerCtr) {
+        LOG_INFO("WebSocket", String("Trigger counter resynced from server: ") + String(ctr));
+        storeLastTriggerCtr(ctr);
+    }
+}
+
+static bool coreWsRequiresSignedTriggers()
+{
+    return deviceToken.length() > 0 && extensionConfig.apiPath == "zapbox" &&
+           lightningConfig.thresholdKey.length() == 0;
+}
+
+static String hmacSha256Hex(const String &key, const String &msg)
+{
+    uint8_t out[32];
+    const mbedtls_md_info_t *info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+    if (mbedtls_md_hmac(info, (const uint8_t *)key.c_str(), key.length(),
+                        (const uint8_t *)msg.c_str(), msg.length(), out) != 0) {
+        return "";
+    }
+    static const char hex[] = "0123456789abcdef";
+    String result;
+    result.reserve(64);
+    for (int i = 0; i < 32; i++) {
+        result += hex[out[i] >> 4];
+        result += hex[out[i] & 0x0f];
+    }
+    return result;
+}
+
+static bool constantTimeEquals(const String &a, const String &b)
+{
+    if (a.length() != b.length()) return false;
+    uint8_t diff = 0;
+    for (size_t i = 0; i < a.length(); i++) diff |= (uint8_t)(a[i] ^ b[i]);
+    return diff == 0;
+}
+
+// Core WebSocket text: pass on, verify or drop.
+static void handleCoreWsText(const String &text)
+{
+    if (!coreWsRequiresSignedTriggers()) {
+        handleDeviceEvent(text);
+        return;
+    }
+    JsonDocument doc;
+    if (deserializeJson(doc, text)) {
+        // Plain "<pin>-<duration>" (or anything else that is not JSON): could
+        // have been pushed by anyone through the unauthenticated core route.
+        LOG_WARN("WebSocket", "Unsigned relay trigger on core WebSocket ignored");
+        return;
+    }
+    const char *event = doc["event"] | "";
+    if (strcmp(event, "trigger") == 0) {
+        if (!lastTriggerLoaded) loadLastTriggerCtr();
+        String data = doc["data"] | "";
+        uint32_t ctr = doc["ctr"] | 0;
+        String sig  = doc["sig"] | "";
+        String expected = hmacSha256Hex(deviceToken, deviceId + "|" + String(ctr) + "|" + data);
+        if (data.length() == 0 || expected.length() == 0 || !constantTimeEquals(sig, expected)) {
+            LOG_WARN("WebSocket", "Relay trigger with invalid signature ignored");
+            return;
+        }
+        if (ctr <= lastTriggerCtr) {
+            LOG_WARN("WebSocket", String("Replayed relay trigger ignored (ctr ") + String(ctr) +
+                                  " <= " + String(lastTriggerCtr) + ")");
+            return;
+        }
+        storeLastTriggerCtr(ctr);
+        handleDeviceEvent(data);
+        return;
+    }
+    // Known non-trigger events (PIN pad, teach, enrolment). Forging them cannot
+    // switch the relay. Anything else would fall through to the trigger parser
+    // in processPaymentEvent(), so it is dropped.
+    static const char *allowed[] = {"pin_required", "pin_error", "auth_enrolled",
+                                    "teach_ended", "nfc_enrolled"};
+    for (const char *name : allowed) {
+        if (strcmp(event, name) == 0) {
+            handleDeviceEvent(text);
+            return;
+        }
+    }
+    LOG_WARN("WebSocket", String("Unknown core WebSocket event ignored: ") + event);
 }
 
 // WebSocket event handler
@@ -127,7 +257,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     break;
     case WStype_TEXT:
       LOG_DEBUG("WebSocket", String("Received: ") + String((char*)payload));
-      handleDeviceEvent(String((char *)payload));
+      handleCoreWsText(String((char *)payload));
       break;
     case WStype_PING:
       LOG_INFO("WebSocket", "Ping received from server");

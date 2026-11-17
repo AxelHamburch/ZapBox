@@ -63,6 +63,10 @@ void serviceNfcWebSocket();
 // True while a device channel is expected (Bolt Card + zapbox extension) but not
 // connected yet and not given up on. Used to delay "ready" at boot.
 bool nfcChannelPending();
+
+// Relay trigger counter from the server (public config, zapbox_extension
+// v2.7.0+). Raises the replay floor for signed core-WebSocket triggers.
+void noteServerTriggerCounter(uint32_t ctr);
 #endif
 
 // ─── Authy (LNURL-auth) teach session ────────────────────────────────────────
