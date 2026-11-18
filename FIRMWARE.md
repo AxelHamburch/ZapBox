@@ -397,6 +397,32 @@ installer/firmware/
 
 ## Release History
 
+### v976483 / v976483h / v976483t — 2026-11-18
+
+```markdown
+## 🎯 Release v976483 / v976483h / v976483t — Device Token & Signed Relay Triggers
+
+> ⚠️ **Breaking change (security).** Requires **zapbox_extension v2.7.0+**. The extension now rejects every device call without the device token, so the device string must be updated. Older firmware stops working with v2.7.0 until it is updated and gets the new device string.
+
+### 🔐 Device token (Standard + Headless + Touch 3.5")
+- **The device string now carries a secret token:** `wss://<host>/api/v1/ws/<id>?token=<token>`. Copy it from the ZapBox editor (**Copy device string**) and paste it into the Web Installer.
+- The token is sent as the `X-Device-Token` header on every call to the extension (device channel, NFC payments, PIN entry, Mini-PoS, Ring-Login, LNURL-auth, teach mode). It is never sent in a URL and never logged.
+- **"Token invalid" notice:** when the extension rejects the token (editor: **New token**, or a wrong string), the device stops retrying and shows *Token invalid: update device string* instead of looking like a network problem.
+
+### 🛡️ Signed relay triggers on the core WebSocket
+- The relay trigger that arrives over the LNbits core WebSocket (fallback while the device channel is down) must now carry a valid HMAC signature and a rising counter. Forged or replayed triggers are ignored, so third parties can no longer switch the relay through the unauthenticated core WebSocket route.
+- Applies to devices with a token that talk to `zapbox_extension`. Devices without a token, on the legacy `bitcoinswitch` extension, or with a threshold key keep accepting plain triggers.
+- The trigger counter is stored per device ID in flash and resynced from the server at boot.
+
+### 🌐 Network
+- **Single-connection mode** is only entered after the extension has confirmed the device channel (`device_channel_ready`). Before, a rejected channel could silence the core WebSocket as well.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 976483
+- Requires **zapbox_extension v2.7.0+** and, for Ring-Login with PIN, **TagID v2.2.0+**
+- ESP32-C3-21-1 not rebuilt — release on request only
+```
+
 ### v974282 / v974282h / v974282t — 2026-11-02
 
 ```markdown
