@@ -421,6 +421,10 @@ installer/firmware/
 - Updated to Bitcoin block height 976483
 - Requires **zapbox_extension v2.7.0+** and, for Ring-Login with PIN, **TagID v2.2.0+**
 - ESP32-C3-21-1 not rebuilt — release on request only
+
+### ⚠️ Older firmware (before v976483)
+- Devices without token support can no longer be paid over the core WebSocket alone with **zapbox_extension v2.7.1+**. The payer's wallet shows "No active ZapBox connections." or "ZapBox device token is not valid", and no invoice is issued.
+- Fix: flash v976483 (or newer), copy the **Device string** with the token from the ZapBox editor (**Copy device string**) and paste it into the Web Installer.
 ```
 
 ### v974282 / v974282h / v974282t — 2026-11-02
