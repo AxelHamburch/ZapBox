@@ -289,6 +289,31 @@ void fetchSwitchLabels()
 }
 
 #if ENABLE_BITCOIN_DATA
+// Diagnostics for failing mempool.space requests: tells heap exhaustion (a
+// second TLS session next to the device channel) apart from network drops.
+static void btcLogHeap(const char *what)
+{
+  Serial.printf("[BTC-DIAG] %s: heap free=%u, largest block=%u, min ever=%u\n",
+                what, (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getMaxAllocHeap(),
+                (unsigned)ESP.getMinFreeHeap());
+}
+
+static void btcLogResult(const char *what, int code, unsigned long startedAt,
+                         WiFiClientSecure &client)
+{
+  unsigned long ms = millis() - startedAt;
+  if (code == 200) {
+    Serial.printf("[BTC-DIAG] %s OK in %lu ms\n", what, ms);
+    return;
+  }
+  char tlsMsg[100] = "-";
+  int tlsErr = client.lastError(tlsMsg, sizeof(tlsMsg));
+  if (tlsErr == 0) strlcpy(tlsMsg, "-", sizeof(tlsMsg));
+  Serial.printf("[BTC-DIAG] %s failed after %lu ms: HTTP %d (%s), TLS error %d: %s\n",
+                what, ms, code, HTTPClient::errorToString(code).c_str(), tlsErr, tlsMsg);
+  btcLogHeap("after failure");
+}
+
 /**
  * Fetch Bitcoin price and block height from external APIs (sequential).
  */
@@ -351,7 +376,11 @@ void fetchBitcoinData()
   http.setConnectTimeout(5000);
   http.setTimeout(8000);
 
-  if (http.GET() == 200) {
+  btcLogHeap("before price");
+  unsigned long reqStart = millis();
+  int code = http.GET();
+  btcLogResult("price", code, reqStart, secureClient);
+  if (code == 200) {
     JsonDocument doc;
     if (!deserializeJson(doc, http.getString())) {
       long price = doc[currencyUpper] | 0L;
@@ -384,7 +413,11 @@ void fetchBitcoinData()
   http.setConnectTimeout(5000);
   http.setTimeout(8000);
 
-  if (http.GET() == 200) {
+  btcLogHeap("before block");
+  reqStart = millis();
+  code = http.GET();
+  btcLogResult("block", code, reqStart, secureClient);
+  if (code == 200) {
     String val = http.getString();
     val.trim();
     if (val.length() > 0) {
@@ -403,7 +436,11 @@ void fetchBitcoinData()
     http.begin(secureClient, "https://mempool.space/api/v1/prices");
     http.setConnectTimeout(5000);
     http.setTimeout(8000);
-    if (http.GET() == 200) {
+    btcLogHeap("before price retry");
+    reqStart = millis();
+    code = http.GET();
+    btcLogResult("price retry", code, reqStart, secureClient);
+    if (code == 200) {
       JsonDocument doc2;
       if (!deserializeJson(doc2, http.getString())) {
         long price = doc2[currencyUpper] | 0L;
