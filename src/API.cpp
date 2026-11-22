@@ -25,6 +25,7 @@ extern bool labelsLoadedSuccessfully;
 extern bool onErrorScreen;     // main.cpp: a NO WIFI / NO INTERNET / ... screen owns the display
 extern byte currentErrorType;  // main.cpp: 0 = none
 extern bool labelsValidationAttempted;
+extern bool labelsLastErrorTransient;
 extern ExtensionConfig extensionConfig;
 #ifdef BOARD_JC3248W535C
 extern T35AmbientConfig t35AmbientConfig;
@@ -233,6 +234,7 @@ void fetchSwitchLabels()
       Serial.println("[LABELS] Successfully fetched and cached all labels");
       labelsLoadedSuccessfully = true; // Mark labels as successfully loaded
       labelsValidationAttempted = true; // Mark validation as completed
+      labelsLastErrorTransient = false;
       productLabels.lastUpdate = millis(); // Update timestamp
       
       // WebSocket connection is valid - device config exists on server
@@ -266,16 +268,19 @@ void fetchSwitchLabels()
       networkStatus.confirmed.websocket = false;
       labelsValidationAttempted = true; // Mark validation as completed (failed)
       labelsLoadedSuccessfully = false;
+      labelsLastErrorTransient = false;
     }
     // Other HTTP errors (500, timeout, etc.) - could be temporary
     else if (httpCode < 0) {
       Serial.println("[LABELS] Connection error - could not reach server (will retry soon)");
       labelsValidationAttempted = true; // Mark as attempted so startup doesn't hang
       labelsLoadedSuccessfully = false;
+      labelsLastErrorTransient = true;
     } else if (httpCode >= 500) {
       Serial.println("[LABELS] Server error - may be temporary, will retry");
       labelsValidationAttempted = true;
       labelsLoadedSuccessfully = false;
+      labelsLastErrorTransient = true;
     }
   }
 
@@ -360,7 +365,10 @@ void fetchBitcoinData()
   }
   http.end();
 
-  delay(200); // SSL cleanup delay
+  // Same quiet gap the TLS gate enforces between connections (NetTls.h):
+  // 200 ms was too short for the Fritzbox 7510 to release the conntrack
+  // entry, so the block request was often dropped right after the price one.
+  delay(NET_TLS_SETTLE_MS);
 
   // Second guard: config mode might have been triggered while the first
   // HTTP call was running. Don't start a new SSL connection if WiFi is gone.
@@ -390,7 +398,7 @@ void fetchBitcoinData()
   // a connection to mempool.space so the router's connection-tracking entry is now warm —
   // the retry usually succeeds immediately where the first cold attempt was dropped.
   if (!priceOk && blockOk && !deviceState.isInState(DeviceState::CONFIG_MODE)) {
-    delay(300);
+    delay(NET_TLS_SETTLE_MS);
     Serial.println("[BTC] Price failed, block OK — retrying price (connection now warm)...");
     http.begin(secureClient, "https://mempool.space/api/v1/prices");
     http.setConnectTimeout(5000);
