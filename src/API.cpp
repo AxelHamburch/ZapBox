@@ -314,6 +314,38 @@ static void btcLogResult(const char *what, int code, unsigned long startedAt,
   btcLogHeap("after failure");
 }
 
+// One mempool.space GET with a single retry on a network error. The first
+// connection after a pause regularly stalls in the TCP connect or the TLS
+// handshake, while a second one right after it succeeds within a second —
+// observed both behind a Fritzbox 7510 and on a mobile hotspot. A non-200
+// HTTP answer is not retried (the server did respond).
+// Returns the HTTP code of the last attempt; body is set on 200.
+static int btcGet(HTTPClient &http, WiFiClientSecure &client, const char *url,
+                  const char *what, String &body)
+{
+  body = "";
+  int code = -1;
+  for (int attempt = 1; attempt <= 2; attempt++) {
+    if (attempt == 2) {
+      if (deviceState.isInState(DeviceState::CONFIG_MODE)) break;
+      delay(NET_TLS_SETTLE_MS); // let the router release the failed entry
+      Serial.printf("[BTC] %s request failed - retrying once\n", what);
+    }
+    http.begin(client, url);
+    http.setConnectTimeout(5000);
+    http.setTimeout(8000);
+    String label = String(what) + (attempt == 2 ? " retry" : "");
+    btcLogHeap(("before " + label).c_str());
+    unsigned long startedAt = millis();
+    code = http.GET();
+    btcLogResult(label.c_str(), code, startedAt, client);
+    if (code == 200) body = http.getString();
+    http.end();
+    if (code > 0) break; // success or a real HTTP answer — no retry
+  }
+  return code;
+}
+
 /**
  * Fetch Bitcoin price and block height from external APIs (sequential).
  */
@@ -372,17 +404,10 @@ void fetchBitcoinData()
 
   // Fetch BTC price from mempool.space — same server as block height fetch
   bool priceOk = false;
-  http.begin(secureClient, "https://mempool.space/api/v1/prices");
-  http.setConnectTimeout(5000);
-  http.setTimeout(8000);
-
-  btcLogHeap("before price");
-  unsigned long reqStart = millis();
-  int code = http.GET();
-  btcLogResult("price", code, reqStart, secureClient);
-  if (code == 200) {
+  String body;
+  if (btcGet(http, secureClient, "https://mempool.space/api/v1/prices", "price", body) == 200) {
     JsonDocument doc;
-    if (!deserializeJson(doc, http.getString())) {
+    if (!deserializeJson(doc, body)) {
       long price = doc[currencyUpper] | 0L;
       if (price > 0) {
         bitcoinData.price = String(price);
@@ -392,7 +417,6 @@ void fetchBitcoinData()
       }
     }
   }
-  http.end();
 
   // Same quiet gap the TLS gate enforces between connections (NetTls.h):
   // 200 ms was too short for the Fritzbox 7510 to release the conntrack
@@ -409,47 +433,12 @@ void fetchBitcoinData()
 
   // Fetch block height from mempool.space — keep last known value on failure
   bool blockOk = false;
-  http.begin(secureClient, "https://mempool.space/api/blocks/tip/height");
-  http.setConnectTimeout(5000);
-  http.setTimeout(8000);
-
-  btcLogHeap("before block");
-  reqStart = millis();
-  code = http.GET();
-  btcLogResult("block", code, reqStart, secureClient);
-  if (code == 200) {
-    String val = http.getString();
-    val.trim();
-    if (val.length() > 0) {
-      bitcoinData.blockHigh = val;
+  if (btcGet(http, secureClient, "https://mempool.space/api/blocks/tip/height", "block", body) == 200) {
+    body.trim();
+    if (body.length() > 0) {
+      bitcoinData.blockHigh = body;
       blockOk = true;
     }
-  }
-  http.end();
-
-  // If price failed but block succeeded: retry price once. The block fetch just established
-  // a connection to mempool.space so the router's connection-tracking entry is now warm —
-  // the retry usually succeeds immediately where the first cold attempt was dropped.
-  if (!priceOk && blockOk && !deviceState.isInState(DeviceState::CONFIG_MODE)) {
-    delay(NET_TLS_SETTLE_MS);
-    Serial.println("[BTC] Price failed, block OK — retrying price (connection now warm)...");
-    http.begin(secureClient, "https://mempool.space/api/v1/prices");
-    http.setConnectTimeout(5000);
-    http.setTimeout(8000);
-    btcLogHeap("before price retry");
-    reqStart = millis();
-    code = http.GET();
-    btcLogResult("price retry", code, reqStart, secureClient);
-    if (code == 200) {
-      JsonDocument doc2;
-      if (!deserializeJson(doc2, http.getString())) {
-        long price = doc2[currencyUpper] | 0L;
-        if (price > 0) { bitcoinData.price = String(price); priceOk = true; }
-      }
-    }
-    http.end();
-    if (priceOk) Serial.println("[BTC] Price retry succeeded: " + bitcoinData.price);
-    else         Serial.println("[BTC] Price retry also failed — keeping last value: " + bitcoinData.price);
   }
 
   Serial.println("[BTC] Source: mempool.space");
