@@ -31,6 +31,7 @@ extern void fetchBitcoinData();
 #endif
 extern void fetchSwitchLabels();
 extern bool labelsLoadedSuccessfully;
+extern volatile bool labelsFetchDeferred;
 
 // True while the persistent device channel (serviceNfcWebSocket) is connected.
 // The device then runs exactly ONE long-lived connection: NAT-challenged
@@ -211,6 +212,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     {
     case WStype_DISCONNECTED:
       LOG_INFO("WebSocket", "Disconnected");
+      labelsFetchDeferred = false; // the next CONNECTED requests it again
       break;
     case WStype_CONNECTED:
     {
@@ -250,8 +252,11 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         // Let fetchSwitchLabels() validate the device config first
         // If labels load successfully (HTTP 200), it will set websocket = true
         // If instance doesn't exist (HTTP 404), it will set websocket = false
+        // Not fetched inline: we are inside webSocket.loop() while the TLS
+        // slot is still held for the handshake, so a nested fetch would skip
+        // the settle window. serviceWebSocket() runs it on its next call.
         LOG_INFO("WebSocket", "TCP connection established, fetching device config...");
-        fetchSwitchLabels();
+        labelsFetchDeferred = true;
       }
     }
     break;

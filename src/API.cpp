@@ -25,6 +25,7 @@ extern bool labelsLoadedSuccessfully;
 extern bool onErrorScreen;     // main.cpp: a NO WIFI / NO INTERNET / ... screen owns the display
 extern byte currentErrorType;  // main.cpp: 0 = none
 extern bool labelsValidationAttempted;
+extern bool labelsLastErrorTransient;
 extern ExtensionConfig extensionConfig;
 #ifdef BOARD_JC3248W535C
 extern T35AmbientConfig t35AmbientConfig;
@@ -233,6 +234,7 @@ void fetchSwitchLabels()
       Serial.println("[LABELS] Successfully fetched and cached all labels");
       labelsLoadedSuccessfully = true; // Mark labels as successfully loaded
       labelsValidationAttempted = true; // Mark validation as completed
+      labelsLastErrorTransient = false;
       productLabels.lastUpdate = millis(); // Update timestamp
       
       // WebSocket connection is valid - device config exists on server
@@ -266,16 +268,19 @@ void fetchSwitchLabels()
       networkStatus.confirmed.websocket = false;
       labelsValidationAttempted = true; // Mark validation as completed (failed)
       labelsLoadedSuccessfully = false;
+      labelsLastErrorTransient = false;
     }
     // Other HTTP errors (500, timeout, etc.) - could be temporary
     else if (httpCode < 0) {
       Serial.println("[LABELS] Connection error - could not reach server (will retry soon)");
       labelsValidationAttempted = true; // Mark as attempted so startup doesn't hang
       labelsLoadedSuccessfully = false;
+      labelsLastErrorTransient = true;
     } else if (httpCode >= 500) {
       Serial.println("[LABELS] Server error - may be temporary, will retry");
       labelsValidationAttempted = true;
       labelsLoadedSuccessfully = false;
+      labelsLastErrorTransient = true;
     }
   }
 
@@ -284,6 +289,48 @@ void fetchSwitchLabels()
 }
 
 #if ENABLE_BITCOIN_DATA
+// One line per failed mempool.space request: duration, HTTP and TLS error.
+static void btcLogFailure(const char *what, int code, unsigned long startedAt,
+                          WiFiClientSecure &client)
+{
+  char tlsMsg[100] = "-";
+  int tlsErr = client.lastError(tlsMsg, sizeof(tlsMsg));
+  if (tlsErr == 0) strlcpy(tlsMsg, "-", sizeof(tlsMsg));
+  Serial.printf("[BTC] %s failed after %lu ms: HTTP %d (%s), TLS error %d: %s\n",
+                what, millis() - startedAt, code, HTTPClient::errorToString(code).c_str(),
+                tlsErr, tlsMsg);
+}
+
+// One mempool.space GET with a single retry on a network error. The first
+// connection after a pause regularly stalls in the TCP connect or the TLS
+// handshake, while a second one right after it succeeds within a second —
+// observed both behind a Fritzbox 7510 and on a mobile hotspot. A non-200
+// HTTP answer is not retried (the server did respond).
+// Returns the HTTP code of the last attempt; body is set on 200.
+static int btcGet(HTTPClient &http, WiFiClientSecure &client, const char *url,
+                  const char *what, String &body)
+{
+  body = "";
+  int code = -1;
+  for (int attempt = 1; attempt <= 2; attempt++) {
+    if (attempt == 2) {
+      if (deviceState.isInState(DeviceState::CONFIG_MODE)) break;
+      delay(NET_TLS_SETTLE_MS); // let the router release the failed entry
+      Serial.printf("[BTC] %s request failed - retrying once\n", what);
+    }
+    http.begin(client, url);
+    http.setConnectTimeout(5000);
+    http.setTimeout(8000);
+    unsigned long startedAt = millis();
+    code = http.GET();
+    if (code == 200) body = http.getString();
+    else btcLogFailure(attempt == 2 ? (String(what) + " retry").c_str() : what, code, startedAt, client);
+    http.end();
+    if (code > 0) break; // success or a real HTTP answer — no retry
+  }
+  return code;
+}
+
 /**
  * Fetch Bitcoin price and block height from external APIs (sequential).
  */
@@ -342,13 +389,10 @@ void fetchBitcoinData()
 
   // Fetch BTC price from mempool.space — same server as block height fetch
   bool priceOk = false;
-  http.begin(secureClient, "https://mempool.space/api/v1/prices");
-  http.setConnectTimeout(5000);
-  http.setTimeout(8000);
-
-  if (http.GET() == 200) {
+  String body;
+  if (btcGet(http, secureClient, "https://mempool.space/api/v1/prices", "price", body) == 200) {
     JsonDocument doc;
-    if (!deserializeJson(doc, http.getString())) {
+    if (!deserializeJson(doc, body)) {
       long price = doc[currencyUpper] | 0L;
       if (price > 0) {
         bitcoinData.price = String(price);
@@ -358,9 +402,11 @@ void fetchBitcoinData()
       }
     }
   }
-  http.end();
 
-  delay(200); // SSL cleanup delay
+  // Same quiet gap the TLS gate enforces between connections (NetTls.h):
+  // 200 ms was too short for the Fritzbox 7510 to release the conntrack
+  // entry, so the block request was often dropped right after the price one.
+  delay(NET_TLS_SETTLE_MS);
 
   // Second guard: config mode might have been triggered while the first
   // HTTP call was running. Don't start a new SSL connection if WiFi is gone.
@@ -372,39 +418,12 @@ void fetchBitcoinData()
 
   // Fetch block height from mempool.space — keep last known value on failure
   bool blockOk = false;
-  http.begin(secureClient, "https://mempool.space/api/blocks/tip/height");
-  http.setConnectTimeout(5000);
-  http.setTimeout(8000);
-
-  if (http.GET() == 200) {
-    String val = http.getString();
-    val.trim();
-    if (val.length() > 0) {
-      bitcoinData.blockHigh = val;
+  if (btcGet(http, secureClient, "https://mempool.space/api/blocks/tip/height", "block", body) == 200) {
+    body.trim();
+    if (body.length() > 0) {
+      bitcoinData.blockHigh = body;
       blockOk = true;
     }
-  }
-  http.end();
-
-  // If price failed but block succeeded: retry price once. The block fetch just established
-  // a connection to mempool.space so the router's connection-tracking entry is now warm —
-  // the retry usually succeeds immediately where the first cold attempt was dropped.
-  if (!priceOk && blockOk && !deviceState.isInState(DeviceState::CONFIG_MODE)) {
-    delay(300);
-    Serial.println("[BTC] Price failed, block OK — retrying price (connection now warm)...");
-    http.begin(secureClient, "https://mempool.space/api/v1/prices");
-    http.setConnectTimeout(5000);
-    http.setTimeout(8000);
-    if (http.GET() == 200) {
-      JsonDocument doc2;
-      if (!deserializeJson(doc2, http.getString())) {
-        long price = doc2[currencyUpper] | 0L;
-        if (price > 0) { bitcoinData.price = String(price); priceOk = true; }
-      }
-    }
-    http.end();
-    if (priceOk) Serial.println("[BTC] Price retry succeeded: " + bitcoinData.price);
-    else         Serial.println("[BTC] Price retry also failed — keeping last value: " + bitcoinData.price);
   }
 
   Serial.println("[BTC] Source: mempool.space");

@@ -1000,6 +1000,32 @@
 
     <script>
         const consoleDebug = document.getElementById('consoleDebug');
+
+        // Serial console: cap the number of nodes and coalesce auto-scrolling
+        // into one layout per frame. An unbounded console plus a forced reflow
+        // on every serial chunk froze the page (and every window it opened)
+        // after a few minutes of log output.
+        const CONSOLE_MAX_NODES = 2000;
+        let consoleScrollPending = false;
+        function scheduleConsoleScroll() {
+            const excess = consoleDebug.childNodes.length - CONSOLE_MAX_NODES;
+            for (let i = 0; i < excess; i++) consoleDebug.removeChild(consoleDebug.firstChild);
+            if (consoleScrollPending) return;
+            consoleScrollPending = true;
+            requestAnimationFrame(() => {
+                consoleScrollPending = false;
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            });
+        }
+
+        // Open generated HTML (log export, config print) as a standalone page.
+        // 'noopener' keeps it out of this page's process/event loop, so a busy
+        // installer no longer drags the export windows down with it.
+        function openHtmlWindow(html) {
+            const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+            window.open(url, '_blank', 'noopener');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
         const ssid = document.getElementById('ssid');
         const wifiPassword = document.getElementById('wifiPassword');
         const socket = document.getElementById('socket');
@@ -1291,7 +1317,7 @@
             checkMsg.style.color = '#888';
             checkMsg.textContent = 'Connecting...\n';
             consoleDebug.appendChild(checkMsg);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            scheduleConsoleScroll();
             
             // Update connection status indicator
             updateConnectionStatus(true);
@@ -1354,7 +1380,6 @@
 
         function onSerialDataReceived(eventSender, newData) {
             console.log("onSerialDataReceived", eventSender);
-            console.log("Received data:", newData);
             
             // Update last data received timestamp
             lastDataReceivedTime = Date.now();
@@ -1365,7 +1390,7 @@
             // Append text without HTML parsing to preserve ASCII art formatting
             const textNode = document.createTextNode(newData + '\n');
             consoleDebug.appendChild(textNode);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            scheduleConsoleScroll();
 
             // Check if we receive normal program output - this means NOT in config mode
             // Be specific to avoid false positives from config mode logs
@@ -1384,7 +1409,7 @@
                 wifiMsg.style.color = '#ffaa00';
                 wifiMsg.textContent = '⚠️ WiFi reconnected - device will restart automatically\n';
                 consoleDebug.appendChild(wifiMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 
                 configModeVerified = false; // Reset flag since device is restarting
                 justRestarted = true; // Mark that restart happened
@@ -1410,7 +1435,7 @@
                 actionMsg.textContent = '→ Please HOLD the BOOT button for 5 seconds to enter config mode.\n\n';
                 consoleDebug.appendChild(actionMsg);
                 
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 
                 justRestarted = true;
                 configModeVerified = false;
@@ -1458,7 +1483,7 @@
                 actionMsg.textContent = '→ Please HOLD the BOOT button for 5 seconds to enter config mode.\n\n';
                 consoleDebug.appendChild(actionMsg);
                 
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 
                 // DO NOT CLOSE - keep connection open and wait for user action
                 return;
@@ -1512,7 +1537,7 @@
                     successMsg.style.fontWeight = 'bold';
                     successMsg.textContent = '\n✅ CONFIG MODE ACTIVE - Ready to configure!\n\n';
                     consoleDebug.appendChild(successMsg);
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                    scheduleConsoleScroll();
                 }, 300);
                 
                 // Enable buttons after a short delay to ensure the ESP32 has
@@ -1543,6 +1568,8 @@
 
             // Accumulate serial data in buffer
             serialBuffer += newData;
+            // Bounded: keeps the latest config JSON, drops old log output.
+            if (serialBuffer.length > 32768) serialBuffer = serialBuffer.slice(-16384);
 
             // Try to parse config data when we see /file-read OR the config JSON directly.
             // Note: ESP32-S3 USB CDC can drop bytes at chunk boundaries, causing "/file-read "
@@ -1871,7 +1898,7 @@
                 successMsg.style.color = '#00ff00';
                 successMsg.textContent = '\n✓ Data loaded\n';
                 consoleDebug.appendChild(successMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 
                 // Clear buffer after successful parse
                 serialBuffer = "";
@@ -1893,7 +1920,7 @@
                 errorMsg.style.color = '#ff4444';
                 errorMsg.textContent = '⚠️ Config data is corrupted on device. Please fill in the fields and write new config.\n';
                 consoleDebug.appendChild(errorMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
 
                 // Clear buffer to prevent repeated error messages
                 serialBuffer = "";
@@ -1963,7 +1990,7 @@
                 errorMsg.style.color = '#ff4444';
                 errorMsg.textContent = '⚠️ Not in config mode - write aborted\n';
                 consoleDebug.appendChild(errorMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 return;
             }
             
@@ -2133,7 +2160,7 @@
             successMsg.style.color = '#00ff00';
             successMsg.textContent = '✓ Data written\n\n⚠️ To apply changes:\n- Press 🔄 Restart (if in Config Mode), or\n- Press 🔌 Disconnect and reset device manually\n';
             consoleDebug.appendChild(successMsg);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            scheduleConsoleScroll();
 
             // Teach PIN is one-time use — clear it from UI and config array immediately after writing
             // so a subsequent "Write Config" cannot accidentally re-enter teach mode.
@@ -2144,7 +2171,7 @@
                 clearMsg.style.color = '#ffaa44';
                 clearMsg.textContent = '⚠ Teach PIN cleared (one-time use).\n';
                 consoleDebug.appendChild(clearMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
             }
         }
 
@@ -2158,7 +2185,7 @@
                 // In Config Mode: Use software reset (keeps serial connection alive)
                 resetMsg.textContent = 'Sending software restart command...\n';
                 consoleDebug.appendChild(resetMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 
                 // Send soft reset command via serial
                 serial.writeLine("/config-soft-reset");
@@ -2178,13 +2205,13 @@
                 doneMsg.style.color = '#00ff00';
                 doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (hold BOOT 5s)\n';
                 consoleDebug.appendChild(doneMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 
             } else {
                 // Not in Config Mode: Use hardware reset (DTR/RTS toggle)
                 resetMsg.textContent = 'Performing hardware reset...\n';
                 consoleDebug.appendChild(resetMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 
                 try {
                     // Perform hardware reset
@@ -2197,13 +2224,13 @@
                     doneMsg.style.color = '#00ff00';
                     doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing boot logs\n';
                     consoleDebug.appendChild(doneMsg);
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                    scheduleConsoleScroll();
                 } catch (error) {
                     const errorMsg = document.createElement('span');
                     errorMsg.style.color = '#ff0000';
                     errorMsg.textContent = '✗ Hardware reset failed: ' + error.message + '\n';
                     consoleDebug.appendChild(errorMsg);
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                    scheduleConsoleScroll();
                 }
             }
         }
@@ -2214,7 +2241,7 @@
             restartMsg.style.color = '#ffaa00';
             restartMsg.textContent = 'Disconnecting...\n';
             consoleDebug.appendChild(restartMsg);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            scheduleConsoleScroll();
             
             // DO NOT send any commands - just close the connection cleanly
             // Sending commands (especially restart) can trigger unwanted resets
@@ -2223,8 +2250,8 @@
             // Close serial connection immediately without sending anything
             if (serial.isOpen()) {
                 await serial.close();
-                consoleDebug.innerHTML += '<b>Connection closed.</b><br>';
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                consoleDebug.appendChild(Object.assign(document.createElement('b'), { textContent: 'Connection closed.\n' }));
+                scheduleConsoleScroll();
             }
         }
 
@@ -2609,11 +2636,7 @@
                 '<div class="ftr">Created: ' + ts + ' &middot; ZapBox Web Installer &middot; ' + installerUrl + '</div>' +
                 '</body></html>';
 
-            const newWin = window.open('', '_blank');
-            if (newWin) {
-                newWin.document.write(html);
-                newWin.document.close();
-            }
+            openHtmlWindow(html);
         }
 
         // Export Log Files functionality
@@ -2646,11 +2669,7 @@
                 '<div class="log-footer">Created: ' + ts + ' \u00B7 ZapBox Web Installer \u00B7 ' + url + '</div>' +
                 '</body></html>';
 
-            const newWin = window.open('', '_blank');
-            if (newWin) {
-                newWin.document.write(html);
-                newWin.document.close();
-            }
+            openHtmlWindow(html);
         }
 
         function downloadLogs() {

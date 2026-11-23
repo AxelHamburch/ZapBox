@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <esp_log.h>
 #include <WebSocketsClient.h>
 #include <HTTPClient.h>
@@ -86,6 +87,8 @@ TouchCST816S touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, PIN_TOUCH_RES, PIN_TOUCH_INT)
 String currency = "USD"; // Currency from config, default USD
 bool labelsLoadedSuccessfully = false; // Track if labels were successfully fetched
 bool labelsValidationAttempted = false; // Track if label fetch was attempted (regardless of success)
+bool labelsLastErrorTransient = false; // Last failed label fetch was a network/server error, not a 404
+volatile bool labelsFetchDeferred = false; // Set on WebSocket connect, run by serviceWebSocket() after the TLS slot is released
 String payloadStr;
 String lnbitsServer;
 String deviceId;
@@ -189,6 +192,15 @@ static void serviceWebSocket()
   if (webSocket.isConnected()) {
     if (wsHoldsTlsSlot) { wsHoldsTlsSlot = false; netTlsGive(); }
     webSocket.loop();
+    // Config fetch requested by the CONNECTED event. Run here — after the
+    // handshake released the TLS slot — so fetchSwitchLabels() takes the slot
+    // fresh and waits out the settle window. Fetching inside the event itself
+    // reused the slot recursively and opened the HTTPS request back-to-back
+    // with the WebSocket handshake, which the Fritzbox 7510 drops.
+    if (labelsFetchDeferred && webSocket.isConnected()) {
+      labelsFetchDeferred = false;
+      fetchSwitchLabels();
+    }
     return;
   }
 
@@ -2079,9 +2091,15 @@ void setup()
     }
     
     // Step 5: Process WebSocket events and check connection
+    // Keep servicing the WebSocket after validation too: once connected,
+    // serviceWebSocket() releases the TLS slot it held for the handshake.
+    // Without that, serviceNfcWebSocket() below takes the slot recursively,
+    // skips the settle window and opens the device channel back-to-back with
+    // the config fetch — the Fritzbox 7510 drops that handshake.
+    if (websocketStarted) {
+      serviceWebSocket(); // Drives the handshake; the deferred config fetch runs in here
+    }
     if (websocketStarted && !labelsValidationAttempted) {
-      serviceWebSocket(); // Process events (this triggers WebSocket event handler and fetchSwitchLabels)
-      
       // Only log once when WebSocket connects (not every loop iteration)
       static bool wsConnectLogged = false;
       if (webSocket.isConnected() && !wsConnectLogged) {
@@ -2114,7 +2132,11 @@ void setup()
     
     // Check if validation is complete but failed (404 error)
     if (labelsValidationAttempted && !labelsLoadedSuccessfully) {
-      SETUP_PRINT("[STARTUP] Config validation failed - device ID invalid or deleted");
+      if (labelsLastErrorTransient) {
+        SETUP_PRINT("[STARTUP] Config fetch failed - network/server error, will retry");
+      } else {
+        SETUP_PRINT("[STARTUP] Config validation failed - device ID invalid or deleted");
+      }
       break; // Exit startup screen to show error
     }
     
@@ -2824,9 +2846,17 @@ void loop()
   // Final CONFIG_MODE check before entering the long-running payment wait loop
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
 
-  Serial.println("[LOOP] Entering payment wait loop...");
-  Serial.printf("[LOOP] Initial queue size: %d\n", paymentQueue.size());
-  
+  // loop() re-enters this wait loop on every return (many times per second
+  // while an error screen is up), so only log the entry once per minute —
+  // otherwise it floods the serial console and freezes the web installer.
+  static unsigned long lastLoopEntryLog = 0;
+  static bool loopEntryLogged = false;
+  if (!loopEntryLogged || millis() - lastLoopEntryLog >= 60000) {
+    loopEntryLogged = true;
+    lastLoopEntryLog = millis();
+    Serial.printf("[LOOP] Entering payment wait loop (queue size: %d)\n", paymentQueue.size());
+  }
+
   // Initialize ping/pong tracking
   networkStatus.lastPongTime = millis();
   networkStatus.waitingForPong = false;
@@ -2839,8 +2869,8 @@ void loop()
   {
     loopIterations++;
     
-    // Print debug info every 10 seconds (skip during config mode to keep serial clean)
-    if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastLoopDebugPrint > 10000) {
+    // Print debug info every 60 seconds (skip during config mode to keep serial clean)
+    if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastLoopDebugPrint > 60000) {
       Serial.printf("[LOOP_DEBUG] Iterations: %lu, touchState.available: %d, onErrorScreen: %d, errorType: %d\n",
                     loopIterations, touchState.available, onErrorScreen, currentErrorType);
       lastLoopDebugPrint = millis();
@@ -2850,7 +2880,14 @@ void loop()
     if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastRssiLog >= 30000) {
       lastRssiLog = millis();
       if (WiFi.status() == WL_CONNECTED) {
-        LOG_INFO("WiFi", String("RSSI ") + WiFi.RSSI() + " dBm, ch " + WiFi.channel());
+        // Power-save state as the radio actually reports it (not what we asked
+        // for): a "min-modem"/"max-modem" here means frames are buffered by the
+        // AP until the next DTIM wake-up — slow TLS handshakes, sawtooth pings.
+        wifi_ps_type_t ps = WIFI_PS_NONE;
+        esp_wifi_get_ps(&ps);
+        const char *psName = ps == WIFI_PS_NONE ? "off" : ps == WIFI_PS_MIN_MODEM ? "min-modem" : "max-modem";
+        LOG_INFO("WiFi", String("RSSI ") + WiFi.RSSI() + " dBm, ch " + WiFi.channel() + ", SSID \"" + WiFi.SSID() +
+                         "\", IP " + WiFi.localIP().toString() + ", PS " + psName);
       } else {
         LOG_INFO("WiFi", "RSSI n/a (not connected)");
       }
