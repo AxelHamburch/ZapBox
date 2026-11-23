@@ -289,29 +289,16 @@ void fetchSwitchLabels()
 }
 
 #if ENABLE_BITCOIN_DATA
-// Diagnostics for failing mempool.space requests: tells heap exhaustion (a
-// second TLS session next to the device channel) apart from network drops.
-static void btcLogHeap(const char *what)
+// One line per failed mempool.space request: duration, HTTP and TLS error.
+static void btcLogFailure(const char *what, int code, unsigned long startedAt,
+                          WiFiClientSecure &client)
 {
-  Serial.printf("[BTC-DIAG] %s: heap free=%u, largest block=%u, min ever=%u\n",
-                what, (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getMaxAllocHeap(),
-                (unsigned)ESP.getMinFreeHeap());
-}
-
-static void btcLogResult(const char *what, int code, unsigned long startedAt,
-                         WiFiClientSecure &client)
-{
-  unsigned long ms = millis() - startedAt;
-  if (code == 200) {
-    Serial.printf("[BTC-DIAG] %s OK in %lu ms\n", what, ms);
-    return;
-  }
   char tlsMsg[100] = "-";
   int tlsErr = client.lastError(tlsMsg, sizeof(tlsMsg));
   if (tlsErr == 0) strlcpy(tlsMsg, "-", sizeof(tlsMsg));
-  Serial.printf("[BTC-DIAG] %s failed after %lu ms: HTTP %d (%s), TLS error %d: %s\n",
-                what, ms, code, HTTPClient::errorToString(code).c_str(), tlsErr, tlsMsg);
-  btcLogHeap("after failure");
+  Serial.printf("[BTC] %s failed after %lu ms: HTTP %d (%s), TLS error %d: %s\n",
+                what, millis() - startedAt, code, HTTPClient::errorToString(code).c_str(),
+                tlsErr, tlsMsg);
 }
 
 // One mempool.space GET with a single retry on a network error. The first
@@ -334,12 +321,10 @@ static int btcGet(HTTPClient &http, WiFiClientSecure &client, const char *url,
     http.begin(client, url);
     http.setConnectTimeout(5000);
     http.setTimeout(8000);
-    String label = String(what) + (attempt == 2 ? " retry" : "");
-    btcLogHeap(("before " + label).c_str());
     unsigned long startedAt = millis();
     code = http.GET();
-    btcLogResult(label.c_str(), code, startedAt, client);
     if (code == 200) body = http.getString();
+    else btcLogFailure(attempt == 2 ? (String(what) + " retry").c_str() : what, code, startedAt, client);
     http.end();
     if (code > 0) break; // success or a real HTTP answer — no retry
   }
