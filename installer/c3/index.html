@@ -490,6 +490,32 @@
 
     <script>
         const consoleDebug   = document.getElementById('consoleDebug');
+
+        // Serial console: cap the number of nodes and coalesce auto-scrolling
+        // into one layout per frame. An unbounded console plus a forced reflow
+        // on every serial chunk froze the page (and every window it opened)
+        // after a few minutes of log output.
+        const CONSOLE_MAX_NODES = 2000;
+        let consoleScrollPending = false;
+        function scheduleConsoleScroll() {
+            const excess = consoleDebug.childNodes.length - CONSOLE_MAX_NODES;
+            for (let i = 0; i < excess; i++) consoleDebug.removeChild(consoleDebug.firstChild);
+            if (consoleScrollPending) return;
+            consoleScrollPending = true;
+            requestAnimationFrame(() => {
+                consoleScrollPending = false;
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            });
+        }
+
+        // Open generated HTML (log export, config print) as a standalone page.
+        // 'noopener' keeps it out of this page's process/event loop, so a busy
+        // installer no longer drags the export windows down with it.
+        function openHtmlWindow(html) {
+            const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+            window.open(url, '_blank', 'noopener');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
         const ssid           = document.getElementById('ssid');
         const wifiPassword   = document.getElementById('wifiPassword');
         const socket         = document.getElementById('socket');
@@ -793,7 +819,7 @@
             div.textContent = msg;
             div.className = type || 'info';
             consoleDebug.appendChild(div);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            scheduleConsoleScroll();
         }
 
         function printLogs() {
@@ -813,8 +839,7 @@
                 '<div class="log-box">' + logHtml + '</div>' +
                 '<div class="ftr">Created: ' + ts + ' · ZapBox Web Installer · ' + window.location.href + '</div>' +
                 '</body></html>';
-            const w = window.open('', '_blank');
-            if (w) { w.document.write(html); w.document.close(); }
+            openHtmlWindow(html);
         }
         function downloadLogs() {
             const text = Array.from(consoleDebug.children).map(d => d.textContent).join('\n');
@@ -923,8 +948,7 @@
                 '<div class="ftr">Created: ' + ts + ' &middot; ZapBox Web Installer &middot; ' + window.location.href + '</div>' +
                 '</body></html>';
 
-            const w = window.open('', '_blank');
-            if (w) { w.document.write(html); w.document.close(); }
+            openHtmlWindow(html);
         }
 
         function openHelpModal()  { document.getElementById('help-image-modal').style.display = 'flex'; }
