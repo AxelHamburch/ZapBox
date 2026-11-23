@@ -2845,9 +2845,17 @@ void loop()
   // Final CONFIG_MODE check before entering the long-running payment wait loop
   if (deviceState.isInState(DeviceState::CONFIG_MODE)) return;
 
-  Serial.println("[LOOP] Entering payment wait loop...");
-  Serial.printf("[LOOP] Initial queue size: %d\n", paymentQueue.size());
-  
+  // loop() re-enters this wait loop on every return (many times per second
+  // while an error screen is up), so only log the entry once per minute —
+  // otherwise it floods the serial console and freezes the web installer.
+  static unsigned long lastLoopEntryLog = 0;
+  static bool loopEntryLogged = false;
+  if (!loopEntryLogged || millis() - lastLoopEntryLog >= 60000) {
+    loopEntryLogged = true;
+    lastLoopEntryLog = millis();
+    Serial.printf("[LOOP] Entering payment wait loop (queue size: %d)\n", paymentQueue.size());
+  }
+
   // Initialize ping/pong tracking
   networkStatus.lastPongTime = millis();
   networkStatus.waitingForPong = false;
@@ -2860,8 +2868,8 @@ void loop()
   {
     loopIterations++;
     
-    // Print debug info every 10 seconds (skip during config mode to keep serial clean)
-    if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastLoopDebugPrint > 10000) {
+    // Print debug info every 60 seconds (skip during config mode to keep serial clean)
+    if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastLoopDebugPrint > 60000) {
       Serial.printf("[LOOP_DEBUG] Iterations: %lu, touchState.available: %d, onErrorScreen: %d, errorType: %d\n",
                     loopIterations, touchState.available, onErrorScreen, currentErrorType);
       lastLoopDebugPrint = millis();
@@ -2871,7 +2879,7 @@ void loop()
     if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastRssiLog >= 30000) {
       lastRssiLog = millis();
       if (WiFi.status() == WL_CONNECTED) {
-        LOG_INFO("WiFi", String("RSSI ") + WiFi.RSSI() + " dBm, ch " + WiFi.channel());
+        LOG_INFO("WiFi", String("RSSI ") + WiFi.RSSI() + " dBm, ch " + WiFi.channel() + ", SSID \"" + WiFi.SSID() + "\"");
       } else {
         LOG_INFO("WiFi", "RSSI n/a (not connected)");
       }

@@ -1164,6 +1164,32 @@
 
     <script>
         const consoleDebug = document.getElementById('consoleDebug');
+
+        // Serial console: cap the number of nodes and coalesce auto-scrolling
+        // into one layout per frame. An unbounded console plus a forced reflow
+        // on every serial chunk froze the page (and every window it opened)
+        // after a few minutes of log output.
+        const CONSOLE_MAX_NODES = 2000;
+        let consoleScrollPending = false;
+        function scheduleConsoleScroll() {
+            const excess = consoleDebug.childNodes.length - CONSOLE_MAX_NODES;
+            for (let i = 0; i < excess; i++) consoleDebug.removeChild(consoleDebug.firstChild);
+            if (consoleScrollPending) return;
+            consoleScrollPending = true;
+            requestAnimationFrame(() => {
+                consoleScrollPending = false;
+                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            });
+        }
+
+        // Open generated HTML (log export, config print) as a standalone page.
+        // 'noopener' keeps it out of this page's process/event loop, so a busy
+        // installer no longer drags the export windows down with it.
+        function openHtmlWindow(html) {
+            const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+            window.open(url, '_blank', 'noopener');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
         const ssid         = document.getElementById('ssid');
         const wifiPassword = document.getElementById('wifiPassword');
         const socket       = document.getElementById('socket');
@@ -1359,7 +1385,7 @@
             checkMsg.style.color = '#888';
             checkMsg.textContent = 'Connecting...\n';
             consoleDebug.appendChild(checkMsg);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            scheduleConsoleScroll();
 
             updateConnectionStatus(true);
             updateConfigModeStatus(false);
@@ -1399,7 +1425,7 @@
 
             const textNode = document.createTextNode(newData + '\n');
             consoleDebug.appendChild(textNode);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            scheduleConsoleScroll();
 
             // Detect config mode exit (device leaving config mode and restarting)
             if (newData.includes("[CONFIG_MODE_EXIT]")) {
@@ -1415,7 +1441,7 @@
                 exitMsg.style.color = '#cc6600';
                 exitMsg.textContent = '⚠️ Config mode ended — device is restarting.\n';
                 consoleDebug.appendChild(exitMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 return;
             }
 
@@ -1460,7 +1486,7 @@
                     configMsg.style.color = 'green';
                     configMsg.textContent = '✅ Config mode detected — ready to read/write config.\n';
                     consoleDebug.appendChild(configMsg);
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                    scheduleConsoleScroll();
                 }, 800);
                 return;
             }
@@ -1590,7 +1616,7 @@
                 successMsg.style.color = '#00ff00';
                 successMsg.textContent = '\n✓ Data loaded\n';
                 consoleDebug.appendChild(successMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
 
                 setTimeout(() => {
                     const btn = document.getElementById('read-config-button');
@@ -1604,7 +1630,7 @@
                 errorMsg.style.color = '#ff4444';
                 errorMsg.textContent = '⚠️ Config data is corrupted on device. Please fill in the fields and write new config.\n';
                 consoleDebug.appendChild(errorMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 serialBuffer = '';
                 document.getElementById('soft-reset-button').disabled = false;
             }
@@ -1661,7 +1687,7 @@
                 errorMsg.style.color = '#ff4444';
                 errorMsg.textContent = '⚠️ Not in config mode - write aborted\n';
                 consoleDebug.appendChild(errorMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 return;
             }
             syncConfigFromUI();
@@ -1696,7 +1722,7 @@
             successMsg.style.color = '#00ff00';
             successMsg.textContent = '✓ Data written\n\n⚠️ To apply changes:\n- Press 🔄 Restart (if in Config Mode), or\n- Press 🔌 Disconnect and reset device manually\n';
             consoleDebug.appendChild(successMsg);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            scheduleConsoleScroll();
         }
 
         async function onSoftResetButtonClick() {
@@ -1706,7 +1732,7 @@
             if (configModeVerified) {
                 resetMsg.textContent = 'Sending software restart command...\n';
                 consoleDebug.appendChild(resetMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 serial.writeLine('/config-soft-reset');
                 configModeVerified = false;
                 justRestarted = true;
@@ -1717,11 +1743,11 @@
                 doneMsg.style.color = '#00ff00';
                 doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing logs\n\n⚠️ Device is now in normal mode.\nTo write new config, disconnect and enter config mode again (tap screen 5× quickly, hold on the 5th tap ≥2 s — or hold BOOT 5 s)\n';
                 consoleDebug.appendChild(doneMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
             } else {
                 resetMsg.textContent = 'Performing hardware reset...\n';
                 consoleDebug.appendChild(resetMsg);
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                scheduleConsoleScroll();
                 try {
                     await serial.hardwareReset();
                     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1729,13 +1755,13 @@
                     doneMsg.style.color = '#00ff00';
                     doneMsg.textContent = '✓ Device restarted - Connection remains open for viewing boot logs\n';
                     consoleDebug.appendChild(doneMsg);
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                    scheduleConsoleScroll();
                 } catch (error) {
                     const errorMsg = document.createElement('span');
                     errorMsg.style.color = '#ff0000';
                     errorMsg.textContent = '✗ Hardware reset failed: ' + error.message + '\n';
                     consoleDebug.appendChild(errorMsg);
-                    consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                    scheduleConsoleScroll();
                 }
             }
         }
@@ -1745,11 +1771,11 @@
             restartMsg.style.color = '#ffaa00';
             restartMsg.textContent = 'Disconnecting...\n';
             consoleDebug.appendChild(restartMsg);
-            consoleDebug.scrollTop = consoleDebug.scrollHeight;
+            scheduleConsoleScroll();
             if (serial.isOpen()) {
                 await serial.close();
-                consoleDebug.innerHTML += '<b>Connection closed.</b><br>';
-                consoleDebug.scrollTop = consoleDebug.scrollHeight;
+                consoleDebug.appendChild(Object.assign(document.createElement('b'), { textContent: 'Connection closed.\n' }));
+                scheduleConsoleScroll();
             }
         }
 
@@ -2053,8 +2079,7 @@
                 '<div class="log-box">' + logHtml + '</div>' +
                 '<div class="log-footer">Created: ' + ts + ' \u00B7 ZapBox Web Installer \u00B7 ' + url + '</div>' +
                 '</body></html>';
-            const newWin = window.open('', '_blank');
-            if (newWin) { newWin.document.write(html); newWin.document.close(); }
+            openHtmlWindow(html);
         }
 
         function downloadLogs() {
@@ -2226,8 +2251,7 @@
                 sections +
                 '<div class="cfg-footer">' + window.location.href + '</div>' +
                 '</body></html>';
-            const newWin = window.open('', '_blank');
-            if (newWin) { newWin.document.write(html); newWin.document.close(); }
+            openHtmlWindow(html);
         }
 
         function closeHelpModal() {
