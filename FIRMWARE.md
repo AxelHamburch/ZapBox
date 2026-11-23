@@ -397,6 +397,32 @@ installer/firmware/
 
 ## Release History
 
+### v977238 / v977238h / v977238t — 2026-11-23
+
+```markdown
+## 🎯 Release v977238 / v977238h / v977238t — Startup TLS Fixes, WiFi Diagnostics, Responsive Web Installer
+
+### 🌐 Network (Standard + Headless + Touch 3.5")
+- **More reliable startup on picky routers:** the device config fetch and the device channel no longer open a TLS connection right after the previous one. Some routers (e.g. FRITZ!Box 7510) drop a handshake that follows another one back-to-back; the startup now keeps the 1 s settle window between them.
+- **Correct error at startup:** a network or server error during the config fetch is reported as such. "Device ID invalid or deleted" is only shown when the server really answers 404.
+- **BTC ticker:** each mempool.space request (price, block height) is retried once on a network error, with the settle window in between. A failed request logs one line with duration, HTTP and TLS error.
+
+### 📶 WiFi Diagnostics
+- The WiFi status line in the serial log (every 30 s) now shows **SSID, IP address and the actual power-save state** reported by the radio: `RSSI -63 dBm, ch 6, SSID "MyWiFi", IP 192.168.1.50, PS off`. Makes it easy to check which network and address a device really uses.
+
+### 🧹 Serial Log
+- No more log flood while an error screen is shown: "Entering payment wait loop" is logged at most once per minute (one line), `[LOOP_DEBUG]` every 60 s instead of every 10 s.
+
+### 🖥️ Web Installer (all pages)
+- **No more "page unresponsive":** the serial console is capped at 2000 entries and scrolls once per frame instead of on every received chunk. Long log sessions no longer freeze the page.
+- **Log export and config print** open as standalone pages, so they no longer hang together with a busy installer tab.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 977238
+- Requires **zapbox_extension v2.7.0+** (unchanged)
+- ESP32-C3-21-1 not rebuilt — release on request only (its installer page got the web installer fixes)
+```
+
 ### v976483 / v976483h / v976483t — 2026-11-18
 
 ```markdown
