@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <esp_log.h>
 #include <WebSocketsClient.h>
 #include <HTTPClient.h>
@@ -2879,7 +2880,14 @@ void loop()
     if (!deviceState.isInState(DeviceState::CONFIG_MODE) && millis() - lastRssiLog >= 30000) {
       lastRssiLog = millis();
       if (WiFi.status() == WL_CONNECTED) {
-        LOG_INFO("WiFi", String("RSSI ") + WiFi.RSSI() + " dBm, ch " + WiFi.channel() + ", SSID \"" + WiFi.SSID() + "\"");
+        // Power-save state as the radio actually reports it (not what we asked
+        // for): a "min-modem"/"max-modem" here means frames are buffered by the
+        // AP until the next DTIM wake-up — slow TLS handshakes, sawtooth pings.
+        wifi_ps_type_t ps = WIFI_PS_NONE;
+        esp_wifi_get_ps(&ps);
+        const char *psName = ps == WIFI_PS_NONE ? "off" : ps == WIFI_PS_MIN_MODEM ? "min-modem" : "max-modem";
+        LOG_INFO("WiFi", String("RSSI ") + WiFi.RSSI() + " dBm, ch " + WiFi.channel() + ", SSID \"" + WiFi.SSID() +
+                         "\", IP " + WiFi.localIP().toString() + ", PS " + psName);
       } else {
         LOG_INFO("WiFi", "RSSI n/a (not connected)");
       }
