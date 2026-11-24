@@ -123,7 +123,7 @@ void noteServerTriggerCounter(uint32_t ctr)
 
 static bool coreWsRequiresSignedTriggers()
 {
-    return deviceToken.length() > 0 && extensionConfig.apiPath == "zapbox" &&
+    return deviceToken.length() > 0 &&
            lightningConfig.thresholdKey.length() == 0;
 }
 
@@ -448,7 +448,7 @@ static void nfcWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 bool nfcChannelPending()
 {
     if (nfcWsTokenRejected) return false; // will never connect – do not hold boot
-    if (extensionConfig.apiPath != "zapbox" || !nfcConfig.boltcardActive) return false;
+    if (!nfcConfig.boltcardActive) return false;
     if (deviceChannelActive) return false;
     return nfcWsFailedPhases == 0; // a failed connect phase means: stop waiting
 }
@@ -463,7 +463,7 @@ void serviceNfcWebSocket()
         if (nfcWebSocket.isConnected()) nfcWebSocket.disconnect();
         return;
     }
-    if (extensionConfig.apiPath != "zapbox" || !nfcConfig.boltcardActive ||
+    if (!nfcConfig.boltcardActive ||
         deviceState.isInState(DeviceState::CONFIG_MODE) || WiFi.status() != WL_CONNECTED) {
         if (nfcWsHoldsTlsSlot) { nfcWsHoldsTlsSlot = false; netTlsGive(); }
         return;
@@ -542,16 +542,13 @@ void serviceNfcWebSocket()
  *
  * Determines the currently active relay pin (single mode → 12, multi-channel
  * mode → pin of the currently displayed product) and sends a WebSocket event
- * to the LNbits bitcoinswitch_extension, which is expected to:
+ * to the LNbits zapbox_extension, which will:
  *   1. Create a Lightning invoice for the switch associated with <pin>
  *   2. Call the LNURLW endpoint (Bolt Card wallet) with that invoice
  *   3. Notify the device via the normal "paid" WS event once settled
  *
  * WS message format:
  *   {"event":"lnurlw", "lnurlw":"lnurlw://...", "pin":<activePin>}
- *
- * NOTE: The bitcoinswitch_extension server-side must be extended to handle
- * this "lnurlw" event (analogous to partytap_extension/views_ws.py).
  */
 void nfcLnurlwReceived(const String &lnurlw)
 {
@@ -563,20 +560,6 @@ void nfcLnurlwReceived(const String &lnurlw)
   nfcTestScreen(lnurlw); // Display.h
   return;
 #endif
-
-    // NFC is only supported by zapbox_extension.
-    // If the device is configured with bitcoinswitch_extension, the server-side
-    // has no /api/v1/nfc/ endpoint – silently swallowing the tap would leave the
-    // device stuck on the PENDING NFC screen.  Abort early and inform the user.
-    if (extensionConfig.apiPath != "zapbox")
-    {
-        LOG_WARN("NFC", "Bolt Card tap detected – NFC is not supported by the active extension ("
-                        + extensionConfig.apiPath + ").");
-        LOG_WARN("NFC", "To use NFC / Bolt Cards, switch to zapbox_extension (apiPath = \"zapbox\").");
-        LOG_WARN("NFC", "Tap ignored – device continues normal operation.");
-        extensionConfig.nfcExtensionMismatch = true; // Signal main loop to show error screen
-        return;
-    }
 
     LOG_INFO("NFC", "LNURLW received from Bolt Card – sending WS event");
 
@@ -647,13 +630,13 @@ void nfcLnurlwReceived(const String &lnurlw)
 
     LOG_INFO("NFC", String("Active relay pin for NFC payment: ") + String(activePin));
 
-    // POST to extension: /<apiPath>/api/v1/nfc/<deviceId>?pin=<pin>
+    // POST to extension: /zapbox/api/v1/nfc/<deviceId>?pin=<pin>
     // Body: {"lnurlw":"lnurlw://..."}
     // The extension creates an invoice, resolves the LNURLW withdraw request,
     // submits the invoice to the Bolt Card wallet, and the normal tasks.py
     // "paid" handler sends the relay trigger (pin-duration) via WebSocket.
     HTTPClient http;
-    String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+    String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH
                  + "/api/v1/nfc/" + deviceId + "?pin=" + String(activePin);
     // Mini-PoS: tell the extension to pay the pending invoice instead of
     // creating a new one from the switch configuration.
@@ -821,7 +804,7 @@ void nfcLnurlwReceived(const String &lnurlw)
  * POSTs pin + session_id to zapbox_extension so it can unblock the suspended
  * LNURLW callback coroutine and append &pin=XXXX to the boltcards URL.
  *
- * Endpoint: POST /<apiPath>/api/v1/nfc/pin_submit?session_id=<id>&pin=<xxxx>
+ * Endpoint: POST /zapbox/api/v1/nfc/pin_submit?session_id=<id>&pin=<xxxx>
  * The server responds: {"status":"OK"} on success.
  * Errors (wrong PIN, card blocked) are relayed back via WebSocket as
  * {"event":"pin_error", ...} and handled in processPaymentEvent() (main.cpp).
@@ -853,7 +836,7 @@ void sendPinSubmit(const String &sessionId, const String &pin)
     WiFiClientSecure secureClient;         // bounded handshake — see nfcLnurlwReceived()
     secureClient.setInsecure();
     secureClient.setHandshakeTimeout(10);  // seconds
-    String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+    String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH
                  + "/api/v1/nfc/pin_submit?session_id=" + sessionId
                  + "&pin=" + pin;
     LOG_INFO("PIN", String("PIN submit URL: ") + url);
@@ -892,7 +875,7 @@ void sendPinSubmit(const String &sessionId, const String &pin)
  * Open a PIN-protected LNURL-auth teach session. Unlike the payment PIN
  * (which is relayed via WebSocket), the teach endpoint answers synchronously:
  *
- *   POST /<apiPath>/api/v1/auth/teach/start?device_id=<id>&pin=<xxxxxx>
+ *   POST /zapbox/api/v1/auth/teach/start?device_id=<id>&pin=<xxxxxx>
  *   → {"status":"OK","ttl":300}
  *   → {"status":"ERROR","reason":"wrong_pin","remaining":2}
  *   → {"status":"ERROR","reason":"locked"}  (3 wrong PINs — re-enable in LNbits)
@@ -914,7 +897,7 @@ bool submitTeachPin(const String &pin)
     WiFiClientSecure secureClient;         // bounded handshake — see nfcLnurlwReceived()
     secureClient.setInsecure();
     secureClient.setHandshakeTimeout(10);  // seconds
-    String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+    String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH
                  + "/api/v1/auth/teach/start?device_id=" + deviceId
                  + "&pin=" + pin;
     http.begin(secureClient, url);
@@ -973,7 +956,7 @@ bool submitTeachPin(const String &pin)
 
 /**
  * Close an open teach session (user cancel / done).
- *   POST /<apiPath>/api/v1/auth/teach/stop?device_id=<id>
+ *   POST /zapbox/api/v1/auth/teach/stop?device_id=<id>
  */
 void stopTeachSession()
 {
@@ -985,7 +968,7 @@ void stopTeachSession()
     WiFiClientSecure secureClient;         // bounded handshake — see nfcLnurlwReceived()
     secureClient.setInsecure();
     secureClient.setHandshakeTimeout(10);  // seconds
-    String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+    String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH
                  + "/api/v1/auth/teach/stop?device_id=" + deviceId;
     http.begin(secureClient, url);
     addDeviceTokenHeader(http);

@@ -116,7 +116,7 @@
                 <div style="flex: 2;">
                     <label for="socket">Device settings string</label>
                     <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? Use Bitcoin Switch or ZapBox extension → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? Use the ZapBox extension → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
                     <p style="margin: 2px 0 0 0; font-size: 11px; color: #888; font-style: italic;">ZapBox extension v2.7.0+: the string ends with a secret device token (?token=…). Copy it completely and keep it private.</p>
                 </div>
                 <div style="flex: 1;">
@@ -166,7 +166,7 @@
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>IO6</strong></td><td>Flex channel 1 — configurable as relay, servo, or sensor (see below)</td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>IO7</strong></td><td>Flex channel 2 — configurable as relay, servo, or sensor (see below)</td></tr>
             </table>
-            <p style="margin-top: 10px; color: #888; font-style: italic; font-size: 13px;">Configure the main payment pin in your LNbits extension (bitcoinswitch / zapbox_extension) — use GPIO 4 for the primary relay. IO6 and IO7 always trigger together with IO4.</p>
+            <p style="margin-top: 10px; color: #888; font-style: italic; font-size: 13px;">Configure the main payment pin in your LNbits ZapBox extension (zapbox_extension) — use GPIO 4 for the primary relay. IO6 and IO7 always trigger together with IO4.</p>
 
             <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
 
@@ -328,7 +328,7 @@
 
             <!-- NFC-Module Section -->
             <h3 style="margin: 0 0 10px 0;">NFC-Module</h3>
-            <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server — no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>".</i></p>
             <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
             <div style="display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start; margin-top: 16px;">
                 <a href="../assets/NFC-Module-PN532.webp" target="_blank">
@@ -408,31 +408,13 @@
 
         <p>If a wallet scanning the QR code shows an error message, here's what it means:</p>
 
-        <p><strong>"bitcoinswitch ... is disabled"</strong> → The Bitcoin Switch was actively disabled in LNbits</p>
+        <p><strong>"ZapBox ... is disabled"</strong> → The ZapBox was actively disabled in LNbits</p>
 
-        <p><strong>"No active bitcoinswitch connections"</strong> → The handshake between the wallet and ZapBox failed. → Wait or restart the ZapBox to re-establish the connection.</p>
+        <p><strong>"No active ZapBox connections"</strong> → The handshake between the wallet and ZapBox failed. → Wait or restart the ZapBox to re-establish the connection.</p>
 
         <h3>Other Errors</h3>
 
         <p><strong>Relay does not switch, but payment was successful</strong> → Wrong GPIO pin configured in LNbits?</p>
-
-        <h3>NFC Extension Mismatch</h3>
-
-        <p>If you tap an NFC Bolt Card or NTAG21x tag and the serial log shows:</p>
-
-        <pre style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 13px;">[WARN][NFC] Bolt Card tap detected – NFC is not supported by the active extension (bitcoinswitch).
-[WARN][NFC] To use NFC / Bolt Cards, switch to zapbox_extension (apiPath = "zapbox").</pre>
-
-        <p>This means the device is configured with the <strong>bitcoinswitch_extension</strong>, which does not have an NFC endpoint (<code>/api/v1/nfc/</code>). NFC payments are only supported by the <strong>zapbox_extension</strong>.</p>
-
-        <p><strong>Solution:</strong></p>
-        <ul>
-            <li>In LNbits, create a device using the <strong>zapbox_extension</strong> instead of bitcoinswitch</li>
-            <li>Copy the new device string and reconfigure the ZapBox</li>
-            <li>The device string format is the same – only the server-side extension changes</li>
-        </ul>
-
-        <p><i>This is <strong>not</strong> a hardware problem – the NFC reader works fine. It's purely a server-side configuration issue.</i></p>
 
         <h3>Typical NFC Error Messages</h3>
 

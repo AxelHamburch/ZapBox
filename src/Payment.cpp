@@ -103,7 +103,7 @@ String generateLNURL(int pin) {
     return "";
   }
   // Build URL: https://{server}/{extension}/api/v1/lnurl/{deviceId}?pin={pin}
-  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath + "/api/v1/lnurl/" + deviceId + "?pin=" + String(pin);
+  String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH + "/api/v1/lnurl/" + deviceId + "?pin=" + String(pin);
   LOG_DEBUG("LNURL", String("Generated for pin ") + String(pin) + String(": ") + url);
   if (qrFormat == "lud17") {
     // LUD17 format: replace https: with lnurlp:

@@ -588,4 +588,4 @@ On the headless variants, the same information is expressed through [LED blink p
 
 ### A common wallet error
 
-If a wallet scanning the QR code reports *"bitcoinswitch … is disabled"*, then either the switch was disabled in LNbits, or the handshake between wallet and ZapBox failed.
+If a wallet scanning the QR code reports *"ZapBox … is disabled"*, the ZapBox was disabled in LNbits. *"No active ZapBox connections"* means the handshake between wallet and ZapBox failed — wait or restart the ZapBox.

@@ -168,8 +168,6 @@ static bool          nfcNoLuckScreenShown   = false;
 static unsigned long nfcNoLuckStart         = 0;
 static bool          nfcErrorDetailShown    = false;
 static unsigned long nfcErrorDetailStart    = 0;
-static bool          nfcNotSupportedShown   = false;
-static unsigned long nfcNotSupportedStart   = 0;
 #endif
 
 WebSocketsClient webSocket;
@@ -650,9 +648,6 @@ void readFiles()
                               ? String("ON (relay outputs limited to ") + String(RelayProtectionConfig::MAX_DURATION_MS) + " ms)"
                               : String("off")));
     }
-
-    // Extension API path (bitcoinswitch vs. zapbox) is auto-detected at runtime in API.cpp
-    // No manual config needed - ZapBox tries bitcoinswitch first, falls back to zapbox on 404.
 
     // Indices 18-20 removed (lnurl13, lnurl10, lnurl11 - now auto-generated)
 
@@ -2951,7 +2946,7 @@ void loop()
                                 deviceState.isInState(DeviceState::READY) &&
                                 !extensionConfig.nfcPaymentPending && !nfcPendingScreenShown &&
                                 !nfcNoLuckScreenShown && !nfcErrorDetailShown &&
-                                !nfcNotSupportedShown && !pinPadState.active;
+                                !pinPadState.active;
         if (screenFree) {
           extensionConfig.deviceTokenRejected = false;
           nfcErrorDetailScreen("Token invalid: update device string");
@@ -2963,21 +2958,8 @@ void loop()
         }
       }
 
-      // Extension mismatch: NFC tap detected but not using zapbox_extension
-      if (extensionConfig.nfcExtensionMismatch) {
-        extensionConfig.nfcExtensionMismatch = false;
-        nfcNotSupportedScreen();
-        nfcNotSupportedShown = true;
-        nfcNotSupportedStart = millis();
-        LOG_WARN("NFC", "NFC not supported by active extension \u2013 showing error screen for 5s");
-      } else if (nfcNotSupportedShown) {
-        if (millis() - nfcNotSupportedStart > 5000) {
-          nfcNotSupportedShown = false;
-          needsQRRedraw = true;
-          LOG_INFO("NFC", "NFC not supported screen dismissed \u2013 returning to QR screen");
-        }
       // HTTP POST failed \u2192 show NO LUCK immediately
-      } else if (extensionConfig.nfcPaymentFailed) {
+      if (extensionConfig.nfcPaymentFailed) {
         extensionConfig.nfcPaymentFailed  = false;
         extensionConfig.nfcPaymentPending = false;
         nfcPendingScreenShown = false;
@@ -5396,7 +5378,6 @@ static void runExpanderPayment(int ch, int duration, ExpanderKind kind)
   nfcPendingScreenShown = false;
   nfcNoLuckScreenShown  = false;
   nfcErrorDetailShown   = false;
-  nfcNotSupportedShown  = false;
   pinPadState           = PinPadState();  // reset PIN pad so touch nav works again
   #endif
   // Numeric selection (Touch 3.5): payment settled — clear the product QR
@@ -5784,7 +5765,6 @@ static void processNormalPayment(int pin, int duration)
   nfcPendingScreenShown  = false;
   nfcNoLuckScreenShown   = false;
   nfcErrorDetailShown    = false;
-  nfcNotSupportedShown   = false;
   pinPadState            = PinPadState();  // reset PIN pad so touch nav works again
   #endif
 

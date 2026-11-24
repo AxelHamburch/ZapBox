@@ -26,7 +26,6 @@ void identityTriggerScreen() {}
 void updateActionTimeCountdown(int) {}
 void nfcPendingScreen() {}
 void nfcNoLuckScreen() {}
-void nfcNotSupportedScreen() {}
 void nfcErrorDetailScreen(const char*) {}
 void thankYouScreen() {}
 void productBlockedScreen() {}
