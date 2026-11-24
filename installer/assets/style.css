@@ -123,15 +123,18 @@ footer p {
 
 /* ===========================================================================
    Card look for steps 1-3 (Flash / Prepare connection / Load config)
-   Same idea as the FOSSA installer: rounded, slightly lighter grey boxes with
-   white text. Everything below step 3 keeps the page colors.
+   Same idea as the FOSSA installer: rounded boxes. Light pages get a light
+   card with dark text, the dark page (Touch 3.5", body.theme-dark) a grey card
+   with white text. Everything below step 3 keeps the page colors.
    =========================================================================== */
 :root {
-  --zb-card-bg: #35353c;
-  --zb-card-fg: #ffffff;
-  --zb-card-muted: #b8b8c2;
-  --zb-card-border: #4a4a53;
-  --zb-field-bg: #1f1f24;
+  /* light pages: light card, dark text */
+  --zb-card-bg: #f3f3f6;
+  --zb-card-fg: #1d1d1f;
+  --zb-card-muted: #5f5f66;
+  --zb-card-border: #cfcfd6;
+  --zb-field-bg: #ffffff;
+  --zb-link: #0645ad;
   --zb-accent: #f7931a;
 }
 
@@ -148,7 +151,7 @@ footer p {
   margin: 0 -20px 20px -20px; /* same width as the colored panels below */
 }
 .zb-card h2 { margin-top: 0; color: var(--zb-card-fg); }
-.zb-card a { color: var(--zb-accent); }
+.zb-card a { color: var(--zb-link); }
 .zb-card ul { margin: 8px 0 14px; padding-left: 22px; }
 
 /* hint/note text with hard-coded dark greys must stay readable on the card */
@@ -202,6 +205,12 @@ footer p {
 body.theme-dark {
   background: #17171a;
   color: #ececf0;
+  --zb-card-bg: #35353c;
+  --zb-card-fg: #ffffff;
+  --zb-card-muted: #b8b8c2;
+  --zb-card-border: #4a4a53;
+  --zb-field-bg: #1f1f24;
+  --zb-link: #f7931a;
 }
 body.theme-dark a { color: var(--zb-accent); }
 body.theme-dark h1, body.theme-dark h2, body.theme-dark h3 { color: #ececf0; }
@@ -219,3 +228,15 @@ body.theme-dark div[style*="background-color: #"] [style*="color: #888"],
 body.theme-dark div[style*="background-color: #"] [style*="color: #666"] { color: #666 !important; }
 body.theme-dark div[style*="background-color: #"] h3,
 body.theme-dark div[style*="background-color: #"] h2 { color: #000; }
+
+/* intro row: "Other web installers" on the left, E-layout preview on the right */
+.intro-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.intro-row > p { flex: 1 1 18em; }
+.layout-preview { flex: 0 0 auto; text-align: center; width: 167px; max-width: 100%; margin-top: 14px; }
+.layout-preview p { text-align: center; }
