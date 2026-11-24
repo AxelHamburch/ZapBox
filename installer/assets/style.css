@@ -120,3 +120,102 @@ footer p {
   object-fit: contain;
   cursor: pointer;
 }
+
+/* ===========================================================================
+   Card look for steps 1-3 (Flash / Prepare connection / Load config)
+   Same idea as the FOSSA installer: rounded, slightly lighter grey boxes with
+   white text. Everything below step 3 keeps the page colors.
+   =========================================================================== */
+:root {
+  --zb-card-bg: #35353c;
+  --zb-card-fg: #ffffff;
+  --zb-card-muted: #b8b8c2;
+  --zb-card-border: #4a4a53;
+  --zb-field-bg: #1f1f24;
+  --zb-accent: #f7931a;
+}
+
+.wrapper {
+  padding: 24px 24px 48px;
+}
+
+.zb-card {
+  background: var(--zb-card-bg);
+  color: var(--zb-card-fg);
+  border: 1px solid var(--zb-card-border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 0 -20px 20px -20px; /* same width as the colored panels below */
+}
+.zb-card h2 { margin-top: 0; color: var(--zb-card-fg); }
+.zb-card a { color: var(--zb-accent); }
+.zb-card ul { margin: 8px 0 14px; padding-left: 22px; }
+
+/* hint/note text with hard-coded dark greys must stay readable on the card */
+.zb-card [style*="color: #888"],
+.zb-card [style*="color: #666"],
+.zb-card [style*="color: #444"] { color: var(--zb-card-muted) !important; }
+
+/* ...but not inside the light colored panels of step 3 */
+.zb-card div[style*="background-color: #CCFFCC"] [style*="color: #888"],
+.zb-card div[style*="background-color: #E8E8E8"] [style*="color: #888"] { color: #666 !important; }
+
+/* "button chips" in the instruction lists */
+.zb-card span[style*="background-color: #e0e0e0"] { color: #1d1d1f; }
+
+/* firmware selector + buttons, FOSSA style */
+.zb-card select#firmware-version,
+.zb-card select[id^="firmware-version"] {
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  background: var(--zb-field-bg);
+  color: var(--zb-card-fg);
+  border: 1px solid var(--zb-card-border);
+  border-radius: 6px;
+}
+.zb-card .buttons { margin-top: 12px; flex-wrap: wrap; }
+.zb-card .buttons select { flex: 1 1 12em; min-width: 0; }
+.zb-card button {
+  background: var(--zb-field-bg);
+  color: var(--zb-card-fg);
+  border: 2px solid var(--zb-card-fg);
+  border-radius: 1em;
+  cursor: pointer;
+}
+.zb-card button:hover:not(:disabled) {
+  background: var(--zb-accent);
+  border-color: var(--zb-accent);
+  color: #ffffff;
+}
+.zb-card button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* colored panels inside step 3 keep their colors (dark text) and sit inside the card */
+.zb-card div[style*="background-color: #CCFFCC"],
+.zb-card div[style*="background-color: #E8E8E8"] {
+  color: #1d1d1f;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* --- dark page (Touch 3.5") -------------------------------------------- */
+body.theme-dark {
+  background: #17171a;
+  color: #ececf0;
+}
+body.theme-dark a { color: var(--zb-accent); }
+body.theme-dark h1, body.theme-dark h2, body.theme-dark h3 { color: #ececf0; }
+body.theme-dark [style*="color: #666"],
+body.theme-dark [style*="color: #888"] { color: #a0a0aa !important; }
+body.theme-dark .zb-card [style*="color: #888"],
+body.theme-dark .zb-card [style*="color: #666"] { color: var(--zb-card-muted) !important; }
+body.theme-dark hr { border-color: #3a3a42; }
+body.theme-dark input, body.theme-dark select { background: #fff; color: #1d1d1f; }
+body.theme-dark .zb-card select#firmware-version { background: var(--zb-field-bg); color: #fff; }
+
+/* light panels on the dark page: back to dark text */
+body.theme-dark div[style*="background-color: #"] { color: #1d1d1f; }
+body.theme-dark div[style*="background-color: #"] [style*="color: #888"],
+body.theme-dark div[style*="background-color: #"] [style*="color: #666"] { color: #666 !important; }
+body.theme-dark div[style*="background-color: #"] h3,
+body.theme-dark div[style*="background-color: #"] h2 { color: #000; }

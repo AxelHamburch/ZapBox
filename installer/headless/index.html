@@ -65,7 +65,9 @@
             <p style="margin: 4px 0 0 0; font-size: 13px; color: #666;">Example E-Layout</p>
             <p style="margin: 4px 0 0 0; font-size: 13px;"><a href="https://github.com/AxelHamburch/ZapBox/blob/main/docs/hardware-assets.md#electrical-layouts" target="_blank" rel="noopener noreferrer">More e-layouts</a></p>
         </div>
-       <div style="margin-bottom: 30px;"></div>
+       <div style="clear: both; margin-bottom: 20px;"></div>
+
+        <section class="zb-card">
 
         <h2 id="flash">1- Flash firmware</h2>
 
@@ -140,9 +142,9 @@
                 console.log('Headless manifest changed to:', e.target.value);
             });
         </script>
+        </section>
 
-        <hr>
-
+        <section class="zb-card">
         <h2 id="prepare-connection">2- Prepare connection</h2>
 
         <p>When you flash a new ESP32 or use “Erase device.” the ZapBox automatically starts in configuration mode and the ready LED will blink slow.”</p>
@@ -154,9 +156,9 @@
         <p><i><strong>Note:</strong> The connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. If data is already available. You can terminate the connection prematurely by pressing the BOOT button again. </i></p>
 
         <p><i><strong>Note:</strong> Once you establish a connection by clicking “Connect” below, some ESP32s with special communication chips (CP2102) will restart once, and you will need to reactivate configuration mode after connecting.</i></p>
+        </section>
 
-        <hr>
-
+        <section class="zb-card">
         <h2 id="load-config">3- Load config values</h2>
 
         <ul>
@@ -225,6 +227,8 @@
                 </div>
             </div>
         </div>
+        </section>
+
 
         <!-- Optional settings and functions Section -->
         <div style="background-color: #FFE5CC; padding: 30px 20px; margin: 15px -20px 0 -20px; border-radius: 8px 8px 0 0;">

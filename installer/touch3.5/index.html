@@ -30,15 +30,9 @@
     <script src="../assets/serial.js?v=2"></script>
     <script src="../assets/config-common.js"></script>
     <script type="module" src="https://unpkg.com/esp-web-tools@9/dist/web/install-button.js?module"></script>
-    <style>
-        body {
-            background: linear-gradient(135deg, #e8d5ff 0%, #f0e4ff 25%, #d8b4fe33 50%, #f0e4ff 75%, #e8d5ff 100%);
-            background-attachment: fixed;
-        }
-    </style>
 </head>
 
-<body>
+<body class="theme-dark">
     <!-- Image Popup Modal -->
     <div id="help-image-modal" class="modal" onclick="closeHelpModal()">
         <div class="modal-content">
@@ -65,7 +59,9 @@
             <p style="margin: 4px 0 0 0; font-size: 13px; color: #666;">Example E-Layout</p>
             <p style="margin: 4px 0 0 0; font-size: 13px;"><a href="https://github.com/AxelHamburch/ZapBox/blob/main/docs/hardware-assets.md#electrical-layouts" target="_blank" rel="noopener noreferrer">More e-layouts</a></p>
         </div>
-        <div style="margin-bottom: 30px;"></div>
+        <div style="clear: both; margin-bottom: 20px;"></div>
+
+        <section class="zb-card">
 
         <h2 id="flash">1- Flash firmware</h2>
 
@@ -128,9 +124,9 @@
                 flashButton.setAttribute('manifest', e.target.value);
             });
         </script>
+        </section>
 
-        <hr>
-
+        <section class="zb-card">
         <h2 id="prepare-connection">2- Prepare connection</h2>
 
         <p>When you flash a new ESP32-S3 or use "Erase device." the ZapBox automatically starts in configuration mode. The display shows <strong>"CONF / SERIAL CONFIG MODE"</strong>.</p>
@@ -145,9 +141,9 @@
         </ul>
 
         <p><i><strong>Note:</strong> The connection will remain active for 3 minutes (180 seconds) before it is automatically disconnected. If data is already available, you can terminate the connection prematurely by pressing the BOOT button or tapping the touchscreen HELP area.</i></p>
+        </section>
 
-        <hr>
-
+        <section class="zb-card">
         <h2 id="load-config">3- Load config values</h2>
 
         <ul>
@@ -216,6 +212,8 @@
                 </div>
             </div>
         </div>
+        </section>
+
 
         <!-- Optional settings and functions Section -->
         <div style="background-color: #FFE5CC; padding: 30px 20px; margin: 15px -20px 0 -20px; border-radius: 8px 8px 0 0;">

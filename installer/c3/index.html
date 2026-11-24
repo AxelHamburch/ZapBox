@@ -40,7 +40,9 @@
             <p style="margin: 4px 0 0 0; font-size: 13px; color: #666; text-align: center;">Example E-Layout</p>
             <p style="margin: 4px 0 0 0; font-size: 13px; text-align: center;"><a href="https://github.com/AxelHamburch/ZapBox/blob/main/docs/hardware-assets.md#electrical-layouts" target="_blank" rel="noopener noreferrer">More e-layouts</a></p>
         </div>
-        <div style="margin-bottom: 30px;"></div>
+        <div style="clear: both; margin-bottom: 20px;"></div>
+
+        <section class="zb-card">
 
         <h2 id="flash">1- Flash firmware</h2>
         <ul>
@@ -72,9 +74,9 @@
                 document.getElementById('flash-button-c3').setAttribute('manifest', e.target.value);
             });
         </script>
+        </section>
 
-        <hr>
-
+        <section class="zb-card">
         <h2 id="prepare-connection">2- Prepare connection</h2>
         <p>After flashing or erasing, the ZapBox automatically starts in configuration mode — the serial log shows <strong>"SERIAL CONFIG MODE"</strong>.</p>
         <p>→ The ZapBox is now ready to receive configuration data. ⚙️</p>
@@ -84,9 +86,9 @@
             <li>Or: Hold IO9 (BOOT) LOW for 5 seconds while the device is running</li>
         </ul>
         <p><i><strong>Note:</strong> The connection stays active for 3 minutes before auto-disconnect.</i></p>
+        </section>
 
-        <hr>
-
+        <section class="zb-card">
         <h2 id="load-config">3- Load config values</h2>
         <ul>
             <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔌 Connect</span> - select the port and connect.</li>
@@ -151,6 +153,8 @@
                 </div>
             </div>
         </div>
+        </section>
+
 
         <!-- Optional settings -->
         <div style="background-color: #FFE5CC; padding: 30px 20px; margin: 15px -20px 0 -20px; border-radius: 8px 8px 0 0;">
