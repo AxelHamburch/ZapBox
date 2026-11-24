@@ -1136,23 +1136,6 @@ void nfcNoLuckScreen() {
   flushDisplay();
 }
 
-void nfcNotSupportedScreen() {
-  DisplayLock l; if (!_gfx) return;
-  fillScreen(themeBackground);
-  if (isPortrait()) {
-    fillRect(NFC_V_BOX_X, 50, NFC_V_BOX_W, 80, themeForeground);
-    drawCenter(SCR_W / 2, 90,  "NFC",                  themeBackground, themeForeground, 5);
-    drawCenter(SCR_W / 2, 205, "not supported",         themeForeground, themeBackground, 3);
-    drawCenter(SCR_W / 2, 260, "use zapbox extension",  themeForeground, themeBackground, 2);
-  } else {
-    fillRect(NFC_BOX_X, 50, NFC_BOX_W, NFC_BOX_H, themeForeground);
-    drawCenter(SCR_W / 2, 90,  "NFC",                  themeBackground, themeForeground, 5);
-    drawCenter(SCR_W / 2, 200, "not supported",         themeForeground, themeBackground, 3);
-    drawCenter(SCR_W / 2, 255, "use zapbox extension",  themeForeground, themeBackground, 2);
-  }
-  flushDisplay();
-}
-
 void nfcErrorDetailScreen(const char *detail) {
   DisplayLock l; if (!_gfx) return;
   if (!detail) detail = "";

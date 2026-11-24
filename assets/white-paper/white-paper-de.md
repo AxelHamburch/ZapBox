@@ -85,7 +85,7 @@ ZapBox adressiert diese Herausforderungen durch eine vollständig integrierte, b
          ▼
 ┌─────────────────┐
 │  LNbits Server  │
-│  + BitcoinSwitch│
+│  + ZapBox       │
 │  Extension      │
 └────────┬────────┘
          │ WebSocket
@@ -117,7 +117,7 @@ ZapBox adressiert diese Herausforderungen durch eine vollständig integrierte, b
 
 **Backend (Software)**
 - LNbits Server (Wallet & Account System)
-- BitcoinSwitch Extension
+- ZapBox Extension (zapbox_extension)
 - WebSocket-Server (LNbits) für Echtzeitkommunikation 
 
 **Kommunikation**
@@ -180,9 +180,9 @@ LNbits ist ein Open-Source Lightning Network Wallet und Account System. Es biete
 - WebSocket-Support
 - Lightning Node Abstraktion
 
-### 5.2 BitcoinSwitch Extension
+### 5.2 ZapBox Extension
 
-Die BitcoinSwitch Extension erweitert LNbits um IoT-Steuerungsfunktionalitäten:
+Die ZapBox Extension erweitert LNbits um IoT-Steuerungsfunktionalitäten:
 
 - **Device Management**: Verwaltung mehrerer ZapBox-Geräte
 - **Invoice Generation**: Automatische Rechnungserstellung
@@ -266,8 +266,8 @@ Hinweis: Chromium-Browser erforderlich, wie z.B. Google Chrome, Microsoft Edge, 
 
 **Vorbereitung: Anlegen eines LNbits Account**
 1. Erstelle einen Account bei einem LNbits-Server
-2. Aktiviere unter "Manage > Extensions > Bitcoin Switch" die Erweiterung
-3. Gehe zu "Extensions > Bitcoin Switch" und erstelle einen „NEW BITCOINSWITCH" mit GPIO-Pin 12 und deinen persönlichen Einstellungen
+2. Aktiviere unter "Manage > Extensions > ZapBox" die Erweiterung
+3. Gehe zu "Extensions > ZapBox" und erstelle eine „NEW ZAPBOX INSTANCE" mit GPIO-Pin 12 und deinen persönlichen Einstellungen
 4. Du findest anschließend den "Device string" als kleines Dreieck mit einem Zahnrad-Symbol
 
 **Schritt 1: Firmware-Flash**
@@ -286,7 +286,7 @@ Hinweis: Chromium-Browser erforderlich, wie z.B. Google Chrome, Microsoft Edge, 
 4. Die drei Pflichtparameter eingeben:
 - **SSID**: WiFi-Netzwerkname
 - **Password**: WiFi-Passwort
-- **Device String**: Von LNbits BitcoinSwitch Extension
+- **Device String**: Von der LNbits ZapBox Extension
 5. Einmal den Button "Write Config" und danach den Button "Restart" drücken
 6. ZapBox startet neu und ist nach ein paar Sekunden bereit. 🎉
 
@@ -465,7 +465,7 @@ ZapBox/
 
 **Backend**:
 - **LNbits** (MIT): https://github.com/lnbits/lnbits
-- **BitcoinSwitch Extension** (MIT): https://github.com/lnbits/bitcoinswitch_extension
+- **ZapBox Extension** (MIT): https://github.com/AxelHamburch/zapbox_extension (Fork von https://github.com/lnbits/bitcoinswitch_extension)
 
 **Firmware-Bibliotheken**:
 - ESP32 Arduino Core
@@ -549,7 +549,7 @@ Das Projekt lädt jeden ein, Teil der Entwicklung zu werden:
 
 - **ZapBox GitHub**: https://github.com/AxelHamburch/ZapBox
 - **LNbits**: https://github.com/lnbits/lnbits
-- **BitcoinSwitch Extension**: https://github.com/lnbits/bitcoinswitch_extension
+- **ZapBox Extension**: https://github.com/AxelHamburch/zapbox_extension
 - **T-Display-S3 Github**: https://github.com/Xinyuan-LilyGO/T-Display-S3
 
 ### Weiterführende Informationen

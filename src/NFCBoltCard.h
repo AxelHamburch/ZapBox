@@ -33,8 +33,8 @@
  *   5. Card wallet pays the invoice → server sends normal "paid" WS event
  *
  * Server side:
- *   The bitcoinswitch_extension WebSocket handler must be extended to handle
- *   the "lnurlw" event (analogous to partytap_extension/views_ws.py).
+ *   The zapbox_extension WebSocket handler processes
+ *   the "lnurlw" event (views_ws.py).
  *   See Network.cpp nfcLnurlwReceived() for the exact WS message format.
  */
 
@@ -67,7 +67,7 @@ void nfcBoltCardStop();
  * @brief Callback invoked by the NFC task when a valid LNURLW is read.
  *
  * Implemented in Network.cpp. Sends the appropriate WebSocket event to the
- * LNbits bitcoinswitch_extension server so it can perform the LNURLW withdraw.
+ * LNbits zapbox_extension server so it can perform the LNURLW withdraw.
  *
  * @param lnurlw Full LNURLW string, e.g. "lnurlw://lnbits.server/withdraw/..."
  */

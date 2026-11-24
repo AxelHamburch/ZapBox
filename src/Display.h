@@ -30,7 +30,6 @@ void updateActionTimeCountdown(int remainingSecs);
 void identityTriggerScreen();
 void nfcPendingScreen();
 void nfcNoLuckScreen();
-void nfcNotSupportedScreen();
 void nfcErrorDetailScreen(const char* detail);
 void thankYouScreen();
 void productBlockedScreen();
@@ -128,7 +127,6 @@ inline void identityTriggerScreen() {}
 inline void updateActionTimeCountdown(int) {}
 inline void nfcPendingScreen() {}
 inline void nfcNoLuckScreen() {}
-inline void nfcNotSupportedScreen() {}
 inline void nfcErrorDetailScreen(const char*) {}
 inline void thankYouScreen() {}
 inline void productBlockedScreen() {}

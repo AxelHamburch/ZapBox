@@ -394,18 +394,16 @@ extern T35AmbientConfig t35AmbientConfig;
 // EXTENSION / API PATH CONFIGURATION
 // ============================================================================
 
+// URL path of the LNbits zapbox_extension (https://<server>/zapbox/api/v1/...).
+// The legacy bitcoinswitch_extension is no longer supported (device token, v2.7.0+).
+constexpr const char *EXTENSION_API_PATH = "zapbox";
+
 struct ExtensionConfig {
-  // API path base: "bitcoinswitch" (classic) or "zapbox" (zapbox_extension)
-  // Controls which LNbits extension the device communicates with.
-  // zapbox_extension is the current extension; bitcoinswitch is legacy and
-  // only tried as a fallback when zapbox doesn't respond (see fetchSwitchLabels()).
-  String apiPath = "zapbox";
   // NFC state – written by the NFC task (Core 0), read by loop() (Core 1).
   // Must be volatile to prevent the compiler from caching stale values in registers.
   volatile bool nfcPaymentPending = false;           // True while waiting for LNURLW invoice settlement
   volatile unsigned long nfcPaymentPendingStart = 0; // Timestamp when NFC payment was initiated (for timeout)
   volatile bool nfcPaymentFailed = false;            // True when HTTP POST to server failed – triggers NO LUCK screen
-  volatile bool nfcExtensionMismatch = false;         // True when NFC tap detected but extension is not zapbox
   volatile bool deviceTokenRejected = false;         // True when the server rejected the device token (extension v2.7.0+) – main loop shows a notice once
   unsigned long deviceTokenRejectedAt = 0;           // Timestamp of the rejection (the notice is dropped if the screen stays busy)
   char nfcErrorDetail[128] = "";                     // Detail message from last NFC HTTP error (shown after NO LUCK screen)

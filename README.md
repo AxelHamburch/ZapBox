@@ -96,7 +96,7 @@ Single-core RISC-V, the smallest footprint and the lowest power draw of all vari
 ## Quick Start
 
 1. **Build the hardware** — follow the [electrical layout](docs/hardware-assets.md#electrical-layouts) for your variant
-2. **Set up LNbits** — you need a server with the [bitcoinswitch](https://github.com/lnbits/bitcoinswitch) or [zapbox](https://github.com/AxelHamburch/zapbox_extension) extension, and a switch entry per channel
+2. **Set up LNbits** — you need a server with the [zapbox](https://github.com/AxelHamburch/zapbox_extension) extension, and a switch entry per channel
 3. **Flash and configure** — open the Web Installer in Chrome or Edge, flash the firmware, then enter WiFi and LNbits settings over the same serial connection
 
 | Variant | Web Installer |
@@ -187,8 +187,7 @@ ZapBox/
 ## Compatibility
 
 - **LNbits**: v1.4.x or higher
-- **Bitcoin Switch Extension**: v1.2.1 or higher
-- **ZapBox Extension**: required for NFC Bolt Card payments and Mini-PoS — **v2.6.2 or higher** for current firmware (Bolt Card taps and PIN entry ride a persistent device channel; older extensions are served via HTTPS fallback, but the 2.6.0/2.6.1 intermediates must not be mixed with newer firmware)
+- **ZapBox Extension**: required — **v2.7.1 or higher** for firmware v976483 and newer (device token). The legacy Bitcoin Switch extension is no longer supported.
 - **ESP32 classic**: a standard ESP32 works for the headless build — an **unsoldered 30-pin board** is recommended for the headless housing
 
 Software versioning follows the [Releases](https://github.com/AxelHamburch/ZapBox/releases). Housings (`b…`) and electrical layouts (`e…`) are versioned by Bitcoin block height — see [Hardware & Documents](docs/hardware-assets.md).

@@ -35,22 +35,6 @@ extern ProductSelectState productSelectState;
 // Retry backoff for failed label fetches
 static unsigned long lastFetchAttempt = 0;
 static const unsigned long RETRY_BACKOFF = 30000; // 30 seconds between retries
-static bool apiPathLoaded = false; // NVS path loaded only once per boot
-
-// Load persisted apiPath from NVS (called first time fetchSwitchLabels runs)
-static void loadApiPathIfNeeded() {
-  if (apiPathLoaded) return;
-  apiPathLoaded = true;
-  Preferences prefs;
-  prefs.begin("zapbox", true); // read-only
-  String saved = prefs.getString("apiPath", "");
-  prefs.end();
-  if (saved.length() > 0 && (saved == "zapbox" || saved == "bitcoinswitch")) {
-    extensionConfig.apiPath = saved;
-    Serial.println("[LABELS] Loaded saved extension path from NVS: " + saved);
-  }
-}
-
 #if ENABLE_BITCOIN_DATA
 const unsigned long BTC_UPDATE_INTERVAL = 300000; // 5 minutes
 const unsigned long BTC_ERROR_RETRY_INTERVAL = 60000; // 1 minute — first retry after an error
@@ -83,7 +67,6 @@ extern void updateBtctickerValues(); // Partial update function
  */
 void fetchSwitchLabels()
 {
-  loadApiPathIfNeeded();
   if (lnbitsServer.length() == 0 || deviceId.length() == 0) {
     Serial.println("[LABELS] Cannot fetch labels - server or deviceId not configured");
     lastFetchAttempt = millis(); // apply backoff so this doesn't spam every loop tick
@@ -134,9 +117,7 @@ void fetchSwitchLabels()
   WiFiClientSecure secureClient;
   secureClient.setInsecure();           // same trust model as http.begin(url)
   secureClient.setHandshakeTimeout(10); // seconds
-  // Try primary extension path. On 404 or connection error, try the other extension.
-  // Detected path is persisted in NVS so restarts go directly to the right path.
-  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath + "/api/v1/public/" + deviceId;
+  String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH + "/api/v1/public/" + deviceId;
   Serial.println("[LABELS] Fetching switch configurations from: " + url);
   http.begin(secureClient, url);
   // With a valid token the extension (v2.7.0+) switches this ZapBox to signed
@@ -145,40 +126,6 @@ void fetchSwitchLabels()
   http.setConnectTimeout(5000);
   http.setTimeout(4000);
   int httpCode = http.GET();
-
-  // Auto-detect extension path. A 404 always means "wrong extension". A connection
-  // error/timeout only says the network is flaky, so it triggers the probe only
-  // while no path has been saved yet (fresh device) — otherwise a hiccup makes a
-  // correctly configured device ask the other extension and waste ~10 s.
-  bool pathSaved = false;
-  {
-    Preferences probe;
-    if (probe.begin("zapbox", true)) {
-      pathSaved = probe.getString("apiPath", "").length() > 0;
-      probe.end();
-    }
-  }
-  bool shouldTryFallback = (httpCode == 404) || (httpCode <= 0 && !pathSaved);
-  if (shouldTryFallback) {
-    String fallbackPath = (extensionConfig.apiPath == "bitcoinswitch") ? "zapbox" : "bitcoinswitch";
-    Serial.println("[LABELS] " + extensionConfig.apiPath + (httpCode == 404 ? " returned 404" : " connection error") + " - trying fallback: " + fallbackPath);
-    http.end();
-    url = "https://" + lnbitsServer + "/" + fallbackPath + "/api/v1/public/" + deviceId;
-    Serial.println("[LABELS] Fetching switch configurations from: " + url);
-    http.begin(secureClient, url);
-    http.setConnectTimeout(5000);
-    http.setTimeout(5000);
-    httpCode = http.GET();
-    if (httpCode == 200) {
-      extensionConfig.apiPath = fallbackPath;
-      Serial.println("[LABELS] Auto-detected extension: /" + fallbackPath + "/api/v1/ (saved for payments)");
-      // Persist so next boot uses the correct path directly
-      Preferences prefs;
-      prefs.begin("zapbox", false);
-      prefs.putString("apiPath", fallbackPath);
-      prefs.end();
-    }
-  }
 
   if (httpCode == 200) {
     String payload = http.getString();
@@ -259,10 +206,10 @@ void fetchSwitchLabels()
   } else {
     Serial.printf("[LABELS] HTTP request failed with code: %d\n", httpCode);
     
-    // HTTP 404 means the bitcoinswitch instance was deleted on the server
+    // HTTP 404 means the device was deleted on the server (or zapbox_extension is not installed)
     // This is a critical configuration error - invalidate WebSocket connection
     if (httpCode == 404) {
-      Serial.println("[LABELS] ERROR: Device not found (404) - tried /bitcoinswitch/ and /zapbox/ paths.");
+      Serial.println("[LABELS] ERROR: Device not found (404) on /zapbox/ - is zapbox_extension installed?");
       Serial.println("[LABELS] The configured device ID does not exist on the server.");
       Serial.println("[LABELS] Marking WebSocket as unconfirmed to trigger error LED pattern.");
       networkStatus.confirmed.websocket = false;
@@ -566,7 +513,7 @@ void updateSwitchLabels()
 extern void updateLightningQR(const String& lnurlStr);
 
 /**
- * POST /<apiPath>/api/v1/pos/invoice
+ * POST /zapbox/api/v1/pos/invoice
  * Header: X-Api-Key: <wallet invoice key>
  * Body:   {"amount": 5.00, "currency": "EUR", "device_id": "<22-char-id>"}
  * Response: {"payment_hash": "...", "payment_request": "lnbc..."}
@@ -583,7 +530,7 @@ bool requestMiniPosInvoice(const String &amountStr)
   }
 
   HTTPClient http;
-  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+  String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH
                + "/api/v1/pos/invoice";
   LOG_INFO("MiniPoS", "Requesting invoice: " + amountStr + " " + miniPosConfig.currency);
   http.begin(url);
@@ -641,7 +588,7 @@ bool requestMiniPosInvoice(const String &amountStr)
 }
 
 /**
- * GET /<apiPath>/api/v1/pos/invoice/last?device_id=<id>
+ * GET /zapbox/api/v1/pos/invoice/last?device_id=<id>
  * Header: X-Api-Key: <wallet invoice key>
  * Response: {"amount": 23.5, "currency": "EUR"} or {"amount": null}
  */
@@ -654,7 +601,7 @@ bool fetchMiniPosLastPay(String &amountOut)
   }
 
   HTTPClient http;
-  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+  String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH
                + "/api/v1/pos/invoice/last?device_id=" + deviceId;
   http.begin(url);
   addDeviceTokenHeader(http);
@@ -689,7 +636,7 @@ bool fetchMiniPosLastPay(String &amountOut)
 }
 
 /**
- * Authy (LNURL-auth): GET /<apiPath>/api/v1/auth/<deviceId>?pin=&duration=
+ * Authy (LNURL-auth): GET /zapbox/api/v1/auth/<deviceId>?pin=&duration=
  * The extension creates a fresh single-use k1 and returns the bech32 auth
  * LNURL plus the action it expects ("auth" in normal operation, "register"
  * while a teach session is open). On success the LNURL is placed in the QR/NFC
@@ -707,7 +654,7 @@ bool requestAuthLnurl(String *actionOut, int *httpOut)
   }
 
   HTTPClient http;
-  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+  String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH
              + "/api/v1/auth/" + deviceId
              + "?pin=" + String(authyConfig.authPin)
              + "&duration=" + String(authyConfig.authDuration);
@@ -759,7 +706,7 @@ bool requestNfcAuth(const String &externalId, const String &p, const String &c,
     if (errorOut) *errorOut = "Not configured";
     return false;
   }
-  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+  String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH
              + "/api/v1/nfc/auth/" + deviceId
              + "?external_id=" + externalId
              + "&p=" + p + "&c=" + c
@@ -805,7 +752,7 @@ bool requestNfcAuth(const String &externalId, const String &p, const String &c,
 bool requestNfcTeach(const String &externalId, const String &p, const String &c)
 {
   if (lnbitsServer.length() == 0 || deviceId.length() == 0) return false;
-  String url = "https://" + lnbitsServer + "/" + extensionConfig.apiPath
+  String url = "https://" + lnbitsServer + "/" + EXTENSION_API_PATH
              + "/api/v1/nfc/teach/" + deviceId
              + "?external_id=" + externalId
              + "&p=" + p + "&c=" + c;

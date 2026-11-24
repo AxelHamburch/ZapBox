@@ -699,7 +699,7 @@
 </tspan><tspan
          x="167.19922"
          y="302.41781"
-         id="tspan21">In LNbits, install the bitcoinSwitch or ZapBox extension and </tspan><tspan
+         id="tspan21">In LNbits, install the ZapBox extension and </tspan><tspan
          x="167.19922"
          y="329.18569"
          id="tspan22">create an instance with GPIO pin 12.

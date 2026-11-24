@@ -30,17 +30,21 @@
         <noscript><p>JavaScript must be enabled for this to work.</p></noscript>
 
         <h1 style="margin-bottom: 5px;">ZAPBOX⚡️WEB INSTALLER (ESP32-C3-21-1)</h1>
-        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with <strong>esp32-c3-21-1</strong> (ESP32-C3-WROOM-02 with board design by Hans Wurst)<br><br>
-            Other web installers: <br>
+        <p style="margin: 10px 0 0 0; color: #666;"><i>Use with <strong>esp32-c3-21-1</strong> (ESP32-C3-WROOM-02 with board design by Hans Wurst)</i></p>
+        <div class="intro-row">
+            <p style="margin: 14px 0 0 0; color: #666;"><i>Other web installers: <br>
             <a href="../">T-Display-S3</a>&nbsp;|&nbsp;<a href="../headless/">Headless</a>&nbsp;|&nbsp;<a href="../touch3.5/">Touch 3.5"</a>.</i></p>
-        <div style="float: right; text-align: center; margin: 0 0 10px 20px;">
+            <div class="layout-preview">
             <a href="../assets/esp32-c3-21-1.webp" target="_blank">
                 <img src="../assets/esp32-c3-21-1.webp" alt="esp32-c3-21-1" style="max-width: 167px; width: 100%; border-radius: 6px; display: block;">
             </a>
             <p style="margin: 4px 0 0 0; font-size: 13px; color: #666; text-align: center;">Example E-Layout</p>
             <p style="margin: 4px 0 0 0; font-size: 13px; text-align: center;"><a href="https://github.com/AxelHamburch/ZapBox/blob/main/docs/hardware-assets.md#electrical-layouts" target="_blank" rel="noopener noreferrer">More e-layouts</a></p>
+            </div>
         </div>
-        <div style="margin-bottom: 30px;"></div>
+        <div style="margin-bottom: 20px;"></div>
+
+        <section class="zb-card">
 
         <h2 id="flash">1- Flash firmware</h2>
         <ul>
@@ -51,13 +55,14 @@
 
         <div class="buttons" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
             <select id="firmware-version-c3" style="padding: 10px; font-size: 16px; border-radius: 4px;">
-				<option value="../firmware/v949844c/manifest.json">v949844c (Latest - GPIO FD Fix &amp; WebSocket Self-Repair 🔌🔄)</option>
+				<option value="../firmware/v977386c/manifest.json">v977386c (Latest - No more bitcoinswitch fallback (zapbox_extension only) 🧹)</option>
+				<option value="../firmware/v949844c/manifest.json">v949844c (GPIO FD Fix &amp; WebSocket Self-Repair 🔌🔄)</option>
 				<option value="../firmware/v949509c/manifest.json">v949509c (NFC Tag Bug 🐛🔫 Shooter)</option>
 				<option value="../firmware/v949417c/manifest.json">v949417c (Supreme - fully functional 👑)</option>
                 <option value="../firmware/v949278c/manifest.json">v949278c</option>
                 <option value="../firmware/v949107c/manifest.json">v949107c</option>
             </select>
-			<esp-web-install-button id="flash-button-c3" manifest="../firmware/v949844c/manifest.json">
+			<esp-web-install-button id="flash-button-c3" manifest="../firmware/v977386c/manifest.json">
                 <button slot="activate">🔥 Flash ESP32-C3</button>
                 <span slot="unsupported">Your browser does not support installing things on ESP devices. Use Google Chrome or Microsoft Edge.</span>
                 <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -71,9 +76,9 @@
                 document.getElementById('flash-button-c3').setAttribute('manifest', e.target.value);
             });
         </script>
+        </section>
 
-        <hr>
-
+        <section class="zb-card">
         <h2 id="prepare-connection">2- Prepare connection</h2>
         <p>After flashing or erasing, the ZapBox automatically starts in configuration mode — the serial log shows <strong>"SERIAL CONFIG MODE"</strong>.</p>
         <p>→ The ZapBox is now ready to receive configuration data. ⚙️</p>
@@ -83,9 +88,9 @@
             <li>Or: Hold IO9 (BOOT) LOW for 5 seconds while the device is running</li>
         </ul>
         <p><i><strong>Note:</strong> The connection stays active for 3 minutes before auto-disconnect.</i></p>
+        </section>
 
-        <hr>
-
+        <section class="zb-card">
         <h2 id="load-config">3- Load config values</h2>
         <ul>
             <li>Press <span style="background-color: #e0e0e0; padding: 2px 6px; border-radius: 3px;">🔌 Connect</span> - select the port and connect.</li>
@@ -116,7 +121,7 @@
                 <div style="flex: 2;">
                     <label for="socket">Device settings string</label>
                     <input type="text" name="socket" id="socket" placeholder="ws://demo.lnbits.com/ap..." autocomplete="off">
-                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? Use Bitcoin Switch or ZapBox extension → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
+                    <p style="margin: -13px 0 0 0; font-size: 11px; color: #888; font-style: italic;">How do I get the device string? Use the ZapBox extension → <a href="#" id="help-device-string-link" style="color: #888; text-decoration: underline;">Help</a></p>
                     <p style="margin: 2px 0 0 0; font-size: 11px; color: #888; font-style: italic;">ZapBox extension v2.7.0+: the string ends with a secret device token (?token=…). Copy it completely and keep it private.</p>
                 </div>
                 <div style="flex: 1;">
@@ -150,6 +155,8 @@
                 </div>
             </div>
         </div>
+        </section>
+
 
         <!-- Optional settings -->
         <div style="background-color: #FFE5CC; padding: 30px 20px; margin: 15px -20px 0 -20px; border-radius: 8px 8px 0 0;">
@@ -166,7 +173,7 @@
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>IO6</strong></td><td>Flex channel 1 — configurable as relay, servo, or sensor (see below)</td></tr>
                 <tr><td style="padding: 2px 12px 2px 0;"><strong>IO7</strong></td><td>Flex channel 2 — configurable as relay, servo, or sensor (see below)</td></tr>
             </table>
-            <p style="margin-top: 10px; color: #888; font-style: italic; font-size: 13px;">Configure the main payment pin in your LNbits extension (bitcoinswitch / zapbox_extension) — use GPIO 4 for the primary relay. IO6 and IO7 always trigger together with IO4.</p>
+            <p style="margin-top: 10px; color: #888; font-style: italic; font-size: 13px;">Configure the main payment pin in your LNbits ZapBox extension (zapbox_extension) — use GPIO 4 for the primary relay. IO6 and IO7 always trigger together with IO4.</p>
 
             <hr style="margin: 30px 0 20px 0; border: none; border-top: 1px solid #888;">
 
@@ -328,7 +335,7 @@
 
             <!-- NFC-Module Section -->
             <h3 style="margin: 0 0 10px 0;">NFC-Module</h3>
-            <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>". The ZapBox automatically detects which extension is installed on your server — no manual configuration required. If "zapbox_extension" is active, NFC Bolt Card payments are available out of the box. If only "bitcoinswitch_extension" (Bitcoin Switch) is installed, the ZapBox switches to that automatically.</i></p>
+            <p style="margin-top: 5px; color: #888;"><i>The NFC Bolt Card functionality requires the LNbits extension "<a href="https://github.com/AxelHamburch/zapbox_extension" target="_blank" rel="noopener noreferrer">zapbox_extension</a>".</i></p>
             <p style="margin-top: 10px; color: #888;"><i>Repositories from where the extensions can be downloaded:<br><a href="https://installer.zapbox.space/extensions.json" target="_blank" rel="noopener noreferrer">https://installer.zapbox.space/extensions.json</a></i></p>
             <div style="display: flex; flex-direction: row; gap: 16px; justify-content: center; align-items: flex-start; margin-top: 16px;">
                 <a href="../assets/NFC-Module-PN532.webp" target="_blank">
@@ -408,31 +415,13 @@
 
         <p>If a wallet scanning the QR code shows an error message, here's what it means:</p>
 
-        <p><strong>"bitcoinswitch ... is disabled"</strong> → The Bitcoin Switch was actively disabled in LNbits</p>
+        <p><strong>"ZapBox ... is disabled"</strong> → The ZapBox was actively disabled in LNbits</p>
 
-        <p><strong>"No active bitcoinswitch connections"</strong> → The handshake between the wallet and ZapBox failed. → Wait or restart the ZapBox to re-establish the connection.</p>
+        <p><strong>"No active ZapBox connections"</strong> → The handshake between the wallet and ZapBox failed. → Wait or restart the ZapBox to re-establish the connection.</p>
 
         <h3>Other Errors</h3>
 
         <p><strong>Relay does not switch, but payment was successful</strong> → Wrong GPIO pin configured in LNbits?</p>
-
-        <h3>NFC Extension Mismatch</h3>
-
-        <p>If you tap an NFC Bolt Card or NTAG21x tag and the serial log shows:</p>
-
-        <pre style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 13px;">[WARN][NFC] Bolt Card tap detected – NFC is not supported by the active extension (bitcoinswitch).
-[WARN][NFC] To use NFC / Bolt Cards, switch to zapbox_extension (apiPath = "zapbox").</pre>
-
-        <p>This means the device is configured with the <strong>bitcoinswitch_extension</strong>, which does not have an NFC endpoint (<code>/api/v1/nfc/</code>). NFC payments are only supported by the <strong>zapbox_extension</strong>.</p>
-
-        <p><strong>Solution:</strong></p>
-        <ul>
-            <li>In LNbits, create a device using the <strong>zapbox_extension</strong> instead of bitcoinswitch</li>
-            <li>Copy the new device string and reconfigure the ZapBox</li>
-            <li>The device string format is the same – only the server-side extension changes</li>
-        </ul>
-
-        <p><i>This is <strong>not</strong> a hardware problem – the NFC reader works fine. It's purely a server-side configuration issue.</i></p>
 
         <h3>Typical NFC Error Messages</h3>
 

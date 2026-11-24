@@ -145,7 +145,7 @@ Here is a step-by-step guide for setup:
 4. Flash the latest "Latest" version (Headless), as described in step 1 of the Web Installer.
 5. After flashing, close the small window and go to step 3 - Load config values. There click the `🔌 Connect` button.
 6. You should now see `✅ Connected` and `✅ Config mode` in the green field. Config mode is active as soon as the **Status LED blinks slowly** (approx. 1 Hz). If not, check step 2 - Prepare connection.
-7. The ZapBox requires three parameters: `WiFi SSID` / `WiFi password` / `Device settings string`. You get the Device-Settings-String from your LNbits Wallet. Add the **Bitcoin Switch** or **ZapBox** extension. The ZapBox extension also supports the NFC module, otherwise they are identical.
+7. The ZapBox requires three parameters: `WiFi SSID` / `WiFi password` / `Device settings string`. You get the Device-Settings-String from your LNbits Wallet. Add the **ZapBox** extension (zapbox_extension).
 8. After all three parameters have been entered, save them with the `🔥 Write Config` button and restart the ZapBox with the `🔁 Restart` button.
 
 After initialization, the Status LED lights up continuously – the ZapBox is ready for operation and waiting for the first payment.
