@@ -397,6 +397,25 @@ installer/firmware/
 
 ## Release History
 
+### v977386 / v977386h / v977386t / v977386c — 2026-11-24
+
+```markdown
+## 🎯 Release v977386 / v977386h / v977386t / v977386c — Legacy bitcoinswitch Fallback Removed
+
+### 🧹 Cleanup (Standard + Headless + Touch 3.5" + ESP32-C3)
+- **zapbox_extension only:** since the device token (extension v2.7.x) the legacy bitcoinswitch_extension can no longer be used. The firmware no longer probes `/bitcoinswitch/` when `/zapbox/` returns 404 or a connection error, and no longer stores a detected extension path. The label fetch asks `/zapbox/` only (one request instead of up to two on errors).
+- Removed the unreachable "NFC not supported – use zapbox extension" screen and its serial warning.
+- A 404 on the label fetch now logs `Device not found (404) on /zapbox/ - is zapbox_extension installed?`.
+
+### 📚 Documentation & Web Installer
+- README, operating instructions, white paper, installer pages and help graphics reference only the ZapBox extension; the "NFC Extension Mismatch" help section and bitcoinswitch links are gone.
+
+### 🛠️ Technical Details
+- Updated to Bitcoin block height 977386
+- Requires **zapbox_extension v2.7.1+**
+- ESP32-C3-21-1 rebuilt for this release (previous C3 release: v949844c)
+```
+
 ### v977238 / v977238h / v977238t — 2026-11-23
 
 ```markdown
